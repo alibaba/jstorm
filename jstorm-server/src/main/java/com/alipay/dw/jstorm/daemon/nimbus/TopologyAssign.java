@@ -311,7 +311,7 @@ public class TopologyAssign implements Runnable {
         Map<String, String> nodeHost = getTopologyNodeHost(supervisorMap,
                 existingAssignment, taskNodePort);
         
-        Map<Integer, Integer> startTimes = getTaskStartTimes(
+        Map<Integer, Integer> startTimes = getTaskStartTimes(nimbusData, topologyId,
                 existingAssignment, taskNodePort);
         
         String codeDir = StormConfig.masterStormdistRoot(conf, topologyId);
@@ -336,8 +336,12 @@ public class TopologyAssign implements Runnable {
      * @param taskNodePort
      * @return
      */
-    public static Map<Integer, Integer> getTaskStartTimes(
-            Assignment existingAssignment, Map<Integer, NodePort> taskNodePort) {
+    public static Map<Integer, Integer> getTaskStartTimes(NimbusData nimbusData,
+            String topologyId,
+            Assignment existingAssignment, Map<Integer, NodePort> taskNodePort)
+            throws Exception{
+        
+        StormClusterState stormClusterState = nimbusData.getStormClusterState();
         
         Map<Integer, Integer> startTimes = new HashMap<Integer, Integer>();
         
@@ -360,6 +364,7 @@ public class TopologyAssign implements Runnable {
         int nowSecs = TimeUtils.current_time_secs();
         for (Integer changedTaskId : changeTaskIds) {
             startTimes.put(changedTaskId, nowSecs);
+            stormClusterState.remove_task_heartbeat(topologyId, changedTaskId);
         }
         
         return startTimes;

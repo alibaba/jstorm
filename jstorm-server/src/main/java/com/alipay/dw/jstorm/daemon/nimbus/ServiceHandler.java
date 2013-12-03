@@ -299,8 +299,14 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
             throws NotAliveException, TException {
         
         try {
+            checkTopologyActive(data, topologyName, true);
+            Integer wait_amt = null;
+            if (options.is_set_wait_secs()) {
+                wait_amt = options.get_wait_secs();
+            }
+            
             NimbusUtils.transitionName(data, topologyName, true,
-                    StatusType.rebalance);
+                    StatusType.rebalance, wait_amt);
         } catch (NotAliveException e) {
             String errMsg = "Rebalance Error, no this topology " + topologyName;
             LOG.error(errMsg, e);
@@ -678,7 +684,7 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
             Assignment assignment = stormClusterState.assignment_info(
                     topologyId, null);
             if (assignment == null) {
-                throw new TException("Failed to get StormBase from ZK of "
+                throw new TException("Failed to get Assignment from ZK of "
                         + topologyId);
             }
             Map<Integer, NodePort> taskToNodePort = assignment
@@ -745,10 +751,10 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
                     taskSummarys, extractStatusStr(base));
             
         } catch (TException e) {
-            LOG.info("Failed to get topologyInfo" + topologyId, e);
+            LOG.info("Failed to get topologyInfo " + topologyId, e);
             throw e;
         } catch (Exception e) {
-            LOG.info("Failed to get topologyInfo" + topologyId, e);
+            LOG.info("Failed to get topologyInfo " + topologyId, e);
             throw new TException("Failed to get topologyInfo" + topologyId);
         }
         
