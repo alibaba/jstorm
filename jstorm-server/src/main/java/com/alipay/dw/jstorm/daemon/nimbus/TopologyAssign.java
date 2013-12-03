@@ -718,7 +718,7 @@ public class TopologyAssign implements Runnable {
         
         Collections.sort(splitup, new Comparator<List<NodePort>> () {
             public int compare(List<NodePort> o1, List<NodePort> o2) {
-                return o1.size() - o2.size();
+                return o2.size() - o1.size();
             }
         });
         
