@@ -83,4 +83,4 @@ topology.fall.back.on.java.serialization: true
 topology.worker.childopts: null
 
 topology.debug.recv.tuple: false
-spout.delay.run: 10
+spout.delay.run: 30

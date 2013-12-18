@@ -301,7 +301,7 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
         try {
             checkTopologyActive(data, topologyName, true);
             Integer wait_amt = null;
-            if (options.is_set_wait_secs()) {
+            if (options!= null && options.is_set_wait_secs()) {
                 wait_amt = options.get_wait_secs();
             }
             

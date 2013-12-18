@@ -24,6 +24,8 @@ Stability
 7.5 supervisor scan /$(ZKROOT)/assignment only once in one monitor loop
 7.6 task hearbeat change to 10s
 8 create task pid file before connection zk, this is very import when zk is unstable.
+9.equally assign worker to supervisors
+10. reset hearbeat timeout for one reassign task
 
 
 Performance tuning
