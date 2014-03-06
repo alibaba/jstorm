@@ -129,7 +129,7 @@ class SyncSupervisorEvent extends RunnableCallback {
 
 			// Step 5: download code from ZK
 
-			Map<String, String> topologyCodes = getTopologyCodeLocations(assignments);
+			Map<String, String> topologyCodes = getTopologyCodeLocations(assignments, this.supervisorId);
 
 			downloadTopology(topologyCodes, downloadedTopologyIds);
 
@@ -409,16 +409,21 @@ class SyncSupervisorEvent extends RunnableCallback {
 	 * @returns Map: <topologyId, master-code-dir> from zookeeper
 	 */
 	public static Map<String, String> getTopologyCodeLocations(
-			Map<String, Assignment> assignments) throws Exception {
+			Map<String, Assignment> assignments, String supervisorId) throws Exception {
 
 		Map<String, String> rtn = new HashMap<String, String>();
 
 		for (Entry<String, Assignment> entry : assignments.entrySet()) {
-			String topologyid = entry.getKey();
+        		String topologyid = entry.getKey();
 			Assignment assignmenInfo = entry.getValue();
-
-			rtn.put(topologyid, assignmenInfo.getMasterCodeDir());
-
+			Map<Integer, NodePort> taskToNodeport = assignmenInfo.getTaskToNodeport();
+			for (Entry<Integer, NodePort> nodePort : taskToNodeport.entrySet()) {
+				String node = nodePort.getValue().getNode();
+				if (supervisorId.equals(node) == true) {
+					rtn.put(topologyid, assignmenInfo.getMasterCodeDir());
+					break;
+				}
+			}
 		}
 		return rtn;
 	}
