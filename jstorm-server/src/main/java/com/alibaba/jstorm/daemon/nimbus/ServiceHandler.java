@@ -963,7 +963,7 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
 			} else if (obj instanceof SpoutSpec) {
 				common = ((SpoutSpec) obj).get_common();
 
-			} else if (obj instanceof SpoutSpec) {
+			} else if (obj instanceof StateSpoutSpec) {
 				common = ((StateSpoutSpec) obj).get_common();
 
 			}
