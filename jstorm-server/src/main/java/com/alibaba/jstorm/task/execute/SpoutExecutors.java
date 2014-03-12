@@ -196,7 +196,7 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
 							isDebug, tupleInfo.getStream(),
 							tupleInfo.getTimestamp(), task_stats);
 				} else if (stream_id.equals(Acker.ACKER_FAIL_STREAM_ID)) {
-					Long time_delta = null;
+					//Long time_delta = null;
 
 					runnable = new FailSpoutMsg(spout, tupleInfo, task_stats,
 							isDebug);
