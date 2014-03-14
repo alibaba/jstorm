@@ -1,5 +1,6 @@
 package com.alibaba.jstorm.task.execute;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -105,10 +106,13 @@ public class SpoutCollector implements ISpoutOutputCollector {
 
 		Boolean needAck = (message_id != null) && (ackerNum > 0);
 
+		List<Long> ackSeq = new ArrayList<Long>(); 
 		for (Integer t : out_tasks) {
 			MessageId msgid;
 			if (needAck) {
-				msgid = MessageId.makeRootId(root_id, t);
+				Long as = MessageId.generateId();
+				msgid = MessageId.makeRootId(root_id, as);
+				ackSeq.add(as);
 			} else {
 				msgid = MessageId.makeUnanchored();
 			}
@@ -130,7 +134,7 @@ public class SpoutCollector implements ISpoutOutputCollector {
 			pending.putHead(root_id, info);
 
 			List<Object> ackerTuple = JStormUtils.mk_list((Object) root_id,
-					JStormUtils.bit_xor_vals(out_tasks), task_id);
+					JStormUtils.bit_xor_vals(ackSeq), task_id);
 
 			UnanchoredSend.send(topology_context, sendTargets, transfer_fn,
 					Acker.ACKER_INIT_STREAM_ID, ackerTuple);
