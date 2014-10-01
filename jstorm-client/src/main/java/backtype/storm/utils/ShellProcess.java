@@ -11,8 +11,8 @@ import java.util.Map;
 import java.util.List;
 
 import org.apache.commons.io.IOUtils;
-import org.json.simple.JSONObject;
-import org.json.simple.JSONValue;
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.JSON;
 import org.apache.log4j.Logger;
 
 public class ShellProcess {
@@ -51,7 +51,7 @@ public class ShellProcess {
 	}
 
 	public void writeMessage(Object msg) throws IOException {
-		writeString(JSONValue.toJSONString(msg));
+		writeString(JSON.toJSONString(msg));
 	}
 
 	private void writeString(String str) throws IOException {
@@ -63,7 +63,7 @@ public class ShellProcess {
 
 	public JSONObject readMessage() throws IOException {
 		String string = readString();
-		JSONObject msg = (JSONObject) JSONValue.parse(string);
+		JSONObject msg = JSON.parseObject(string);
 		if (msg != null) {
 			return msg;
 		} else {

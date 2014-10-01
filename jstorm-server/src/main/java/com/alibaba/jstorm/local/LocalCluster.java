@@ -6,7 +6,6 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.thrift7.TException;
-import org.json.simple.JSONValue;
 
 import backtype.storm.ILocalCluster;
 import backtype.storm.generated.AlreadyAliveException;
@@ -20,6 +19,8 @@ import backtype.storm.generated.SubmitOptions;
 import backtype.storm.generated.TopologyAssignException;
 import backtype.storm.generated.TopologyInfo;
 import backtype.storm.utils.Utils;
+
+import com.alibaba.fastjson.JSON;
 
 public class LocalCluster implements ILocalCluster {
 
@@ -44,7 +45,7 @@ public class LocalCluster implements ILocalCluster {
 			throw new RuntimeException("Topology conf is not json-serializable");
 		try {
 			state.getNimbus().submitTopology(topologyName, null,
-					JSONValue.toJSONString(conf), topology);
+					JSON.toJSONString(conf), topology);
 		} catch (TopologyAssignException e) {
 			// TODO Auto-generated catch block
 			LOG.error("Failed to submit topology " + topologyName, e);
@@ -63,7 +64,7 @@ public class LocalCluster implements ILocalCluster {
 			throw new RuntimeException("Topology conf is not json-serializable");
 		try {
 			state.getNimbus().submitTopologyWithOpts(topologyName, null,
-					JSONValue.toJSONString(conf), topology, submitOpts);
+					JSON.toJSONString(conf), topology, submitOpts);
 		} catch (TopologyAssignException e) {
 			// TODO Auto-generated catch block
 			LOG.error("Failed to submit topology " + topologyName, e);

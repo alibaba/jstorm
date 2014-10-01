@@ -6,10 +6,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
-import org.json.simple.JSONValue;
 
 import backtype.storm.Config;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.jstorm.utils.JStormUtils;
 
 public class ConfigExtension {
@@ -309,7 +309,7 @@ public class ConfigExtension {
 			List<WorkerAssignment> userDefines) {
 		List<String> ret = new ArrayList<String>();
 		for (WorkerAssignment worker : userDefines) {
-			ret.add(JSONValue.toJSONString(worker));
+			ret.add(JSON.toJSONString(worker));
 		}
 		conf.put(USE_USERDEFINE_ASSIGNMENT, ret);
 	}

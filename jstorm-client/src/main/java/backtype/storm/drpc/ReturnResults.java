@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.thrift7.TException;
-import org.json.simple.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +18,8 @@ import backtype.storm.topology.base.BaseRichBolt;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.utils.ServiceRegistry;
 import backtype.storm.utils.Utils;
+
+import com.alibaba.fastjson.JSON;
 
 public class ReturnResults extends BaseRichBolt {
 	public static final Logger LOG = LoggerFactory
@@ -40,7 +41,7 @@ public class ReturnResults extends BaseRichBolt {
 		String result = (String) input.getValue(0);
 		String returnInfo = (String) input.getValue(1);
 		if (returnInfo != null) {
-			Map retMap = (Map) JSONValue.parse(returnInfo);
+			Map retMap = (Map) JSON.parse(returnInfo);
 			final String host = (String) retMap.get("host");
 			final int port = Utils.getInt(retMap.get("port"));
 			String id = (String) retMap.get("id");
