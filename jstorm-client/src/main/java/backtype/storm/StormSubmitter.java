@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.thrift7.TException;
-import org.json.simple.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +20,8 @@ import backtype.storm.generated.TopologySummary;
 import backtype.storm.utils.BufferFileInputStream;
 import backtype.storm.utils.NimbusClient;
 import backtype.storm.utils.Utils;
+
+import com.alibaba.fastjson.JSON;
 
 /**
  * Use this class to submit topologies to run on the Storm cluster. You should
@@ -90,7 +91,7 @@ public class StormSubmitter {
 		conf.putAll(stormConf);
 		putUserInfo(conf, stormConf);
 		try {
-			String serConf = JSONValue.toJSONString(stormConf);
+			String serConf = JSON.toJSONString(stormConf);
 			if (localNimbus != null) {
 				LOG.info("Submitting topology " + name + " in local mode");
 				localNimbus.submitTopology(name, null, serConf, topology);

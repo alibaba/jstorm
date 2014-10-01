@@ -9,7 +9,7 @@ import java.util.List;
 import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.json.simple.JSONObject;
+import com.alibaba.fastjson.JSONObject;
 
 public class ShellSpout implements ISpout {
 	public static Logger LOG = LoggerFactory.getLogger(ShellSpout.class);
