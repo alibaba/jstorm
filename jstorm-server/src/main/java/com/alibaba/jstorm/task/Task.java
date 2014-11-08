@@ -167,7 +167,7 @@ public class Task {
 
 	public boolean isSingleThread(Map conf) {
 		boolean isOnePending = JStormServerUtils.isOnePending(conf);
-		if (isOnePending == true) {
+		if (isOnePending) {
 			return true;
 		}
 
@@ -183,7 +183,7 @@ public class Task {
 					taskStatus, topologyContext, userContext, taskStats,
 					report_error);
 		} else if (taskObj instanceof ISpout) {
-			if (isSingleThread(stormConf) == true) {
+			if (isSingleThread(stormConf)) {
 				return new SingleThreadSpoutExecutors((ISpout) taskObj, taskTransfer,
 						innerTaskTransfer, stormConf, deserializeQueue, sendTargets,
 						taskStatus, topologyContext, userContext, taskStats,
