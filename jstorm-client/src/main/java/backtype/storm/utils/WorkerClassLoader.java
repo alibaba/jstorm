@@ -18,6 +18,9 @@ public class WorkerClassLoader extends URLClassLoader {
 	private ClassLoader JDKClassLoader;
 
 	private boolean isDebug;
+	
+	// slf4j's log will go Log4j
+	private boolean isSlf4jOnLog4j;
 
 	protected static WorkerClassLoader instance;
 
@@ -26,13 +29,39 @@ public class WorkerClassLoader extends URLClassLoader {
 	protected static Map<Thread, ClassLoader> threadContextCache;
 
 	protected WorkerClassLoader(URL[] urls, ClassLoader defaultClassLoader,
-			ClassLoader JDKClassLoader, boolean isDebug) {
+			ClassLoader JDKClassLoader, boolean isDebug, boolean isSlf4jOnLog4j) {
 		super(urls, JDKClassLoader);
 		this.defaultClassLoader = defaultClassLoader;
 		this.JDKClassLoader = JDKClassLoader;
 		this.isDebug = isDebug;
+		this.isSlf4jOnLog4j = isSlf4jOnLog4j;
 
 		// TODO Auto-generated constructor stub
+	}
+	
+	protected boolean isLogByDefault(String name) {
+		if (name.startsWith("org.apache.log4j")) {
+			return true;
+		}else if(isSlf4jOnLog4j == true) {
+			if (name.startsWith("org.slf4j")) {
+				return true;
+			}
+		}
+		
+		return false;
+		
+	}
+	
+	protected boolean isLoadByDefault(String name) {
+		if (name.startsWith("backtype.storm") == true) {
+			return true;
+		}else if (name.startsWith("com.alibaba.jstorm")) {
+			return true;
+		}else if (isLogByDefault(name)) {
+			return true;
+		}else {	
+			return false;
+		}
 	}
 
 	@Override
@@ -54,9 +83,7 @@ public class WorkerClassLoader extends URLClassLoader {
 			}
 
 			try {
-				if (name.startsWith("org.apache.log4j") == false
-						&& name.startsWith("backtype.storm") == false
-						&& name.startsWith("com.alibaba.jstorm") == false) {
+				if (isLoadByDefault(name) == false) {
 					result = findClass(name);
 
 					if (result != null) {
@@ -92,7 +119,7 @@ public class WorkerClassLoader extends URLClassLoader {
 
 	public static WorkerClassLoader mkInstance(URL[] urls,
 			ClassLoader DefaultClassLoader, ClassLoader JDKClassLoader,
-			boolean enable, boolean isDebug) {
+			boolean enable, boolean isDebug, boolean isSlf4jOnLog4j) {
 		WorkerClassLoader.enable = enable;
 		if (enable == false) {
 			LOG.info("Don't enable UserDefine ClassLoader");
@@ -102,7 +129,7 @@ public class WorkerClassLoader extends URLClassLoader {
 		synchronized (WorkerClassLoader.class) {
 			if (instance == null) {
 				instance = new WorkerClassLoader(urls, DefaultClassLoader,
-						JDKClassLoader, isDebug);
+						JDKClassLoader, isDebug, isSlf4jOnLog4j);
 
 				threadContextCache = new ConcurrentHashMap<Thread, ClassLoader>();
 			}

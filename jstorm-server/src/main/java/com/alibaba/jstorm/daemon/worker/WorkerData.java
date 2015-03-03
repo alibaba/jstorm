@@ -162,6 +162,9 @@ public class WorkerData {
 					.isEnableTopologyClassLoader(stormConf);
 			boolean enableDebugClassloader = ConfigExtension
 					.isEnableClassloaderDebug(stormConf);
+			
+			boolean isSlf4jOnLog4j = StringUtils.isBlank(
+					ConfigExtension.getUserDefinedLogbackConf(stormConf));
 
 			if (jar_path == null && enableClassloader == true) {
 				LOG.error("enable classloader, but not app jar");
@@ -184,7 +187,8 @@ public class WorkerData {
 
 			WorkerClassLoader.mkInstance(urlArray, ClassLoader
 					.getSystemClassLoader(), ClassLoader.getSystemClassLoader()
-					.getParent(), enableClassloader, enableDebugClassloader);
+					.getParent(), enableClassloader, enableDebugClassloader,
+					isSlf4jOnLog4j);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			LOG.error("init jarClassLoader error!", e);
