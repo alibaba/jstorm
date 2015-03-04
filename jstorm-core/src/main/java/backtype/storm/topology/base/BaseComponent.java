@@ -21,8 +21,8 @@ import backtype.storm.topology.IComponent;
 import java.util.Map;
 
 public abstract class BaseComponent implements IComponent {
-	@Override
-	public Map<String, Object> getComponentConfiguration() {
-		return null;
-	}
+    @Override
+    public Map<String, Object> getComponentConfiguration() {
+        return null;
+    }    
 }
