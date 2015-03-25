@@ -2,6 +2,10 @@ package com.alibaba.jstorm.message.netty;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.net.SocketAddress;
+import java.net.InetSocketAddress;
 
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.channel.Channel;
@@ -12,19 +16,28 @@ import org.slf4j.LoggerFactory;
 
 import backtype.storm.messaging.TaskMessage;
 
-import com.alibaba.jstorm.daemon.worker.metrics.JStormHistogram;
-import com.alibaba.jstorm.daemon.worker.metrics.JStormTimer;
-import com.alibaba.jstorm.daemon.worker.metrics.Metrics;
+import com.alibaba.jstorm.metric.MetricDef;
+import com.alibaba.jstorm.metric.JStormHistogram;
+import com.alibaba.jstorm.metric.JStormTimer;
+import com.alibaba.jstorm.metric.Metrics;
 
 public class MessageDecoder extends FrameDecoder {
 	private static final Logger LOG = LoggerFactory
 			.getLogger(MessageDecoder.class);
 
-	private static final int BATCH_SIZE = 32;
-
-	private static JStormTimer timer = Metrics.registerTimer("netty-server-decode-timer");
-	private static JStormHistogram histogram = Metrics
-			.registerHistograms("netty-server-decode-histogram");
+	private static JStormTimer timer = null;
+	private static Map<String, JStormHistogram> networkTransmitTimeMap = null;
+	
+	public MessageDecoder(boolean isServer) {
+		if (isServer) {
+		    if (timer == null)
+		        timer = Metrics.registerTimer(null, MetricDef.NETTY_SERV_DECODE_TIME, 
+				        null, Metrics.MetricType.WORKER);
+		}
+		
+		if (networkTransmitTimeMap == null)
+		    networkTransmitTimeMap = new HashMap<String, JStormHistogram>();
+	}
 
 	/*
 	 * Each ControlMessage is encoded as: code (<0) ... short(2) Each
@@ -32,26 +45,24 @@ public class MessageDecoder extends FrameDecoder {
 	 * ... byte[] *
 	 */
 	protected Object decode(ChannelHandlerContext ctx, Channel channel,
-			ChannelBuffer buf) throws Exception {
+			ChannelBuffer buf) throws Exception {		
 		// Make sure that we have received at least a short
 		long available = buf.readableBytes();
-		if (available < 2) {
+		// Length of control message is 10. 
+		// Minimum length of a task message is 6(short taskId, int length).
+		if (available < 6) {
 			// need more data
 			return null;
 		}
 
-		List<Object> ret = new ArrayList<Object>();
 
-		timer.start();;
+		if (timer != null) timer.start();
 		try {
-			int decodeNum = 0;
-			while (available >= 2 && decodeNum < BATCH_SIZE) {
-				// Mark the current buffer position before reading task/len
-				// field
-				// because the whole frame might not be in the buffer yet.
-				// We will reset the buffer position to the marked position if
-				// there's not enough bytes in the buffer.
-				buf.markReaderIndex();
+			// Mark the current buffer position before reading task/len field
+			// because the whole frame might not be in the buffer yet.
+			// We will reset the buffer position to the marked position if
+			// there's not enough bytes in the buffer.
+			buf.markReaderIndex();
 
 				// read the short field
 				short code = buf.readShort();
@@ -60,13 +71,31 @@ public class MessageDecoder extends FrameDecoder {
 				// case 1: Control message
 				ControlMessage ctrl_msg = ControlMessage.mkMessage(code);
 				if (ctrl_msg != null) {
-
+					if (available < 8) {
+						// The time stamp bytes were not received yet - return null.
+						buf.resetReaderIndex();
+						return null;
+					}					
+                    long timeStamp = buf.readLong();
+                    available -= 8;
 					if (ctrl_msg == ControlMessage.EOB_MESSAGE) {
-						continue;
-					} else {
-						LOG.warn("Occur invalid control message {}", ctrl_msg);
-						break;
-					}
+						InetSocketAddress sockAddr = (InetSocketAddress)(channel.getRemoteAddress());
+					    String remoteAddr = sockAddr.getHostName() + ":" + sockAddr.getPort();
+						
+					    long interval = System.currentTimeMillis() - timeStamp;
+					    if (interval < 0) interval = 0;
+
+					    JStormHistogram netTransTime = networkTransmitTimeMap.get(remoteAddr);
+					    if (netTransTime == null) {
+					    	netTransTime = Metrics.registerHistograms(remoteAddr, MetricDef.NETWORK_MSG_TRANS_TIME, 
+					    			null, Metrics.MetricType.WORKER);
+					    	networkTransmitTimeMap.put(remoteAddr, netTransTime);
+					    }
+					    
+					    netTransTime.update(interval);
+					} 
+					
+					return ctrl_msg;
 				}
 
 				// case 2: task Message
@@ -76,49 +105,43 @@ public class MessageDecoder extends FrameDecoder {
 				if (available < 4) {
 					// need more data
 					buf.resetReaderIndex();
-					break;
+
+				    return null;
 				}
 
-				// Read the length field.
-				int length = buf.readInt();
-				available -= 4;
-				if (length <= 0) {
-					// skip add new empty TaskMessage
-					// ret.add(new TaskMessage(task, null));
-					LOG.info("Receive one empty TaskMessage");
-					break;
-				}
-
-				// Make sure if there's enough bytes in the buffer.
-				if (available < length) {
-					// The whole bytes were not received yet - return null.
-					buf.resetReaderIndex();
-					break;
-				}
-				available -= length;
-
-				// There's enough bytes in the buffer. Read it.
-				ChannelBuffer payload = buf.readBytes(length);
-
-				// Successfully decoded a frame.
-				// Return a TaskMessage object
-
-				ret.add(new TaskMessage(task, payload.array()));
-				decodeNum++;
-				// @@@ TESTING CODE
-				// LOG.info("Receive task:{}, length: {}, data:{}",
-				// task, length, JStormUtils.toPrintableString(rawBytes));
+			// Read the length field.
+			int length = buf.readInt();
+			if (length <= 0) {
+				LOG.info("Receive one message whose TaskMessage's message length is {}", length);
+				return new TaskMessage(task, null);
 			}
+
+			// Make sure if there's enough bytes in the buffer.
+			available -= 4;
+			if (available < length) {
+				// The whole bytes were not received yet - return null.
+				buf.resetReaderIndex();
+
+				return null;
+			}
+
+			// There's enough bytes in the buffer. Read it.
+			ChannelBuffer payload = buf.readBytes(length);
+
+			// Successfully decoded a frame.
+			// Return a TaskMessage object
+
+			byte[] rawBytes = payload.array();
+			// @@@ TESTING CODE
+			// LOG.info("Receive task:{}, length: {}, data:{}",
+			// task, length, JStormUtils.toPrintableString(rawBytes));
+
+			TaskMessage ret = new TaskMessage(task, rawBytes);
+
+			return ret;
 		} finally {
-			timer.stop();
-			histogram.update(ret.size());
+			if (timer != null) timer.stop();
 		}
 
-		if (ret.size() == 0) {
-			return null;
-		} else {
-			// LOG.info("TaskMessage List size: {}", ret.size());
-			return ret;
-		}
 	}
 }

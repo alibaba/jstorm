@@ -4,12 +4,14 @@ import java.net.URLClassLoader;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
 import backtype.storm.Config;
+import backtype.storm.Constants;
 import backtype.storm.generated.Bolt;
 import backtype.storm.generated.ComponentCommon;
 import backtype.storm.generated.ComponentObject;
@@ -22,18 +24,23 @@ import backtype.storm.generated.SpoutSpec;
 import backtype.storm.generated.StateSpoutSpec;
 import backtype.storm.generated.StormTopology;
 import backtype.storm.generated.StreamInfo;
+import backtype.storm.metric.SystemBolt;
 import backtype.storm.spout.ShellSpout;
 import backtype.storm.task.IBolt;
 import backtype.storm.task.ShellBolt;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.Fields;
+import backtype.storm.utils.ThriftTopologyUtils;
 import backtype.storm.utils.Utils;
 
 import com.alibaba.jstorm.daemon.worker.WorkerData;
+import com.alibaba.jstorm.schedule.default_assign.DefaultTopologyAssignContext;
 import com.alibaba.jstorm.task.acker.Acker;
 import com.alibaba.jstorm.task.group.MkGrouper;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.Thrift;
+import com.alibaba.jstorm.utils.TimeUtils;
+import com.google.common.collect.Maps;
 
 /**
  * Base utility function
@@ -55,6 +62,9 @@ public class Common {
 	public static final String LS_ID = "supervisor-id";
 	public static final String LS_LOCAL_ASSIGNMENTS = "local-assignments";
 	public static final String LS_APPROVED_WORKERS = "approved-workers";
+	
+	public static final String compErrorInfo = "ID can only contains a-z, A-Z, 0-9, '-', '_', '.', '$', and should not start with \"__\".";
+	public static final String nameErrorInfo = "Name can only contains a-z, A-Z, 0-9, '-', '_', '.'";
 
 	public static boolean system_id(String id) {
 		return Utils.isSystemId(id);
@@ -66,26 +76,26 @@ public class Common {
 		if (obj instanceof StateSpoutSpec) {
 			StateSpoutSpec spec = (StateSpoutSpec) obj;
 			for (String id : spec.get_common().get_streams().keySet()) {
-				if (system_id(id)) {
+				if (system_id(id) || !charComponentValidate(id)) {
 					throw new InvalidTopologyException(id
-							+ " is not a valid component id");
+							+ " is not a valid component id. " + compErrorInfo);
 				}
 			}
 
 		} else if (obj instanceof SpoutSpec) {
 			SpoutSpec spec = (SpoutSpec) obj;
 			for (String id : spec.get_common().get_streams().keySet()) {
-				if (system_id(id)) {
+				if (system_id(id) || !charComponentValidate(id)) {
 					throw new InvalidTopologyException(id
-							+ " is not a valid component id");
+							+ " is not a valid component id. " + compErrorInfo);
 				}
 			}
 		} else if (obj instanceof Bolt) {
 			Bolt spec = (Bolt) obj;
 			for (String id : spec.get_common().get_streams().keySet()) {
-				if (system_id(id)) {
+				if (system_id(id) || !charComponentValidate(id)) {
 					throw new InvalidTopologyException(id
-							+ " is not a valid component id");
+							+ " is not a valid component id. " + compErrorInfo);
 				}
 			}
 		} else {
@@ -93,7 +103,46 @@ public class Common {
 		}
 
 	}
+	
+	public static String TopologyNameToId(String topologyName, int counter) {
+	    return topologyName + "-" + counter + "-" + TimeUtils.current_time_secs();
+	}
+	
+	/**
+	 * Convert topologyId to topologyName. TopologyId = topoloygName-counter-timeStamp
+	 * @param topologyId
+	 * @return
+	 */
+	public static String TopologyIdToName(String topologyId) throws InvalidTopologyException {
+	    String ret = null;
+	    int index = topologyId.lastIndexOf('-');
+	    if (index != -1 && index > 2) {
+	        index = topologyId.lastIndexOf('-', index - 1);
+	        if (index != -1 && index > 0)
+	            ret = topologyId.substring(0, index);
+	        else
+	            throw new InvalidTopologyException(topologyId + " is not a valid topologyId");
+	    } else
+	        throw new InvalidTopologyException(topologyId + " is not a valid topologyId");  
+	    return ret;
+	}
 
+	/**
+	 * Validation of topology name chars. Only alpha char, number, '-', '_', '.' are valid. 
+	 * @return
+	 */
+	public static boolean charValidate(String name) {
+	    return name.matches("[a-zA-Z0-9-_.]+");
+	}
+	
+	/**
+     * Validation of topology component chars. Only alpha char, number, '-', '_', '.', '$' are valid. 
+     * @return
+     */
+	public static boolean charComponentValidate(String name) {
+	    return name.matches("[a-zA-Z0-9-_/.$]+");
+	}
+	
 	/**
 	 * Check Whether ID of Bolt or spout is system_id
 	 * 
@@ -101,9 +150,14 @@ public class Common {
 	 * @throws InvalidTopologyException
 	 */
 	@SuppressWarnings("unchecked")
-	public static void validate_ids(StormTopology topology)
+	public static void validate_ids(StormTopology topology, String topologyId)
 			throws InvalidTopologyException {
-
+        String topologyName = TopologyIdToName(topologyId);
+	    if (!charValidate(topologyName)) {
+	        throw new InvalidTopologyException(topologyName + 
+	                " is not a valid topology name. " + nameErrorInfo);
+	    }
+	    
 		List<String> list = new ArrayList<String>();
 
 		for (StormTopology._Fields field : Thrift.STORM_TOPOLOGY_FIELDS) {
@@ -114,9 +168,9 @@ public class Common {
 				Set<String> commids = obj_map.keySet();
 
 				for (String id : commids) {
-					if (system_id(id)) {
+					if (system_id(id) || !charComponentValidate(id)) {
 						throw new InvalidTopologyException(id
-								+ " is not a valid component id");
+								+ " is not a valid component id. " + compErrorInfo);
 					}
 				}
 
@@ -166,7 +220,7 @@ public class Common {
 	public static void validate_basic(StormTopology topology,
 			Map<Object, Object> totalStormConf, String topologyid)
 			throws InvalidTopologyException {
-		validate_ids(topology);
+		validate_ids(topology, topologyid);
 
 		for (StormTopology._Fields field : Thrift.SPOUT_FIELDS) {
 			Object value = topology.getFieldValue(field);
@@ -252,7 +306,11 @@ public class Common {
 	 * @param num_tasks
 	 * @param ret
 	 */
-	public static void add_acker(Integer ackerNum, StormTopology ret) {
+	public static void add_acker(Map stormConf, StormTopology ret) {
+		String key = Config.TOPOLOGY_ACKER_EXECUTORS;
+
+		Integer ackerNum = JStormUtils.parseInt(stormConf.get(key), 0);
+
 		// generate outputs
 		HashMap<String, StreamInfo> outputs = new HashMap<String, StreamInfo>();
 		ArrayList<String> fields = new ArrayList<String>();
@@ -267,8 +325,7 @@ public class Common {
 		Map<GlobalStreamId, Grouping> inputs = acker_inputs(ret);
 
 		// generate acker which will be stored in topology
-		Bolt acker_bolt = Thrift.mkAckerBolt(inputs, ackerbolt, outputs,
-				ackerNum);
+		Bolt acker_bolt = Thrift.mkBolt(inputs, ackerbolt, outputs, ackerNum);
 
 		// add every bolt two output stream
 		// ACKER_ACK_STREAM_ID/ACKER_FAIL_STREAM_ID
@@ -361,19 +418,75 @@ public class Common {
 		}
 	}
 
+	public static StormTopology add_system_components(StormTopology topology) {
+		// generate inputs
+		Map<GlobalStreamId, Grouping> inputs = new HashMap<GlobalStreamId, Grouping>();
+
+		// generate outputs
+		HashMap<String, StreamInfo> outputs = new HashMap<String, StreamInfo>();
+		ArrayList<String> fields = new ArrayList<String>();
+
+		outputs.put(Constants.SYSTEM_TICK_STREAM_ID,
+				Thrift.outputFields(JStormUtils.mk_list("rate_secs")));
+		outputs.put(Constants.METRICS_TICK_STREAM_ID,
+				Thrift.outputFields(JStormUtils.mk_list("interval")));
+		outputs.put(Constants.CREDENTIALS_CHANGED_STREAM_ID,
+				Thrift.outputFields(JStormUtils.mk_list("creds")));
+
+		ComponentCommon common = new ComponentCommon(inputs, outputs);
+
+		IBolt ackerbolt = new SystemBolt();
+
+		Bolt bolt = Thrift.mkBolt(inputs, ackerbolt, outputs,
+				Integer.valueOf(0));
+
+		topology.put_to_bolts(Constants.SYSTEM_COMPONENT_ID, bolt);
+
+		add_system_streams(topology);
+
+		return topology;
+
+	}
+
+	public static StormTopology add_metrics_component(StormTopology topology) {
+
+		/**
+		 * @@@ TODO Add metrics consumer bolt
+		 */
+		//		(defn metrics-consumer-bolt-specs [storm-conf topology]
+		//				  (let [component-ids-that-emit-metrics (cons SYSTEM-COMPONENT-ID (keys (all-components topology)))
+		//				        inputs (->> (for [comp-id component-ids-that-emit-metrics]
+		//				                      {[comp-id METRICS-STREAM-ID] :shuffle})
+		//				                    (into {}))
+		//				        
+		//				        mk-bolt-spec (fn [class arg p]
+		//				                       (thrift/mk-bolt-spec*
+		//				                        inputs
+		//				                        (backtype.storm.metric.MetricsConsumerBolt. class arg)
+		//				                        {} :p p :conf {TOPOLOGY-TASKS p}))]
+		//				    
+		//				    (map
+		//				     (fn [component-id register]           
+		//				       [component-id (mk-bolt-spec (get register "class")
+		//				                                   (get register "argument")
+		//				                                   (or (get register "parallelism.hint") 1))])
+		//				     
+		//				     (metrics-consumer-register-ids storm-conf)
+		//				     (get storm-conf TOPOLOGY-METRICS-CONSUMER-REGISTER))))
+		return topology;
+	}
+
 	@SuppressWarnings("rawtypes")
 	public static StormTopology system_topology(Map storm_conf,
 			StormTopology topology) throws InvalidTopologyException {
 
 		StormTopology ret = topology.deepCopy();
 
-		String key = Config.TOPOLOGY_ACKER_EXECUTORS;
+		add_acker(storm_conf, ret);
 
-		Integer ackercount = JStormUtils.parseInt(storm_conf.get(key), 0);
+		add_metrics_component(ret);
 
-		add_acker(ackercount, ret);
-
-		add_system_streams(ret);
+		add_system_components(ret);
 
 		return ret;
 	}
@@ -499,7 +612,8 @@ public class Common {
 				// so we don't need send tuple to it
 				if (outTasks.size() > 0) {
 					MkGrouper grouper = new MkGrouper(topology_context,
-							out_fields, tgrouping, outTasks, stream_id, workerData);
+							out_fields, tgrouping, outTasks, stream_id,
+							workerData);
 					componentGrouper.put(component, grouper);
 				}
 			}
@@ -508,6 +622,70 @@ public class Common {
 			}
 		}
 		return rr;
+	}
+
+	/**
+	 * get the component's configuration
+	 * 
+	 * @param topology_context
+	 * @param task_id
+	 * @return component's configurations
+	 */
+	public static Map getComponentMap(DefaultTopologyAssignContext context,
+			Integer task) {
+		String componentName = context.getTaskToComponent().get(task);
+		ComponentCommon componentCommon = ThriftTopologyUtils
+				.getComponentCommon(context.getSysTopology(), componentName);
+
+		Map componentMap = (Map) JStormUtils.from_json(componentCommon
+				.get_json_conf());
+		if (componentMap == null) {
+			componentMap = Maps.newHashMap();
+		}
+		return componentMap;
+	}
+
+	/**
+	 * get all bolts' inputs and spouts' outputs <Bolt_name, <Input_name>>
+	 * <Spout_name, <Output_name>>
+	 * 
+	 * @param topology_context
+	 * @return all bolts' inputs and spouts' outputs
+	 */
+	public static Map<String, Set<String>> buildSpoutOutoputAndBoltInputMap(
+			DefaultTopologyAssignContext context) {
+		Set<String> bolts = context.getRawTopology().get_bolts().keySet();
+		Set<String> spouts = context.getRawTopology().get_spouts().keySet();
+		Map<String, Set<String>> relationship = new HashMap<String, Set<String>>();
+		for (Entry<String, Bolt> entry : context.getRawTopology().get_bolts()
+				.entrySet()) {
+			Map<GlobalStreamId, Grouping> inputs = entry.getValue()
+					.get_common().get_inputs();
+			Set<String> input = new HashSet<String>();
+			relationship.put(entry.getKey(), input);
+			for (Entry<GlobalStreamId, Grouping> inEntry : inputs.entrySet()) {
+				String component = inEntry.getKey().get_componentId();
+				input.add(component);
+				if (!bolts.contains(component)) {
+					// spout
+					Set<String> spoutOutput = relationship.get(component);
+					if (spoutOutput == null) {
+						spoutOutput = new HashSet<String>();
+						relationship.put(component, spoutOutput);
+					}
+					spoutOutput.add(entry.getKey());
+				}
+			}
+		}
+		for (String spout : spouts) {
+			if (relationship.get(spout) == null)
+				relationship.put(spout, new HashSet<String>());
+		}
+		for (String bolt : bolts) {
+			if (relationship.get(bolt) == null)
+				relationship.put(bolt, new HashSet<String>());
+		}
+		return relationship;
 	}
 
 }

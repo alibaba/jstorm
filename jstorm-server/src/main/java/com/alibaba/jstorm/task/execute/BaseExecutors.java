@@ -5,6 +5,7 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 
 import backtype.storm.Config;
+import backtype.storm.Constants;
 import backtype.storm.serialization.KryoTupleDeserializer;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.Tuple;
@@ -15,8 +16,11 @@ import backtype.storm.utils.WorkerClassLoader;
 import com.alibaba.jstorm.callback.AsyncLoopThread;
 import com.alibaba.jstorm.callback.RunnableCallback;
 import com.alibaba.jstorm.client.ConfigExtension;
-import com.alibaba.jstorm.daemon.worker.metrics.JStormTimer;
-import com.alibaba.jstorm.daemon.worker.metrics.Metrics;
+import com.alibaba.jstorm.daemon.worker.timer.RotatingMapTrigger;
+import com.alibaba.jstorm.daemon.worker.timer.TickTupleTrigger;
+import com.alibaba.jstorm.metric.JStormTimer;
+import com.alibaba.jstorm.metric.MetricDef;
+import com.alibaba.jstorm.metric.Metrics;
 //import com.alibaba.jstorm.message.zeroMq.IRecvConnection;
 import com.alibaba.jstorm.stats.CommonStatsRolling;
 import com.alibaba.jstorm.task.TaskStatus;
@@ -25,8 +29,8 @@ import com.alibaba.jstorm.task.error.ITaskReportErr;
 import com.alibaba.jstorm.utils.JStormServerUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.MultiThreadedClaimStrategy;
 import com.lmax.disruptor.WaitStrategy;
+import com.lmax.disruptor.dsl.ProducerType;
 
 /**
  * Base executor share between spout and bolt
@@ -58,7 +62,7 @@ public class BaseExecutors extends RunnableCallback {
 
 	protected int message_timeout_secs = 30;
 
-	protected Exception error = null;
+	protected Throwable error = null;
 
 	protected ITaskReportErr report_error;
 
@@ -105,8 +109,8 @@ public class BaseExecutors extends RunnableCallback {
 		WaitStrategy waitStrategy = (WaitStrategy) Utils
 				.newInstance((String) storm_conf
 						.get(Config.TOPOLOGY_DISRUPTOR_WAIT_STRATEGY));
-		this.exeQueue = new DisruptorQueue(new MultiThreadedClaimStrategy(
-				queue_size), waitStrategy);
+		this.exeQueue = DisruptorQueue.mkInstance(idStr, ProducerType.MULTI,
+				queue_size, waitStrategy);
 		this.exeQueue.consumerStarted();
 
 		this.registerInnerTransfer(exeQueue);
@@ -114,9 +118,13 @@ public class BaseExecutors extends RunnableCallback {
 		deserializeThread = new AsyncLoopThread(new DeserializeRunnable(
 				deserializeQueue, exeQueue));
 		
-		deserializeTimer = Metrics.registerTimer(idStr + "-deserialize-timer");
-		Metrics.registerQueue(idStr + "-deserialize-queue" , deserializeQueue);
-		Metrics.registerQueue(idStr + "-exe-queue" , exeQueue);
+		deserializeTimer = Metrics.registerTimer(idStr, MetricDef.DESERIALIZE_TIME, String.valueOf(taskId), Metrics.MetricType.TASK);
+		Metrics.registerQueue(idStr, MetricDef.DESERIALIZE_QUEUE, deserializeQueue, String.valueOf(taskId), Metrics.MetricType.TASK);
+		Metrics.registerQueue(idStr, MetricDef.EXECUTE_QUEUE, exeQueue, String.valueOf(taskId), Metrics.MetricType.TASK);
+		
+		RotatingMapTrigger rotatingMapTrigger = new RotatingMapTrigger(storm_conf, idStr + "_rotating", exeQueue);
+		rotatingMapTrigger.register();
+		
 	}
 
 	@Override
@@ -143,7 +151,11 @@ public class BaseExecutors extends RunnableCallback {
 
 	@Override
 	public Exception error() {
-		return error;
+		if (error == null) {
+			return null;
+		}
+		
+		return new Exception(error);
 	}
 
 	@Override
@@ -225,7 +237,7 @@ public class BaseExecutors extends RunnableCallback {
 
 				return tuple;
 
-			} catch (Exception e) {
+			} catch (Throwable e) {
 				if (taskStatus.isShutdown() == false) {
 					LOG.error(
 							idStr + " recv thread error "
@@ -259,7 +271,7 @@ public class BaseExecutors extends RunnableCallback {
 				try {
 
 					deserializeQueue.consumeBatchWhenAvailable(this);
-				} catch (Exception e) {
+				} catch (Throwable e) {
 					if (taskStatus.isShutdown() == false) {
 						LOG.error("Unknow exception ", e);
 						report_error.report(e);
@@ -274,6 +286,7 @@ public class BaseExecutors extends RunnableCallback {
 		}
 
 		public Object getResult() {
+			LOG.info("Begin to shutdown recvThread of " + idStr);
 			return -1;
 		}
 

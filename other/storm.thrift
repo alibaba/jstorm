@@ -113,6 +113,10 @@ exception InvalidTopologyException {
   1: required string msg;
 }
 
+exception AuthorizationException {
+  1: required string msg;
+}
+
 struct TopologySummary {
   1: required string id;
   2: required string name;
@@ -120,10 +124,7 @@ struct TopologySummary {
   4: required i32 uptime_secs;
   5: required i32 num_tasks;
   6: required i32 num_workers;
-  7: required i32 num_cpu;
-  8: required i32 num_mem;
-  9: required i32 num_disk;
-  10: required string group;
+  7: required string error_info;
 }
 
 struct SupervisorSummary {
@@ -132,30 +133,13 @@ struct SupervisorSummary {
   3: required i32 uptime_secs;
   4: required i32 num_workers;
   5: required i32 num_used_workers;
-  6: required i32 num_cpu;
-  7: required i32 num_used_cpu;
-  8: required i32 num_mem;
-  9: required i32 num_used_mem;
-  10: required i32 num_disk;
-  11: required i32 num_used_disk;
-}
-
-enum ThriftResourceType {
-    UNKNOWN = 1,
-    CPU = 2, 
-    MEM = 3, 
-    NET = 4,
-    DISK = 5
 }
 
 struct ClusterSummary {
   1: required list<SupervisorSummary> supervisors;
   2: required i32 nimbus_uptime_secs;
   3: required list<TopologySummary> topologies;
-  4: required map<string, map<string, map<ThriftResourceType, i32>>> groupToTopology;
-  5: required map<string, map<ThriftResourceType, i32>> groupToResource;
-  6: required map<string, map<ThriftResourceType, i32>> groupToUsedResource;
-  7: required bool isGroupModel;
+  4: optional string version;
 }
 
 struct ErrorInfo {
@@ -201,29 +185,34 @@ struct TaskSummary {
   1: required i32 task_id;
   2: required string component_id;
   3: required string host;
-  4: required i32 cpu;
-  5: required i32 mem;
-  6: required string disk;
-  7: required i32 port;
-  8: required i32 uptime_secs;
-  9: required list<ErrorInfo> errors;
-  10: optional TaskStats stats;
+  4: required i32 port;
+  5: optional i32 uptime_secs;
+  6: optional list<ErrorInfo> errors;
+  7: optional TaskStats stats;
+  8: optional string component_type;
+  9: optional string status;
+}
 
+struct WorkerSummary {
+  1: required i32 port;
+  2: required string topology;
+  3: required list<TaskSummary> tasks
+}
+
+struct UserDefMetric {
+  1: required string type;
+  2: required string name;
+  3: required double value;
 }
 
 struct TopologyInfo {
   1: required string id;
   2: required string name;
   3: required i32 uptime_secs;
-  4: required list<TaskSummary> tasks;
+  4: required list<WorkerSummary> workers;
   5: required string status;
-}
-
-
-struct WorkerSummary {
-  1: required i32 port;
-  2: required string topology;
-  3: required list<TaskSummary> tasks;
+  6: required list<TaskSummary> tasks;
+  7: optional list<UserDefMetric> userDefMetric;
 }
 
 struct SupervisorWorkers {
@@ -248,6 +237,33 @@ struct SubmitOptions {
   1: required TopologyInitialStatus initial_status;
 }
 
+struct MonitorOptions {
+  1: optional bool isEnable;
+}
+struct TaskMetricData {
+  1:  required i32    task_id;
+  2:  required string component_id;
+  3:  required map<string, double> gauge;
+  4:  required map<string, double> counter;
+  5:  required map<string, double> meter;
+  6:  required map<string, double> timer;
+  7:  required map<string, double> histogram;
+}
+struct WorkerMetricData {
+  1:  required string hostname;
+  2:  required i32    port;
+  3:  required map<string, double> gauge;
+  4:  required map<string, double> counter;
+  5:  required map<string, double> meter;
+  6:  required map<string, double> timer;
+  7:  required map<string, double> histogram;
+}
+struct TopologyMetricInfo {
+  1: required string topology_id;
+  2: optional list<TaskMetricData>   task_metric_list;
+  3: optional list<WorkerMetricData> worker_metric_list;
+}
+
 service Nimbus {
   void submitTopology(1: string name, 2: string uploadedJarLocation, 3: string jsonConf, 4: StormTopology topology) throws (1: AlreadyAliveException e, 2: InvalidTopologyException ite, 3: TopologyAssignException tae);
   void submitTopologyWithOpts(1: string name, 2: string uploadedJarLocation, 3: string jsonConf, 4: StormTopology topology, 5: SubmitOptions options) throws (1: AlreadyAliveException e, 2: InvalidTopologyException ite, 3:TopologyAssignException tae);
@@ -256,6 +272,8 @@ service Nimbus {
   void activate(1: string name) throws (1: NotAliveException e);
   void deactivate(1: string name) throws (1: NotAliveException e);
   void rebalance(1: string name, 2: RebalanceOptions options) throws (1: NotAliveException e, 2: InvalidTopologyException ite);
+  void metricMonitor(1: string name, 2: MonitorOptions options) throws (1: NotAliveException e);
+  void restart(1: string name, 2: string jsonConf) throws (1: NotAliveException e, 2: InvalidTopologyException ite, 3: TopologyAssignException tae);
 
   // need to add functions for asking about status of storms, what nodes they're running on, looking at task logs
 
@@ -273,11 +291,13 @@ service Nimbus {
   // stats functions
   ClusterSummary getClusterInfo();
   TopologyInfo getTopologyInfo(1: string id) throws (1: NotAliveException e);
+  TopologyInfo getTopologyInfoByName(1: string topologyName) throws (1: NotAliveException e);
   SupervisorWorkers getSupervisorWorkers(1: string host) throws (1: NotAliveException e);
   //returns json
   string getTopologyConf(1: string id) throws (1: NotAliveException e);
   StormTopology getTopology(1: string id) throws (1: NotAliveException e);
   StormTopology getUserTopology(1: string id) throws (1: NotAliveException e);
+  TopologyMetricInfo getTopologyMetric(1: string id) throws (1: NotAliveException e);
 }
 
 struct DRPCRequest {

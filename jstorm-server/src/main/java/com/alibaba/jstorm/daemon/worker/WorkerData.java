@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.lang.StringUtils;
@@ -31,15 +34,17 @@ import com.alibaba.jstorm.cluster.Common;
 import com.alibaba.jstorm.cluster.StormClusterState;
 import com.alibaba.jstorm.cluster.StormConfig;
 import com.alibaba.jstorm.daemon.nimbus.StatusType;
-import com.alibaba.jstorm.resource.ResourceAssignment;
+import com.alibaba.jstorm.daemon.worker.metrics.MetricReporter;
+import com.alibaba.jstorm.daemon.worker.timer.TimerTrigger;
+import com.alibaba.jstorm.schedule.default_assign.ResourceWorkerSlot;
 import com.alibaba.jstorm.task.Assignment;
+import com.alibaba.jstorm.task.TaskInfo;
 import com.alibaba.jstorm.task.TaskShutdownDameon;
 import com.alibaba.jstorm.utils.JStormServerUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.zk.ZkTool;
-import com.lmax.disruptor.MultiThreadedClaimStrategy;
-import com.lmax.disruptor.SingleThreadedClaimStrategy;
 import com.lmax.disruptor.WaitStrategy;
+import com.lmax.disruptor.dsl.ProducerType;
 
 public class WorkerData {
 	private static Logger LOG = Logger.getLogger(WorkerData.class);
@@ -76,7 +81,7 @@ public class WorkerData {
 	// <taskId, NodePort>
 	private ConcurrentHashMap<Integer, WorkerSlot> taskNodeport;
 
-	private ConcurrentHashMap<Integer, ResourceAssignment> taskToResource;
+	private ConcurrentSkipListSet<ResourceWorkerSlot> workerToResource;
 
 	private Set<Integer> localNodeTasks;
 
@@ -108,10 +113,16 @@ public class WorkerData {
 	// sending tuple's queue
 	// private LinkedBlockingQueue<TransferData> transferQueue;
 	private DisruptorQueue transferQueue;
-	
+
 	private DisruptorQueue sendingQueue;
 
 	private List<TaskShutdownDameon> shutdownTasks;
+	private MetricReporter metricReporter;
+	
+	private Map<Integer, Boolean> outTaskStatus; //true => active
+	
+	public static final int THREAD_POOL_NUM = 4;
+	private ScheduledExecutorService threadPool;
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public WorkerData(Map conf, IContext context, String topology_id,
@@ -146,6 +157,18 @@ public class WorkerData {
 		LOG.info("Worker Configuration " + stormConf);
 
 		try {
+
+			boolean enableClassloader = ConfigExtension
+					.isEnableTopologyClassLoader(stormConf);
+			boolean enableDebugClassloader = ConfigExtension
+					.isEnableClassloaderDebug(stormConf);
+
+			if (jar_path == null && enableClassloader == true) {
+				LOG.error("enable classloader, but not app jar");
+				throw new InvalidParameterException();
+			}
+
+			URL[] urlArray = new URL[0];
 			if (jar_path != null) {
 				String[] paths = jar_path.split(":");
 				Set<URL> urls = new HashSet<URL>();
@@ -155,16 +178,13 @@ public class WorkerData {
 					URL url = new URL("File:" + path);
 					urls.add(url);
 				}
-				WorkerClassLoader.mkInstance(urls.toArray(new URL[0]),
-						ClassLoader.getSystemClassLoader(), ClassLoader
-								.getSystemClassLoader().getParent(),
-						ConfigExtension.isEnableTopologyClassLoader(stormConf));
-			} else {
-				WorkerClassLoader.mkInstance(new URL[0], ClassLoader
-						.getSystemClassLoader(), ClassLoader
-						.getSystemClassLoader().getParent(), ConfigExtension
-						.isEnableTopologyClassLoader(stormConf));
+				urlArray = urls.toArray(new URL[0]);
+
 			}
+
+			WorkerClassLoader.mkInstance(urlArray, ClassLoader
+					.getSystemClassLoader(), ClassLoader.getSystemClassLoader()
+					.getParent(), enableClassloader, enableDebugClassloader);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			LOG.error("init jarClassLoader error!", e);
@@ -175,25 +195,32 @@ public class WorkerData {
 			this.context = TransportFactory.makeContext(stormConf);
 		}
 
+		boolean disruptorUseSleep = ConfigExtension
+				.isDisruptorUseSleep(stormConf);
+		DisruptorQueue.setUseSleep(disruptorUseSleep);
+		boolean isLimited = ConfigExtension.getTopologyBufferSizeLimited(stormConf);
+		DisruptorQueue.setLimited(isLimited);
+		LOG.info("Disruptor use sleep:" + disruptorUseSleep + ", limited size:" + isLimited);
+
 		// this.transferQueue = new LinkedBlockingQueue<TransferData>();
 		int buffer_size = Utils.getInt(conf
 				.get(Config.TOPOLOGY_TRANSFER_BUFFER_SIZE));
 		WaitStrategy waitStrategy = (WaitStrategy) Utils
 				.newInstance((String) conf
 						.get(Config.TOPOLOGY_DISRUPTOR_WAIT_STRATEGY));
-		this.transferQueue = new DisruptorQueue(new MultiThreadedClaimStrategy(
-				buffer_size), waitStrategy);
+		this.transferQueue = DisruptorQueue.mkInstance("TotalTransfer", ProducerType.MULTI,
+				buffer_size, waitStrategy);
 		this.transferQueue.consumerStarted();
+		this.sendingQueue = DisruptorQueue.mkInstance("TotalSending", ProducerType.MULTI,
+				buffer_size, waitStrategy);
+		this.sendingQueue.consumerStarted();
 		
-		this.sendingQueue = new DisruptorQueue(new SingleThreadedClaimStrategy(
-				buffer_size), waitStrategy);
 
 		this.nodeportSocket = new ConcurrentHashMap<WorkerSlot, IConnection>();
 		this.taskNodeport = new ConcurrentHashMap<Integer, WorkerSlot>();
-		this.taskToResource = new ConcurrentHashMap<Integer, ResourceAssignment>();
+		this.workerToResource = new ConcurrentSkipListSet<ResourceWorkerSlot>();
 		this.innerTaskTransfer = new ConcurrentHashMap<Integer, DisruptorQueue>();
 		this.deserializeQueues = new ConcurrentHashMap<Integer, DisruptorQueue>();
-		
 
 		Assignment assignment = zkCluster.assignment_info(topologyId, null);
 		if (assignment == null) {
@@ -201,11 +228,11 @@ public class WorkerData {
 			LOG.error(errMsg);
 			throw new RuntimeException(errMsg);
 		}
-		taskToResource.putAll(assignment.getTaskToResource());
+		workerToResource.addAll(assignment.getWorkers());
 
 		// get current worker's task list
 
-		this.taskids = assignment.getCurrentWokerTasks(supervisorId, port);
+		this.taskids = assignment.getCurrentWorkerTasks(supervisorId, port);
 		if (taskids.size() == 0) {
 			throw new RuntimeException("No tasks running current workers");
 		}
@@ -219,6 +246,13 @@ public class WorkerData {
 		generateMaps();
 
 		contextMaker = new ContextMaker(this);
+		
+		metricReporter = new MetricReporter(this);
+		
+		outTaskStatus = new HashMap<Integer, Boolean>();
+		
+		threadPool = Executors.newScheduledThreadPool(THREAD_POOL_NUM);
+		TimerTrigger.setScheduledExecutorService(threadPool);
 
 		LOG.info("Successfully create WorkerData");
 
@@ -317,14 +351,14 @@ public class WorkerData {
 		return taskNodeport;
 	}
 
-	public ConcurrentHashMap<Integer, ResourceAssignment> getTaskToResource() {
-		return taskToResource;
+	public ConcurrentSkipListSet<ResourceWorkerSlot> getWorkerToResource() {
+		return workerToResource;
 	}
 
 	public ConcurrentHashMap<Integer, DisruptorQueue> getInnerTaskTransfer() {
 		return innerTaskTransfer;
 	}
-	
+
 	public ConcurrentHashMap<Integer, DisruptorQueue> getDeserializeQueues() {
 		return deserializeQueues;
 	}
@@ -352,7 +386,7 @@ public class WorkerData {
 	public DisruptorQueue getTransferQueue() {
 		return transferQueue;
 	}
-	
+
 	// public LinkedBlockingQueue<TransferData> getTransferQueue() {
 	// return transferQueue;
 	// }
@@ -397,4 +431,29 @@ public class WorkerData {
 		this.localNodeTasks = localNodeTasks;
 	}
 
+	public void setMetricsReporter(MetricReporter reporter) {
+		this.metricReporter = reporter;
+	}
+
+	public MetricReporter getMetricsReporter() {
+		return this.metricReporter;
+	}
+	
+	public void initOutboundTaskStatus(Set<Integer> outboundTasks) {
+	    for (Integer taskId : outboundTasks) {
+	        outTaskStatus.put(taskId, false);
+	    }
+	}
+	
+	public void updateOutboundTaskStatus(Integer taskId, boolean isActive) {
+	    outTaskStatus.put(taskId, isActive);
+	}
+	
+	public boolean isOutboundTaskActive(Integer taskId) {
+	    return outTaskStatus.get(taskId) != null ? outTaskStatus.get(taskId) : false;
+	}
+
+	public ScheduledExecutorService getThreadPool() {
+		return threadPool;
+	}
 }

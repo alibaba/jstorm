@@ -2,7 +2,7 @@ package com.alibaba.jstorm.cluster;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.*;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,13 +11,12 @@ import java.util.Map;
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 
-import com.alibaba.jstorm.utils.EventSampler;
-import com.alibaba.jstorm.utils.PathUtils;
-
 import backtype.storm.Config;
 import backtype.storm.generated.StormTopology;
 import backtype.storm.utils.LocalState;
 import backtype.storm.utils.Utils;
+
+import com.alibaba.jstorm.utils.PathUtils;
 
 public class StormConfig {
 	private final static Logger LOG = Logger.getLogger(StormConfig.class);
@@ -237,7 +236,10 @@ public class StormConfig {
 
 	public static String supervisor_storm_resources_path(String stormroot) {
 		return stormroot + FILE_SEPERATEOR + RESOURCES_SUBDIR;
-
+	}
+	
+	public static String stormtmp_path(String stormroot) {
+		return stormroot + FILE_SEPERATEOR + "tmp";
 	}
 
 	public static LocalState worker_state(Map conf, String id)
@@ -272,6 +274,17 @@ public class StormConfig {
 		return masterStormdistRoot(conf) + FILE_SEPERATEOR + topologyId;
 	}
 
+	public static String masterStormTmpRoot(Map conf) throws IOException {
+		String ret = stormtmp_path(masterLocalDir(conf));
+		FileUtils.forceMkdir(new File(ret));
+		return ret;
+	}
+
+	public static String masterStormTmpRoot(Map conf, String topologyId)
+			throws IOException {
+		return masterStormTmpRoot(conf) + FILE_SEPERATEOR + topologyId;
+	}
+	
 	public static String masterInbox(Map conf) throws IOException {
 		String ret = masterLocalDir(conf) + FILE_SEPERATEOR + "inbox";
 		try {
@@ -398,8 +411,18 @@ public class StormConfig {
 	public static Map read_nimbus_topology_conf(Map conf, String topologyId)
 			throws IOException {
 		String topologyRoot = StormConfig.masterStormdistRoot(conf, topologyId);
+		return read_topology_conf(topologyRoot, topologyId);
+	}
+	
+	public static Map read_nimbusTmp_topology_conf(Map conf, String topologyId)
+	       throws IOException {
+		String topologyRoot = StormConfig.masterStormTmpRoot(conf, topologyId);
+		return read_topology_conf(topologyRoot, topologyId);
+	}
+	
+	public static Map read_topology_conf(String topologyRoot, String topologyId)
+	       throws IOException {
 		String readFile = StormConfig.stormconf_path(topologyRoot);
-
 		return (Map) readLocalObject(topologyId, readFile);
 	}
 

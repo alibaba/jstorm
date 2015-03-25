@@ -26,8 +26,6 @@ public class CgroupManager {
 
 	public static final int ONE_CPU_SLOT = 1024;
 
-	public final int CPU_SLOT_PER_WEIGHT;
-
 	private CgroupCenter center;
 
 	private Hierarchy h;
@@ -38,7 +36,6 @@ public class CgroupManager {
 	private static String root_dir;
 	public CgroupManager(Map conf) {
 		LOG.info("running on cgroup mode");
-		this.CPU_SLOT_PER_WEIGHT = ConfigExtension.getCpuSlotPerWeight(conf);
 	
 		// Cgconfig service is used to create the corresponding cpu hierarchy "/cgroup/cpu"
 		root_dir = ConfigExtension.getCgroupRootDir(conf);
@@ -66,24 +63,27 @@ public class CgroupManager {
 		this.center.create(workerGroup);
 		CgroupCore cpu = workerGroup.getCores().get(SubSystemType.cpu);
 		CpuCore cpuCore = (CpuCore) cpu;
-		cpuCore.setCpuShares(cpuNum * ONE_CPU_SLOT / CPU_SLOT_PER_WEIGHT);
+		cpuCore.setCpuShares(cpuNum * ONE_CPU_SLOT);
 		StringBuilder sb = new StringBuilder();
 		sb.append("cgexec -g cpu:").append(workerGroup.getName()).append(" ");
 		return sb.toString();
 	}
 
-	public void shutDownWorker(String workerId) throws IOException {
+	public void shutDownWorker(String workerId, boolean isKilled) {
 		CgroupCommon workerGroup = new CgroupCommon(workerId, h,
 				this.rootCgroup);
 		try {
-			for (Integer pid : workerGroup.getTasks()) {
-				JStormUtils.kill(pid);
+			if (isKilled == false) {
+				for (Integer pid : workerGroup.getTasks()) {
+					JStormUtils.kill(pid);
+				}
+				JStormUtils.sleepMs(1500);
 			}
+			center.delete(workerGroup);
 		}catch(Exception e) {
 			LOG.info("No task of " + workerId);
 		}
-		JStormUtils.sleepMs(1500);
-		center.delete(workerGroup);
+		
 	}
 
 	public void close() throws IOException {

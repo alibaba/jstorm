@@ -5,7 +5,6 @@ import org.apache.log4j.Logger;
 import com.alibaba.jstorm.callback.BaseCallback;
 import com.alibaba.jstorm.cluster.StormBase;
 import com.alibaba.jstorm.daemon.nimbus.NimbusData;
-import com.alibaba.jstorm.daemon.nimbus.NimbusUtils;
 
 /**
  * Remove topology /ZK-DIR/topology data
@@ -31,38 +30,20 @@ public class RemoveTransitionCallback extends BaseCallback {
 	@Override
 	public <T> Object execute(T... args) {
 		LOG.info("Begin to remove topology: " + topologyid);
-		boolean locked = false;
 		try {
-			
-			StormBase stormBase = data.getStormClusterState()
-					.storm_base(topologyid, null);
+
+			StormBase stormBase = data.getStormClusterState().storm_base(
+					topologyid, null);
 			if (stormBase == null) {
 				LOG.info("Topology " + topologyid + " has been removed ");
 				return null;
 			}
-			String topologyName = stormBase.getStormName();
-			String group = stormBase.getGroup();
-			
 			data.getStormClusterState().remove_storm(topologyid);
 			LOG.info("Successfully removed ZK items topology: " + topologyid);
-			
-			data.getFlushGroupFileLock().lock();
-			locked = true;
-			
-			NimbusUtils.releaseGroupResource(data, topologyName, group);
-			
-			data.getFlushGroupFileLock().unlock();
-			locked = false;
-			
-			LOG.info("Release " + topologyName + " resource from Group Pool");
-			
+
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			LOG.warn("Failed to remove StormBase " + topologyid + " from ZK", e);
-		} finally {
-			if (locked == true) {
-				data.getFlushGroupFileLock().unlock();
-			}
 		}
 		return null;
 	}

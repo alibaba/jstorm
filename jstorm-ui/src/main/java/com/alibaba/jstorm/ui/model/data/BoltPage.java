@@ -18,14 +18,18 @@ import javax.faces.context.FacesContext;
 import org.apache.log4j.Logger;
 import org.apache.thrift7.TException;
 
+import backtype.storm.Config;
 import backtype.storm.generated.GlobalStreamId;
 import backtype.storm.generated.NotAliveException;
 import backtype.storm.generated.StormTopology;
+import backtype.storm.generated.TaskMetricData;
 import backtype.storm.generated.TaskStats;
 import backtype.storm.generated.TaskSummary;
 import backtype.storm.generated.TopologyInfo;
+import backtype.storm.generated.TopologyMetricInfo;
 import backtype.storm.utils.NimbusClient;
 
+import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.common.stats.StatBuckets;
 import com.alibaba.jstorm.common.stats.StaticsType;
 import com.alibaba.jstorm.ui.UIUtils;
@@ -34,6 +38,7 @@ import com.alibaba.jstorm.ui.model.ComponentOutput;
 import com.alibaba.jstorm.ui.model.ComponentSummary;
 import com.alibaba.jstorm.ui.model.ComponentTask;
 import com.alibaba.jstorm.ui.model.WinComponentStats;
+import com.alibaba.jstorm.ui.model.TaskMetrics;
 import com.alibaba.jstorm.utils.JStormUtils;
 
 /**
@@ -48,17 +53,25 @@ public class BoltPage implements Serializable {
 
 	private static final Logger LOG = Logger.getLogger(BoltPage.class);
 
+	private String clusterName = null;
 	private String topologyid = null;
 	private String window = null;
 	private String componentid = null;
+	private String topologyName = null;
 	private List<ComponentSummary> coms = null;
 	private List<WinComponentStats> comstats = null;
 	private List<ComponentOutput> coos = null;
 	private List<ComponentInput> cois = null;
 	private List<ComponentTask> cts = null;
+	private List<TaskMetrics> taskmetrics = null;
 
 	public BoltPage() throws TException, NotAliveException {
 		FacesContext ctx = FacesContext.getCurrentInstance();
+		if (ctx.getExternalContext().getRequestParameterMap().get("clusterName") != null) {
+			clusterName = (String) ctx.getExternalContext()
+					.getRequestParameterMap().get("clusterName");
+		}
+		
 		if (ctx.getExternalContext().getRequestParameterMap().get("topologyid") != null) {
 			topologyid = (String) ctx.getExternalContext()
 					.getRequestParameterMap().get("topologyid");
@@ -79,8 +92,9 @@ public class BoltPage implements Serializable {
 		init();
 	}
 
-	public BoltPage(String topologyId, String componentId, String window)
+	public BoltPage(String clusterName, String topologyId, String componentId, String window)
 			throws TException, NotAliveException {
+		this.clusterName = clusterName;
 		this.topologyid = topologyId;
 		this.componentid = componentId;
 		this.window = window;
@@ -92,28 +106,11 @@ public class BoltPage implements Serializable {
 			List<TaskSummary> ts) {
 		List<ComponentSummary> ret = new ArrayList<ComponentSummary>();
 
-		int cpuNum = 0;
-		int memNum = 0;
-		int diskNum = 0;
-
-		for (TaskSummary taskSummary : ts) {
-			cpuNum += taskSummary.get_cpu();
-			memNum += taskSummary.get_mem();
-
-			if (taskSummary.get_disk() != null
-					&& taskSummary.get_disk().isEmpty() == false) {
-				diskNum += 1;
-			}
-		}
-
 		ComponentSummary cs = new ComponentSummary();
 
 		cs.setComponentId(componentid);
 		cs.setTopologyname(summ.get_name());
 		cs.setParallelism(String.valueOf(ts.size()));
-		cs.setCpuNum(String.valueOf(cpuNum));
-		cs.setMemNum(String.valueOf(memNum));
-		cs.setDiskNum(String.valueOf(diskNum));
 
 		ret.add(cs);
 
@@ -125,34 +122,36 @@ public class BoltPage implements Serializable {
 		List<ComponentTask> ret = new ArrayList<ComponentTask>();
 
 		for (TaskSummary task : taskList) {
-			TaskStats taskStats = task.get_stats();
-
-			Map<String, Long> emitted = UIUtils.mergeStream(
-					taskStats.get_emitted(), Long.valueOf(0));
-			Map<String, Double> sendTps = UIUtils.mergeStream(
-					taskStats.get_send_tps(), Double.valueOf(0));
-			Map<String, Double> recvTps = UIUtils.mergeStream(
-					taskStats.get_recv_tps(), Double.valueOf(0));
-			Map<String, Long> acked = UIUtils.mergeStream(
-					taskStats.get_acked(), Long.valueOf(0));
-			Map<String, Long> failed = UIUtils.mergeStream(
-					taskStats.get_failed(), Long.valueOf(0));
-			Map<String, Double> process = UIUtils.mergeStream(
-					taskStats.get_process_ms_avg(), Double.valueOf(0));
-
 			ComponentTask componentTask = UIUtils.getComponentTask(task, topologyid);
+			
+			if (componentTask.getStatus().equals(ConfigExtension.TASK_STATUS_ACTIVE)) {
+			    TaskStats taskStats = task.get_stats();
 
-			componentTask.setEmitted(JStormUtils.formatValue(emitted
-					.get(window)));
-			componentTask.setSendTps(JStormUtils.formatValue(sendTps
-					.get(window)));
-			componentTask.setRecvTps(JStormUtils.formatValue(recvTps
-					.get(window)));
-			componentTask.setAcked(JStormUtils.formatValue(acked.get(window)));
-			componentTask
-					.setFailed(JStormUtils.formatValue(failed.get(window)));
-			componentTask.setProcess(JStormUtils.formatValue(process
-					.get(window)));
+			    Map<String, Long> emitted = UIUtils.mergeStream(
+					    taskStats.get_emitted(), Long.valueOf(0));
+			    Map<String, Double> sendTps = UIUtils.mergeStream(
+					    taskStats.get_send_tps(), Double.valueOf(0));
+			    Map<String, Double> recvTps = UIUtils.mergeStream(
+					    taskStats.get_recv_tps(), Double.valueOf(0));
+			    Map<String, Long> acked = UIUtils.mergeStream(
+					    taskStats.get_acked(), Long.valueOf(0));
+			    Map<String, Long> failed = UIUtils.mergeStream(
+					    taskStats.get_failed(), Long.valueOf(0));
+			    Map<String, Double> process = UIUtils.mergeStream(
+					    taskStats.get_process_ms_avg(), Double.valueOf(0));		
+
+			    componentTask.setEmitted(JStormUtils.formatValue(emitted
+					    .get(window)));
+			    componentTask.setSendTps(JStormUtils.formatValue(sendTps
+					    .get(window)));
+			    componentTask.setRecvTps(JStormUtils.formatValue(recvTps
+					    .get(window)));
+			    componentTask.setAcked(JStormUtils.formatValue(acked.get(window)));
+			    componentTask
+					    .setFailed(JStormUtils.formatValue(failed.get(window)));
+			    componentTask.setProcess(JStormUtils.formatValue(process
+					    .get(window)));
+			}
 
 			ret.add(componentTask);
 		}
@@ -190,6 +189,14 @@ public class BoltPage implements Serializable {
 		List<Map<GlobalStreamId, Double>> processList = new ArrayList<Map<GlobalStreamId, Double>>();
 
 		for (TaskSummary taskSummary : taskSummaries) {
+			if (taskSummary.get_status() == null) {
+				// this is for old JStorm version
+				taskSummary.set_status(ConfigExtension.TASK_STATUS_ACTIVE);
+			}
+			
+			if (taskSummary.get_status().equals(ConfigExtension.TASK_STATUS_ACTIVE) == false)
+				continue;
+			
 			TaskStats taskStats = taskSummary.get_stats();
 
 			emittedList.add(taskStats.get_emitted().get(window));
@@ -252,6 +259,19 @@ public class BoltPage implements Serializable {
 		return;
 
 	}
+	public List<TaskMetrics> getTaskMetricsList(List<TaskMetricData> totalTskMetrList) {
+		if (totalTskMetrList == null) return null;
+    	List<TaskMetrics> ret = new ArrayList<TaskMetrics>();
+    	LOG.debug("get task metrics list: component ID: " + this.componentid);
+	    for (TaskMetricData taskMetricData : totalTskMetrList) {
+	    	if ((taskMetricData.get_component_id()).equals(this.componentid)) {
+	    		TaskMetrics taskMetircs = new TaskMetrics();
+	    		taskMetircs.updateTaskMetricData(taskMetricData);
+	    		ret.add(taskMetircs);
+	    	}
+	    }
+	    return ret;
+	}
 
 	@SuppressWarnings("rawtypes")
 	private void init() throws TException, NotAliveException {
@@ -260,15 +280,18 @@ public class BoltPage implements Serializable {
 
 		try {
 			Map conf = UIUtils.readUiConfig();
-			client = NimbusClient.getConfiguredClient(conf);
+			client = UIUtils.getNimbusClient(conf, clusterName);
 
 			TopologyInfo summ = client.getClient().getTopologyInfo(topologyid);
 			StormTopology topology = client.getClient().getTopology(topologyid);
+			TopologyMetricInfo topologyMetricInfo = client.getClient().getTopologyMetric(topologyid);
 
 			String type = UIUtils.componentType(topology, componentid);
 
 			List<TaskSummary> ts = UIUtils.getTaskList(summ.get_tasks(),
 					componentid);
+			
+			topologyName = summ.get_name();
 
 			coms = getComponentSummaries(summ, ts);
 
@@ -277,6 +300,8 @@ public class BoltPage implements Serializable {
 			comstats = getWinComponentStats(ts, window);
 
 			getInputOutputSummary(ts, window);
+			List<TaskMetricData> totoaltaskmetrics = topologyMetricInfo.get_task_metric_list();
+			taskmetrics = getTaskMetricsList(totoaltaskmetrics);
 
 		} catch (TException e) {
 			LOG.error(e.getCause(), e);
@@ -284,6 +309,9 @@ public class BoltPage implements Serializable {
 		} catch (NotAliveException e) {
 			LOG.error(e.getCause(), e);
 			throw e;
+		} catch (Exception e) {
+			LOG.error(e.getCause(), e);
+			throw new TException(e);
 		} finally {
 			if (client != null) {
 				client.close();
@@ -331,10 +359,26 @@ public class BoltPage implements Serializable {
 	public void setComs(List<ComponentSummary> coms) {
 		this.coms = coms;
 	}
+	
+	public List<TaskMetrics> gettaskmetrics() {
+		return this.taskmetrics;
+	}
+	
+	public void settaskmetrics(List<TaskMetrics> taskmetrs) {
+		this.taskmetrics = taskmetrs;
+	}
+
+	public String getTopologyName() {
+		return topologyName;
+	}
+
+	public void setTopologyName(String topologyName) {
+		this.topologyName = topologyName;
+	}
 
 	public static void main(String[] args) {
 		try {
-			BoltPage instance = new BoltPage("sequence_test-3-1363789458",
+			BoltPage instance = new BoltPage("/jstorm", "sequence_test-3-1363789458",
 					"Total", StatBuckets.ALL_WINDOW_STR);
 		} catch (TException e) {
 			// TODO Auto-generated catch block

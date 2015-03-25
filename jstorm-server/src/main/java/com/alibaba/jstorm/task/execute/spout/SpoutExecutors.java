@@ -14,9 +14,10 @@ import backtype.storm.utils.WorkerClassLoader;
 
 import com.alibaba.jstorm.callback.AsyncLoopThread;
 import com.alibaba.jstorm.client.ConfigExtension;
-import com.alibaba.jstorm.daemon.worker.TimeTick;
-import com.alibaba.jstorm.daemon.worker.metrics.JStormTimer;
-import com.alibaba.jstorm.daemon.worker.metrics.Metrics;
+import com.alibaba.jstorm.daemon.worker.timer.RotatingMapTrigger;
+import com.alibaba.jstorm.metric.JStormTimer;
+import com.alibaba.jstorm.metric.MetricDef;
+import com.alibaba.jstorm.metric.Metrics;
 import com.alibaba.jstorm.stats.CommonStatsRolling;
 import com.alibaba.jstorm.task.TaskStatus;
 import com.alibaba.jstorm.task.TaskTransfer;
@@ -54,6 +55,8 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
 	protected TimerRatio emptyCpuCounter;
 
 	protected AsyncLoopThread ackerRunnableThread;
+	
+	protected boolean         isSpoutFullSleep;
 
 	public SpoutExecutors(backtype.storm.spout.ISpout _spout,
 			TaskTransfer _transfer_fn,
@@ -71,14 +74,19 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
 		this.max_spout_pending = JStormUtils.parseInt(storm_conf
 				.get(Config.TOPOLOGY_MAX_SPOUT_PENDING));
 
-		this.nextTupleTimer = Metrics.registerTimer(idStr + "-nextTuple-timer");
-		this.ackerTimer = Metrics.registerTimer(idStr + "-acker-timer");
+		this.nextTupleTimer = Metrics.registerTimer(idStr, MetricDef.EXECUTE_TIME, 
+				String.valueOf(taskId), Metrics.MetricType.TASK);
+		this.ackerTimer = Metrics.registerTimer(idStr, MetricDef.ACKER_TIME, 
+				String.valueOf(taskId), Metrics.MetricType.TASK);
 		this.emptyCpuCounter = new TimerRatio();
-		Metrics.register(idStr + "-empty-cputime-ratio", emptyCpuCounter);
+		Metrics.register(idStr, MetricDef.EMPTY_CPU_RATIO, emptyCpuCounter, 
+				String.valueOf(taskId), Metrics.MetricType.TASK);
 
-		TimeTick.registerTimer(idStr+ "-acker-tick", exeQueue);
+		isSpoutFullSleep = ConfigExtension.isSpoutPendFullSleep(storm_conf);
+		LOG.info("isSpoutFullSleep:" + isSpoutFullSleep);
 
 	}
+	
 
 	public void prepare(TaskSendTargets sendTargets, TaskTransfer transferFn,
 			TopologyContext topologyContext) {
@@ -93,7 +101,7 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
 			WorkerClassLoader.switchThreadContext();
 			this.spout.open(storm_conf, userTopologyCtx,
 					new SpoutOutputCollector(output_collector));
-		} catch (Exception e) {
+		} catch (Throwable e) {
 			error = e;
 			LOG.error("spout open error ", e);
 			report_error.report(e);
@@ -107,14 +115,21 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
 
 	public void nextTuple() {
 		if (firstTime == true) {
+			
 			int delayRun = ConfigExtension.getSpoutDelayRunSeconds(storm_conf);
 
 			// wait other bolt is ready
 			JStormUtils.sleepMs(delayRun * 1000);
+			
+			emptyCpuCounter.init();
+			
+			if (taskStatus.isRun() == true) {
+				spout.activate();
+			}else {
+				spout.deactivate();
+			}
 
 			firstTime = false;
-
-			emptyCpuCounter.init();
 			LOG.info(idStr + " is ready ");
 		}
 
@@ -130,7 +145,7 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
 			nextTupleTimer.start();
 			try {
 				spout.nextTuple();
-			} catch (Exception e) {
+			} catch (Throwable e) {
 				error = e;
 				LOG.error("spout execute error ", e);
 				report_error.report(e);
@@ -140,6 +155,9 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
 
 			return;
 		} else {
+			if (isSpoutFullSleep) {
+				JStormUtils.sleepMs(1);
+			}
 			emptyCpuCounter.start();
 			// just return, no sleep
 		}
@@ -174,9 +192,10 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
 				Object id = tuple.getValue(0);
 				Object obj = pending.remove((Long) id);
 
-				if (obj == null) {
-					LOG.debug("Pending map no entry:" + id + ", pending size:"
-							+ pending.size());
+				if (obj == null ) {
+					if (isDebug) {
+						LOG.info("Pending map no entry:" + id );
+					}
 					return;
 				}
 
@@ -189,7 +208,7 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
 					runnable = new AckSpoutMsg(spout, tupleInfo, task_stats,
 							isDebug);
 				} else if (stream_id.equals(Acker.ACKER_FAIL_STREAM_ID)) {
-					runnable = new FailSpoutMsg(spout, tupleInfo, task_stats,
+					runnable = new FailSpoutMsg(id, spout, tupleInfo, task_stats,
 							isDebug);
 				} else {
 					LOG.warn("Receive one unknow source Tuple " + idStr);
@@ -199,13 +218,13 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
 				task_stats.recv_tuple(tuple.getSourceComponent(),
 						tuple.getSourceStreamId());
 
-			} else if (event instanceof TimeTick.Tick) {
+			} else if (event instanceof RotatingMapTrigger.Tick) {
 
 				Map<Long, TupleInfo> timeoutMap = pending.rotate();
 				for (java.util.Map.Entry<Long, TupleInfo> entry : timeoutMap
 						.entrySet()) {
 					TupleInfo tupleInfo = entry.getValue();
-					FailSpoutMsg fail = new FailSpoutMsg(spout,
+					FailSpoutMsg fail = new FailSpoutMsg(entry.getKey(), spout,
 							(TupleInfo) tupleInfo, task_stats, isDebug);
 					fail.run();
 				}
@@ -224,7 +243,7 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
 
 			runnable.run();
 
-		} catch (Exception e) {
+		} catch (Throwable e) {
 			if (taskStatus.isShutdown() == false) {
 				LOG.info("Unknow excpetion ", e);
 				report_error.report(e);

@@ -30,6 +30,7 @@ import com.alibaba.jstorm.ui.model.ComponentTask;
 import com.alibaba.jstorm.ui.model.LogPageIndex;
 import com.alibaba.jstorm.utils.HttpserverUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
+import com.alibaba.jstorm.utils.NetWorkUtils;
 
 /**
  * task log view page service. <br />
@@ -76,10 +77,15 @@ public class LogPage implements Serializable {
 
 	private String host;
 	
-	
+	private String clusterName;
 
 	public LogPage() throws Exception {
 		FacesContext ctx = FacesContext.getCurrentInstance();
+		if (ctx.getExternalContext().getRequestParameterMap().get("clusterName") != null) {
+			clusterName = (String) ctx.getExternalContext()
+					.getRequestParameterMap().get("clusterName");
+		}
+		
 		if (ctx.getExternalContext().getRequestParameterMap()
 				.get(HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_POS) != null) {
 			position = ctx.getExternalContext().getRequestParameterMap()
@@ -108,7 +114,7 @@ public class LogPage implements Serializable {
 			generateLogFileName();
 
 			// proxy call
-			queryLog();
+			queryLog(conf);
 
 		} catch (Exception e) {
 			LOG.error(e.getCause(), e);
@@ -128,28 +134,57 @@ public class LogPage implements Serializable {
 			log = ctx.getExternalContext().getRequestParameterMap()
 					.get("log");
 		}
+		
+		String workerPort = null;
+		if (ctx.getExternalContext().getRequestParameterMap().get("workerPort") != null) {
+			workerPort = ctx.getExternalContext().getRequestParameterMap()
+					.get("workerPort");
+		}
 
-		if (StringUtils.isBlank(host) == false
-				&& StringUtils.isBlank(log) == false) {
-			String parent = null;
-			if (ctx.getExternalContext().getRequestParameterMap().get("parent") != null) {
-				parent = ctx.getExternalContext().getRequestParameterMap()
-						.get("parent");
-			}
+		if (StringUtils.isBlank(host) == false) {
+			if (StringUtils.isBlank(log) == false) {
+			    String parent = null;
+			    if (ctx.getExternalContext().getRequestParameterMap().get("parent") != null) {
+				    parent = ctx.getExternalContext().getRequestParameterMap()
+						    .get("parent");
+			    }
 			
-			if (parent == null) {
-				logFileName = log;
-			}else {
-				logFileName = parent + File.separator + log;
+			    if (parent == null) {
+				    logFileName = log;
+			    }else {
+				    logFileName = parent + File.separator + log;
+			    }
+			} else if (StringUtils.isBlank(workerPort) == false) {
+				String topologyId = null;
+				if (ctx.getExternalContext().getRequestParameterMap().get("topologyId") != null) {
+				    topologyId = ctx.getExternalContext().getRequestParameterMap()
+						    .get("topologyId");
+			    }
+				
+				NimbusClient client = null;
+				
+				try {
+					client = UIUtils.getNimbusClient(conf, clusterName);
+					TopologyInfo summ = client.getClient().getTopologyInfo(topologyId);
+					logFileName = JStormUtils.genLogName(summ.get_name(), Integer.valueOf(workerPort));
+				}finally {
+					if (client != null) {
+						client.close();
+					}
+				}
 			}
-			
 			return;
 		}
 
 		String topologyid = null;
 		String taskid = null;
+		String clusterName = null;
 
 		// resolve the arguments
+		if (ctx.getExternalContext().getRequestParameterMap().get("clusterName") != null) {
+			clusterName = (String) ctx.getExternalContext()
+					.getRequestParameterMap().get("clusterName");
+		}
 		if (ctx.getExternalContext().getRequestParameterMap().get("topologyid") != null) {
 			topologyid = ctx.getExternalContext().getRequestParameterMap()
 					.get("topologyid");
@@ -169,8 +204,7 @@ public class LogPage implements Serializable {
 		NimbusClient client = null;
 
 		try {
-
-			client = NimbusClient.getConfiguredClient(conf);
+			client = UIUtils.getNimbusClient(conf, clusterName);
 
 			TopologyInfo summ = client.getClient().getTopologyInfo(topologyid);
 
@@ -193,8 +227,10 @@ public class LogPage implements Serializable {
 
 			host = componentTask.getHost();
 
-			logFileName = componentTask.getTopologyid() + "-worker-"
-					+ componentTask.getPort() + ".log";
+//			logFileName = componentTask.getTopologyid() + "-worker-"
+//					+ componentTask.getPort() + ".log";
+			logFileName = JStormUtils.genLogName(summ.get_name(), 
+					Integer.valueOf(componentTask.getPort()));
 
 		} catch (TException e) {
 			LOG.error(e.getCause(), e);
@@ -240,7 +276,6 @@ public class LogPage implements Serializable {
 					/ HttpserverUtils.HTTPSERVER_LOGVIEW_PAGESIZE;
 		}
 
-		List<Long> ret = new ArrayList<Long>();
 		if (item - current <= 5) {
 			for (long i = item - 1; i > current; i--) {
 				insertPage(i);
@@ -270,9 +305,9 @@ public class LogPage implements Serializable {
 	 * @param task
 	 *            the specified task
 	 */
-	private void queryLog() {
+	private void queryLog(Map conf) {
 		// PROXY_URL = "http://%s:%s/logview?%s=%s&log=%s";
-		String baseUrl = String.format(PROXY_URL, host, port,
+		String baseUrl = String.format(PROXY_URL, NetWorkUtils.host2Ip(host), port,
 				HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_CMD,
 				HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_CMD_SHOW, logFileName);
 		String url = baseUrl;
@@ -287,7 +322,7 @@ public class LogPage implements Serializable {
 
 			// 2. check the request is success, then read the log
 			if (response.getStatusLine().getStatusCode() == 200) {
-				String data = EntityUtils.toString(response.getEntity());
+				String data = EntityUtils.toString(response.getEntity(), ConfigExtension.getLogViewEncoding(conf));
 
 				String sizeStr = data.substring(0, 16);
 				genPageUrl(sizeStr);
@@ -359,6 +394,14 @@ public class LogPage implements Serializable {
 
 	public void setHost(String host) {
 		this.host = host;
+	}
+
+	public String getClusterName() {
+		return clusterName;
+	}
+
+	public void setClusterName(String clusterName) {
+		this.clusterName = clusterName;
 	}
 	
 	

@@ -8,6 +8,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.Watcher.Event.EventType;
@@ -17,9 +18,9 @@ import backtype.storm.Config;
 
 import com.alibaba.jstorm.callback.ClusterStateCallback;
 import com.alibaba.jstorm.callback.WatcherCallBack;
+import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.PathUtils;
 import com.alibaba.jstorm.zk.Zookeeper;
-import com.netflix.curator.framework.CuratorFramework;
 
 /**
  * All ZK interface implementation
@@ -127,6 +128,8 @@ public class DistributedClusterState implements ClusterState {
 
 	@Override
 	public void set_data(String path, byte[] data) throws Exception {
+	    if (data.length > (JStormUtils.SIZE_1_K * 800))
+	        throw new Exception("Writing 800k+ data into ZK is not allowed!");
 		if (zkobj.exists(zk, path, false)) {
 			zkobj.setData(zk, path, data);
 		} else {

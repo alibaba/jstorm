@@ -46,6 +46,12 @@ public class StatusTransition {
 			lock = new Object();
 			topologyLocks.put(topologyid, lock);
 		}
+		
+		if (data.getIsShutdown().get() == true) {
+			LOG.info("Nimbus is in shutdown, skip this event " +
+					topologyid + ":" +changeStatus);
+			return ;
+		}
 
 		synchronized (lock) {
 			transitionLock(topologyid, errorOnNoTransition, changeStatus, args);
@@ -99,7 +105,7 @@ public class StatusTransition {
 		if (changingCallbacks == null
 				|| changingCallbacks.containsKey(changeStatus) == false
 				|| changingCallbacks.get(changeStatus) == null) {
-			String msg = "No transition for event: changing status"
+			String msg = "No transition for event: changing status:"
 					+ changeStatus.getStatus() + ", current status: "
 					+ currentStatus.getStatusType() + " topology-id: "
 					+ topologyid;

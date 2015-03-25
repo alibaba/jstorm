@@ -11,17 +11,14 @@ import backtype.storm.topology.InputDeclarer;
 import backtype.storm.topology.SpoutDeclarer;
 import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.tuple.Fields;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
-
 import storm.trident.spout.BatchSpoutExecutor;
 import storm.trident.spout.IBatchSpout;
 import storm.trident.spout.ICommitterTridentSpout;
@@ -144,7 +141,8 @@ public class TridentTopologyBuilder {
                 BoltDeclarer scd =
                       builder.setBolt(spoutCoordinator(id), new TridentSpoutCoordinator(c.commitStateId, (ITridentSpout) c.spout))
                         .globalGrouping(masterCoordinator(c.batchGroupId), MasterBatchCoordinator.BATCH_STREAM_ID)
-                        .globalGrouping(masterCoordinator(c.batchGroupId), MasterBatchCoordinator.SUCCESS_STREAM_ID);
+                        .globalGrouping(masterCoordinator(c.batchGroupId), MasterBatchCoordinator.SUCCESS_STREAM_ID)
+                        .globalGrouping(masterCoordinator(c.batchGroupId), MasterBatchCoordinator.COMMIT_STREAM_ID);
                 
                 for(Map m: c.componentConfs) {
                     scd.addConfigurations(m);
@@ -167,7 +165,7 @@ public class TridentTopologyBuilder {
                     bd.allGrouping(masterCoordinator(batchGroup), MasterBatchCoordinator.COMMIT_STREAM_ID);
                 }
                 for(Map m: c.componentConfs) {
-                    scd.addConfigurations(m);
+                    bd.addConfigurations(m);
                 }
             }
         }
@@ -179,11 +177,6 @@ public class TridentTopologyBuilder {
             for(Map conf: c.componentConfs) {
                 d.addConfigurations(conf);
             }
-        }
-        
-        for(String batch: batchesToCommitIds.keySet()) {
-            List<String> commitIds = batchesToCommitIds.get(batch);
-            builder.setSpout(masterCoordinator(batch), new MasterBatchCoordinator(commitIds, batchesToSpouts.get(batch)));
         }
                 
         for(String id: _bolts.keySet()) {
@@ -227,6 +220,12 @@ public class TridentTopologyBuilder {
             for(String b: c.committerBatches) {
                 d.allGrouping(masterCoordinator(b), MasterBatchCoordinator.COMMIT_STREAM_ID);
             }
+        }
+        
+        for(String batch: batchesToCommitIds.keySet()) {
+            List<String> commitIds = batchesToCommitIds.get(batch);
+            boolean batchCommit = false;
+            builder.setSpout(masterCoordinator(batch), new MasterBatchCoordinator(commitIds, batchesToSpouts.get(batch)));
         }
 
         return builder.createTopology();
@@ -547,7 +546,6 @@ public class TridentTopologyBuilder {
             });
             return this;
         }
-        
         
         @Override
         public BoltDeclarer noneGrouping(final String component) {

@@ -6,14 +6,16 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.api.CuratorEvent;
+import org.apache.curator.framework.api.CuratorEventType;
+import org.apache.curator.framework.api.CuratorListener;
+import org.apache.curator.framework.api.UnhandledErrorListener;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.data.Stat;
-import org.apache.zookeeper.server.NIOServerCnxn;
-import org.apache.zookeeper.server.NIOServerCnxn.Factory;
-//import org.apache.zookeeper.server.NIOServerCnxn.Factory;
 import org.apache.zookeeper.server.ZooKeeperServer;
 
 import backtype.storm.utils.Utils;
@@ -22,11 +24,6 @@ import com.alibaba.jstorm.callback.DefaultWatcherCallBack;
 import com.alibaba.jstorm.callback.WatcherCallBack;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.PathUtils;
-import com.netflix.curator.framework.CuratorFramework;
-import com.netflix.curator.framework.api.CuratorEvent;
-import com.netflix.curator.framework.api.CuratorEventType;
-import com.netflix.curator.framework.api.CuratorListener;
-import com.netflix.curator.framework.api.UnhandledErrorListener;
 
 /**
  * ZK simple wrapper
@@ -52,7 +49,7 @@ public class Zookeeper {
 			Object port, String root, final WatcherCallBack watcher) {
 
 		CuratorFramework fk = Utils.newCurator(conf, servers, port, root);
-		
+
 		fk.getCuratorListenable().addListener(new CuratorListener() {
 			@Override
 			public void eventReceived(CuratorFramework _fk, CuratorEvent e)
@@ -208,8 +205,7 @@ public class Zookeeper {
 				+ localdir);
 		File localfile = new File(localdir);
 		ZooKeeperServer zk = new ZooKeeperServer(localfile, localfile, 2000);
-		NIOServerCnxn.Factory factory = new NIOServerCnxn.Factory(
-				new InetSocketAddress(port));
+		Factory factory = new Factory(new InetSocketAddress(port), 0);
 		factory.startup(zk);
 		return factory;
 	}

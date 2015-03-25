@@ -1,27 +1,11 @@
 package com.alibaba.jstorm.message.zmq;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-import junit.framework.Assert;
-
 import org.apache.log4j.Logger;
-import org.junit.Test;
 
 import backtype.storm.Config;
-import backtype.storm.messaging.IConnection;
-import backtype.storm.messaging.IContext;
-import backtype.storm.messaging.TaskMessage;
-import backtype.storm.messaging.TransportFactory;
-import backtype.storm.utils.DisruptorQueue;
-import backtype.storm.utils.Utils;
-
-import com.alibaba.jstorm.client.ConfigExtension;
-import com.google.common.collect.Maps;
-import com.lmax.disruptor.SingleThreadedClaimStrategy;
-import com.lmax.disruptor.WaitStrategy;
 
 public class ZmqUnitTest {
 
@@ -58,7 +42,7 @@ public class ZmqUnitTest {
 //		WaitStrategy waitStrategy = (WaitStrategy) Utils
 //				.newInstance((String) storm_conf
 //						.get(Config.TOPOLOGY_DISRUPTOR_WAIT_STRATEGY));
-//		DisruptorQueue recvQueue = new DisruptorQueue(
+//		DisruptorQueue recvQueue = DisruptorQueue.mkInstance(
 //				new SingleThreadedClaimStrategy(1024), waitStrategy);
 //		server.registerQueue(recvQueue);
 //
@@ -108,7 +92,7 @@ public class ZmqUnitTest {
 //		WaitStrategy waitStrategy = (WaitStrategy) Utils
 //				.newInstance((String) storm_conf
 //						.get(Config.TOPOLOGY_DISRUPTOR_WAIT_STRATEGY));
-//		DisruptorQueue recvQueue = new DisruptorQueue(
+//		DisruptorQueue recvQueue = DisruptorQueue.mkInstance(
 //				new SingleThreadedClaimStrategy(1024), waitStrategy);
 //		server.registerQueue(recvQueue);
 //
@@ -143,7 +127,7 @@ public class ZmqUnitTest {
 //		WaitStrategy waitStrategy = (WaitStrategy) Utils
 //				.newInstance((String) storm_conf
 //						.get(Config.TOPOLOGY_DISRUPTOR_WAIT_STRATEGY));
-//		DisruptorQueue recvQueue = new DisruptorQueue(
+//		DisruptorQueue recvQueue = DisruptorQueue.mkInstance(
 //				new SingleThreadedClaimStrategy(1024), waitStrategy);
 //		server.registerQueue(recvQueue);
 //
@@ -176,7 +160,7 @@ public class ZmqUnitTest {
 //		WaitStrategy waitStrategy = (WaitStrategy) Utils
 //				.newInstance((String) storm_conf
 //						.get(Config.TOPOLOGY_DISRUPTOR_WAIT_STRATEGY));
-//		DisruptorQueue recvQueue = new DisruptorQueue(
+//		DisruptorQueue recvQueue = DisruptorQueue.mkInstance(
 //				new SingleThreadedClaimStrategy(1024), waitStrategy);
 //		server.registerQueue(recvQueue);
 //
@@ -233,7 +217,7 @@ public class ZmqUnitTest {
 //		WaitStrategy waitStrategy = (WaitStrategy) Utils
 //				.newInstance((String) storm_conf
 //						.get(Config.TOPOLOGY_DISRUPTOR_WAIT_STRATEGY));
-//		DisruptorQueue recvQueue = new DisruptorQueue(
+//		DisruptorQueue recvQueue = DisruptorQueue.mkInstance(
 //				new SingleThreadedClaimStrategy(1024), waitStrategy);
 //		server.registerQueue(recvQueue);
 //
@@ -278,7 +262,7 @@ public class ZmqUnitTest {
 //		WaitStrategy waitStrategy = (WaitStrategy) Utils
 //				.newInstance((String) storm_conf
 //						.get(Config.TOPOLOGY_DISRUPTOR_WAIT_STRATEGY));
-//		DisruptorQueue recvQueue = new DisruptorQueue(
+//		DisruptorQueue recvQueue = DisruptorQueue.mkInstance(
 //				new SingleThreadedClaimStrategy(1024), waitStrategy);
 //		server.registerQueue(recvQueue);
 //

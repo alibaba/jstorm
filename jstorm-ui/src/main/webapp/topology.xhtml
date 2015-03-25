@@ -10,7 +10,8 @@
 <h:body>
 	<h:outputLink value="cluster.jsf">
 		<h1>
-			<h:outputText value="JStorm UI" />
+			<h:outputText value="JStorm Cluster" />
+			<f:param name="clusterName" value="#{param.clusterName}" />
 		</h1>
 	</h:outputLink>
 	<h2>Topology summary</h2>
@@ -60,32 +61,13 @@
 				<h:outputText value="#{topology.numTasks}" />
 			</p:column>
 			
-			<p:column>
-				<f:facet name="header">
-					<h:outputText value="Num Cpu" />
-				</f:facet>
-				<h:outputText value="#{topology.numCpu}" />
-			</p:column>
-			
-			<p:column>
-				<f:facet name="header">
-					<h:outputText value="Num Memory" />
-				</f:facet>
-				<h:outputText value="#{topology.numMem}" />
-			</p:column>
-			
-			<p:column>
-				<f:facet name="header">
-					<h:outputText value="Num Disk" />
-				</f:facet>
-				<h:outputText value="#{topology.numDisk}" />
-			</p:column>
 		</p:dataTable>
 	</h:form>
 	<h2 >
         <h:outputText value="Topology stats" > </h:outputText>
         <span style="display:inline-block;">
         <form name = "aaa" action="topology.jsf" method="post">
+            <input id="clusterName" name="clusterName" type="hidden" value="#{param.clusterName}" />
             <input id="topologyid" name="topologyid" type="hidden" value="#{param.topologyid}" />
             <input id="windowpara" name="windowparaname" type="hidden" value="#{param.window}" />
             <select id ="window" name="window" onchange= "submit();" >
@@ -174,6 +156,7 @@
 				<!-- <h:outputText value="#{spout.componetId}" />  -->
 				<h:outputLink value="spout.jsf">
 					<h:outputText value="#{spout.componetId}" />
+					<f:param name="clusterName" value="#{param.clusterName}" />
 					<f:param name="topologyid" value="#{topologypage.topologyid}" />
 					<f:param name="window" value="#{topologypage.window}" />
 					<f:param name="componentid" value="#{spout.componetId}" />
@@ -253,6 +236,7 @@
 				<!-- <h:outputText value="#{bolt.componetId}" />  -->
 				<h:outputLink value="bolt.jsf">
 					<h:outputText value="#{bolt.componetId}" />
+					<f:param name="clusterName" value="#{param.clusterName}" />
 					<f:param name="topologyid" value="#{topologypage.topologyid}" />
 					<f:param name="window" value="#{topologypage.window}" />
 					<f:param name="componentid" value="#{bolt.componetId}" />
@@ -317,6 +301,34 @@
 		</p:dataTable>
 
 	</h:form>
+
+        <h2>User Defined Metrics</h2>
+        <h:form>
+            <p:dataTable id="UserDefMetricTable" var="udm" value="#{topologypage.udm}">
+
+                <p:column>
+                    <f:facet name="header">
+                        <h:outputText value="Name" />
+                    </f:facet>
+                    <h:outputText value="#{udm._name}" />
+                </p:column>
+
+                <p:column>
+                    <f:facet name="header">
+                        <h:outputText value="Type" />
+                    </f:facet>
+                    <h:outputText value="#{udm._type}" />
+                </p:column>
+
+                <p:column>
+                    <f:facet name="header">
+                        <h:outputText value="Value" />
+                    </f:facet>
+                    <h:outputText value="#{udm._value}" />
+                </p:column>
+            </p:dataTable>
+
+        </h:form>
 </h:body>
 <script>
    var windowpara=document.getElementById("windowpara");

@@ -1,4 +1,149 @@
-[JStorm 0.9.0 ΩÈ…‹](http://wenku.baidu.com/view/59e81017dd36a32d7375818b.html)
+[JStorm English introduction](http://42.121.19.155/jstorm/JStorm-introduce-en.pptx)
+[JStorm Chinese introduction](http://42.121.19.155/jstorm/JStorm-introduce.pptx)
+
+#Release 0.9.6.3
+## New features
+1. Implement tick tuple
+2. Support logback
+3. Support to load the user defined configuration file of log4j
+4. Enable the display of user defined metrics in web UI
+5. Add "topologyName" parameter for "jstorm list" command
+6. Support the use of ip and hostname at the same for user defined schedule
+7. Support junit test for local mode
+8. Enable client command(e.g. jstorm jar) to load self-defined storm.yaml
+## Bug fix
+1. Add activate and deactivate api of spout, which are used in nextTuple prepare phase
+2. Update the support of multi language
+3. Check the worker's heartbeat asynchronously to speed up the lunch of worker
+4. Add the check of worker's pid to speed up the detect of dead worker
+5. Fix the high cpu load of disruptor producer when disruptor queue is full
+6. Remove the confused exception reported by disruptor queue when killing worker
+7. Fix the failure problem of "jstorm restart" client command
+8. Report error when user submits the jar built on a incompatible jstorm release
+9. Fix the problem that one log will printed twice when user define a configuration of log4j or logback on local mode
+10. Fix the potential exception when killing topology on local mode
+11. Forbid user to change the log level of jstorm log
+12. Add a configuration template of logback
+13. Fix the problem that process the upload of lib jar as application jar
+14. Makesure the clean of ZK node for a topology which is removed
+15. Add the information of topology name when java core dump
+16. Fix the incorrect value of -XX:MaxTenuringThreshold. Currently, the default value of jstorm is 20, but the max value in JDK8 is 15.
+17. Fix the potential reading failure of cpu core number, which may cause the supervisor slot to be set to 0
+18. Fix the "Address family not supported by protocol family" error on local mode
+19. Do not start logview http server on local mode
+20. Add the creation of log dir in supervisor alive checking scription
+21. Check the correctness of ip specified in configuration file before starting nimbus
+22. Check the correctness of env variable $JAVA_HOME/$JSTORM_HOME/$JSTORM_CONF_DIR before starting jstorm service
+23. Specify the log dir for rpm installation
+24. Add reading permission of /home/admin/jstorm and /home/admin/logs for all users after rpm installation
+25. Config local temporay ports when rpm installation
+26. Add noarch rpm package
+
+#Release 0.9.6.2
+1. Add option to switch between BlockingQueue and Disruptor
+2. Fix the bug which under sync netty mode, client failed to send message to server 
+3. Fix the bug let web UI can dispaly 0.9.6.1 cluster
+4. Fix the bug topology can be submited without main jar but a lot of little jar
+5. Fix the bug restart command 
+6. Fix the bug trident bug
+7. Add the validation of topology name, component name... Only A-Z, a-z, 0-9, '_', '-', '.' are valid now.
+8. Fix the bug close thrift client
+
+#Release 0.9.6.2-rc
+1. Improve user experience from Web UI
+1.1 Add jstack link
+1.2 Add worker log link in supervisor page
+1.3 Add Web UI log encode setting "gbk" or "utf-8"
+1.4 Show starting tasks in component page
+1.5 Show dead task's information in UI
+1.6 Fix the bug that error info can not be displayed in UI when task is restarting
+2. Add restart command, with this command, user can reload configuration, reset worker/task parallism
+3. Upgrade curator/disruptor/guava version
+4. Revert json lib to google-simple json, wrap all json operation into two utility method
+5. Add new storm submit api, supporting submit topology under java 
+6. Enable launch process with backend method
+7. Set "spout.pending.full.sleep" default value as true
+8. Fix the bug user define sceduler not support a list of workers
+9. Add disruptor/JStormUtils junit test
+10. Enable user to configure the name of monitor name of alimonitor
+11. Add tcp option "reuseAddress" in netty framework
+12. Fix the bug: When spout does not implement the ICommitterTrident interface, MasterCoordinatorSpout will stick on commit phase.
+
+#Release 0.9.6.2-rc
+1. Improve user experience from Web UI
+1.1 Add jstack link
+1.2 Add worker log link in supervisor page
+1.3 Add Web UI log encode setting "gbk" or "utf-8"
+1.4 Show starting tasks in component page
+1.5 Show dead task's information in UI
+1.6 Fix the bug that error info can not be displayed in UI when task is restarting
+2. Add restart command, with this command, user can reload configuration, reset worker/task parallism
+3. Upgrade curator/disruptor/guava version
+4. Revert json lib to google-simple json, wrap all json operation into two utility method
+5. Add new storm submit api, supporting submit topology under java 
+6. Enable launch process with backend method
+7. Set "spout.pending.full.sleep" default value as true
+8. Fix the bug user define sceduler not support a list of workers
+9. Add disruptor/JStormUtils junit test
+10. Enable user to configure the name of monitor name of alimonitor
+11. Add tcp option "reuseAddress" in netty framework
+12. Fix the bug: When spout does not implement the ICommitterTrident interface, MasterCoordinatorSpout will stick on commit phase.
+
+#Release 0.9.6.1
+1. Add management of multiclusters to Web UI. Added management tools for multiclusters in WebUI.
+2. Merged Trident API from storm-0.9.3
+3. Replaced gson with fastjson
+4. Refactored metric json generation code.
+5. Stored version info with $JSTORM_HOME/RELEASE.
+6. Replaced SingleThreadDisruptorQueue with MultiThreadDisruptorQueue in task deserialize thread.
+7. Fixed issues with worker count on Web UI.
+8. Fixed issues with accessing the task map with multi-threads.
+9. Fixed NullPointerException while killing worker and reading worker's hearbeat object.
+10. Netty client connect to server only in NettyClient module.
+11. Add break loop operation when netty client connection is closed
+12. Fix the bug that topology warning flag present in cluster page is not consistent with error information present in topology page
+13. Add recovery function when the data of task error information is corrupted
+14. Fix the bug that the metric data can not be uploaded onto Alimonitor when ugrading from pre-0.9.6 to 0.9.6 and executing pkill java without restart the topologying
+15. Fix the bug that zeroMq failed to receive data
+16. Add interface to easily setting worker's memory
+17. Set default value of topology.alimonitor.metrics.post to false
+18. Only start NETTY_SERVER_DECODE_TIME for netty server
+19. Keep compatible with Storm for local mode
+20. Print rootId when tuple failed
+21. In order to keep compatible with Storm, add submitTopologyWithProgressBar interface
+22. Upgrade netty version from 3.2.7 to 3.9.0
+23. Support assign topology to user-defined supervisors
+
+
+#Release 0.9.6
+1. Update UI 
+  - Display the metrics information of task and worker
+  - Add warning flag when errors occur for a topology
+  - Add link from supervisor page to task page
+2. Send metrics data to Alimonitor
+3. Add metrics interface for user
+4. Add task.cleanup.timeout.sec setting to let task gently cleanup
+5. Set the worker's log name as topologyName-worker-port.log
+6. Add setting "worker.redirect.output.file", so worker can redirect System.out/System.err to one setting file
+7. Add storm list command
+8. Add closing channel check in netty client to avoid double close
+9. Add connecting check in netty client to avoid connecting one server twice at one time 
+
+#Release 0.9.5.1
+1. Add netty sync mode
+2. Add block operation in netty async mode
+3. Replace exception with Throwable in executor layer
+4. Upgrade curator-framework version from 1.15 to 1.3.2
+5. Add more netty junit test
+6. Add log when queue is full
+
+#Release 0.9.5
+##Big feature:
+1. Redesign scheduler arithmetic, basing worker not task .
+
+## Bug fix
+1. Fix disruptor use too much cpu
+2. Add target NettyServer log when f1ail to send data by netty
 
 #Release 0.9.4.1
 ##Bug fix:

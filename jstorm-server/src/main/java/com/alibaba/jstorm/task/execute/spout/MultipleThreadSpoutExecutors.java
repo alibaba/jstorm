@@ -4,19 +4,14 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
-import backtype.storm.Config;
-import backtype.storm.spout.ISpoutOutputCollector;
-import backtype.storm.spout.SpoutOutputCollector;
 import backtype.storm.task.TopologyContext;
-import backtype.storm.tuple.Tuple;
 import backtype.storm.utils.DisruptorQueue;
 import backtype.storm.utils.WorkerClassLoader;
 
 import com.alibaba.jstorm.callback.AsyncLoopThread;
 import com.alibaba.jstorm.callback.RunnableCallback;
-import com.alibaba.jstorm.client.ConfigExtension;
-import com.alibaba.jstorm.daemon.worker.metrics.JStormTimer;
-import com.alibaba.jstorm.daemon.worker.metrics.Metrics;
+import com.alibaba.jstorm.metric.MetricDef;
+import com.alibaba.jstorm.metric.Metrics;
 import com.alibaba.jstorm.stats.CommonStatsRolling;
 import com.alibaba.jstorm.task.TaskStatus;
 import com.alibaba.jstorm.task.TaskTransfer;
@@ -24,9 +19,7 @@ import com.alibaba.jstorm.task.acker.Acker;
 import com.alibaba.jstorm.task.comm.TaskSendTargets;
 import com.alibaba.jstorm.task.comm.TupleInfo;
 import com.alibaba.jstorm.task.error.ITaskReportErr;
-import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.RotatingMap;
-import com.alibaba.jstorm.utils.TimeCacheMap;
 import com.codahale.metrics.Gauge;
 
 /**
@@ -54,14 +47,14 @@ public class MultipleThreadSpoutExecutors extends SpoutExecutors {
 
 		ackerRunnableThread = new AsyncLoopThread(new AckerRunnable());
 		pending = new RotatingMap<Long, TupleInfo>(Acker.TIMEOUT_BUCKET_NUM, null, false);
-		Metrics.register(idStr + "-pending-map-gauge", new Gauge<Integer>() {
+		Metrics.register(idStr, MetricDef.PENDING_MAP, new Gauge<Integer>() {
 
 			@Override
 			public Integer getValue() {
 				return pending.size();
 			}
 			
-		});
+		}, String.valueOf(taskId), Metrics.MetricType.TASK);
 
 		super.prepare(sendTargets, _transfer_fn, topology_context);
 	}
@@ -114,6 +107,7 @@ public class MultipleThreadSpoutExecutors extends SpoutExecutors {
 		}
 
 		public Object getResult() {
+			LOG.info("Begin to shutdown Spout's acker thread " + idStr);
 			return -1;
 		}
 

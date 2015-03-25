@@ -17,13 +17,16 @@ import javax.faces.context.FacesContext;
 
 import org.apache.log4j.Logger;
 
+import backtype.storm.Config;
 import backtype.storm.generated.NotAliveException;
 import backtype.storm.generated.StormTopology;
 import backtype.storm.generated.TaskSummary;
 import backtype.storm.generated.TopologyInfo;
+import backtype.storm.generated.UserDefMetric;
 import backtype.storm.utils.NimbusClient;
 
 import com.alibaba.jstorm.common.stats.StatBuckets;
+import com.alibaba.jstorm.metric.UserDefMetricData;
 import com.alibaba.jstorm.ui.UIUtils;
 import com.alibaba.jstorm.ui.model.Components;
 import com.alibaba.jstorm.ui.model.TopologySumm;
@@ -42,21 +45,27 @@ public class TopologyPage implements Serializable {
 
 	private static final Logger LOG = Logger.getLogger(TopologyPage.class);
 
+	private String clusterName = null;
 	private String topologyid = null;
 	private String window = null;
 	private List<TopologySumm> tsumm = null;
 	private List<WinComponentStats> tstats = null;
 	private List<Components> scom = null;
 	private List<Components> bcom = null;
+	private List<UserDefMetric> udm = null;
 
 	public TopologyPage() throws Exception {
 
 		FacesContext ctx = FacesContext.getCurrentInstance();
+		if (ctx.getExternalContext().getRequestParameterMap().get("clusterName") != null) {
+			clusterName = (String) ctx.getExternalContext()
+					.getRequestParameterMap().get("clusterName");
+		}
 		if (ctx.getExternalContext().getRequestParameterMap().get("topologyid") != null) {
 			topologyid = (String) ctx.getExternalContext()
 					.getRequestParameterMap().get("topologyid");
-			LOG.debug("Query topology " + topologyid);
 		}
+		LOG.debug("Query clusterName=" + clusterName + ", topology=" + topologyid);
 
 		window = UIUtils.getWindow(ctx);
 		LOG.info("Window:" + window);
@@ -71,7 +80,8 @@ public class TopologyPage implements Serializable {
 		init();
 	}
 
-	public TopologyPage(String topologyId, String window) throws Exception {
+	public TopologyPage(String clusterName, String topologyId, String window) throws Exception {
+		this.clusterName = clusterName;
 		this.topologyid = topologyId;
 		this.window = window;
 
@@ -85,12 +95,15 @@ public class TopologyPage implements Serializable {
 
 		try {
 			Map conf = UIUtils.readUiConfig();
-			client = NimbusClient.getConfiguredClient(conf);
+			
+			client = UIUtils.getNimbusClient(conf, clusterName);
 
 			TopologyInfo summ = client.getClient().getTopologyInfo(topologyid);
 			StormTopology topology = client.getClient().getTopology(topologyid);
 
 			List<TaskSummary> ts = summ.get_tasks();
+			
+			udm = summ.get_userDefMetric();
 
 			tsumm = UIUtils.topologySummary(summ);
 
@@ -212,6 +225,14 @@ public class TopologyPage implements Serializable {
 		tss.add(topologyStats);
 		return tss;
 	}
+	
+	public List<UserDefMetric> getUdm() {
+	    return udm;
+	}
+	
+	public void setUdm(List<UserDefMetric> udm) {
+	    this.udm = udm;
+	}
 
 	public String getTopologyid() {
 		return topologyid;
@@ -264,7 +285,7 @@ public class TopologyPage implements Serializable {
 	public static void main(String[] args) {
 
 		try {
-			TopologyPage instance = new TopologyPage(
+			TopologyPage instance = new TopologyPage("jstorm", 
 					"sequence_test-1-1386516240", StatBuckets.ALL_WINDOW_STR);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block

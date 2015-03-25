@@ -11,7 +11,8 @@
 <h:body>
 	<h:outputLink value="cluster.jsf">
 		<h1>
-			<h:outputText value="JStorm UI" />
+			<h:outputText value="JStorm Cluster" />
+			<f:param name="clusterName" value="#{param.clusterName}" />
 		</h1>
 	</h:outputLink>
 	
@@ -24,6 +25,13 @@
 					<h:outputText value="Host" />
 				</f:facet>
 				<h:outputText value="#{ssumm.host}" />
+			</p:column>
+
+			<p:column>
+				<f:facet name="header">
+					<h:outputText value="IP" />
+				</f:facet>
+				<h:outputText value="#{ssumm.ip}" />
 			</p:column>
 
 			<p:column>
@@ -46,47 +54,16 @@
 				</f:facet>
 				<h:outputText value="#{ssumm.usedPort}" />
 			</p:column>
-
+			
 			<p:column>
 				<f:facet name="header">
-					<h:outputText value="Total Cpu" />
+					<h:outputText value="Conf" />
 				</f:facet>
-				<h:outputText value="#{ssumm.totalCpu}" />
-			</p:column>
-
-			<p:column>
-				<f:facet name="header">
-					<h:outputText value="Used Cpu" />
-				</f:facet>
-				<h:outputText value="#{ssumm.usedCpu}" />
-			</p:column>
-
-			<p:column>
-				<f:facet name="header">
-					<h:outputText value="Total Memory" />
-				</f:facet>
-				<h:outputText value="#{ssumm.totalMem}" />
-			</p:column>
-
-			<p:column>
-				<f:facet name="header">
-					<h:outputText value="Used Memory" />
-				</f:facet>
-				<h:outputText value="#{ssumm.usedMem}" />
-			</p:column>
-
-			<p:column>
-				<f:facet name="header">
-					<h:outputText value="Total Disk" />
-				</f:facet>
-				<h:outputText value="#{ssumm.totalDisk}" />
-			</p:column>
-
-			<p:column>
-				<f:facet name="header">
-					<h:outputText value="Used Disk" />
-				</f:facet>
-				<h:outputText value="#{ssumm.usedDisk}" />
+            	<h:outputLink value="conf.jsf" target="_blank">
+                    <h:outputText value="conf" />
+                    <f:param name="clusterName" value="#{param.clusterName}" />
+                    <f:param name="host" value="#{ssumm.ip}" />
+                </h:outputLink>
 			</p:column>
 			
 			<p:column>
@@ -95,6 +72,7 @@
 				</f:facet>
             	<h:outputLink value="listlog.jsf" target="_blank">
                     <h:outputText value="logs" />
+                    <f:param name="clusterName" value="#{param.clusterName}" />
                     <f:param name="host" value="#{ssumm.ip}" />
                 </h:outputLink>
 			</p:column>
@@ -104,8 +82,8 @@
 	
 	<h2>Used Worker Summary</h2>
     <h:form>
-        <p:dataTable id="workersummary" var="wsumm"
-            value="#{supervisorpage.wsumm}">
+        <p:dataTable id="workersummary" var="wsumm" value="#{supervisorpage.wsumm}"
+	        sortBy="#{wsumm.port}" sortOrder="ASCENDING">
             <p:column>
                 <f:facet name="header">
                     <h:outputText value="port" />
@@ -131,36 +109,149 @@
                 <f:facet name="header">
                     <h:outputText value="Task List" />
                 </f:facet>
-                <h:outputText value="#{wsumm.tasks}" />
+                <p:dataTable id="task" var="task"
+                        value="#{wsumm.taskSummList}">
+                    <p:column>
+                        <h:outputLink value="#{task._component_type}.jsf">
+                        <h:outputText value="#{task._component_id}-#{task._task_id}" />
+                            <f:param name="clusterName" value="#{param.clusterName}" />
+                            <f:param name="topologyid" value="#{wsumm.topology}" />
+                            <f:param name="window" value="All-time" />
+                            <f:param name="componentid" value="#{task._component_id}" />
+                        </h:outputLink>
+                    </p:column>
+                </p:dataTable>
+            </p:column>
+
+            <p:column>
+                <f:facet name="header">
+                    <h:outputText value="Worker Log" />
+                </f:facet>
+                <h:outputLink value="log.jsf" target="_blank">
+                   <h:outputText value="log" />
+                   <f:param name="clusterName" value="#{param.clusterName}" />
+                   <f:param name="host" value="#{param.host}" />
+                   <f:param name="topologyId" value="#{wsumm.topology}" />
+                   <f:param name="workerPort" value="#{wsumm.port}" />
+                </h:outputLink>
             </p:column>
             
             <p:column>
                 <f:facet name="header">
-                    <h:outputText value="Component List" />
+                    <h:outputText value="Worker JStack" />
                 </f:facet>
-                <h:outputText value="#{wsumm.components}" />
+                <h:outputLink value="jstack.jsf" target="_blank">
+                   <h:outputText value="jstack" />
+                   <f:param name="clusterName" value="#{param.clusterName}" />
+                   <f:param name="host" value="#{param.host}" />
+                   <f:param name="workerPort" value="#{wsumm.port}" />
+                </h:outputLink>
+            </p:column>
+            
+        </p:dataTable>
+    </h:form>
+    <h2>Worker Metrics</h2>
+    <h:form>
+        <p:dataTable id="workermetrics" var="wmetr" value="#{supervisorpage.workermetrics}"
+	        sortBy="#{wmetr.port}" sortOrder="ASCENDING">
+	    <p:column>
+                <f:facet name="header">
+                    <h:outputText value="Port" />
+                </f:facet>
+                <h:outputText value="#{wmetr.port}" />
             </p:column>
             
             <p:column>
                 <f:facet name="header">
-                    <h:outputText value="Cpu Num" />
+                    <h:outputText value="Used Cpu(%)" />
                 </f:facet>
-                <h:outputText value="#{wsumm.cpuNum}" />
+                <h:outputText value="#{wmetr.usedCpu}" />
             </p:column>
-            
+
             <p:column>
                 <f:facet name="header">
-                    <h:outputText value="Mem num" />
+                    <h:outputText value="Used Mem(M)" />
                 </f:facet>
-                <h:outputText value="#{wsumm.memNum}" />
+                <h:outputText value="#{wmetr.usedMem}" />
             </p:column>
-            
+
+	    <p:column>
+		<f:facet name="header">
+                    <h:outputText value="Batch Trans Time over network(ms)" />
+                </f:facet>
+                <h:outputText value="#{wmetr.nettyservMsgTransTime}" />
+             </p:column>
+
             <p:column>
                 <f:facet name="header">
-                    <h:outputText value="Disk" />
+                    <h:outputText value="Msg Decode Time(ms)" />
                 </f:facet>
-                <h:outputText value="#{wsumm.disks}" />
-            </p:column>
+                <h:outputText value="#{wmetr.nettyservDecodeTime}" />
+	    </p:column>
+
+	    <p:column>
+		<f:facet name="header">
+                    <h:outputText value="Dispatch Time(ms)" />
+                </f:facet>
+                <h:outputText value="#{wmetr.dispatchTime}" />
+	    </p:column>
+
+	    <p:column>
+                <f:facet name="header">
+		    <h:outputText value="Dispatch Queue(%)" />
+                </f:facet>
+                <h:outputText value="#{wmetr.dispatchQueue}" />
+	    </p:column>
+
+	    <p:column>
+		<f:facet name="header">
+                    <h:outputText value="Batch Tuple Time(ms)" />
+                </f:facet>
+                <h:outputText value="#{wmetr.batchTupleTime}" />
+	    </p:column>
+
+	    <p:column>
+                <f:facet name="header">
+		    <h:outputText value="Batch Tuple Queue(%)" />
+                </f:facet>
+                <h:outputText value="#{wmetr.batchTupleQueue}" />
+	    </p:column>
+
+            <p:column>
+		<f:facet name="header">
+		    <h:outputText value="Netty Client send Time(ms)" />
+                </f:facet>
+                <h:outputText value="#{wmetr.nettycliSendTime}" />
+	    </p:column>
+
+	    <p:column>
+		<f:facet name="header">
+                    <h:outputText value="Netty Send Pending Num" />
+                </f:facet>
+                <h:outputText value="#{wmetr.nettycliSendPending}" />
+	    </p:column>
+
+            <p:column>
+		<f:facet name="header">
+                    <h:outputText value="Netty Client Batch Size" />
+                </f:facet>
+                <h:outputText value="#{wmetr.nettycliBatchSize}" />
+	    </p:column>
+
+            <p:column>
+		<f:facet name="header">
+                    <h:outputText value="Netty Sync Batch Queue" />
+                </f:facet>
+                <h:outputText value="#{wmetr.nettycliSyncBatchQueue}" />
+	    </p:column>
+
+	    <p:column>
+		<f:facet name="header">
+                    <h:outputText value="Netty Sync Disr Queue" />
+                </f:facet>
+                <h:outputText value="#{wmetr.nettycliSyncDisrpQueue}" />
+	    </p:column>
+
         </p:dataTable>
     </h:form>
 </h:body>

@@ -1,12 +1,15 @@
 package com.alibaba.jstorm.client;
 
 import java.security.InvalidParameterException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
 
-import com.alibaba.jstorm.resource.ResourceAssignment;
+import backtype.storm.Config;
+import backtype.storm.utils.Utils;
+
 import com.alibaba.jstorm.utils.JStormUtils;
 
 public class ConfigExtension {
@@ -28,56 +31,18 @@ public class ConfigExtension {
 	}
 
 	/**
-	 * Whether or not should the messaging transfer use disruptor, By default
-	 * enable
-	 */
-	protected static final String NETTY_ENABLE_DISRUPTOR_QUEUE = "storm.messaging.netty.disruptor";
-
-	@Deprecated
-	public static void setNettyEnableDisruptor(Map conf, boolean enable) {
-		conf.put(NETTY_ENABLE_DISRUPTOR_QUEUE, Boolean.valueOf(enable));
-	}
-
-	@Deprecated
-	public static Boolean isNettyEnableDisruptor(Map conf) {
-		return JStormUtils.parseBoolean(conf.get(NETTY_ENABLE_DISRUPTOR_QUEUE),
-				true);
-	}
-
-	// /**
-	// * Whether or not use joremq
-	// */
-	// protected static final String USE_JAVA_ZMQ = "storm.use.java.zmq";
-	//
-	// public static void setUseJavaZmq(Map conf, boolean enable) {
-	// conf.put(USE_JAVA_ZMQ, Boolean.valueOf(enable));
-	// }
-	//
-	// public static Boolean isUseJavaZmq(Map conf) {
-	// return JStormUtils.parseBoolean(conf.get(USE_JAVA_ZMQ), true);
-	// }
-
-	/**
 	 * port number of deamon httpserver server
 	 */
 	private static final Integer DEFAULT_DEAMON_HTTPSERVER_PORT = 7621;
 
-	@Deprecated
-	protected static final String DEAMON_HTTPSERVER_PORT = "deamon.logview.port";
-
-	@Deprecated
-	public static Integer getDeamonHttpserverPort(Map conf) {
-		return JStormUtils.parseInt(conf.get(DEAMON_HTTPSERVER_PORT),
-				DEFAULT_DEAMON_HTTPSERVER_PORT);
-	}
-	
 	protected static final String SUPERVISOR_DEAMON_HTTPSERVER_PORT = "supervisor.deamon.logview.port";
 
 	public static Integer getSupervisorDeamonHttpserverPort(Map conf) {
-		return JStormUtils.parseInt(conf.get(SUPERVISOR_DEAMON_HTTPSERVER_PORT),
+		return JStormUtils.parseInt(
+				conf.get(SUPERVISOR_DEAMON_HTTPSERVER_PORT),
 				DEFAULT_DEAMON_HTTPSERVER_PORT + 1);
 	}
-	
+
 	protected static final String NIMBUS_DEAMON_HTTPSERVER_PORT = "nimbus.deamon.logview.port";
 
 	public static Integer getNimbusDeamonHttpserverPort(Map conf) {
@@ -108,6 +73,16 @@ public class ConfigExtension {
 			return true;
 		return (Boolean) result;
 	}
+	
+	protected static final String WOREKER_REDIRECT_OUTPUT_FILE = "worker.redirect.output.file";
+	
+	public static void setWorkerRedirectOutputFile(Map conf, String outputPath) {
+		conf.put(WOREKER_REDIRECT_OUTPUT_FILE, outputPath);
+	}
+	
+	public static String getWorkerRedirectOutputFile(Map conf) {
+		return (String)conf.get(WOREKER_REDIRECT_OUTPUT_FILE);
+	}
 
 	/**
 	 * Usually, spout finish prepare before bolt, so spout need wait several
@@ -135,6 +110,7 @@ public class ConfigExtension {
 	 */
 	protected static final String MEM_SLOTS_PER_TASK = "memory.slots.per.task";
 
+	@Deprecated
 	public static void setMemSlotPerTask(Map conf, int slotNum) {
 		if (slotNum < 1) {
 			throw new InvalidParameterException();
@@ -142,75 +118,17 @@ public class ConfigExtension {
 		conf.put(MEM_SLOTS_PER_TASK, Integer.valueOf(slotNum));
 	}
 
-	public static int getMemSlotPerTask(Map conf) {
-		return JStormUtils.parseInt(conf.get(MEM_SLOTS_PER_TASK), 1);
-	}
-
-	/**
-	 * One memory slot size, the unit size of memory, the default setting is 1G
-	 * For example , if it is 1G, and one task set "memory.slots.per.task" as 2
-	 * then the task will use 2G memory
-	 */
-	protected static final String MEM_SLOT_PER_SIZE = "memory.slot.per.size";
-
-	public static long getMemSlotSize(Map conf) {
-		return JStormUtils.parseLong(conf.get(MEM_SLOT_PER_SIZE),
-				JStormUtils.SIZE_1_G);
-	}
-
-	/**
-	 * This weight means the number of logic cpu slots corresponding to per
-	 * hardware cpu core For example , if a supervisor have 4 cpu cores and set
-	 * this weight as 2 , this supervisor will have 8 logic cpu slots. This
-	 * weight also effects the cgroup , if this weight is 1 , one cpu slot
-	 * corresponds to 1024 of cgroup's cpu weight ; when you set this weight as
-	 * 2 , one cpu slot corresponds to 512 of cgroup's cpu weight ; You can get
-	 * more about cgroup cpu weight(cpu.share): http://t.cn/8std8UV
-	 */
-
-	protected static final String CPU_SLOT_PER_WEIGHT = "cpu.slot.per.weight";
-
-	public static int getCpuSlotPerWeight(Map conf) {
-		return JStormUtils.parseInt(conf.get(CPU_SLOT_PER_WEIGHT), 1);
-	}
-
 	/**
 	 * One task will use cpu slot number, the default setting is 1
 	 */
 	protected static final String CPU_SLOTS_PER_TASK = "cpu.slots.per.task";
 
+	@Deprecated
 	public static void setCpuSlotsPerTask(Map conf, int slotNum) {
 		if (slotNum < 1) {
 			throw new InvalidParameterException();
 		}
 		conf.put(CPU_SLOTS_PER_TASK, Integer.valueOf(slotNum));
-	}
-
-	public static int getCpuSlotsPerTask(Map conf) {
-		return JStormUtils.parseInt(conf.get(CPU_SLOTS_PER_TASK), 1);
-	}
-
-	/**
-	 * One task alloc whether disk slot or not
-	 */
-	protected static final String TASK_ALLOC_DISK_SLOT = "task.alloc.disk.slot";
-
-	public static void setTaskAllocDisk(Map conf, boolean alloc) {
-		conf.put(TASK_ALLOC_DISK_SLOT, Boolean.valueOf(alloc));
-	}
-
-	public static boolean isTaskAllocDisk(Map conf) {
-		return JStormUtils.parseBoolean(conf.get(TASK_ALLOC_DISK_SLOT), false);
-	}
-
-	/**
-	 * The disk slot assigned to the task This configuration will be set by
-	 * worker, application can't set it
-	 */
-	protected static final String TASK_ASSIGN_DISK_SLOT = "task.assign.disk.slot";
-
-	public static String getTaskAssignDiskSlot(Map conf) {
-		return (String) conf.get(TASK_ASSIGN_DISK_SLOT);
 	}
 
 	/**
@@ -236,39 +154,6 @@ public class ConfigExtension {
 	}
 
 	/**
-	 * If component configuration set "use.userdefine.assignment", will try use
-	 * user-defined assignment firstly
-	 * 
-	 * The task assigning algorith is as following
-	 * 
-	 * 1. if set USE_USERDEFINE_ASSIGNMENT, try use user-define assignment, if
-	 * the user-define assignment is available, use it 2. if set
-	 * USE_OLD_ASSIGNMENT, try use old assignment if the old assignment is
-	 * available , use it 3. assign the task from free-pool
-	 */
-	protected static final String USE_USERDEFINE_ASSIGNMENT = "use.userdefine.assignment";
-
-	public static void setUserDefineAssignment(Map conf,
-			List<ResourceAssignment> userDefines) {
-		conf.put(USE_USERDEFINE_ASSIGNMENT, userDefines);
-	}
-
-	/**
-	 * After submit topology to JStorm, getUserDefineAssignmentFromJson should
-	 * be used Before submit topology, getUserDefineAssignment should be used
-	 * 
-	 * @param conf
-	 * @return
-	 */
-	public static List<ResourceAssignment> getUserDefineAssignment(Map conf) {
-		return (List<ResourceAssignment>) conf.get(USE_USERDEFINE_ASSIGNMENT);
-	}
-
-	public static List<Object> getUserDefineAssignmentFromJson(Map conf) {
-		return (List<Object>) conf.get(USE_USERDEFINE_ASSIGNMENT);
-	}
-
-	/**
 	 * If component or topology configuration set "use.old.assignment", will try
 	 * use old assignment firstly
 	 */
@@ -277,94 +162,9 @@ public class ConfigExtension {
 	public static void setUseOldAssignment(Map conf, boolean useOld) {
 		conf.put(USE_OLD_ASSIGNMENT, Boolean.valueOf(useOld));
 	}
-
+	
 	public static boolean isUseOldAssignment(Map conf) {
 		return JStormUtils.parseBoolean(conf.get(USE_OLD_ASSIGNMENT), false);
-	}
-
-	/**
-	 * Force all tasks have been assigned in one node, which is to reduce
-	 * network consumer This is for samll topology This is conflict with
-	 * TASK_ON_DIFFERENT_NODE
-	 */
-	protected static final String USE_SINGLE_NODE = "use.single.node.assignment";
-
-	public static void setUseSingleNode(Map conf, boolean useSingle) {
-		conf.put(USE_SINGLE_NODE, Boolean.valueOf(useSingle));
-	}
-
-	public static boolean isUseSingleNode(Map conf) {
-		return JStormUtils.parseBoolean(conf.get(USE_SINGLE_NODE), false);
-	}
-
-	/**
-	 * These priority weight will influence the topology assign which supervisor
-	 * The core task assign algorithm like this supervisor.left.disk *
-	 * TOPOLOGY_DISK_WEIGHT + supervisor.left.cpu * TOPOLOGY_CPU_WEIGHT +
-	 * supervisor.left.mem * TOPOLOGY_MEM_WEIGHT + supervisor.left.port *
-	 * TOPOLOGY_PORT_WEIGHT
-	 * 
-	 * the task will be assigned to the highest supervisor
-	 * 
-	 * by default TOPOLOGY_DISK_WEIGHT is 3 TOPOLOGY_CPU_WEIGHT is 1
-	 * TOPOLOGY_MEM_WEIGHT is 1 TOPOLOGY_PORT_WEIGHT is 1
-	 */
-	protected static final String TOPOLOGY_DISK_WEIGHT = "topology.disk.weight";
-	protected static final String TOPOLOGY_CPU_WEIGHT = "topology.cpu.weight";
-	protected static final String TOPOLOGY_MEM_WEIGHT = "topology.memory.weight";
-	protected static final String TOPOLOGY_PORT_WEIGHT = "topology.port.weight";
-
-	public static final int DEFAULT_DISK_WEIGHT = 5;
-	public static final int DEFAULT_CPU_WEIGHT = 3;
-	public static final int DEFAULT_MEM_WEIGHT = 1;
-	public static final int DEFAULT_PORT_WEIGHT = 2;
-
-	public static void setTopologyDiskWeight(Map conf, int weight) {
-		conf.put(TOPOLOGY_DISK_WEIGHT, Integer.valueOf(weight));
-	}
-
-	public static int getTopologyDiskWeight(Map conf) {
-		return JStormUtils.parseInt(conf.get(TOPOLOGY_DISK_WEIGHT),
-				DEFAULT_DISK_WEIGHT);
-	}
-
-	public static void setTopologyCpuWeight(Map conf, int weight) {
-		conf.put(TOPOLOGY_CPU_WEIGHT, Integer.valueOf(weight));
-	}
-
-	public static int getTopologyCpuWeight(Map conf) {
-		return JStormUtils.parseInt(conf.get(TOPOLOGY_CPU_WEIGHT),
-				DEFAULT_CPU_WEIGHT);
-	}
-
-	public static void setTopologyMemWeight(Map conf, int weight) {
-		conf.put(TOPOLOGY_MEM_WEIGHT, Integer.valueOf(weight));
-	}
-
-	public static int getTopologyMemWeight(Map conf) {
-		return JStormUtils.parseInt(conf.get(TOPOLOGY_MEM_WEIGHT),
-				DEFAULT_MEM_WEIGHT);
-	}
-
-	public static void setTopologyPortWeight(Map conf, int weight) {
-		conf.put(TOPOLOGY_PORT_WEIGHT, Integer.valueOf(weight));
-	}
-
-	public static int getTopologyPortWeight(Map conf) {
-		return JStormUtils.parseInt(conf.get(TOPOLOGY_PORT_WEIGHT),
-				DEFAULT_PORT_WEIGHT);
-	}
-
-	protected static final String TOPOLOGY_ASSIGN_SUPERVISOR_BYLEVEL = "topology.assign.supervisor.bylevel";
-
-	public static boolean isTopologyAssignSupervisorBylevel(Map conf) {
-		return JStormUtils.parseBoolean(
-				conf.get(TOPOLOGY_ASSIGN_SUPERVISOR_BYLEVEL), true);
-	}
-
-	public static void setTopologyAssignSupervisorBylevel(Map conf,
-			boolean enable) {
-		conf.put(TOPOLOGY_ASSIGN_SUPERVISOR_BYLEVEL, Boolean.valueOf(enable));
 	}
 
 	/**
@@ -376,11 +176,17 @@ public class ConfigExtension {
 	public static String getSupervisorHost(Map conf) {
 		return (String) conf.get(SUPERVISOR_HOSTNAME);
 	}
-	
+
 	protected static final String SUPERVISOR_USE_IP = "supervisor.use.ip";
-	
+
 	public static boolean isSupervisorUseIp(Map conf) {
 		return JStormUtils.parseBoolean(conf.get(SUPERVISOR_USE_IP), false);
+	}
+
+	protected static final String NIMBUS_USE_IP = "nimbus.use.ip";
+
+	public static boolean isNimbusUseIp(Map conf) {
+		return JStormUtils.parseBoolean(conf.get(NIMBUS_USE_IP), false);
 	}
 
 	protected static final String TOPOLOGY_ENABLE_CLASSLOADER = "topology.enable.classloader";
@@ -393,75 +199,19 @@ public class ConfigExtension {
 	public static void setEnableTopologyClassLoader(Map conf, boolean enable) {
 		conf.put(TOPOLOGY_ENABLE_CLASSLOADER, Boolean.valueOf(enable));
 	}
-
-	protected static final String USER_GROUP = "user.group";
-
-	public static void setUserGroup(Map conf, String groupName) {
-		conf.put(USER_GROUP, groupName);
-	}
-
-	public static String getUserGroup(Map conf) {
-		return (String) conf.get(USER_GROUP);
-	}
-
-	protected static final String USER_NAME = "user.name";
-
-	public static void setUserName(Map conf, String userName) {
-		conf.put(USER_NAME, userName);
-	}
-
-	public static String getUserName(Map conf) {
-		return (String) conf.get(USER_NAME);
-	}
-
-	protected static final String USER_PASSWORD = "user.password";
-
-	public static void setUserPassword(Map conf, String userPassword) {
-		conf.put(USER_PASSWORD, userPassword);
-	}
-
-	public static String getUserPassword(Map conf) {
-		return (String) conf.get(USER_PASSWORD);
-	}
-
-	protected static final String NIMBUS_GROUPFILE_PATH = "nimbus.groupfile.path";
-
-	public static void setGroupFilePath(Map conf, String path) {
-		conf.put(NIMBUS_GROUPFILE_PATH, path);
-	}
-
-	public static String getGroupFilePath(Map conf) {
-		return (String) conf.get(NIMBUS_GROUPFILE_PATH);
-	}
-
-	protected static final String WORKER_GC_PATH = "worker.gc.path";
-
-	/**
-	 * Useless from 0.9.3.1
-	 * 
-	 * @param conf
-	 * @param path
-	 */
-	@Deprecated
-	public static void setWorkerGcPath(Map conf, String path) {
-		conf.put(WORKER_GC_PATH, path);
-	}
-
-	/**
-	 * Useless from 0.9.3.1
-	 * 
-	 * @param conf
-	 * @param path
-	 */
-	@Deprecated
-	public static String getWorkerGcPath(Map conf) {
-		return (String) conf.get(WORKER_GC_PATH);
-	}
-
 	
+	protected static String CLASSLOADER_DEBUG = "classloader.debug";
 	
+	public static boolean isEnableClassloaderDebug(Map conf) {
+		return JStormUtils.parseBoolean(conf.get(CLASSLOADER_DEBUG), false);
+	}
+	
+	public static void setEnableClassloaderDebug(Map conf, boolean enable) {
+		conf.put(CLASSLOADER_DEBUG, enable);
+	}
+
 	protected static final String CONTAINER_NIMBUS_HEARTBEAT = "container.nimbus.heartbeat";
-	
+
 	/**
 	 * Get to know whether nimbus is run under Apsara/Yarn container
 	 * 
@@ -469,15 +219,15 @@ public class ConfigExtension {
 	 * @return
 	 */
 	public static boolean isEnableContainerNimbus() {
-	    String path = System.getenv(CONTAINER_NIMBUS_HEARTBEAT);
-	    
-	    if (StringUtils.isBlank(path) ) {
-	        return false;
-	    }else {
-	        return true;
-	    }
+		String path = System.getenv(CONTAINER_NIMBUS_HEARTBEAT);
+
+		if (StringUtils.isBlank(path)) {
+			return false;
+		} else {
+			return true;
+		}
 	}
-	
+
 	/**
 	 * Get Apsara/Yarn nimbus container's hearbeat dir
 	 * 
@@ -487,26 +237,24 @@ public class ConfigExtension {
 	public static String getContainerNimbusHearbeat() {
 		return System.getenv(CONTAINER_NIMBUS_HEARTBEAT);
 	}
-	
-	
-	
 
 	protected static final String CONTAINER_SUPERVISOR_HEARTBEAT = "container.supervisor.heartbeat";
-	
+
 	/**
-	 * Get to know whether supervisor is run under Apsara/Yarn supervisor container
+	 * Get to know whether supervisor is run under Apsara/Yarn supervisor
+	 * container
 	 * 
 	 * @param conf
 	 * @return
 	 */
 	public static boolean isEnableContainerSupervisor() {
-	    String path = System.getenv(CONTAINER_SUPERVISOR_HEARTBEAT);
-        
-        if (StringUtils.isBlank(path)) {
-            return false;
-        }else {
-            return true;
-        }
+		String path = System.getenv(CONTAINER_SUPERVISOR_HEARTBEAT);
+
+		if (StringUtils.isBlank(path)) {
+			return false;
+		} else {
+			return true;
+		}
 	}
 
 	/**
@@ -522,72 +270,373 @@ public class ConfigExtension {
 	protected static final String CONTAINER_HEARTBEAT_TIMEOUT_SECONDS = "container.heartbeat.timeout.seconds";
 
 	public static int getContainerHeartbeatTimeoutSeconds(Map conf) {
-		return JStormUtils.parseInt(conf.get(CONTAINER_HEARTBEAT_TIMEOUT_SECONDS),
-				240);
+		return JStormUtils.parseInt(
+				conf.get(CONTAINER_HEARTBEAT_TIMEOUT_SECONDS), 240);
 	}
-	
+
 	protected static final String CONTAINER_HEARTBEAT_FREQUENCE = "container.heartbeat.frequence";
 
 	public static int getContainerHeartbeatFrequence(Map conf) {
-		return JStormUtils.parseInt(conf.get(CONTAINER_HEARTBEAT_FREQUENCE),
-				10);
+		return JStormUtils
+				.parseInt(conf.get(CONTAINER_HEARTBEAT_FREQUENCE), 10);
 	}
-	
+
 	protected static final String JAVA_SANDBOX_ENABLE = "java.sandbox.enable";
-	
+
 	public static boolean isJavaSandBoxEnable(Map conf) {
 		return JStormUtils.parseBoolean(conf.get(JAVA_SANDBOX_ENABLE), false);
 	}
-	
+
 	protected static String SPOUT_SINGLE_THREAD = "spout.single.thread";
-	
+
 	public static boolean isSpoutSingleThread(Map conf) {
 		return JStormUtils.parseBoolean(conf.get(SPOUT_SINGLE_THREAD), false);
 	}
-	
+
 	public static void setSpoutSingleThread(Map conf, boolean enable) {
 		conf.put(SPOUT_SINGLE_THREAD, enable);
 	}
 
 	protected static String WORKER_STOP_WITHOUT_SUPERVISOR = "worker.stop.without.supervisor";
-	
-	public  static boolean isWorkerStopWithoutSupervisor(Map conf) {
-		return JStormUtils.parseBoolean(conf.get(WORKER_STOP_WITHOUT_SUPERVISOR), false);
+
+	public static boolean isWorkerStopWithoutSupervisor(Map conf) {
+		return JStormUtils.parseBoolean(
+				conf.get(WORKER_STOP_WITHOUT_SUPERVISOR), false);
 	}
-	
+
 	protected static String CGROUP_ROOT_DIR = "supervisor.cgroup.rootdir";
-	
+
 	public static String getCgroupRootDir(Map conf) {
 		return (String) conf.get(CGROUP_ROOT_DIR);
 	}
-	
+
 	protected static String NETTY_TRANSFER_ASYNC_AND_BATCH = "storm.messaging.netty.transfer.async.batch";
+
+	public static boolean isNettyTransferAsyncBatch(Map conf) {
+		return JStormUtils.parseBoolean(
+				conf.get(NETTY_TRANSFER_ASYNC_AND_BATCH), true);
+	}
+
+	protected static final String USE_USERDEFINE_ASSIGNMENT = "use.userdefine.assignment";
+
+	public static void setUserDefineAssignment(Map conf,
+			List<WorkerAssignment> userDefines) {
+		List<String> ret = new ArrayList<String>();
+		for (WorkerAssignment worker : userDefines) {
+			ret.add(Utils.to_json(worker));
+		}
+		conf.put(USE_USERDEFINE_ASSIGNMENT, ret);
+	}
 	
-    public static boolean isNettyTransferAsyncBatch(Map conf) {
-        return JStormUtils.parseBoolean(conf.get(NETTY_TRANSFER_ASYNC_AND_BATCH), true);
+	public static List<WorkerAssignment> getUserDefineAssignment(Map conf) {
+		List<WorkerAssignment> ret = new ArrayList<WorkerAssignment>();
+		if (conf.get(USE_USERDEFINE_ASSIGNMENT) == null)
+			return ret;
+		for (String worker : (List<String>) conf.get(USE_USERDEFINE_ASSIGNMENT)) {
+			ret.add(WorkerAssignment.parseFromObj(Utils.from_json(worker)));
+		}
+		return ret;
+	}
+
+	protected static final String MEMSIZE_PER_WORKER = "worker.memory.size";
+
+	public static void setMemSizePerWorker(Map conf, long memSize) {
+		conf.put(MEMSIZE_PER_WORKER, memSize);
+	}
+
+	public static void setMemSizePerWorkerByKB(Map conf, long memSize) {
+        long size = memSize * 1024l;
+        setMemSizePerWorker(conf, size);
+    }
+	
+    public static void setMemSizePerWorkerByMB(Map conf, long memSize) {
+        long size = memSize * 1024l;
+        setMemSizePerWorkerByKB(conf, size);
+    }
+
+    public static void setMemSizePerWorkerByGB(Map conf, long memSize) {
+        long size = memSize * 1024l;
+        setMemSizePerWorkerByMB(conf, size);
     }
     
-    protected static String  TOPOLOGY_PERFORMANCE_METRICS = "topology.performance.metrics";
+    public static long getMemSizePerWorker(Map conf) {
+		long size = JStormUtils.parseLong(conf.get(MEMSIZE_PER_WORKER),
+				JStormUtils.SIZE_1_G * 2);
+		return size > 0 ? size : JStormUtils.SIZE_1_G * 2;
+	}
     
-    public static boolean isEnablePerformanceMetrics(Map conf) {
-    	return JStormUtils.parseBoolean(conf.get(TOPOLOGY_PERFORMANCE_METRICS), true);
-    }
-    
-    public static void setPerformanceMetrics(Map conf, boolean isEnable) {
-    	conf.put(TOPOLOGY_PERFORMANCE_METRICS, isEnable);
-    }
-    
-    protected static String NETTY_BUFFER_THRESHOLD_SIZE = "storm.messaging.netty.buffer.threshold";
+	protected static final String CPU_SLOT_PER_WORKER = "worker.cpu.slot.num";
+
+	public static void setCpuSlotNumPerWorker(Map conf, int slotNum) {
+		conf.put(CPU_SLOT_PER_WORKER, slotNum);
+	}
+	
+	public static int getCpuSlotPerWorker(Map conf) {
+		int slot = JStormUtils.parseInt(conf.get(CPU_SLOT_PER_WORKER), 1);
+		return slot > 0 ? slot : 1;
+	}
+
+	protected static String TOPOLOGY_PERFORMANCE_METRICS = "topology.performance.metrics";
+
+	public static boolean isEnablePerformanceMetrics(Map conf) {
+		return JStormUtils.parseBoolean(conf.get(TOPOLOGY_PERFORMANCE_METRICS),
+				true);
+	}
+
+	public static void setPerformanceMetrics(Map conf, boolean isEnable) {
+		conf.put(TOPOLOGY_PERFORMANCE_METRICS, isEnable);
+	}
+
+	protected static String NETTY_BUFFER_THRESHOLD_SIZE = "storm.messaging.netty.buffer.threshold";
 
 	public static long getNettyBufferThresholdSize(Map conf) {
-		return JStormUtils.parseLong(conf.get(NETTY_BUFFER_THRESHOLD_SIZE), 33554432);
+		return JStormUtils.parseLong(conf.get(NETTY_BUFFER_THRESHOLD_SIZE),
+				8 *JStormUtils.SIZE_1_M);
 	}
 
-	public static void setNettyBufferThresholdSize(
-			Map conf, long size) {
+	public static void setNettyBufferThresholdSize(Map conf, long size) {
 		conf.put(NETTY_BUFFER_THRESHOLD_SIZE, size);
 	}
+	
+	protected static String NETTY_MAX_SEND_PENDING = "storm.messaging.netty.max.pending";
+	
+	public static void setNettyMaxSendPending(Map conf, long pending) {
+		conf.put(NETTY_MAX_SEND_PENDING, pending);
+	}
+	
+	public static long getNettyMaxSendPending(Map conf) {
+		return JStormUtils.parseLong(conf.get(NETTY_MAX_SEND_PENDING), 16);
+	}
+
+	protected static String DISRUPTOR_USE_SLEEP = "disruptor.use.sleep";
     
+    public static boolean isDisruptorUseSleep(Map conf) {
+    	return JStormUtils.parseBoolean(conf.get(DISRUPTOR_USE_SLEEP), true);
+    }
     
+    public static void setDisruptorUseSleep(Map conf, boolean useSleep) {
+    	conf.put(DISRUPTOR_USE_SLEEP, useSleep);
+    }
     
+    public static boolean isTopologyContainAcker(Map conf) {
+    	int num = JStormUtils.parseInt(conf.get(Config.TOPOLOGY_ACKER_EXECUTORS), 1);
+    	if (num > 0) {
+    		return true;
+    	}else {
+    		return false;
+    	}
+    }
+    
+    protected static String NETTY_SYNC_MODE = "storm.messaging.netty.sync.mode";
+    
+    public static boolean isNettySyncMode(Map conf) {
+    	return JStormUtils.parseBoolean(conf.get(NETTY_SYNC_MODE), false);
+    }
+    
+    public static void setNettySyncMode(Map conf, boolean sync) {
+    	conf.put(NETTY_SYNC_MODE, sync);
+    }
+    
+    protected static String NETTY_ASYNC_BLOCK = "storm.messaging.netty.async.block";
+    public static boolean isNettyASyncBlock(Map conf) {
+    	return JStormUtils.parseBoolean(conf.get(NETTY_ASYNC_BLOCK), true);
+    }
+    
+    public static void setNettyASyncBlock(Map conf, boolean block) {
+    	conf.put(NETTY_ASYNC_BLOCK, block);
+    }
+    
+    protected static String ALIMONITOR_METRICS_POST = "topology.alimonitor.metrics.post";
+    
+    public static boolean isAlimonitorMetricsPost(Map conf) {
+    	return JStormUtils.parseBoolean(conf.get(ALIMONITOR_METRICS_POST), true);
+    }
+    
+    public static void setAlimonitorMetricsPost(Map conf, boolean post) {
+    	conf.put(ALIMONITOR_METRICS_POST, post);
+    }
+	
+	protected static String TASK_CLEANUP_TIMEOUT_SEC = "task.cleanup.timeout.sec";
+    
+    public static int getTaskCleanupTimeoutSec(Map conf) {
+    	return JStormUtils.parseInt(conf.get(TASK_CLEANUP_TIMEOUT_SEC), 10);
+    }
+    
+    public static void setTaskCleanupTimeoutSec(Map conf, int timeout) {
+    	conf.put(TASK_CLEANUP_TIMEOUT_SEC, timeout);
+    }
+    
+    protected static String UI_CLUSTERS = "ui.clusters";
+    protected static String UI_CLUSTER_NAME = "name";
+    protected static String UI_CLUSTER_ZK_ROOT = "zkRoot";
+    protected static String UI_CLUSTER_ZK_SERVERS = "zkServers";
+    protected static String UI_CLUSTER_ZK_PORT = "zkPort";
+    
+    public static List<Map> getUiClusters(Map conf) {
+    	return (List<Map>) conf.get(UI_CLUSTERS);
+    }
+    
+    public static void setUiClusters(Map conf, List<Map> uiClusters) {
+    	conf.put(UI_CLUSTERS, uiClusters);
+    }
+    
+    public static Map getUiClusterInfo(List<Map> uiClusters, String name) {
+    	Map ret = null;
+    	for (Map cluster : uiClusters) {
+    		String clusterName = getUiClusterName(cluster);
+    		if (clusterName.equals(name)) {
+    			ret = cluster;
+    			break;
+    		}
+    	}
+    	
+    	return ret;
+    }
+     
+    public static String getUiClusterName(Map uiCluster) {
+    	return (String) uiCluster.get(UI_CLUSTER_NAME);
+    }
+    
+    public static String getUiClusterZkRoot(Map uiCluster) {
+    	return (String) uiCluster.get(UI_CLUSTER_ZK_ROOT);
+    }
+    
+    public static List<String> getUiClusterZkServers(Map uiCluster) {
+    	return (List<String>) uiCluster.get(UI_CLUSTER_ZK_SERVERS);
+    }
+    
+    public static Integer getUiClusterZkPort(Map uiCluster) {
+    	return JStormUtils.parseInt(uiCluster.get(UI_CLUSTER_ZK_PORT));
+    }
+    
+    protected static String SPOUT_PEND_FULL_SLEEP = "spout.pending.full.sleep";
+    
+    public static boolean isSpoutPendFullSleep(Map conf) {
+    	return JStormUtils.parseBoolean(conf.get(SPOUT_PEND_FULL_SLEEP), false);
+    }
+    
+    public static void setSpoutPendFullSleep(Map conf, boolean sleep) {
+    	conf.put(SPOUT_PEND_FULL_SLEEP, sleep);
+    	
+    }
+    
+    protected static String LOGVIEW_ENCODING = "supervisor.deamon.logview.encoding";
+    protected static String UTF8 = "utf-8";
+    
+    public static String getLogViewEncoding(Map conf) {
+    	String ret = (String) conf.get(LOGVIEW_ENCODING);
+    	if (ret == null) ret = UTF8;
+    	return ret;
+    }
+    
+    public static void setLogViewEncoding(Map conf, String enc) {
+    	conf.put(LOGVIEW_ENCODING,  enc);
+    }
+    
+    public static String TASK_STATUS_ACTIVE = "Active";
+    public static String TASK_STATUS_STARTING = "Starting";
+    
+    protected static String ALIMONITOR_TOPO_METIRC_NAME = "topology.alimonitor.topo.metrics.name";
+    protected static String ALIMONITOR_TASK_METIRC_NAME = "topology.alimonitor.task.metrics.name";
+    protected static String ALIMONITOR_WORKER_METIRC_NAME = "topology.alimonitor.worker.metrics.name";
+    protected static String ALIMONITOR_USER_METIRC_NAME = "topology.alimonitor.user.metrics.name";
+    
+    public static String getAlmonTopoMetricName(Map conf) {
+    	return (String) conf.get(ALIMONITOR_TOPO_METIRC_NAME);
+    }
+    
+    public static String getAlmonTaskMetricName(Map conf) {
+    	return (String) conf.get(ALIMONITOR_TASK_METIRC_NAME);
+    }
+    
+    public static String getAlmonWorkerMetricName(Map conf) {
+    	return (String) conf.get(ALIMONITOR_WORKER_METIRC_NAME);
+    }
+    
+    public static String getAlmonUserMetricName(Map conf) {
+    	return (String) conf.get(ALIMONITOR_USER_METIRC_NAME);
+    }
+    
+    protected static String SPOUT_PARALLELISM = "topology.spout.parallelism";
+    protected static String BOLT_PARALLELISM = "topology.bolt.parallelism";
+    
+    public static Integer getSpoutParallelism(Map conf, String componentName) {
+        Integer ret = null;
+    	Map<String, String> map = (Map<String, String>)(conf.get(SPOUT_PARALLELISM));
+    	if(map != null) ret = JStormUtils.parseInt(map.get(componentName));
+    	return ret;
+    }
+    
+    public static Integer getBoltParallelism(Map conf, String componentName) {
+        Integer ret = null;
+    	Map<String, String> map = (Map<String, String>)(conf.get(BOLT_PARALLELISM));
+    	if(map != null) ret = JStormUtils.parseInt(map.get(componentName));
+        return ret;
+    }
+    
+    protected static String TOPOLOGY_BUFFER_SIZE_LIMITED = "topology.buffer.size.limited";
+    
+    public static void setTopologyBufferSizeLimited(Map conf, boolean limited) {
+    	conf.put(TOPOLOGY_BUFFER_SIZE_LIMITED, limited);
+    }
+    
+    public static boolean getTopologyBufferSizeLimited(Map conf) {
+    	boolean isSynchronized = isNettySyncMode(conf);
+    	if (isSynchronized == true) {
+    		return true;
+    	}
+    	
+    	return JStormUtils.parseBoolean(conf.get(TOPOLOGY_BUFFER_SIZE_LIMITED), true);
+    	
+    }
+    
+    protected static String SUPERVISOR_SLOTS_PORTS_BASE = "supervisor.slots.ports.base";
+    
+    public static int getSupervisorSlotsPortsBase(Map conf) {
+    	return JStormUtils.parseInt(conf.get(SUPERVISOR_SLOTS_PORTS_BASE), 6800);
+    }
+    
+    // SUPERVISOR_SLOTS_PORTS_BASE don't provide setting function, it must be set by configuration
+    
+    protected static String SUPERVISOR_SLOTS_PORT_CPU_WEIGHT = "supervisor.slots.port.cpu.weight";
+    public static double getSupervisorSlotsPortCpuWeight(Map conf) {
+    	Object value = conf.get(SUPERVISOR_SLOTS_PORT_CPU_WEIGHT);
+    	Double ret = JStormUtils.convertToDouble(value);
+    	if (ret == null) {
+    		return 1.0;
+    	}else {
+    		return ret;
+    	}
+    }
+    // SUPERVISOR_SLOTS_PORT_CPU_WEIGHT don't provide setting function, it must be set by configuration
+    
+    protected static String USER_DEFINED_LOG4J_CONF = "user.defined.log4j.conf";
+    
+    public static String getUserDefinedLog4jConf(Map conf) {
+    	return (String)conf.get(USER_DEFINED_LOG4J_CONF);
+    }
+    
+    public static void setUserDefinedLog4jConf(Map conf, String fileName) {
+    	conf.put(USER_DEFINED_LOG4J_CONF, fileName);
+    }
+    
+    protected static String USER_DEFINED_LOGBACK_CONF = "user.defined.logback.conf";
+    
+    public static String getUserDefinedLogbackConf(Map conf) {
+    	return (String)conf.get(USER_DEFINED_LOGBACK_CONF);
+    }
+    
+    public static void setUserDefinedLogbackConf(Map conf, String fileName) {
+    	conf.put(USER_DEFINED_LOGBACK_CONF, fileName);
+    }
+    
+    protected static String TASK_ERROR_INFO_REPORT_INTERVAL = "topology.task.error.report.interval";
+    
+    public static Integer getTaskErrorReportInterval(Map conf) {
+        return JStormUtils.parseInt(conf.get(TASK_ERROR_INFO_REPORT_INTERVAL), 60);
+    }
+    
+    public static void setTaskErrorReportInterval(Map conf, Integer interval) {
+        conf.put(TASK_ERROR_INFO_REPORT_INTERVAL, interval);
+    }
 }

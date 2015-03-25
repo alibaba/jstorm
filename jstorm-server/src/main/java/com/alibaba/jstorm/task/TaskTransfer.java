@@ -15,12 +15,12 @@ import backtype.storm.utils.WorkerClassLoader;
 import com.alibaba.jstorm.callback.AsyncLoopThread;
 import com.alibaba.jstorm.callback.RunnableCallback;
 import com.alibaba.jstorm.daemon.worker.WorkerData;
-import com.alibaba.jstorm.daemon.worker.metrics.JStormTimer;
-import com.alibaba.jstorm.daemon.worker.metrics.Metrics;
-import com.codahale.metrics.Timer;
+import com.alibaba.jstorm.metric.JStormTimer;
+import com.alibaba.jstorm.metric.MetricDef;
+import com.alibaba.jstorm.metric.Metrics;
 import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.SingleThreadedClaimStrategy;
 import com.lmax.disruptor.WaitStrategy;
+import com.lmax.disruptor.dsl.ProducerType;
 
 /**
  * Sending entrance
@@ -61,11 +61,13 @@ public class TaskTransfer {
 		WaitStrategy waitStrategy = (WaitStrategy) Utils
 				.newInstance((String) storm_conf
 						.get(Config.TOPOLOGY_DISRUPTOR_WAIT_STRATEGY));
-		this.serializeQueue = new DisruptorQueue(
-				new SingleThreadedClaimStrategy(queue_size), waitStrategy);
+		this.serializeQueue = DisruptorQueue.mkInstance(taskName, ProducerType.MULTI, 
+				queue_size, waitStrategy);
+		this.serializeQueue.consumerStarted();
 		
-		Metrics.registerQueue(taskName + "-serialize-queue", serializeQueue);
-		timer = Metrics.registerTimer(taskName + "-serialize-timer"); 
+		String taskId = taskName.substring(taskName.indexOf(":") + 1);
+		Metrics.registerQueue(taskName, MetricDef.SERIALIZE_QUEUE, serializeQueue, taskId, Metrics.MetricType.TASK);
+		timer = Metrics.registerTimer(taskName, MetricDef.SERIALIZE_TIME, taskId, Metrics.MetricType.TASK); 
 
 		serializeThread = new AsyncLoopThread(new TransferRunnable());
 		LOG.info("Successfully start TaskTransfer thread");

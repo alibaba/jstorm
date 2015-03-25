@@ -16,13 +16,13 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
 import org.apache.log4j.Logger;
-import org.json.simple.JSONObject;
 
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.ui.UIUtils;
 import com.alibaba.jstorm.utils.FileAttribute;
 import com.alibaba.jstorm.utils.HttpserverUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
+import com.alibaba.jstorm.utils.NetWorkUtils;
 
 /**
  * task log view page service. <br />
@@ -130,10 +130,10 @@ public class ListLogPage implements Serializable {
 	}
 
 	private void parseString(String input) {
-		Map<String, JSONObject> map = (Map<String, JSONObject>) JStormUtils
+		Map<String, Map> map = (Map<String, Map>) JStormUtils
 				.from_json(input);
 
-		for (JSONObject jobj : map.values()) {
+		for (Map jobj : map.values()) {
 			FileAttribute attribute = FileAttribute.fromJSONObject(jobj);
 			if (attribute != null) {
 
@@ -159,7 +159,7 @@ public class ListLogPage implements Serializable {
 	private void listLogs() {
 
 		// PROXY_URL = "http://%s:%s/logview?%s=%s&dir=%s";
-		String url = String.format(PROXY_URL, host, port,
+		String url = String.format(PROXY_URL, NetWorkUtils.host2Ip(host), port,
 				HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_CMD,
 				HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_CMD_LIST,
 				HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_DIR, parent);

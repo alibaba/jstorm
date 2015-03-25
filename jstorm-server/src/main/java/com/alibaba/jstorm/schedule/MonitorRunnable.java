@@ -1,7 +1,7 @@
 package com.alibaba.jstorm.schedule;
 
+import java.util.Date;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.log4j.Logger;
 
@@ -9,8 +9,10 @@ import com.alibaba.jstorm.cluster.StormClusterState;
 import com.alibaba.jstorm.daemon.nimbus.NimbusData;
 import com.alibaba.jstorm.daemon.nimbus.NimbusUtils;
 import com.alibaba.jstorm.daemon.nimbus.StatusType;
-import com.alibaba.jstorm.resource.ResourceAssignment;
+import com.alibaba.jstorm.schedule.default_assign.ResourceWorkerSlot;
 import com.alibaba.jstorm.task.Assignment;
+import com.alibaba.jstorm.utils.TimeFormat;
+import com.alibaba.jstorm.task.TaskInfo;
 
 /**
  * 
@@ -66,26 +68,22 @@ public class MonitorRunnable implements Runnable {
 					boolean isTaskDead = NimbusUtils.isTaskDead(data,
 							topologyid, task);
 					if (isTaskDead == true) {
-
 						LOG.info("Found " + topologyid + ",taskid:" + task
 								+ " is dead");
 						
-						ResourceAssignment resource = null;
+						ResourceWorkerSlot resource = null;
 						if (assignment != null)
-							resource = assignment.getTaskToResource().get(task);
+							resource = assignment.getWorkerByTaskId(task);
 						if (resource != null) {
-							String host = resource.getHostname();
-							if (host == null) {
-								host = assignment.getNodeHost().
-										get(resource.getSupervisorId());
-							}
-							LOG.info("taskid: " + task + " is on "
-									+ host + ":"
-									+ resource.getPort());
+							Date now = new Date();
+							String nowStr = TimeFormat.getSecond(now);
+							String errorInfo = "Task-" + task + " is dead on "
+									+ resource.getHostname() + ":"
+									+ resource.getPort() + ", " + nowStr;
+							LOG.info(errorInfo);
+						    clusterState.report_task_error(topologyid, task, errorInfo);
 						}
-							
 						needReassign = true;
-						break;
 					}
 				}
 				if (needReassign == true) {

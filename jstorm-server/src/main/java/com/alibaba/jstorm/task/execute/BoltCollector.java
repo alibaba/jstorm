@@ -5,8 +5,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Map.Entry;
+import java.util.Random;
 
 import org.apache.log4j.Logger;
 
@@ -17,8 +17,9 @@ import backtype.storm.tuple.MessageId;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.TupleImplExt;
 
-import com.alibaba.jstorm.daemon.worker.metrics.JStormTimer;
-import com.alibaba.jstorm.daemon.worker.metrics.Metrics;
+import com.alibaba.jstorm.metric.JStormTimer;
+import com.alibaba.jstorm.metric.MetricDef;
+import com.alibaba.jstorm.metric.Metrics;
 import com.alibaba.jstorm.stats.CommonStatsRolling;
 import com.alibaba.jstorm.task.TaskTransfer;
 import com.alibaba.jstorm.task.acker.Acker;
@@ -29,7 +30,6 @@ import com.alibaba.jstorm.utils.JStormServerUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.RotatingMap;
 import com.alibaba.jstorm.utils.TimeUtils;
-import com.codahale.metrics.Timer;
 
 /**
  * bolt output interface, do emit/ack/fail
@@ -84,11 +84,10 @@ public class BoltCollector implements IOutputCollector {
 				.get(Config.TOPOLOGY_ACKER_EXECUTORS));
 		
 		String componentId = topologyContext.getThisComponentId();
-		timer = Metrics.registerTimer(JStormServerUtils.getName(componentId, task_id) + "-emit-timer");
-		
+		timer = Metrics.registerTimer(JStormServerUtils.getName(componentId, task_id), 
+				MetricDef.EMIT_TIME, String.valueOf(task_id), Metrics.MetricType.TASK);
 		random = new Random();
 		random.setSeed(System.currentTimeMillis());
-
 	}
 
 	@Override

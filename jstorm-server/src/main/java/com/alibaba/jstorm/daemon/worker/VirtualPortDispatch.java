@@ -1,30 +1,17 @@
 package com.alibaba.jstorm.daemon.worker;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.Set;
 
 import org.apache.log4j.Logger;
 
-import backtype.storm.Config;
 import backtype.storm.messaging.IConnection;
-import backtype.storm.messaging.IContext;
 import backtype.storm.messaging.TaskMessage;
-import backtype.storm.serialization.KryoTupleDeserializer;
-import backtype.storm.tuple.Tuple;
 import backtype.storm.utils.DisruptorQueue;
-import backtype.storm.utils.Utils;
 
-import com.alibaba.jstorm.callback.RunnableCallback;
-import com.alibaba.jstorm.task.TaskStatus;
+import com.alibaba.jstorm.metric.JStormTimer;
+import com.alibaba.jstorm.metric.MetricDef;
+import com.alibaba.jstorm.metric.Metrics;
 import com.alibaba.jstorm.utils.DisruptorRunable;
-import com.alibaba.jstorm.utils.JStormUtils;
-import com.alibaba.jstorm.utils.RunCounter;
-import com.lmax.disruptor.SingleThreadedClaimStrategy;
-import com.lmax.disruptor.WaitStrategy;
 
 //import com.alibaba.jstorm.message.zeroMq.ISendConnection;
 
@@ -41,14 +28,18 @@ public class VirtualPortDispatch extends DisruptorRunable {
 	private ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues;
 	private IConnection recvConnection;
 
+	private static JStormTimer timer = Metrics.registerTimer(null, 
+			MetricDef.DISPATCH_TIME, null, Metrics.MetricType.WORKER);
+	
 	public VirtualPortDispatch(WorkerData workerData,
 			IConnection recvConnection, DisruptorQueue recvQueue) {
-		super(recvQueue, VirtualPortDispatch.class.getSimpleName(), workerData
-				.getActive());
+		super(recvQueue, timer, VirtualPortDispatch.class.getSimpleName(), 
+				workerData.getActive());
 
 		this.recvConnection = recvConnection;
 		this.deserializeQueues = workerData.getDeserializeQueues();
 
+		Metrics.registerQueue(null, MetricDef.DISPATCH_QUEUE, queue, null, Metrics.MetricType.WORKER);
 	}
 
 	public void cleanup() {
@@ -68,6 +59,7 @@ public class VirtualPortDispatch extends DisruptorRunable {
 			
 		}
 		recvConnection = null;
+		Metrics.unregister(null, MetricDef.DISPATCH_QUEUE,  null, Metrics.MetricType.WORKER);
 		LOG.info("Successfully shudown VirtualPortDispatch");
 	}
 

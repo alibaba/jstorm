@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -13,7 +14,6 @@ import org.apache.commons.lang.StringUtils;
 
 import backtype.storm.generated.ThriftResourceType;
 import backtype.storm.scheduler.INimbus;
-import backtype.storm.scheduler.IScheduler;
 import backtype.storm.utils.TimeCacheMap;
 
 import com.alibaba.jstorm.client.ConfigExtension;
@@ -54,21 +54,17 @@ public class NimbusData {
 
 	private final INimbus inimubs;
 
-	private final IScheduler scheduler;
-
 	private Map<String, Map<String, Map<ThriftResourceType, Integer>>> groupToTopology;
 
 	private Map<String, Map<ThriftResourceType, Integer>> groupToResource;
 
 	private Map<String, Map<ThriftResourceType, Integer>> groupToUsedResource;
-
-	private final boolean groupMode;
-	
-	private Lock flushGroupFileLock;
 	
 	private final boolean localMode;
 	
 	private volatile boolean isLeader;
+	
+	private AtomicBoolean isShutdown = new AtomicBoolean(false);
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public NimbusData(Map conf, TimeCacheMap<Object, Object> downloaders,
@@ -92,21 +88,13 @@ public class NimbusData {
 
 		this.inimubs = inimbus;
 
-		this.scheduler = NimbusUtils.mkScheduler(conf, inimbus);
-
 		this.groupToTopology = new HashMap<String, Map<String, Map<ThriftResourceType, Integer>>>();
 
 		this.groupToResource = new ConcurrentHashMap<String, Map<ThriftResourceType, Integer>>();
 
 		this.groupToUsedResource = new ConcurrentHashMap<String, Map<ThriftResourceType, Integer>>();
 		
-		this.flushGroupFileLock = new ReentrantLock();
-
-		String groupCfg = ConfigExtension.getGroupFilePath(conf);
-		if ( StringUtils.isBlank(groupCfg))
-			groupMode = false;
-		else
-			groupMode = true;
+		new ReentrantLock();
 		
 		localMode = StormConfig.local_mode(conf);
 	}
@@ -118,10 +106,8 @@ public class NimbusData {
 		scheduExec = Executors.newScheduledThreadPool(6);
 
 		inimubs = null;
-		groupMode = false;
 		conf = new HashMap<Object, Object>();
 		localMode = false;
-		scheduler = NimbusUtils.mkScheduler(conf, inimubs);
 	}
 
 	public int uptime() {
@@ -204,15 +190,17 @@ public class NimbusData {
 			// TODO Auto-generated catch block
 
 		}
-		scheduExec.shutdown();
+		try {
+			scheduExec.shutdown();
+		}catch(Exception e) {
+		}
+		
+		uploaders.cleanup();
+		downloaders.cleanup();
 	}
 
 	public INimbus getInimubs() {
 		return inimubs;
-	}
-
-	public IScheduler getScheduler() {
-		return scheduler;
 	}
 
 	public Map<String, Map<ThriftResourceType, Integer>> getGroupToResource() {
@@ -227,18 +215,6 @@ public class NimbusData {
 		return groupToUsedResource;
 	}
 
-	public boolean isGroupMode() {
-		return groupMode;
-	}
-
-	public Lock getFlushGroupFileLock() {
-		return flushGroupFileLock;
-	}
-
-	public void setFlushGroupFileLock(Lock flushGroupFileLock) {
-		this.flushGroupFileLock = flushGroupFileLock;
-	}
-
 	public boolean isLocalMode() {
 		return localMode;
 	}
@@ -249,6 +225,10 @@ public class NimbusData {
 
 	public void setLeader(boolean isLeader) {
 		this.isLeader = isLeader;
+	}
+
+	public AtomicBoolean getIsShutdown() {
+		return isShutdown;
 	}
 
 }

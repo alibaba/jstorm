@@ -1,6 +1,7 @@
 package com.alibaba.jstorm.utils;
 
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -10,37 +11,35 @@ import java.io.StringWriter;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import javax.management.AttributeNotFoundException;
-import javax.management.InstanceNotFoundException;
-import javax.management.MBeanException;
-import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
-import javax.management.ReflectionException;
 
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.ExecuteException;
+import org.apache.commons.exec.ExecuteResultHandler;
+import org.apache.commons.exec.PumpStreamHandler;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Appender;
 import org.apache.log4j.FileAppender;
 import org.apache.log4j.Logger;
-import org.json.simple.JSONValue;
 
+import backtype.storm.Config;
 import backtype.storm.utils.Utils;
 
 import com.alibaba.jstorm.callback.AsyncLoopDefaultKill;
 import com.alibaba.jstorm.callback.RunnableCallback;
+import com.alibaba.jstorm.client.ConfigExtension;
 
 /**
  * JStorm utility
@@ -56,6 +55,13 @@ public class JStormUtils {
 	public static long SIZE_1_G = SIZE_1_M * 1024;
 	public static long SIZE_1_T = SIZE_1_G * 1024;
 	public static long SIZE_1_P = SIZE_1_T * 1024;
+	
+	public static final int MIN_1  = 60;
+	public static final int MIN_30 = MIN_1 * 30;
+	public static final int HOUR_1 = MIN_30 * 2;
+	public static final int DAY_1  = HOUR_1 * 24;
+	
+	public static final String osName = System.getProperty("os.name");
 
 	public static String getErrorInfo(String baseInfo, Exception e) {
 		try {
@@ -138,15 +144,35 @@ public class JStormUtils {
 
 		return iOutcome;
 	}
+	
+	/**
+	 * LocalMode variable isn't clean, it make the JStormUtils ugly
+	 */
+	public static boolean localMode = false;
+	
+	public static boolean isLocalMode() {
+		return localMode;
+	}
+
+	public static void setLocalMode(boolean localMode) {
+		JStormUtils.localMode = localMode;
+	}
+	
+	public static void haltProcess(int val) {
+		Runtime.getRuntime().halt(val);
+	}
 
 	public static void halt_process(int val, String msg) {
 		LOG.info("Halting process: " + msg);
 		try {
 			Thread.sleep(1000);
 		} catch (InterruptedException e) {
-			LOG.error("halt_process", e);
 		}
-		Runtime.getRuntime().halt(val);
+		if (localMode && val == 0) {
+			//throw new RuntimeException(msg);
+		}else {
+			haltProcess(val);
+		}
 	}
 
 	/**
@@ -216,7 +242,7 @@ public class JStormUtils {
 		try {
 			exec_command(cmd);
 		} catch (Exception e) {
-			LOG.warn("No " + dir + " from " + jarpath + "by cmd:" + cmd + "!"
+			LOG.warn("No " + dir + " from " + jarpath + " by cmd:" + cmd + "!\n"
 					+ e.getMessage());
 		}
 
@@ -258,17 +284,106 @@ public class JStormUtils {
 
 		ensure_process_killed(pid);
 	}
+	
+	public static void kill_signal(Integer pid, String signal) {
+		String cmd = "kill " + signal  + " " + pid;
+		try {
+			exec_command(cmd);
+			LOG.info(cmd);
+		} catch (ExecuteException e) {
+			LOG.info("Error when run " + cmd + ". Process has been killed. ");
+		} catch (Exception e) {
+			LOG.info("Error when run " + cmd + ". Exception ", e);
+		}
+	}
+	
+	/**
+	 * This function is only for linux
+	 * 
+	 * @param pid
+	 * @return
+	 */
+	public static boolean isProcDead(String pid) {
+		if (osName.equalsIgnoreCase("Linux") == false) {
+			return false;
+		}
+		
+		String path = "/proc/" + pid;
+		File file = new File(path);
+		
+		if (file.exists() == false) {
+			LOG.info("Process " + pid + " is dead");
+			return true;
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * If it is backend, please set resultHandler, such as DefaultExecuteResultHandler
+	 * If it is frontend, ByteArrayOutputStream.toString get the result
+	 * 
+	 * This function don't care whether the command is successfully or not
+	 * 
+	 * @param command
+	 * @param environment
+	 * @param workDir
+	 * @param resultHandler
+	 * @return
+	 * @throws IOException
+	 */
+	public static ByteArrayOutputStream launchProcess(String command, final Map environment,
+			final String workDir, ExecuteResultHandler resultHandler)
+			throws IOException {
 
-	public static java.lang.Process launch_process(String command,
-			Map<String, String> environment) throws IOException {
-		String[] cmdlist = (new String("nohup " + command)).split(" ");
+		String[] cmdlist = command.split(" ");
+
+		CommandLine cmd = new CommandLine(cmdlist[0]);
+		for (String cmdItem : cmdlist) {
+			if (StringUtils.isBlank(cmdItem) == false) {
+				cmd.addArgument(cmdItem);
+			}
+		}
+
+		DefaultExecutor executor = new DefaultExecutor();
+
+		executor.setExitValue(0);
+		if (StringUtils.isBlank(workDir) == false) {
+			executor.setWorkingDirectory(new File(workDir));
+		}
+
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+		PumpStreamHandler streamHandler = new PumpStreamHandler(out, out);
+		if (streamHandler != null) {
+			executor.setStreamHandler(streamHandler);
+		}
+
+		try {
+			if (resultHandler == null) {
+				executor.execute(cmd, environment);
+			} else {
+				executor.execute(cmd, environment, resultHandler);
+			}
+		}catch(ExecuteException e) {
+			
+			// @@@@ 
+			// failed to run command
+		}
+
+		return out;
+
+	}
+	
+	protected static java.lang.Process launchProcess(final String[] cmdlist, 
+			final Map<String, String> environment)  throws IOException {
 		ArrayList<String> buff = new ArrayList<String>();
 		for (String tok : cmdlist) {
 			if (!tok.isEmpty()) {
 				buff.add(tok);
 			}
 		}
-
+		
 		ProcessBuilder builder = new ProcessBuilder(buff);
 		builder.redirectErrorStream(true);
 		Map<String, String> process_evn = builder.environment();
@@ -277,6 +392,40 @@ public class JStormUtils {
 		}
 
 		return builder.start();
+	}
+
+	/**
+	 * @@@ it should use DefaultExecutor to start a process,
+	 * but some little problem have been found, such as exitCode/output string 
+	 * so still use the old method to start process
+	 * 
+	 * @param command
+	 * @param environment
+	 * @param backend
+	 * @return
+	 * @throws IOException
+	 */
+	public static java.lang.Process launch_process(final String command,
+			final Map<String, String> environment, boolean backend) throws IOException {
+
+		if (backend == true) {
+			new Thread(new Runnable() {
+				
+				@Override
+				public void run() {
+					String[] cmdlist = (new String("nohup " + command + " &")).split(" ");
+					try {
+						launchProcess(cmdlist, environment);
+					} catch (IOException e) {
+						LOG.error("Failed to run " + command + ":" + e.getCause(), e);
+					}
+				}
+			}).start();
+			return null;
+		}else {
+			String[] cmdlist = command.split(" ");
+			return launchProcess(cmdlist, environment);
+		}
 	}
 
 	public static String current_classpath() {
@@ -291,15 +440,11 @@ public class JStormUtils {
 	// }
 
 	public static String to_json(Map m) {
-		return JSONValue.toJSONString(m);
+		return Utils.to_json(m);
 	}
 
 	public static Object from_json(String json) {
-		if (json == null) {
-			return null;
-		} else {
-			return JSONValue.parse(json);
-		}
+		return Utils.from_json(json);
 	}
 
 	public static <V> HashMap<V, Integer> multi_set(List<V> list) {
@@ -448,6 +593,27 @@ public class JStormUtils {
 			return Long.valueOf((Integer) value);
 		} else if (o instanceof Long) {
 			return (Long) o;
+		} else {
+			throw new RuntimeException("Invalid value "
+					+ o.getClass().getName() + " " + o);
+		}
+	}
+	
+	public static Double parseDouble(Object o) {
+		if (o == null) {
+			return null;
+		}
+
+		if (o instanceof String) {
+			return Double.valueOf(String.valueOf(o));
+		} else if (o instanceof Integer) {
+			Number value = (Integer) o;
+			return value.doubleValue();
+		} else if (o instanceof Long) {
+			Number value = (Long) o;
+			return value.doubleValue();
+		} else if (o instanceof Double) {
+			return (Double) o;
 		} else {
 			throw new RuntimeException("Invalid value "
 					+ o.getClass().getName() + " " + o);
@@ -653,6 +819,50 @@ public class JStormUtils {
 		}
 
 	}
+	
+	public static double formatDoubleDecPoint2(Double value) {
+		try {
+			java.text.DecimalFormat form = new java.text.DecimalFormat(
+					"##.00");
+			String s = form.format(value);
+			return Double.valueOf(s);
+		} catch (Exception e) {
+			return 0.0;
+		}
+	}
+	
+	public static double formatDoubleDecPoint4(Double value) {
+		try {
+			java.text.DecimalFormat form = new java.text.DecimalFormat(
+					"###.0000");
+			String s = form.format(value);
+			return Double.valueOf(s);
+		} catch (Exception e) {
+			return 0.0;
+		}
+	}
+	
+	public static Double convertToDouble(Object value) {
+		Double ret;
+		
+		if (value == null) {
+			ret = null;
+		} else {
+			if (value instanceof Integer) {
+				ret = ((Integer) value).doubleValue();
+			} else if (value instanceof Long) {
+				ret = ((Long) value).doubleValue();
+			} else if (value instanceof Float) {
+				ret = ((Float) value).doubleValue();
+			} else if (value instanceof Double) {
+				ret = (Double) value;
+			} else {
+				ret = null;
+			}
+		}
+		
+		return ret;
+	}
 
 	public static String formatValue(Object value) {
 		if (value == null) {
@@ -728,6 +938,10 @@ public class JStormUtils {
 
 		return ret;
 	}
+	
+	public static String genLogName(String topology, Integer port) {
+		return topology + "-worker-" + port	 + ".log";
+	}
 
 	public static String getLogFileName() {
 		Enumeration<Appender> enumAppender = Logger.getRootLogger()
@@ -802,5 +1016,61 @@ public class JStormUtils {
 			}
 		}
 		return rtn;
+	}
+	
+	public static List<Integer> getSupervisorPortList(Map conf) {
+		List<Integer> portList = (List<Integer>) conf
+				.get(Config.SUPERVISOR_SLOTS_PORTS);
+		if (portList != null && portList.size() > 0) {
+			return portList;
+		}
+		
+		LOG.info("Generate port list through CPU cores and system memory size");
+		
+		double cpuWeight = ConfigExtension.getSupervisorSlotsPortCpuWeight(conf);
+		int sysCpuNum = 4;
+		try {
+			sysCpuNum = Runtime.getRuntime().availableProcessors();
+		}catch(Exception e) {
+			LOG.info("Failed to get CPU cores, set cpu cores as 4");
+			sysCpuNum = 4;
+		}
+		int cpuPortNum = (int)(sysCpuNum/cpuWeight);
+		if (cpuPortNum < 1) {
+			
+			LOG.info("Invalid supervisor.slots.port.cpu.weight setting :"  
+					+ cpuWeight + ", cpu cores:" + sysCpuNum);
+			cpuPortNum = 1;
+		}
+		
+		int memPortNum = Integer.MAX_VALUE;
+		Long physicalMemSize = JStormUtils.getPhysicMemorySize();
+		if (physicalMemSize == null) {
+			LOG.info("Failed to get memory size");
+		}else {
+			LOG.info("Get system memory size :" + physicalMemSize);
+			long workerMemSize = ConfigExtension.getMemSizePerWorker(conf);
+			memPortNum = (int)(physicalMemSize/workerMemSize);
+			if (memPortNum < 1) {
+				LOG.info("Invalide worker.memory.size setting:" + workerMemSize );
+				memPortNum = 4;
+			}else if (memPortNum < 4){
+				LOG.info("System memory is too small for jstorm");
+				memPortNum = 4;
+			}
+		}
+		
+		int portNum = Math.min(cpuPortNum, memPortNum);
+		if (portNum < 1) {
+			portNum = 1;
+		}
+		
+		int portBase = ConfigExtension.getSupervisorSlotsPortsBase(conf);
+		portList = new ArrayList<Integer>();
+		for(int i = 0; i < portNum; i++) {
+			portList.add(portBase + i);
+		}
+		
+		return portList;
 	}
 }

@@ -2,7 +2,10 @@ package backtype.storm.utils;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
@@ -25,9 +28,15 @@ import java.util.UUID;
 
 import org.apache.commons.io.input.ClassLoaderObjectInputStream;
 import org.apache.commons.lang.StringUtils;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.thrift7.TException;
 import org.json.simple.JSONValue;
 import org.yaml.snakeyaml.Yaml;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import backtype.storm.Config;
 import backtype.storm.generated.ComponentCommon;
@@ -35,10 +44,6 @@ import backtype.storm.generated.ComponentObject;
 import backtype.storm.generated.StormTopology;
 import clojure.lang.IFn;
 import clojure.lang.RT;
-
-import com.netflix.curator.framework.CuratorFramework;
-import com.netflix.curator.framework.CuratorFrameworkFactory;
-import com.netflix.curator.retry.ExponentialBackoffRetry;
 
 public class Utils {
 	public static final String DEFAULT_STREAM_ID = "default";
@@ -85,9 +90,30 @@ public class Utils {
 			throw new RuntimeException(e);
 		}
 	}
-
+	
 	public static Object deserialize(byte[] serialized) {
 		return deserialize(serialized, WorkerClassLoader.getInstance());
+	}
+	
+	public static String to_json(Object m) {
+		//return JSON.toJSONString(m);
+		return JSONValue.toJSONString(m);
+	}
+
+	public static Object from_json(String json) {
+		if (json == null) {
+			return null;
+		} else {
+			//return JSON.parse(json);
+			return JSONValue.parse(json);
+		}
+	}
+	
+	public static String toPrettyJsonString(Object obj) {
+		Gson gson2 = new GsonBuilder().setPrettyPrinting().create();
+		String ret = gson2.toJson(obj);
+		
+		return  ret;
 	}
 
 	public static <T> String join(Iterable<T> coll, String sep) {
@@ -210,15 +236,34 @@ public class Utils {
 		
 		conf.putAll(replaceMap);
 	}
+	
+	public static Map loadDefinedConf(String confFile) {
+		File file = new File(confFile);
+		if (file.exists() == false) {
+			return findAndReadConfigFile(confFile, true);
+		}
+		
+		Yaml yaml = new Yaml();
+		Map ret;
+		try {
+			ret = (Map) yaml.load(new FileReader(file));
+		} catch (FileNotFoundException e) {
+			ret = null;
+		}
+		if (ret == null)
+			ret = new HashMap();
+
+		return new HashMap(ret);
+	}
 
 	public static Map readStormConfig() {
 		Map ret = readDefaultConfig();
 		String confFile = System.getProperty("storm.conf.file");
 		Map storm;
-		if (confFile == null || confFile.equals("")) {
+		if (StringUtils.isBlank(confFile) == true) {
 			storm = findAndReadConfigFile("storm.yaml", false);
 		} else {
-			storm = findAndReadConfigFile(confFile, true);
+			storm = loadDefinedConf(confFile);
 		}
 		ret.putAll(storm);
 		ret.putAll(readCommandLineOpts());
@@ -252,11 +297,12 @@ public class Utils {
 			return conf;
 		}
 	}
+	
+	
 
 	public static boolean isValidConf(Map<String, Object> stormConf) {
 		return normalizeConf(stormConf).equals(
-				normalizeConf((Map) JSONValue.parse(JSONValue
-						.toJSONString(stormConf))));
+				normalizeConf(Utils.from_json(Utils.to_json(stormConf))));
 	}
 
 	public static Object getSetComponentObject(ComponentObject obj,
@@ -417,31 +463,27 @@ public class Utils {
 			serverPorts.add(zkServer + ":" + Utils.getInt(port));
 		}
 		String zkStr = StringUtils.join(serverPorts, ",") + root;
-		try {
-			CuratorFrameworkFactory.Builder builder = CuratorFrameworkFactory
-					.builder()
-					.connectString(zkStr)
-					.connectionTimeoutMs(
-							Utils.getInt(conf
-									.get(Config.STORM_ZOOKEEPER_CONNECTION_TIMEOUT)))
-					.sessionTimeoutMs(
-							Utils.getInt(conf
-									.get(Config.STORM_ZOOKEEPER_SESSION_TIMEOUT)))
-					.retryPolicy(
-							new BoundedExponentialBackoffRetry(
-									Utils.getInt(conf
-											.get(Config.STORM_ZOOKEEPER_RETRY_INTERVAL)),
-									Utils.getInt(conf
-											.get(Config.STORM_ZOOKEEPER_RETRY_TIMES)),
-									Utils.getInt(conf
-											.get(Config.STORM_ZOOKEEPER_RETRY_INTERVAL_CEILING))));
-			if (auth != null && auth.scheme != null) {
-				builder = builder.authorization(auth.scheme, auth.payload);
-			}
-			return builder.build();
-		} catch (IOException e) {
-			throw new RuntimeException(e);
+		CuratorFrameworkFactory.Builder builder = CuratorFrameworkFactory
+				.builder()
+				.connectString(zkStr)
+				.connectionTimeoutMs(
+						Utils.getInt(conf
+								.get(Config.STORM_ZOOKEEPER_CONNECTION_TIMEOUT)))
+				.sessionTimeoutMs(
+						Utils.getInt(conf
+								.get(Config.STORM_ZOOKEEPER_SESSION_TIMEOUT)))
+				.retryPolicy(
+						new BoundedExponentialBackoffRetry(
+								Utils.getInt(conf
+										.get(Config.STORM_ZOOKEEPER_RETRY_INTERVAL)),
+								Utils.getInt(conf
+										.get(Config.STORM_ZOOKEEPER_RETRY_TIMES)),
+								Utils.getInt(conf
+										.get(Config.STORM_ZOOKEEPER_RETRY_INTERVAL_CEILING))));
+		if (auth != null && auth.scheme != null) {
+			builder = builder.authorization(auth.scheme, auth.payload);
 		}
+		return builder.build();
 	}
 
 	public static CuratorFramework newCurator(Map conf, List<String> servers,
@@ -534,6 +576,17 @@ public class Utils {
 	public static String normalize_path(String path) {
 		String rtn = toks_to_path(tokenize_path(path));
 		return rtn;
+	}
+	
+	public static String printStack() {
+		StringBuilder sb = new StringBuilder();
+		sb.append("\nCurrent call stack:\n");
+		StackTraceElement[] stackElements= Thread.currentThread().getStackTrace();
+		for (int i = 2; i < stackElements.length; i++) {
+			sb.append("\t").append(stackElements[i]).append("\n");
+        }
+		
+		return sb.toString();
 	}
 	
 }

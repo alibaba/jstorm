@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.thrift7.TException;
-import org.json.simple.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +39,7 @@ public class ReturnResults extends BaseRichBolt {
 		String result = (String) input.getValue(0);
 		String returnInfo = (String) input.getValue(1);
 		if (returnInfo != null) {
-			Map retMap = (Map) JSONValue.parse(returnInfo);
+			Map retMap = (Map) Utils.from_json(returnInfo);
 			final String host = (String) retMap.get("host");
 			final int port = Utils.getInt(retMap.get("port"));
 			String id = (String) retMap.get("id");

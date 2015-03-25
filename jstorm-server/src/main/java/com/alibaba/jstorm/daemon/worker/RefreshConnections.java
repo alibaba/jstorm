@@ -17,9 +17,12 @@ import backtype.storm.scheduler.WorkerSlot;
 
 import com.alibaba.jstorm.callback.RunnableCallback;
 import com.alibaba.jstorm.cluster.StormClusterState;
-import com.alibaba.jstorm.resource.ResourceAssignment;
+import com.alibaba.jstorm.schedule.default_assign.ResourceWorkerSlot;
 import com.alibaba.jstorm.task.Assignment;
 import com.alibaba.jstorm.utils.JStormUtils;
+import com.alibaba.jstorm.utils.TimeUtils;
+import com.alibaba.jstorm.task.TaskInfo;
+import com.alibaba.jstorm.task.heartbeat.TaskHeartbeat;
 
 /**
  * 
@@ -53,8 +56,10 @@ public class RefreshConnections extends RunnableCallback {
 	private ConcurrentHashMap<Integer, WorkerSlot> taskNodeport;
 
 	private Integer frequence;
+
+	private String supervisorId;
 	
-	private String  supervisorId;
+	private int taskTimeoutSecs;
 
 	// private ReentrantReadWriteLock endpoint_socket_lock;
 
@@ -76,6 +81,9 @@ public class RefreshConnections extends RunnableCallback {
 		// this.endpoint_socket_lock = endpoint_socket_lock;
 		frequence = JStormUtils.parseInt(
 				conf.get(Config.TASK_REFRESH_POLL_SECS), 5);
+		
+		taskTimeoutSecs = JStormUtils.parseInt(conf.get(Config.TASK_HEARTBEAT_FREQUENCY_SECS), 10);
+		taskTimeoutSecs = taskTimeoutSecs*3;
 	}
 
 	@Override
@@ -90,8 +98,10 @@ public class RefreshConnections extends RunnableCallback {
 			// @@@ does lock need?
 			// endpoint_socket_lock.writeLock().lock();
 			//
+
 			synchronized (this) {
-				Assignment assignment = zkCluster.assignment_info(topologyId, this);
+				Assignment assignment = zkCluster.assignment_info(topologyId,
+						this);
 				if (assignment == null) {
 					String errMsg = "Failed to get Assignment of " + topologyId;
 					LOG.error(errMsg);
@@ -99,14 +109,14 @@ public class RefreshConnections extends RunnableCallback {
 					return;
 				}
 
-				Map<Integer, ResourceAssignment> taskToResource = assignment
-						.getTaskToResource();
-				if (taskToResource == null) {
-					String errMsg = "Failed to get taskToResource of " + topologyId;
+				Set<ResourceWorkerSlot> workers = assignment.getWorkers();
+				if (workers == null) {
+					String errMsg = "Failed to get taskToResource of "
+							+ topologyId;
 					LOG.error(errMsg);
 					return;
 				}
-				workerData.getTaskToResource().putAll(taskToResource);
+				workerData.getWorkerToResource().addAll(workers);
 
 				Map<Integer, WorkerSlot> my_assignment = new HashMap<Integer, WorkerSlot>();
 
@@ -114,23 +124,18 @@ public class RefreshConnections extends RunnableCallback {
 
 				// only reserve outboundTasks
 				Set<WorkerSlot> need_connections = new HashSet<WorkerSlot>();
-				
-				Set<Integer>    localNodeTasks = new HashSet<Integer>();
 
-				if (taskToResource != null && outboundTasks != null) {
-					for (Entry<Integer, ResourceAssignment> mm : taskToResource
-							.entrySet()) {
-						int taks_id = mm.getKey();
-						ResourceAssignment resource = mm.getValue();
-						if (outboundTasks.contains(taks_id)) {
-							WorkerSlot workerSlot = new WorkerSlot(
-									resource.getSupervisorId(), resource.getPort());
-							my_assignment.put(taks_id, workerSlot);
-							need_connections.add(workerSlot);
-						}
-						
-						if (supervisorId.equals(resource.getSupervisorId())) {
-							localNodeTasks.add(taks_id);
+				Set<Integer> localNodeTasks = new HashSet<Integer>();
+
+				if (workers != null && outboundTasks != null) {
+					for (ResourceWorkerSlot worker : workers) {
+						if (supervisorId.equals(worker.getNodeId()))
+							localNodeTasks.addAll(worker.getTasks());
+						for (Integer id : worker.getTasks()) {
+							if (outboundTasks.contains(id)) {
+								my_assignment.put(id, worker);
+								need_connections.add(worker);
+							}
 						}
 					}
 				}
@@ -161,8 +166,7 @@ public class RefreshConnections extends RunnableCallback {
 
 					int port = nodePort.getPort();
 
-					IConnection conn = context
-							.connect(topologyId, host, port);
+					IConnection conn = context.connect(topologyId, host, port);
 
 					nodeportSocket.put(nodePort, conn);
 
@@ -174,9 +178,20 @@ public class RefreshConnections extends RunnableCallback {
 					LOG.info("Remove connection to " + node_port);
 					nodeportSocket.remove(node_port).close();
 				}
+				
+				// Update the status of all outbound tasks
+				for (Integer taskId : outboundTasks) {
+					boolean isActive = false;
+					int currentTime = TimeUtils.current_time_secs();
+					TaskHeartbeat tHB = zkCluster.task_heartbeat(topologyId, taskId);
+					if (tHB != null) {
+					    int taskReportTime = tHB.getTimeSecs();
+					    if ((currentTime - taskReportTime) < taskTimeoutSecs)
+						    isActive = true;
+					}
+				    workerData.updateOutboundTaskStatus(taskId, isActive);
+				}
 			}
-
-			
 		} catch (Exception e) {
 			LOG.error("Failed to refresh worker Connection", e);
 			throw new RuntimeException(e);

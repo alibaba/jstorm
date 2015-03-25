@@ -7,7 +7,6 @@ import java.util.Map;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.thrift7.TException;
-import org.json.simple.JSONValue;
 
 import storm.trident.drpc.ReturnResultsReducer.ReturnResultsState;
 import storm.trident.operation.MultiReducer;
@@ -59,8 +58,8 @@ public class ReturnResultsReducer implements MultiReducer<ReturnResultsState> {
     public void complete(ReturnResultsState state, TridentCollector collector) {
         // only one of the multireducers will receive the tuples
         if(state.returnInfo!=null) {
-            String result = JSONValue.toJSONString(state.results);
-            Map retMap = (Map) JSONValue.parse(state.returnInfo);
+            String result = Utils.to_json(state.results);
+            Map retMap = (Map) Utils.from_json(state.returnInfo);
             final String host = (String) retMap.get("host");
             final int port = Utils.getInt(retMap.get("port"));
             String id = (String) retMap.get("id");

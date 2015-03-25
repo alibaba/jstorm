@@ -37,16 +37,15 @@ class NettyServer implements IConnection {
 	final ChannelFactory factory;
 	final ServerBootstrap bootstrap;
 
-	// @@@ testing code
-	private final AtomicInteger counter = new AtomicInteger(0);
-
 	// ayncBatch is only one solution, so directly set it as true
-	private final boolean noResponse = true;
+	private final boolean isSyncMode;
 
 	@SuppressWarnings("rawtypes")
-	NettyServer(Map storm_conf, int port) {
+	NettyServer(Map storm_conf, int port, boolean isSyncMode) {
 		this.storm_conf = storm_conf;
 		this.port = port;
+		this.isSyncMode = isSyncMode;
+		
 		// Configure the server.
 		int buffer_size = Utils.getInt(storm_conf
 				.get(Config.STORM_MESSAGING_NETTY_BUFFER_SIZE));
@@ -70,6 +69,7 @@ class NettyServer implements IConnection {
 		}
 
 		bootstrap = new ServerBootstrap(factory);
+		bootstrap.setOption("reuserAddress", true);
 		bootstrap.setOption("child.tcpNoDelay", true);
 		bootstrap.setOption("child.receiveBufferSize", buffer_size);
 		bootstrap.setOption("child.keepAlive", true);
@@ -96,8 +96,6 @@ class NettyServer implements IConnection {
 	 * @throws InterruptedException
 	 */
 	public void enqueue(TaskMessage message) {
-		LOG.debug("message received with task: {},  receive: {} ",
-				message.task(), counter.incrementAndGet());
 
 		recvQueue.publish(message);
 
@@ -190,8 +188,8 @@ class NettyServer implements IConnection {
 		return false;
 	}
 
-	public boolean isNoResponse() {
-		return noResponse;
+	public boolean isSyncMode() {
+		return isSyncMode;
 	}
 
 	

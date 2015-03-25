@@ -5,18 +5,18 @@
 	<parent>
 		<groupId>com.alibaba.jstorm</groupId>
 		<artifactId>jstorm-all</artifactId>
-		<version>0.9.4.1</version>
+		<version>0.9.6.3</version>
 		<relativePath>..</relativePath>
 	</parent>
 	<!--<parent> 
 		<groupId>com.taobao</groupId> 
 		<artifactId>parent</artifactId> 
 		<version>1.0.2</version> 
-	</parent> -->
+	</parent>--> 
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.alibaba.jstorm</groupId>
 	<artifactId>jstorm-client</artifactId>
-	<version>0.9.4.1</version>
+	<version>0.9.6.3</version>
 	<packaging>jar</packaging>
 	<name>${project.artifactId}-${project.version}</name>
 
@@ -24,7 +24,7 @@
 		<plugins>
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>2.0.2</version>
+				<version>2.3.2</version>
 				<configuration>
 					<source>1.6</source>
 					<target>1.6</target>
@@ -42,26 +42,18 @@
 					</execution>
 				</executions>
 			</plugin>
-
-			<plugin>
-				<artifactId>maven-assembly-plugin</artifactId>
-				<configuration>
-					<finalName>jstorm</finalName>
-					<descriptors>
-						<descriptor>release.xml</descriptor>
-					</descriptors>
-				</configuration>
-			</plugin>
 		</plugins>
 	</build>
 	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<powermock.version>1.4.11</powermock.version>
-	</properties>
+        
+    </properties>
 	<dependencies>
 		<dependency>
 			<groupId>org.clojure</groupId>
 			<artifactId>clojure</artifactId>
-			<version>1.4.0</version>
+			<version>1.5.1</version>
 		</dependency>
 		<dependency>
 			<groupId>commons-io</groupId>
@@ -76,7 +68,7 @@
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpclient</artifactId>
-			<version>4.1.1</version>
+			<version>4.3.2</version>
 		</dependency>
 		<dependency>
 			<groupId>storm</groupId>
@@ -90,19 +82,14 @@
 			</exclusions>
 		</dependency>
 		<dependency>
-			<groupId>org.ini4j</groupId>
-			<artifactId>ini4j</artifactId>
-			<version>0.5.2</version>
-		</dependency>
-		<dependency>
 			<groupId>clj-time</groupId>
 			<artifactId>clj-time</artifactId>
 			<version>0.4.1</version>
 		</dependency>
 		<dependency>
-			<groupId>com.netflix.curator</groupId>
-			<artifactId>curator-framework</artifactId>
-			<version>1.1.15</version>
+			<groupId>org.apache.curator</groupId>
+            <artifactId>curator-framework</artifactId>
+			<version>2.5.0</version>
 			<exclusions>
 				<exclusion>
 					<groupId>log4j</groupId>
@@ -111,18 +98,6 @@
 				<exclusion>
 					<groupId>org.slf4j</groupId>
 					<artifactId>slf4j-api</artifactId>
-				</exclusion>
-			</exclusions>
-		</dependency>
-
-		<dependency>
-			<groupId>org.apache.zookeeper</groupId>
-			<artifactId>zookeeper</artifactId>
-			<version>3.3.4</version>
-			<exclusions>
-				<exclusion>
-					<groupId>log4j</groupId>
-					<artifactId>log4j</artifactId>
 				</exclusion>
 			</exclusions>
 		</dependency>
@@ -136,6 +111,12 @@
 			<artifactId>kryo</artifactId>
 			<version>2.17</version>
 		</dependency>
+		<dependency>
+			<groupId>com.alibaba</groupId>
+			<artifactId>fastjson</artifactId>
+			<version>1.1.41</version>
+		</dependency>
+		<!-- keep compatible with storm, some old project use gson -->
 		<dependency>
 			<groupId>com.googlecode.json-simple</groupId>
 			<artifactId>json-simple</artifactId>
@@ -153,24 +134,19 @@
 			<version>1.11</version>
 		</dependency>
 		<dependency>
-			<groupId>com.googlecode.disruptor</groupId>
-			<artifactId>disruptor</artifactId>
-			<version>2.10.1</version>
+		  <groupId>com.lmax</groupId>
+		  <artifactId>disruptor</artifactId>
+		  <version>3.2.1</version>
 		</dependency>
 		<dependency>
-			<groupId>org.jboss.netty</groupId>
+			<groupId>io.netty</groupId>
 			<artifactId>netty</artifactId>
-			<version>3.2.7.Final</version>
+			<version>3.9.0.Final</version>
 		</dependency>
 		<dependency>
 			<groupId>storm</groupId>
 			<artifactId>jgrapht</artifactId>
 			<version>0.8.3</version>
-		</dependency>
-		<dependency>
-			<groupId>com.google.guava</groupId>
-			<artifactId>guava</artifactId>
-			<version>13.0</version>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
@@ -199,9 +175,20 @@
 			<artifactId>commons-cli</artifactId>
 			<version>1.2</version>
 		</dependency>
+		<dependency>
+		      <groupId>org.codehaus.plexus</groupId>
+		      <artifactId>plexus-compiler-javac</artifactId>
+		      <version>1.8.1</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.code.gson</groupId>
+			<artifactId>gson</artifactId>
+			<version>2.3.1</version>
+		</dependency>
 
 		<!-- <dependency> <groupId>ch.qos.logback</groupId> <artifactId>logback-classic</artifactId> 
 			<version>1.0.13</version> </dependency> <dependency> <groupId>org.slf4j</groupId> 
 			<artifactId>log4j-over-slf4j</artifactId> <version>1.7.5</version> </dependency> -->
+		
 	</dependencies>
 </project>

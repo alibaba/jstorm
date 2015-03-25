@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.thrift7.TException;
-import org.json.simple.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,7 +98,7 @@ public class DRPCSpout extends BaseRichSpout {
 						returnInfo.put("port", client.getPort());
 						gotRequest = true;
 						_collector.emit(new Values(req.get_func_args(),
-								JSONValue.toJSONString(returnInfo)),
+								Utils.to_json(returnInfo)),
 								new DRPCMessageId(req.get_request_id(), i));
 						break;
 					}
@@ -121,7 +120,7 @@ public class DRPCSpout extends BaseRichSpout {
 						returnInfo.put("port", 0);
 						gotRequest = true;
 						_collector.emit(new Values(req.get_func_args(),
-								JSONValue.toJSONString(returnInfo)),
+								Utils.to_json(returnInfo)),
 								new DRPCMessageId(req.get_request_id(), 0));
 					}
 				} catch (TException e) {
