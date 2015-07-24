@@ -37,7 +37,7 @@ storm.meta.serialization.delegate: "backtype.storm.serialization.DefaultSerializ
 nimbus.host: "localhost"
 nimbus.thrift.port: 7627
 nimbus.thrift.max_buffer_size: 6291456
-nimbus.childopts: " -Xms2g -Xmx2g -Xmn768m -XX:PermSize=128m  -XX:SurvivorRatio=4 -XX:MaxTenuringThreshold=20 -XX:+UseConcMarkSweepGC  -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:CMSFullGCsBeforeCompaction=5 -XX:+HeapDumpOnOutOfMemoryError  -XX:+UseCMSCompactAtFullCollection -XX:CMSMaxAbortablePrecleanTime=5000 "
+nimbus.childopts: " -Xms2g -Xmx2g -Xmn768m -XX:PermSize=128m  -XX:SurvivorRatio=4 -XX:+UseConcMarkSweepGC  -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:CMSFullGCsBeforeCompaction=5 -XX:+HeapDumpOnOutOfMemoryError  -XX:+UseCMSCompactAtFullCollection -XX:CMSMaxAbortablePrecleanTime=5000 "
 nimbus.task.timeout.secs: 120
 nimbus.supervisor.timeout.secs: 60
 nimbus.monitor.freq.secs: 10
@@ -124,7 +124,7 @@ supervisor.use.ip: true
 ### worker.* configs are for task workers
 # worker gc configuration
 # worker.gc.path will put all gc logs and memory dump file
-worker.gc.childopts: " -XX:SurvivorRatio=4 -XX:MaxTenuringThreshold=15 -XX:+UseConcMarkSweepGC  -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:CMSFullGCsBeforeCompaction=5 -XX:+HeapDumpOnOutOfMemoryError -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+UseCMSCompactAtFullCollection -XX:CMSMaxAbortablePrecleanTime=5000 "
+worker.gc.childopts: " -XX:SurvivorRatio=4 -XX:+UseConcMarkSweepGC  -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:CMSFullGCsBeforeCompaction=5 -XX:+HeapDumpOnOutOfMemoryError -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+UseCMSCompactAtFullCollection -XX:CMSMaxAbortablePrecleanTime=5000 "
 worker.heartbeat.frequency.secs: 2
 worker.classpath: ""
 worker.redirect.output: true
