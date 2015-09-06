@@ -1,10 +1,12 @@
 package com.alibaba.jstorm.yarn.thrift;
 
-import backtype.storm.Config;
+//import backtype.storm.Config;
 import javax.security.auth.login.Configuration;
 import javax.security.auth.login.AppConfigurationEntry;
 import java.security.NoSuchAlgorithmException;
 import java.security.URIParameter;
+
+import com.alibaba.jstorm.yarn.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.File;
@@ -53,7 +55,7 @@ public class AuthUtils {
     public static ITransportPlugin GetTransportPlugin(Map storm_conf, Configuration login_conf) {
         ITransportPlugin  transportPlugin = null;
         try {
-            String transport_plugin_klassName = (String) storm_conf.get(Config.STORM_THRIFT_TRANSPORT_PLUGIN);
+            String transport_plugin_klassName = (String) storm_conf.get(Config.MASTER_THRIFT_TRANSPORT_PLUGIN);
             Class klass = Class.forName(transport_plugin_klassName);
             transportPlugin = (ITransportPlugin)klass.newInstance();
             transportPlugin.prepare(storm_conf, login_conf);

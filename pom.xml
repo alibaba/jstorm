@@ -13,10 +13,12 @@
 	</modules>
 	
 	<repositories>
+<!--
 	    <repository>
 			<id>taobao</id>
 			<url>http://mvnrepo.code.taobao.org/nexus/content/repositories/releases/</url>
 		</repository>
+-->
 		<repository>
 			<id>twitter4j</id>
 			<url>http://twitter4j.org/maven2</url>

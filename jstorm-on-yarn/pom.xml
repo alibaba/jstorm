@@ -27,6 +27,10 @@
             <id>apache.snapshots</id>
             <url>http://repository.apache.org/content/repositories/snapshots/</url>
         </repository>
+        <repository>
+            <id>cloudera</id>
+            <url>https://repository.cloudera.com/artifactory/cloudera-repos/</url>
+        </repository>
         <!--repository>
             <id>hortonworks</id>
             <url>http://repo.hortonworks.com/content/repositories/releases/</url>
@@ -34,16 +38,18 @@
 
         <!-- Special: following this instruction alternative 3
         http://slf4j.org/faq.html#excludingJCL -->
+        <!--
         <repository>
             <id>version99</id>
-            <!-- highly available repository serving empty artifacts -->
             <url>http://version99.qos.ch/</url>
-        </repository>    
+        </repository>
+            -->
+
     </repositories>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <jstorm.version>0.9.0-wip21</jstorm.version>
-    <hadoop.version>2.2.0</hadoop.version>
+    <jstorm.version>2.0.4-SNAPSHOT</jstorm.version>
+    <hadoop.version>2.5.0-cdh5.3.2</hadoop.version>
   </properties>
 
   <dependencies>
@@ -110,6 +116,15 @@
 			<artifactId>snakeyaml</artifactId>
 			<version>1.13</version>
 		</dependency>
+
+      <dependency>
+          <groupId>com.alibaba.jstorm</groupId>
+          <artifactId>jstorm-core</artifactId>
+          <version>${jstorm.version}</version>
+          <scope>provided</scope>
+      </dependency>
+
+<!--
 		<dependency>
 			<groupId>com.alibaba.jstorm</groupId>
 			<artifactId>jstorm-client</artifactId>
@@ -124,14 +139,14 @@
 			<scope>provided</scope>
 		</dependency>
 
-
 		<dependency>
 			<groupId>com.alibaba.jstorm</groupId>
 			<artifactId>jstorm-server</artifactId>
 			<version>0.9.3.1</version>
 			<scope>provided</scope>
 		</dependency>
-		
+
+
 		<dependency>
 			<groupId>storm</groupId>
 			<artifactId>libthrift7</artifactId>
@@ -143,10 +158,11 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
+-->
 		<dependency>
 			<groupId>org.apache.thrift</groupId>
 			<artifactId>libthrift</artifactId>
-			<version>0.6.1</version>
+			<version>0.9.2</version>
 		</dependency>
 		
 	

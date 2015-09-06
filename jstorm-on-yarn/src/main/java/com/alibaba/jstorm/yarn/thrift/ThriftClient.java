@@ -3,14 +3,15 @@ package com.alibaba.jstorm.yarn.thrift;
 import java.io.IOException;
 import java.util.Map;
 import javax.security.auth.login.Configuration;
-import org.apache.thrift7.protocol.TBinaryProtocol;
-import org.apache.thrift7.protocol.TProtocol;
-import org.apache.thrift7.transport.TSocket;
-import org.apache.thrift7.transport.TTransport;
-import org.apache.thrift7.transport.TTransportException;
+
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import backtype.storm.utils.Utils;
+//import backtype.storm.utils.Utils;
 
 public class ThriftClient {	
     private static final Logger LOG = LoggerFactory.getLogger(ThriftClient.class);
@@ -49,7 +50,7 @@ public class ThriftClient {
         }
         _protocol = null;
         if (_transport != null)
-            _protocol = new  TBinaryProtocol(_transport);
+            _protocol = new TBinaryProtocol(_transport);
     }
 
     public TTransport transport() {

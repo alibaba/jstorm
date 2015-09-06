@@ -7,18 +7,14 @@ import java.net.UnknownHostException;
 import java.util.Map;
 
 import javax.security.auth.login.Configuration;
-import org.apache.thrift7.TException;
-import org.apache.thrift7.TProcessor;
-import org.apache.thrift7.protocol.TBinaryProtocol;
-import org.apache.thrift7.protocol.TProtocol;
-import org.apache.thrift7.server.THsHaServer;
-import org.apache.thrift7.server.TServer;
-import org.apache.thrift7.transport.TFramedTransport;
-import org.apache.thrift7.transport.TMemoryInputTransport;
-import org.apache.thrift7.transport.TNonblockingServerSocket;
-import org.apache.thrift7.transport.TSocket;
-import org.apache.thrift7.transport.TTransport;
-import org.apache.thrift7.transport.TTransportException;
+
+import org.apache.thrift.TException;
+import org.apache.thrift.TProcessor;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.server.THsHaServer;
+import org.apache.thrift.server.TServer;
+import org.apache.thrift.transport.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +44,7 @@ public class SimpleTransportPlugin implements ITransportPlugin {
         THsHaServer.Args server_args = new THsHaServer.Args(serverTransport).
                 processor(new SimpleWrapProcessor(processor)).
                 workerThreads(64).
-                protocolFactory(new TBinaryProtocol.Factory());            
+                protocolFactory(new TBinaryProtocol.Factory());
 
         //construct THsHaServer
         return new THsHaServer(server_args);

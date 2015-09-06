@@ -2,13 +2,15 @@ package com.alibaba.jstorm.yarn;
 
 import java.util.Map;
 
-import org.apache.thrift7.transport.TTransportException;
+//import backtype.storm.security.auth.ThriftClient;
+//import backtype.storm.security.auth.ThriftConnectionType;
+import com.alibaba.jstorm.yarn.thrift.ThriftClient;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.alibaba.jstorm.yarn.generated.StormMaster;
 import com.alibaba.jstorm.yarn.generated.StormMaster.Client;
-import com.alibaba.jstorm.yarn.thrift.ThriftClient;
 
 import backtype.storm.utils.Utils;
 
@@ -17,6 +19,7 @@ public class MasterClient extends ThriftClient {
 	private static final Logger LOG = LoggerFactory.getLogger(MasterClient.class);
 
 	public MasterClient(Map storm_conf, String masterHost, int masterPort, Integer timeout) throws Exception {
+//		super(storm_conf, ThriftConnectionType.NIMBUS, masterHost, masterPort, timeout);
 		super(storm_conf, masterHost, masterPort, timeout);
         _client = new StormMaster.Client(_protocol);
 	}
