@@ -2,16 +2,16 @@
 [JStorm Chinese introduction](http://42.121.19.155/jstorm/JStorm-introduce.pptx)
 #Release 2.0.4-SNAPSHOT
 ## New features
-1.完全重构采样系统， 使用全新的Rollingwindow和Metric计算方式，尤其是netty采样数据，另外metric 发送和接收将不通过zk
-2.完全重构web-ui
-3.引入rocketdb，增加nimbus cache layer
-4.梳理所有的zk节点和zk操作， 去掉无用的zk 操作
-5.梳理所有的thrift 数据结构和函数， 去掉无用的rpc函数
-6.将jstorm-client/jstorm-client-extension/jstorm-core整合为jstorm－core
-7.同步依赖和storm一样
-8.同步apache-storm-0.10.0-beta1 java 代码
-9.切换日志系统到logback
-10.升级thrift 到apache thrift 0.9.2
+1. 完全重构采样系统， 使用全新的Rollingwindow和Metric计算方式，尤其是netty采样数据，另外metric 发送和接收将不通过zk
+2. 完全重构web-ui
+3. 引入rocksdb，增加nimbus cache layer
+4. 梳理所有的zk节点和zk操作， 去掉无用的zk 操作
+5. 梳理所有的thrift 数据结构和函数， 去掉无用的rpc函数
+6. 将jstorm-client/jstorm-client-extension/jstorm-core整合为jstorm－core
+7. 同步依赖和storm一样
+8. 同步apache-storm-0.10.0-beta1 java 代码
+9. 切换日志系统到logback
+10. 升级thrift 到apache thrift 0.9.2
 11. 针对超大型任务600个worker／2000个task以上任务进行优化
 12. 要求 jdk7 or higher
 
