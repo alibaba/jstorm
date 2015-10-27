@@ -38,8 +38,12 @@
 			<version>${jstorm.version}</version>
 			<scope>provided</scope>
 		</dependency>
-
-		
+		<dependency>
+			<groupId>com.alibaba.jstorm</groupId>
+			<artifactId>jstorm-kafka</artifactId>
+			<version>${jstorm.version}</version>
+			<scope>provided</scope>
+		</dependency>
 		
 		<dependency>
 			<groupId>junit</groupId>

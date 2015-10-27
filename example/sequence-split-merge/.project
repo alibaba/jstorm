@@ -3,6 +3,8 @@
 	<name>sequence-split-merge</name>
 	<comment></comment>
 	<projects>
+		<project>jstorm-core</project>
+		<project>jstorm-kafka</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

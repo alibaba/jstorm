@@ -125,7 +125,8 @@ public class PartitionConsumer {
             msgs = consumer.fetchMessages(partition, emittingOffset + 1);
             
             if (msgs == null) {
-                LOG.error("fetch null message from offset {}", emittingOffset);
+            	//Ken Chen, 2015-10-26, replace from LOG.error to LOG.info, to avoid this error print to the log file while there is no messages
+                LOG.info("fetch null message from offset {}", emittingOffset);
                 return;
             }
             
