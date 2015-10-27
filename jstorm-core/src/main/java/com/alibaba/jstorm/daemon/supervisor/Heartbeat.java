@@ -92,7 +92,9 @@ class Heartbeat extends RunnableCallback {
         List<Integer> portList = JStormUtils.getSupervisorPortList(conf);
 
         if (!StormConfig.local_mode(conf)) {
-            try {
+           /* 
+            * Ken Chen, 2015-10-26, comment out for localhost environment 
+        	try {
 
                 boolean isLocaliP = false;
                 isLocaliP = myHostName.equals("127.0.0.1");
@@ -103,6 +105,8 @@ class Heartbeat extends RunnableCallback {
                 LOG.error("get supervisor host error!", e1);
                 throw new RuntimeException(e1);
             }
+        	*/
+        	
             Set<Integer> ports = JStormUtils.listToSet(portList);
             supervisorInfo =
                     new SupervisorInfo(myHostName, supervisorId, ports);

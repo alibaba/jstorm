@@ -76,6 +76,9 @@ public class FollowerRunnable implements Runnable {
                             + String.valueOf(Utils.getInt(data.getConf().get(
                                     Config.NIMBUS_THRIFT_PORT)));
         }
+        
+        /*
+         * Ken Chen, 2015-10-26, comment out for localhost environment        
         try {
             String[] hostfigs = this.hostPort.split(":");
             boolean isLocaliP = false;
@@ -89,6 +92,8 @@ public class FollowerRunnable implements Runnable {
             LOG.error("get nimbus host error!", e1);
             throw new RuntimeException(e1);
         }
+        
+        */
         try {
             this.tryToBeLeader(data.getConf());
         } catch (Exception e1) {
