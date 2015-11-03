@@ -1,0 +1,33 @@
+### Java template
+*.class
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.jar
+*.war
+*.ear
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+
+# Project Files
+**/*.iml
+.idea/*
+.idea/.name
+
+.eclipse
+.settings
+.classpath
+.project
+
+# Maven
+*/target/*
+
+# from module topology-monitor
+jstorm-utility/topology-monitor/bin
+jstorm-utility/topology-monitor/*~
+jstorm-utility/topology-monitor/*.diff
+jstorm-utility/topology-monitor/*#
+jstorm-utility/topology-monitor/*.versionsBackup
