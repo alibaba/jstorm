@@ -1,22 +1,58 @@
 [JStorm English introduction](http://42.121.19.155/jstorm/JStorm-introduce-en.pptx)
 [JStorm Chinese introduction](http://42.121.19.155/jstorm/JStorm-introduce.pptx)
 
-#Release 2.0.4-SNAPSHOT
+# Release 2.1.0
 ## New features
-1.Redesign Metric/Monitor system, new RollingWindow/Metrics/NettyMetrics, all data will send/recv through thrift
-2.Redesign Web-UI, the new Web-UI code is clear and clean
-3.Add NimbusCache Layer, using RocksDB and TimeCacheWindow
-4.Refactoring all ZK structure and ZK operation
-5.Refactoring all thrift structure
-6.Merge jstorm-client/jstorm-client-extension/jstorm-core 3 modules into jstorm－core
-7.set the dependency version same as storm
-8.Sync apache-storm-0.10.0-beta1 all java code
-9.Switch log system to logback
-10.Upgrade thrift to apache thrift 0.9.2
+1. New system bolt "topology master" was added, which is responsible for collecting task heartbeat info of all tasks and reports to nimbus. Besides task hb info, it also manages the control message dispatch topology. Topology master significantly reduce the read/write tps to zk.
+2. Implement new dynamic flow control (backpressue) mechanism.
+3. Enable user to update the configuration of backpressure flow control without restarting topology, e.g. enable/disable backpressue, high/low water mark...
+4. Enable user to update topology jar or configuration when topology is running.
+5. Improve nimbus HA to make sure the nimbus in which topologys stored locally matches more the topologys stored in zk.
+6. Support the dynamic updating of the tuple batch size according the samples of actual batch size sent out for past interval.
+7. Improve the task heartbeat reporting to guarantee stability of the topology with 3000+ tasks.
+8. Improve the interval calculation between two reconnection in netty client.
+9. Update task active status according to the connection status to remote out task, instead of the task heartbeat info stored in zk, to reduce the dependency to zk.
+10. Update zktool to enable user to clean all paths related to a topology id.
+11. Improve loading of UI data. Currently, the response of UI is much more faster.
+12. Print out the processing time of thrift rpc all in nimbus to help debug the response time of thrift call.
+13. Update the configuration of log4j to print the function name.
+14. Add topology download retry in supervisor. And if download was failed, supervisor will not try to start relative workers.
+15. Add metric to record life cycle of tuple
+16. Add topology graph in UI with many interactive features to get key information of topology(such as emit count, tuple lifecycle time, TPS)
+17. Add topology and cluster metric in 30 minutes trend graph.
+18. add metrics HA.
+## Bug fix
+1. Fix the potential deadlock in netty client
+2. Fix the re-download problem when assignment is changed.
+3. If target task is in the same worker of source task, the tuple will be sent to target task directly instead of batching.
+4. Fix that the incorrect configuration is used in some thread.
+5. when submit topology, nimbus server firstly check that the name is legal or not.
+6. Fix the poention of writing data to ZK when it reads UI data.
+7. Fix that fieldGrouping don't support the structure of Object[].
+8. fix the bug that metrics generated in spout/bolt may combine into worker level metric
+9. fix the bug that dead worker metrics are still in nimbus cache
+## Changed setting
+1. Add parameter topology.enable.metrics: true/false, which can be used to enable or completely disable metrics.
+2. worker's default JVM options tuning.
+## Deploy and scripts
+1. fix cleandisk cronjob to prevent worker logs from being deleted by mistake
+
+# Release 2.0.4-SNAPSHOT
+## New features
+1. Redesign Metric/Monitor system, new RollingWindow/Metrics/NettyMetrics, all data will send/recv through thrift
+2. Redesign Web-UI, the new Web-UI code is clear and clean
+3. Add NimbusCache Layer, using RocksDB and TimeCacheWindow
+4. Refactoring all ZK structure and ZK operation
+5. Refactoring all thrift structure
+6. Merge jstorm-client/jstorm-client-extension/jstorm-core 3 modules into jstorm－core
+7. Set the dependency version same as storm
+8. Sync apache-storm-0.10.0-beta1 all java code
+9. Switch log system to logback
+10. Upgrade thrift to apache thrift 0.9.2
 11. Performance tuning Huge topology more than 600 workers or 2000 tasks
 12. Require jdk7 or higher
 
-#Release 0.9.7.1
+# Release 0.9.7.1
 ## New Features
 1. Batch the tuples whose target task is same, before sending out（task.batch.tuple=true，task.msg.batch.size=4）.  
 2. LocalFirst grouping is updated. If all local tasks are busy, the tasks of outside nodes will be chosen as target task instead of waiting on the busy local task.
@@ -43,7 +79,7 @@
 2. Add executable attribute for the script under example
 3. Add parameter to stat.sh, which can be used to start supervisor or not. This is useful under virtual 
 
-#Release 0.9.7
+# Release 0.9.7
 ## New Features
 1. Support dynamic scale-out/scale-in of worker, spout, bolt or acker without stopping the service of topology.
 2. When enable cgroup, Support the upper limit control of cpu core usage. Default setting is 3 cpu cores.
@@ -77,7 +113,7 @@
 2. Add deploy files of jstorm for rpm package building
 3. Enable the cleandisk cronjob every hour, reserve coredump for only one hour.
 
-#Release 0.9.6.3
+# Release 0.9.6.3
 ## New features
 1. Implement tick tuple
 2. Support logback
@@ -115,7 +151,7 @@
 25. Config local temporay ports when rpm installation
 26. Add noarch rpm package
 
-#Release 0.9.6.2
+# Release 0.9.6.2
 1. Add option to switch between BlockingQueue and Disruptor
 2. Fix the bug which under sync netty mode, client failed to send message to server 
 3. Fix the bug let web UI can dispaly 0.9.6.1 cluster
@@ -125,7 +161,7 @@
 7. Add the validation of topology name, component name... Only A-Z, a-z, 0-9, '_', '-', '.' are valid now.
 8. Fix the bug close thrift client
 
-#Release 0.9.6.2-rc
+# Release 0.9.6.2-rc
 1. Improve user experience from Web UI
 1.1 Add jstack link
 1.2 Add worker log link in supervisor page
@@ -145,7 +181,7 @@
 11. Add tcp option "reuseAddress" in netty framework
 12. Fix the bug: When spout does not implement the ICommitterTrident interface, MasterCoordinatorSpout will stick on commit phase.
 
-#Release 0.9.6.2-rc
+# Release 0.9.6.2-rc
 1. Improve user experience from Web UI
 1.1 Add jstack link
 1.2 Add worker log link in supervisor page
@@ -165,7 +201,7 @@
 11. Add tcp option "reuseAddress" in netty framework
 12. Fix the bug: When spout does not implement the ICommitterTrident interface, MasterCoordinatorSpout will stick on commit phase.
 
-#Release 0.9.6.1
+# Release 0.9.6.1
 1. Add management of multiclusters to Web UI. Added management tools for multiclusters in WebUI.
 2. Merged Trident API from storm-0.9.3
 3. Replaced gson with fastjson
@@ -191,7 +227,7 @@
 23. Support assign topology to user-defined supervisors
 
 
-#Release 0.9.6
+# Release 0.9.6
 1. Update UI 
   - Display the metrics information of task and worker
   - Add warning flag when errors occur for a topology
@@ -205,7 +241,7 @@
 8. Add closing channel check in netty client to avoid double close
 9. Add connecting check in netty client to avoid connecting one server twice at one time 
 
-#Release 0.9.5.1
+# Release 0.9.5.1
 1. Add netty sync mode
 2. Add block operation in netty async mode
 3. Replace exception with Throwable in executor layer
@@ -213,16 +249,16 @@
 5. Add more netty junit test
 6. Add log when queue is full
 
-#Release 0.9.5
-##Big feature:
+# Release 0.9.5
+## Big feature:
 1. Redesign scheduler arithmetic, basing worker not task .
 
 ## Bug fix
 1. Fix disruptor use too much cpu
 2. Add target NettyServer log when f1ail to send data by netty
 
-#Release 0.9.4.1
-##Bug fix:
+# Release 0.9.4.1
+## Bug fix:
 1. Improve speed between tasks who is running in one worker
 2. Fix wrong timeout seconds
 3. Add checking port when worker initialize and begin to kill old worker
@@ -241,7 +277,7 @@
 
 
 
-#Release 0.9.4
+# Release 0.9.4
 
 ## Big features
 1. Add transaction programming mode
@@ -257,7 +293,7 @@
 
 
 
-##Bug fix:
+## Bug fix:
 1. Setting buffer size  when upload jar
 2. Add lock between ZK watch and timer thread when refresh connection
 3. Enable nimbus monitor thread only when topology is running in cluster mode
@@ -265,7 +301,7 @@
 5. classloader fix when both parent and current classloader load the same class
 6. Fix log view null pointer exception
 
-#Release 0.9.3.1
+# Release 0.9.3.1
 
 ## Enhancement
 1. switch apache thrift7 to storm thrift7
@@ -276,7 +312,7 @@
 6. Set gc dump dir as log's dir
 
 
-#Release 0.9.3
+# Release 0.9.3
 ## New feature
 1. Support Aliyun Apsara/Hadoop Yarn
 
@@ -308,7 +344,7 @@
  
 
 
-#Release 0.9.2
+# Release 0.9.2
 ## New feature
 1. Support LocalCluster/LocalDrpc mode, support debugging topology under local mode
 2. Support CGroups, assigning CPU in hardware level.
