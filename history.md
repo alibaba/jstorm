@@ -2,6 +2,7 @@
 [JStorm Chinese introduction](http://42.121.19.155/jstorm/JStorm-introduce.pptx)
 
 # Release 2.1.0
+
 ## New features
 1. New system bolt "topology master" was added, which is responsible for collecting task heartbeat info of all tasks and reports to nimbus. Besides task hb info, it also manages the control message dispatch topology. Topology master significantly reduce the read/write tps to zk.
 2. Implement new dynamic flow control (backpressue) mechanism.
@@ -21,6 +22,7 @@
 16. Add topology graph in UI with many interactive features to get key information of topology(such as emit count, tuple lifecycle time, TPS)
 17. Add topology and cluster metric in 30 minutes trend graph.
 18. add metrics HA.
+
 ## Bug fix
 1. Fix the potential deadlock in netty client
 2. Fix the re-download problem when assignment is changed.
@@ -31,13 +33,16 @@
 7. Fix that fieldGrouping don't support the structure of Object[].
 8. fix the bug that metrics generated in spout/bolt may combine into worker level metric
 9. fix the bug that dead worker metrics are still in nimbus cache
+
 ## Changed setting
 1. Add parameter topology.enable.metrics: true/false, which can be used to enable or completely disable metrics.
 2. worker's default JVM options tuning.
+
 ## Deploy and scripts
 1. fix cleandisk cronjob to prevent worker logs from being deleted by mistake
 
 # Release 2.0.4-SNAPSHOT
+
 ## New features
 1. Redesign Metric/Monitor system, new RollingWindow/Metrics/NettyMetrics, all data will send/recv through thrift
 2. Redesign Web-UI, the new Web-UI code is clear and clean
@@ -53,6 +58,7 @@
 12. Require jdk7 or higher
 
 # Release 0.9.7.1
+
 ## New Features
 1. Batch the tuples whose target task is same, before sending out（task.batch.tuple=true，task.msg.batch.size=4）.  
 2. LocalFirst grouping is updated. If all local tasks are busy, the tasks of outside nodes will be chosen as target task instead of waiting on the busy local task.
@@ -65,21 +71,25 @@
 9. Nimbus or Supervisor suicide when the local ip is 127.0.0.0
 10. Add user-define-scheduler example
 11. Merge Supervisor's syncSupervisor and syncProcess
+
 ## Bug Fix
 1. Improve the GC setting.
 2. Fix the bug that task heartbeat might not be updated timely in some scenarioes.  
 3. Fix the bug that the reconnection operation might be stick for a unexpected period when the connection to remote worker is shutdown and some messages are buffer in netty.   
 4. Reuse thrift client when submit topology
 5. Avoid repeatedly download binary when failed to start worker.
+
 ## Changed setting
 1. Change task's heartbeat timeout to 4 minutes
 2. Set the netty client thread pool(clientScheduleService) size as 5 
+
 ## Deploy and scripts
 1. Improve cleandisk.sh, avoid delete current directory and /tmp/hsperfdata_admin
 2. Add executable attribute for the script under example
 3. Add parameter to stat.sh, which can be used to start supervisor or not. This is useful under virtual 
 
 # Release 0.9.7
+
 ## New Features
 1. Support dynamic scale-out/scale-in of worker, spout, bolt or acker without stopping the service of topology.
 2. When enable cgroup, Support the upper limit control of cpu core usage. Default setting is 3 cpu cores.
@@ -92,6 +102,7 @@
 9. Add thrift api getVersion, it will be used check between the client jstorm version and the server jstorm version.  
 10. Update the metrics' structure to Alimonitor
 11. Add exclude-jar parameter into jstorm.py, which avoid class conflict when submit topology
+
 ## Bug Fix
 1. Fix the no response problem of supervisor process when subimtting big amout topologys in a short time
 2. When submitting two or more topologys at the same time, the later one might be failed.
@@ -103,17 +114,20 @@
 8. Fix failed to read ZK monitor znode through zktool
 9. Fix exception when enable classload and local mode
 10. Fix duplicate log when enable user-defined logback in local mode
+
 ## Changed Setting
 1. Set Nimbus jvm memory size as 4G
 2. Set hearbeat from supervisor to nimbus timeout from 60s to 180s
 3. In order to avoid OOM, set storm.messaging.netty.max.pending as 4
 4. Set task queue size as 1024, worker's total send/receive queue size as 2048
+
 ## Deploy and scripts
 1. Add rpm build spec
 2. Add deploy files of jstorm for rpm package building
 3. Enable the cleandisk cronjob every hour, reserve coredump for only one hour.
 
 # Release 0.9.6.3
+
 ## New features
 1. Implement tick tuple
 2. Support logback
@@ -123,6 +137,7 @@
 6. Support the use of ip and hostname at the same for user defined schedule
 7. Support junit test for local mode
 8. Enable client command(e.g. jstorm jar) to load self-defined storm.yaml
+
 ## Bug fix
 1. Add activate and deactivate api of spout, which are used in nextTuple prepare phase
 2. Update the support of multi language
@@ -250,6 +265,7 @@
 6. Add log when queue is full
 
 # Release 0.9.5
+
 ## Big feature:
 1. Redesign scheduler arithmetic, basing worker not task .
 
@@ -258,6 +274,7 @@
 2. Add target NettyServer log when f1ail to send data by netty
 
 # Release 0.9.4.1
+
 ## Bug fix:
 1. Improve speed between tasks who is running in one worker
 2. Fix wrong timeout seconds
@@ -313,6 +330,7 @@
 
 
 # Release 0.9.3
+
 ## New feature
 1. Support Aliyun Apsara/Hadoop Yarn
 
@@ -345,6 +363,7 @@
 
 
 # Release 0.9.2
+
 ## New feature
 1. Support LocalCluster/LocalDrpc mode, support debugging topology under local mode
 2. Support CGroups, assigning CPU in hardware level.

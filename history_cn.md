@@ -2,6 +2,7 @@
 [JStorm Chinese introduction](http://42.121.19.155/jstorm/JStorm-introduce.pptx)
 
 # Release 2.1.0
+
 ## New features
 1. 增加新的topology控制bolt(topology master)。负责topology task心跳和采样信息的收集，并汇总后发给nimbus，以减轻zk读写压力。
 2. 增加反压式(backpressure)的动态流控机制。
@@ -21,6 +22,7 @@
 16. 增加了拓扑图, 有很多交互功能来直观获取拓扑的一些关键信息（例如Emit, tuple lifecycle time, TPS）
 17. 增加了topology和集群metric最近30分钟的趋势图
 18. 增加了metrics的高可用(HA)
+
 ## Bug fix
 1. Fix Netty Client潜在的死锁风险
 2. Fix supervisor在调度有变化时，重复的下载任务jar包
@@ -31,13 +33,16 @@
 7. Fix fieldGrouping方式之前对Object[]数据结构不支持
 8. Fix component, task级别的metrics, 在极端情况下可能会合并到worker级别的metric中
 9. Fix 当worker已经死了,而它的metrics仍存留在 nimbus cache中
+
 ## 配置变更
 1. 增加配置参数 topology.enable.metrics: true/false, 用来启用或禁用metric
 2. 优化 worker 默认的 JVM 配置
+
 ## 运维和脚本
 1. 优化cleandisk.sh脚本, 防止误删worker日志
 
 # Release 2.0.4-SNAPSHOT
+
 ## New features
 1. 完全重构采样系统， 使用全新的Rollingwindow和Metric计算方式，尤其是netty采样数据，另外metric 发送和接收将不通过zk
 2. 完全重构web-ui
@@ -53,6 +58,7 @@
 12. 要求 jdk7 or higher
 
 # Release 0.9.7.1
+
 ## New features
 1. 增加Tuple自动batch的支持，以提高TPS以及降低消息处理延迟（task.batch.tuple=true，task.msg.batch.size=4）
 2. localFirst在本地节点处理能力跟不上时，自动对外部节点进行扩容
@@ -65,21 +71,25 @@
 9. 启动nimbus/supervisor时， 如果取得的是127.0.0.0地址时， 拒绝启动
 10. 增加自定义样例
 11. 合并supervisor 的zk同步线程syncSupervisor和worker同步线程syncProcess
+
 ## 配置变更
 1. 默认超时心跳时间设置为4分钟
 2. 修改netty 线程池clientScheduleService大小为5
+
 ## Bug fix
 1. 优化gc参数，4g以下内存的worker默认4个gc线程，4g以上内存， 按内存大小/1g * 1.5原则设置gc线程数量
 2. Fix在bolt处理速度慢时，可能出现的task心跳更新不及时的bug
 3. Fix在一些情况下，netty连接重连时的异常等待bug
 4. 提交任务时， 避免重复创建thrift client
 5. Fix 启动worker失败时，重复下载binary问题
+
 ## 运维和脚本
 1. 优化cleandisk.sh脚本， 防止把当前目录删除和/tmp/hsperfdata_admin/
 2. 增加example下脚本执行权限
 3. 添加参数supervisor.host.start: true/false，可以通过脚本start.sh批量控制启动supervisor或不启动supervisor，默认是启动supervisor
 
 # Release 0.9.7
+
 ## New features
 1. 实现topology任务并发动态调整的功能。在任务不下线的情况下，可以动态的对worker，spout, bolt或者ack进行扩容或缩容。rebalance命令被扩展用于支持动态扩容/缩容功能。
 2. 当打开资源隔离时，增加worker对cpu核使用上限的控制
@@ -93,11 +103,13 @@
 10. 增加supervisor 心跳检查， 会拒绝分配任务到supervisor心跳超时的supervisor
 11. 更新发送到Alimonitor的user defined metrics 数据结构
 12. 增加客户端exclude-jar 功能， 当客户端提交任务时，可以通过exclude-jar和classloader来解决jar冲突问题。
+
 ## 配置变更
 1. 修改supervisor到nimbus的心跳 超时时间到180秒
 2. 为避免内存outofmemory， 设置storm.messaging.netty.max.pending默认值为4
 3. 设置Nimbus 内存至4G
 4. 调大队列大小 task 队列大小为1024， 总发送队列和总接收队列为2048
+
 ## Bug fix
 1. 短时间能多次restart worker配置多的任务时，由于Nimbus thrift thread的OOM导致，Supervisor可能出现假死的情况
 2. 同时提交任务，后续的任务可能会失败
@@ -110,12 +122,14 @@
 9. 解决 zkTool 读取 monitor的 znode 失败问题
 10.解决 本地模式和打开classloader模式下， 出现异常问题
 11.解决使用自定义日志logback时， 本地模式下，打印双份日志问题
+
 ## 运维& 脚本
 1. Add rpm build spec
 2. Add deploy files of jstorm for rpm package building
 3. cronjob改成每小时运行一次， 并且coredump 改成保留1个小时
 
 # Release 0.9.6.3
+
 ## New features
 1. 实现tick tuple
 2. 支持logbak
@@ -125,6 +139,7 @@
 6. 所有底层使用ip，自定义调度的时候，支持自定义调度中ip和hostname混用
 7. 本地模式支持junit test
 8. 客户端命令（比如提交jar时）可以指定storm.yaml 配置文件
+
 ## Bug fix
 1. 在spout 的prepare里面增加active动作
 2. 多语言支持
@@ -252,6 +267,7 @@
 6. Add log when queue is full
 
 # Release 0.9.5
+
 ## Big feature:
 1. Redesign scheduler arithmetic, basing worker not task .
 
@@ -260,6 +276,7 @@
 2. Add target NettyServer log when f1ail to send data by netty
 
 # Release 0.9.4.1
+
 ## Bug fix:
 1. Improve speed between tasks who is running in one worker
 2. Fix wrong timeout seconds
@@ -315,6 +332,7 @@
 
 
 # Release 0.9.3
+
 ## New feature
 1. Support Aliyun Apsara/Hadoop Yarn
 
@@ -347,6 +365,7 @@
 
 
 # Release 0.9.2
+
 ## New feature
 1. Support LocalCluster/LocalDrpc mode, support debugging topology under local mode
 2. Support CGroups, assigning CPU in hardware level.
