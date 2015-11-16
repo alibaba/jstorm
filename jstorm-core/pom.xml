@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>com.alibaba.jstorm</groupId>
 		<artifactId>jstorm-all</artifactId>
-		<version>2.0.4-SNAPSHOT</version>
+		<version>2.1.0</version>
 		<relativePath>..</relativePath>
 	</parent>
 	<!-- <parent> 
@@ -105,11 +105,11 @@
                 </exclusion>
             </exclusions>
 		</dependency>
-		<dependency>
+		<!--<dependency>
 			<groupId>clj-time</groupId>
-            <artifactId>clj-time</artifactId>
+			<artifactId>clj-time</artifactId>
 			<version>0.8.0</version>
-		</dependency>
+		</dependency>-->
 		<dependency>
 			<groupId>org.apache.curator</groupId>
             <artifactId>curator-framework</artifactId>
