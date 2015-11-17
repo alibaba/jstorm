@@ -4,42 +4,72 @@
 # Release 2.1.0
 
 ## New features
-1. 增加新的topology控制bolt(topology master)。负责topology task心跳和采样信息的收集，并汇总后发给nimbus，以减轻zk读写压力。
-2. 增加反压式(backpressure)的动态流控机制。
-3. 支持用户对反压式流控的开关，负载水位，触发条件等配置的动态修改(既不需要重启任务)
-4. 支持用户在topology运行时，动态的更新jar包和配置文件
-5. 优化nimbus HA，多个slave nimbus竞争master时，尽量保证和zk上任务数最匹配的nimbus成为master nimbus
-6. 优化batch tuple功能，增加相关采样机制，支持根据tps大小，动态的修改batch size
-7. 优化topology master的心跳发送机制，支持3000+ task的大型任务。
-8. 优化netty client和zk连接重试的时间间隔获取机制
-9. 修改out task状态更新机制，从zk上读取心跳信息，改为根据网络连接状态。以减少zk的依赖
-10. 更新zktool，现在支持对一个topology进行相关路径的清理
-11. 优化UI页面相关的数据读取，大幅提高UI的响应速度
-12. 增加thrift 接口耗时打印
-13. log4j 配置增加函数名打印
-14. supervisor增加topology相关文件的下载重试机制。如果下载失败，不会尝试用错误的jar去启动worker
-15. 增加了tuple lifecycle的metric采样
-16. 增加了拓扑图, 有很多交互功能来直观获取拓扑的一些关键信息（例如Emit, tuple lifecycle time, TPS）
-17. 增加了topology和集群metric最近30分钟的趋势图
-18. 增加了metrics的高可用(HA)
+* 完全重构web ui
+	*	 大量美化界面
+	*	 大幅提高web ui展示速度
+	*	 增加topology和集群基本的最近30分钟的汇总信息
+	*	 增加拓扑图， 并增加一些交互功能来直观获取拓扑的一些关键信息(例如emit， tuple lifecycle time， tps)
+* 重构采样系统, 全新采样引擎和监控系统
+	*	 新采样不再存储数据到zk
+	*	 底层采样引擎更新， 支持抗噪处理, 合并计算更加方便
+	*	 支持metrics的高可用
+	*	 增加tuple生命周期, netty，disk空间 采样， worker内存采样更准确
+	*	 支持外接数据库插件存储监控数据
+* 实现智能反压(backpressure) 功能
+	*	 自动进行限流控制
+	*	 可以手动人工干预限流控制状态
+* 实现中央控制单元TopologyMaster
+	*	 重构心跳检查机制， 支持6000+ task
+	*	 收集所有metrics，并做合并计算
+	*	 中央控制流协调器
+	*	 HA 状态存储
+* 重新定义zk 数据结构和使用方式， 使一套zookeeper可以支撑2000+物理机器
+	*	 不再存储任何动态数据
+	*	 nimbus 获取topology／supervisor／cluster info时， 减少对zk访问次数
+	*	 合并大量task级别znode，降低对zk的访问
+	*	 优化task error节点，降低对zk的访问
+	*	 优化zk cache操作
+* 优化应用层batch功能， 提高性能
+	*	 增加自动调整batch size功能
+	*	 修复内存拷贝问题
+	*	 内部通道数据，无需batch
+	*	 默认kryo序列化
+* 增加动态binary更新功能和配置更新功能 
+* localShuffle 功能优化，提高性能，本worker，本节点，其他节点 3级shuffle，并动态探测队列负荷， 网络连接状态。
+* 默认打开kryo， 提高性能
+* 优化nimbus HA 机制， 优先级最高的nimbus 才能被promote成master，增加稳定性
+
+
+
+## 优化
+* supervisor自动dump worker jstack和jmap, 当worker处于invalid状态时.
+* supervisor可以对内存超卖设置
+* supervisor增加topology相关文件的下载重试机制。
+* 增加配置logdir设置
+* 增加配置，可使nimbus机器不自动启动supervisor
+* 增加supervisor/nimbus/drpc gc日志
+* 优化jvm参数  1. set -Xmn 1/2 of heap memory 2. set PermSize to 1/32 and MaxPermSize 1/16 of heap memory; 3. 增加最小内存设置-Xms "worker.memory.min.size"。
+* ZK error 重新定义， 并且当worker死去时会，会在web ui报错, 
+* 更新zktool，支持清理不干净的topology，并支持list功能
+* 优化netty client和zk连接重试的时间间隔获取机制
+* 修改out task状态更新机制，从zk上读取心跳信息，改为根据网络连接状态。以减少zk的依赖
+* 增加配置参数 topology.enable.metrics: true/false, 用来启用或禁用metric
+* 日志归类，相同topologyName的日志归类到对应目录下
+
 
 ## Bug fix
-1. Fix Netty Client潜在的死锁风险
-2. Fix supervisor在调度有变化时，重复的下载任务jar包
-3. 优化batch tuple功能，同一个worker内的task，不再batch，而是直接发送，提高性能
-4. 大量的线程使用了错误的conf， 应该使用worker的conf
-5. 提交拓扑时，服务端会首先检测拓扑名字的合法性
-6. Fix 读取UI页面时，存在对ZK进行写操作的风险
-7. Fix fieldGrouping方式之前对Object[]数据结构不支持
-8. Fix component, task级别的metrics, 在极端情况下可能会合并到worker级别的metric中
-9. Fix 当worker已经死了,而它的metrics仍存留在 nimbus cache中
+* Fix supervisor在调度有变化时，重复的下载任务jar包
+* Fix supervisor下载失败，不会尝试用错误的jar去启动worker
+* 大量的线程使用了错误的conf， 应该使用worker的conf
+* 提交拓扑时，服务端会首先检测拓扑名字的合法性
+* Fix fieldGrouping方式之前对Object[]数据结构不支持
+* Fix 使drpc 单例模式
+* 客户端topologyNameExists改进，直接使用trhift api
+* Fix restart 过程中， 因定时清理线程清理导致的restart失败
 
-## 配置变更
-1. 增加配置参数 topology.enable.metrics: true/false, 用来启用或禁用metric
-2. 优化 worker 默认的 JVM 配置
 
 ## 运维和脚本
-1. 优化cleandisk.sh脚本, 防止误删worker日志
+* 优化cleandisk.sh脚本, 防止误删worker日志
 
 # Release 2.0.4-SNAPSHOT
 

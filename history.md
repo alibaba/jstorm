@@ -4,42 +4,69 @@
 # Release 2.1.0
 
 ## New features
-1. New system bolt "topology master" was added, which is responsible for collecting task heartbeat info of all tasks and reports to nimbus. Besides task hb info, it also manages the control message dispatch topology. Topology master significantly reduce the read/write tps to zk.
-2. Implement new dynamic flow control (backpressue) mechanism.
-3. Enable user to update the configuration of backpressure flow control without restarting topology, e.g. enable/disable backpressue, high/low water mark...
-4. Enable user to update topology jar or configuration when topology is running.
-5. Improve nimbus HA to make sure the nimbus in which topologys stored locally matches more the topologys stored in zk.
-6. Support the dynamic updating of the tuple batch size according the samples of actual batch size sent out for past interval.
-7. Improve the task heartbeat reporting to guarantee stability of the topology with 3000+ tasks.
-8. Improve the interval calculation between two reconnection in netty client.
-9. Update task active status according to the connection status to remote out task, instead of the task heartbeat info stored in zk, to reduce the dependency to zk.
-10. Update zktool to enable user to clean all paths related to a topology id.
-11. Improve loading of UI data. Currently, the response of UI is much more faster.
-12. Print out the processing time of thrift rpc all in nimbus to help debug the response time of thrift call.
-13. Update the configuration of log4j to print the function name.
-14. Add topology download retry in supervisor. And if download was failed, supervisor will not try to start relative workers.
-15. Add metric to record life cycle of tuple
-16. Add topology graph in UI with many interactive features to get key information of topology(such as emit count, tuple lifecycle time, TPS)
-17. Add topology and cluster metric in 30 minutes trend graph.
-18. add metrics HA.
+
+1. Totally redesign Web UI
+	1.	Make the UI more beatiful
+	1.	Improve Web UI speed much.
+	1.	Add Cluster/Topology Level Summarized Metrics in recent 30 minutes.
+	1.	Add DAG in the Web UI, support Uer Interaction to get key information such as emit, tuple lifecycle, tps
+1. Redesign Metrics/Monitor System
+	1.	New metrics core, support sample with more metric, avoid noise, merge metrics automatically for user.
+	1.	No metrics will be stored in ZK
+	1.	Support metrics HA
+	1.	Add more useful metrics, such as tuple lifecycle, netty metrics, disk space etc. accurately get worker memory
+	1.	Support external storage plugin to store metrics.
+1. Implement Smart BackPressure 
+	1.	Smart Backpressure, the dataflow will be more stable, avoid noise to trigger
+	1.	Easy to manual control Backpressure
+1. Implement TopologyMaster
+	1.	Redesign hearbeat mechanism, easily support 6000+ tasks
+	1.	Collect all task's metrics, do merge job, release Nimbus pressure.
+	1.	Central Control Coordinator, issue control command
+1. Redesign ZK usage, one set of ZK support more 2000+ hardware nodes.
+	1.	No dynamic data in ZK, such as heartbeat, metrics, monitor status.
+	1.	Nimbus reduce visiting ZK frequence when serve thrift API.
+	1.	Reduce visiting ZK frequence, merge some task level ZK node.
+	1.	Reduce visiting ZK frequence, remove useless ZK node, such as empty taskerror node
+	1.	Tuning ZK cache  
+	1.  Optimize ZK reconnect mechanism
+1. Tuning Executor Batch performance
+	1.	Add smart batch size setting
+	1.	Remove memory copy
+	1.	Directly issue tuple without batch for internal channel
+	1.	Set the default Serialize/Deserialize method as Kryo
+1. Set the default Serialized/Deserialized method as Kryo  to improve performance.
+1. Support dynamic reload binary/configuration
+1. Tuning LocalShuffle performance, Set 3 level priority, local worker, local node, other node, add dynamic check queue status, connection status.
+1. Optimize Nimbus HA, only the highest priority nimbuses can be promoted as master 
+
+## Improvement
+1. Supervisor automatically dump worker jstack/jmap, when worker's status is invalid.
+1. Supervisor can generate more ports according to memory.
+1. Supervisor can download binary more time.
+1. Support set logdir in configuration
+1. Add configuration "nimbus.host.start.supervisor"
+1. Add supervisor/nimbus/drpc gc log
+1. Adjust jvm parameter 1. set -Xmn 1/2 of heap memory 2. set PermSize to 1/32 and MaxPermSize 1/16 of heap memory; 3. set -Xms by "worker.memory.min.size"。
+1. Refine ZK error schema, when worker is dead, UI will report error
+1. Add function to zktool utility, support remove all topology znodes, support list 
+1. Optimize netty client.
+1. Dynamic update connected task status by network connection, not by ZK znode.
+1. Add configuration "topology.enable.metrics".
+1. Classify all topology log into one directory by topologyName.
 
 ## Bug fix
-1. Fix the potential deadlock in netty client
-2. Fix the re-download problem when assignment is changed.
-3. If target task is in the same worker of source task, the tuple will be sent to target task directly instead of batching.
-4. Fix that the incorrect configuration is used in some thread.
-5. when submit topology, nimbus server firstly check that the name is legal or not.
-6. Fix the poention of writing data to ZK when it reads UI data.
-7. Fix that fieldGrouping don't support the structure of Object[].
-8. fix the bug that metrics generated in spout/bolt may combine into worker level metric
-9. fix the bug that dead worker metrics are still in nimbus cache
-
-## Changed setting
-1. Add parameter topology.enable.metrics: true/false, which can be used to enable or completely disable metrics.
-2. worker's default JVM options tuning.
+1. Skip download same binary when assigment has been changed.
+1. Skip start worker when binary is invalid.
+1. Use correct configuration map in a lot of worker thread
+1. In the first step Nimbus will check topologyName or not when submit topology
+1. Support fieldGrouping for Object[]
+1. For drpc single instance under one configuration
+1. In the client topologyNameExists interface，directly use trhift api
+1. Fix failed to restart due to topology cleanup thread's competition
 
 ## Deploy and scripts
-1. fix cleandisk cronjob to prevent worker logs from being deleted by mistake
+1. Optimize cleandisk.sh, avoid delete useful worker log
 
 # Release 2.0.4-SNAPSHOT
 
