@@ -6,7 +6,7 @@ import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.thrift7.TException;
+import org.apache.thrift.TException;
 import org.json.simple.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

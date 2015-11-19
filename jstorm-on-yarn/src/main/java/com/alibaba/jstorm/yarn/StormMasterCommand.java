@@ -6,8 +6,8 @@ import java.util.Map;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
-import org.apache.thrift7.TException;
-import org.apache.thrift7.transport.TTransportException;
+import org.apache.thrift.TException;
+import org.apache.thrift.transport.TTransportException;
 import org.json.simple.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

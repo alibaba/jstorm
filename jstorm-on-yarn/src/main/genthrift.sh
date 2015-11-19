@@ -13,15 +13,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License. See accompanying LICENSE file.
 #
-
-cd `dirname $1`
-TARGET_FILE=`basename $1`
-
-while [ -L "$TARGET_FILE" ]
-do
-    TARGET_FILE=`readlink $TARGET_FILE`
-    cd `dirname $TARGET_FILE`
-    TARGET_FILE=`basename $TARGET_FILE`
-done
-
-echo "$(pwd -P)/$TARGET_FILE"
+rm -rf gen-javabean
+rm -rf java/com/alibaba/jstorm/yarn/generated
+thrift --gen java:beans,hashcode,nocamel storm_master.thrift
+mv gen-javabean/com/yahoo/storm/yarn/generated java/com/yahoo/storm/yarn/generated
+rm -rf gen-javabean

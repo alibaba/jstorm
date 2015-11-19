@@ -21,6 +21,7 @@ public class Config {
     //# of milliseconds to wait for YARN report on Storm Master host/port
     final public static String YARN_REPORT_WAIT_MILLIS = "yarn.report.wait.millis";
     final public static String MASTER_HEARTBEAT_INTERVAL_MILLIS = "master.heartbeat.interval.millis";
+    final public static String MASTER_THRIFT_TRANSPORT_PLUGIN = "master.thrift.transport";
     
     @SuppressWarnings("rawtypes")
     static public Map readJStormConfig() {
