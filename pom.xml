@@ -148,7 +148,7 @@
 	<modules>
 		<module>jstorm-core</module>
 		<module>jstorm-ui</module>
-		<module>example/sequence-split-merge</module>
+	<!--	<module>example/sequence-split-merge</module> -->
 	</modules>
 
     
