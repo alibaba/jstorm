@@ -20,6 +20,7 @@ package com.alibaba.jstorm.task.backpressure;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -33,6 +34,7 @@ import backtype.storm.utils.DisruptorQueue;
 
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.cluster.Common;
+import com.alibaba.jstorm.cluster.StormClusterState;
 import com.alibaba.jstorm.task.Task;
 import com.alibaba.jstorm.task.execute.BoltExecutors;
 import com.alibaba.jstorm.task.master.TopoMasterCtrlEvent;
@@ -86,6 +88,25 @@ public class BackpressureTrigger extends Backpressure {
 
         this.boltExecutor = boltExecutor;
 
+        try {
+            StormClusterState zkCluster = task.getZkCluster();
+            Map<String, SourceBackpressureInfo> backpressureInfo = zkCluster.get_backpressure_info(task.getTopologyId());
+            if (backpressureInfo != null) {
+                for (Entry<String, SourceBackpressureInfo> entry : backpressureInfo.entrySet()) {
+                    SourceBackpressureInfo info = entry.getValue();
+                    Map<String, TargetBackpressureInfo> targetInfoMap = info.getTargetTasks();
+                    if (targetInfoMap != null) {
+                        TargetBackpressureInfo targetInfo = targetInfoMap.get(task.getComponentId());
+                        if (targetInfo != null && targetInfo.getTasks().contains(taskId)) {
+                            isBackpressureEnable = true;
+                            LOG.info("Retrieved backpressure info for task-" + taskId);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOG.info("Failed to get backpressure info from zk", e);
+        }
         LOG.info("Finished BackpressureTrigger init, highWaterMark=" + highWaterMark + ", lowWaterMark=" + lowWaterMark + ", sendInterval="
                 + intervalCheck.getInterval());
     }
