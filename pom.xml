@@ -82,15 +82,15 @@
 			</roles>
 			<timezone>+8</timezone>
 		</developer>
-		<developer>
-			<id>cody</id>
-			<name>Cody Wang</name>
-			<email>cody.wang@alibaba-inc.com</email>
-			<roles>
-				<role>Committer</role>
-			</roles>
-			<timezone>+8</timezone>
-		</developer>
+        <developer>
+            <id>cody</id>
+            <name>Cody Innowhere</name>
+            <email>weiyue.wy@alibaba-inc.com</email>
+            <roles>
+                <role>Committer</role>
+            </roles>
+            <timezone>+8</timezone>
+        </developer>
 		<developer>
 			<id>jian.wang</id>
 			<name>Jian Wang</name>
@@ -100,24 +100,24 @@
 			</roles>
 			<timezone>+8</timezone>
 		</developer>
-		<developer>
-			<id>john</id>
-			<name>John Fang</name>
-			<email>John.Fang@alibaba-inc.com</email>
-			<roles>
-				<role>Committer</role>
-			</roles>
-			<timezone>+8</timezone>
-		</developer>
-		<developer>
-			<id>Jark</id>
-			<name>Jark Wu</name>
-			<email>Jark.Wu@alibaba-inc.com</email>
-			<roles>
-				<role>Committer</role>
-			</roles>
-			<timezone>+8</timezone>
-		</developer>
+        <developer>
+            <id>john</id>
+            <name>John Fang</name>
+            <email>xiaojian.fxj@alibaba-inc.com</email>
+            <roles>
+                <role>Committer</role>
+            </roles>
+            <timezone>+8</timezone>
+        </developer>
+        <developer>
+            <id>Jark</id>
+            <name>Jark Wu</name>
+            <email>wuchong.wc@alibaba-inc.com</email>
+            <roles>
+                <role>Committer</role>
+            </roles>
+            <timezone>+8</timezone>
+        </developer>
 
 	</developers>
 

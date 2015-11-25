@@ -17,28 +17,23 @@
  */
 package com.alibaba.jstorm.task.group;
 
-import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
 import backtype.storm.tuple.Fields;
 
 import com.alibaba.jstorm.utils.JStormUtils;
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hashing;
 
 /**
  * field grouping
- * 
+ *
  * @author yannian
- * 
+ *
  */
 public class MkFieldsGrouper {
     private Fields out_fields;
     private Fields group_fields;
     private List<Integer> out_tasks;
-    private HashFunction hashFunction = Hashing.murmur3_128(17);
 
     public MkFieldsGrouper(Fields _out_fields, Fields _group_fields, List<Integer> _out_tasks) {
 
@@ -56,38 +51,8 @@ public class MkFieldsGrouper {
     }
 
     public List<Integer> grouper(List<Object> values) {
-            byte[] raw = null;
-            List<Object> selectedFields = this.out_fields.select(this.group_fields, values);
-            ByteBuffer out = ByteBuffer.allocate(selectedFields.size() * 4);
-            for (Object o: selectedFields) {
-                if (o instanceof List) {
-                    out.putInt(Arrays.deepHashCode(((List) o).toArray()));
-                } else if (o instanceof Object[]) {
-                    out.putInt(Arrays.deepHashCode((Object[])o));
-                } else if (o instanceof byte[]) {
-                    out.putInt(Arrays.hashCode((byte[]) o));
-                } else if (o instanceof short[]) {
-                    out.putInt(Arrays.hashCode((short[]) o));
-                } else if (o instanceof int[]) {
-                    out.putInt(Arrays.hashCode((int[]) o));
-                } else if (o instanceof long[]) {
-                    out.putInt(Arrays.hashCode((long[]) o));
-                } else if (o instanceof char[]) {
-                    out.putInt(Arrays.hashCode((char[]) o));
-                } else if (o instanceof float[]) {
-                    out.putInt(Arrays.hashCode((float[]) o));
-                } else if (o instanceof double[]) {
-                    out.putInt(Arrays.hashCode((double[]) o));
-                } else if (o instanceof boolean[]) {
-                    out.putInt(Arrays.hashCode((boolean[]) o));
-                } else if (o != null) {
-                    out.putInt(o.hashCode());
-                } else {
-                    out.putInt(0);
-                }
-            }
-        raw = out.array();
-        int group = (int) (Math.abs(hashFunction.hashBytes(raw).asLong()) % this.out_tasks.size());
+        int hashcode = this.out_fields.select(this.group_fields, values).hashCode();
+        int group = Math.abs(hashcode % this.out_tasks.size());
         return JStormUtils.mk_list(out_tasks.get(group));
     }
 }

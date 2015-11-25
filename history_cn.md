@@ -66,6 +66,8 @@
 * Fix 使drpc 单例模式
 * 客户端topologyNameExists改进，直接使用trhift api
 * Fix restart 过程中， 因定时清理线程清理导致的restart失败
+* Fix 当trigger bolt失败时,反压可能丢失
+* Fix DefaultMetricUploader没有删除rocksdb中的数据,导致新的metrics数据无法添加
 
 
 ## 运维和脚本

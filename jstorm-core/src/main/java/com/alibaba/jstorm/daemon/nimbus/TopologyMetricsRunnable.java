@@ -70,7 +70,7 @@ public class TopologyMetricsRunnable extends Thread {
     protected final ConcurrentMap<String, TopologyMetricContext> topologyMetricContexts =
             new ConcurrentHashMap<>();
 
-    protected final BlockingDeque<Event> queue = new LinkedBlockingDeque<>();
+    protected final BlockingDeque<TopologyMetricsRunnable.Event> queue = new LinkedBlockingDeque<>();
 
     private static final String PENDING_UPLOAD_METRIC_DATA = "__pending.upload.metrics__";
     private static final String PENDING_UPLOAD_METRIC_DATA_INFO = "__pending.upload.metrics.info__";
@@ -484,10 +484,12 @@ public class TopologyMetricsRunnable extends Thread {
                 ConcurrentMap<String, Long> memMeta = context.getMemMeta();
                 for (MetaType metaType : MetaType.values()) {
                     List<MetricMeta> metaList = metricQueryClient.getMetricMeta(clusterName, topologyId, metaType);
-                    LOG.info("get remote metric meta, topology:{}, metaType:{}, mem:{}, zk:{}, new size:{}",
-                            topologyId, metaType, memSize, zkSize, metaList.size());
-                    for (MetricMeta meta : metaList) {
-                        memMeta.putIfAbsent(meta.getFQN(), meta.getId());
+                    if (metaList != null) {
+                        LOG.info("get remote metric meta, topology:{}, metaType:{}, mem:{}, zk:{}, new size:{}",
+                                topologyId, metaType, memSize, zkSize, metaList.size());
+                        for (MetricMeta meta : metaList) {
+                            memMeta.putIfAbsent(meta.getFQN(), meta.getId());
+                        }
                     }
                 }
                 metricCache.putMeta(topologyId, memMeta);
