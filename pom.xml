@@ -265,6 +265,18 @@
 	</dependencies>
 
 	<repositories>
+        <repository>
+            <id>nexus</id>
+            <name>local private nexus</name>
+            <url>http://maven.oschina.net/content/groups/public/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+
 		<repository>
 			<id>taobao</id>
 			<url>http://mvnrepo.code.taobao.org/nexus/content/repositories/releases/</url>
