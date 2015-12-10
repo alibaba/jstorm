@@ -1,5 +1,4 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
 	
 	<parent>
@@ -55,9 +54,8 @@
 	
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<powermock.version>1.4.11</powermock.version>
-        <metrics.version>3.1.2</metrics.version>
-    </properties>
+        	<metrics.version>3.1.2</metrics.version>
+    	</properties>
 	<dependencies>
 		<dependency>
 			<groupId>org.clojure</groupId>
@@ -175,21 +173,15 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.powermock</groupId>
-			<artifactId>powermock-module-junit4</artifactId>
-			<version>${powermock.version}</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
 			<version>1.0.13</version>
-        </dependency>
-		<dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>log4j-over-slf4j</artifactId>
-            <version>1.6.6</version>
-        </dependency>
+	        </dependency>
+			<dependency>
+	            <groupId>org.slf4j</groupId>
+	            <artifactId>log4j-over-slf4j</artifactId>
+	            <version>1.6.6</version>
+	        </dependency>
 		<!-- 
 		<dependency>
 		      <groupId>org.codehaus.plexus</groupId>

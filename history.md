@@ -64,6 +64,8 @@
 1. For drpc single instance under one configuration
 1. In the client topologyNameExists interface，directly use trhift api
 1. Fix failed to restart due to topology cleanup thread's competition
+1. Fix the bug that backpressure might be lost when trigger bolt was failed.
+1. Fixed the bug that DefaultMetricUploader doesn't delete metrics data in rocksdb, causing new metrics data cannot be appended.
 
 ## Deploy and scripts
 1. Optimize cleandisk.sh, avoid delete useful worker log
