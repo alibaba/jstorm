@@ -478,9 +478,9 @@ public class TopologyMetricsRunnable extends Thread {
     private void syncMetaFromRemote(String topologyId, TopologyMetricContext context) {
         try {
             int memSize = context.getMemMeta().size();
-            int zkSize = (Integer) stormClusterState.get_topology_metric(topologyId);
+            Integer zkSize = (Integer)stormClusterState.get_topology_metric(topologyId);
 
-            if (memSize != zkSize) {
+            if (zkSize != null  && memSize != zkSize.intValue()) {
                 ConcurrentMap<String, Long> memMeta = context.getMemMeta();
                 for (MetaType metaType : MetaType.values()) {
                     List<MetricMeta> metaList = metricQueryClient.getMetricMeta(clusterName, topologyId, metaType);
