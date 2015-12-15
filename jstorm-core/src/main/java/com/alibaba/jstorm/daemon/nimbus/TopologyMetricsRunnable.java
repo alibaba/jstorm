@@ -249,7 +249,7 @@ public class TopologyMetricsRunnable extends Thread {
             try {
                 // wait for metricUploader to be ready, for some external plugin like database, it'll take a few seconds
                 if (this.metricUploader != null) {
-                    Event event = queue.poll(100,TimeUnit.MILLISECONDS);
+                    Event event = queue.poll(1,TimeUnit.MILLISECONDS);
                     if (event == null) {
                         continue;
                     }
