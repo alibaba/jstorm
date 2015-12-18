@@ -33,5 +33,6 @@ public class UIUtilsTest {
 
         l = UIUtils.parseLong("1232", 0);
         Assert.assertEquals(1232L, l);
+
     }
 }
