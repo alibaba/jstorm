@@ -23,9 +23,9 @@
     <jsp:include page="layout/_head.jsp"/>
 </head>
 <body>
-<link rel="stylesheet" href="/assets/css/zTreeStyle/zTreeStyle.css">
-<script src="/assets/js/jquery.ztree.all-3.5.min.js" type="text/javascript"></script>
-<script src="/assets/js/storm.zk.js"  type="text/javascript"></script>
+<link rel="stylesheet" href="<spring:url value='/assets/css/zTreeStyle/zTreeStyle.css'/>">
+<script src="<spring:url value='/assets/js/jquery.ztree.all-3.5.min.js'/>" type="text/javascript"></script>
+<script src="<spring:url value='/assets/js/storm.zk.js'/>" type="text/javascript"></script>
 
 <style>
     ul.ztree {
@@ -50,39 +50,51 @@
     <h1>Zookeeper details</h1>
 
     <div class="page-content">
-        <div>
-            <div class="col-xs-7">
-                <div class="row">
+        <div class="row">
+            <div class="col-md-8">
+                <div>
                     <input type="hidden" id="clusterName" value="${clusterName}"/>
-                    <table class="table table-bordered table-hover table-striped sortable center"
-                           data-table="${clusters.size() > PAGE_MAX ? "full" : "sort"}">
+                    <table class="table table-bordered table-hover table-striped sortable center">
                         <thead>
                         <tr>
-                            <th>zkServers</th>
+                            <th>Cluster Name</th>
+                            <th>Zookeeper Root</th>
+                            <th>Zookeeper Servers</th>
+                            <th>Operation</th>
                         </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td onclick="showZKRoot('/', '${requestUri}')">${zkServers}</td>
-                            </tr>
+                        <tr>
+                            <td>${clusterName}</td>
+                            <td>${zkRoot}</td>
+                            <td>${zkServers}</td>
+                            <td><span><button class="btn btn-primary" onclick="showZKRoot()">Refresh</button></span>
+                            </td>
+                        </tr>
                         </tbody>
                     </table>
                 </div>
                 <div class="row panel panel-default">
                     <div class="panel-heading">Node Data</div>
                     <div class="panel-body">
-                        <textarea rows="14" cols="69" style="overflow: auto;" id="data" readonly="readonly"></textarea>
+                        <textarea rows="19" cols="69" style="overflow: auto;" id="data" readonly="readonly"></textarea>
                     </div>
                 </div>
             </div>
-            <div class="col-xs-5">
-                <div class="zTreeBackground left" style="border: 1px solid #e2e2e2;height: 510px;overflow-y:auto;">
-                    <ul id="zkTree" class="ztree"></ul>
+            <div class="col-md-4">
+                <div class="panel panel-default">
+                    <div class="panel-heading">Node List</div>
+                    <div class="zTreeBackground left" style="height: 510px;overflow-y:auto;">
+                        <ul id="zkTree" class="ztree"></ul>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+<script>
+    showZKRoot();
+</script>
 <jsp:include page="layout/_footer.jsp"/>
 </body>
 </html>
