@@ -2,13 +2,12 @@ package com.alibaba.jstorm.ui.utils;
 
 import backtype.storm.utils.Utils;
 import com.alibaba.jstorm.cluster.Cluster;
-import com.alibaba.jstorm.ui.model.ClusterConfig;
+import com.alibaba.jstorm.cluster.ClusterState;
+import com.alibaba.jstorm.cluster.DistributedClusterState;
 import com.alibaba.jstorm.ui.model.ZookeeperNode;
 import com.alibaba.jstorm.utils.PathUtils;
-import com.alibaba.jstorm.zk.Zookeeper;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import org.apache.curator.framework.CuratorFramework;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -26,19 +25,21 @@ import java.util.concurrent.ConcurrentMap;
 @Service
 public class ZookeeperManager {
     private static final Logger LOG = LoggerFactory.getLogger(ZookeeperManager.class);
-    private static Zookeeper zookeeper = new Zookeeper();
-    private static ConcurrentMap<String, CuratorFramework> zkClients = new ConcurrentHashMap<>();
+    private static ConcurrentMap<String, ClusterState> clusterSates = new ConcurrentHashMap<>();
     private static Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
-    public static List<ZookeeperNode> listZKNodes(String clusterName, String path) {
-        CuratorFramework client = createAndGetClient(clusterName);
+    public static List<ZookeeperNode> listZKNodes(String clusterName, String parent) {
         List<ZookeeperNode> nodes = new ArrayList<>();
         try {
-            List<String> elements = zookeeper.getChildren(client, path, false);
+            ClusterState clusterState = getAndCreateClusterState(clusterName);
+            if (clusterState == null) {
+                throw new IllegalStateException("Cluster state is null");
+            }
+
+            List<String> elements = clusterState.get_children(parent, false);
             for (String element : elements) {
-                String newPath = PathUtils.normalize_path(path + Cluster.ZK_SEPERATOR + element);
-                ZookeeperNode node = new ZookeeperNode(path, element, hasChildren(client, newPath));
-                nodes.add(node);
+                String path = PathUtils.normalize_path(parent + Cluster.ZK_SEPERATOR + element);
+                nodes.add(new ZookeeperNode(parent, element, hasChildren(clusterState, path)));
             }
         } catch (Exception e) {
             LOG.error("Get zookeeper info error!", e);
@@ -47,10 +48,14 @@ public class ZookeeperManager {
     }
 
     public static String getZKNodeData(String clusterName, String path) {
-        CuratorFramework client = createAndGetClient(clusterName);
         String out = null;
         try {
-            byte[] data = zookeeper.getData(client, PathUtils.normalize_path(path), false);
+            ClusterState clusterState = getAndCreateClusterState(clusterName);
+            if (clusterState == null) {
+                throw new IllegalStateException("Cluster state is null");
+            }
+
+            byte[] data = clusterState.get_data(PathUtils.normalize_path(path), false);
             if (data != null && data.length > 0) {
                 Object obj = Utils.maybe_deserialize(data);
                 out = gson.toJson(obj);
@@ -61,38 +66,36 @@ public class ZookeeperManager {
         return out;
     }
 
-    private static CuratorFramework createAndGetClient(String clusterName) {
-        Map conf = Utils.readStormConfig();
-        CuratorFramework client = zkClients.get(clusterName);
-        if (client == null) {
-            ClusterConfig config = UIUtils.clusterConfig.get(clusterName);
-            List<String> zkServers = config.getZkServers();
-            String zkRoot = config.getZkRoot();
-            Integer zkPort = config.getZkPort();
-
-            client = zookeeper.mkClient(conf, zkServers, zkPort, zkRoot);
-            CuratorFramework old = zkClients.putIfAbsent(clusterName, client);
-            if (old != null) {
-                try {
-                    client.close();
-                } catch (Exception ignored) {
+    private static ClusterState getAndCreateClusterState(String clusterName) {
+        ClusterState state = null;
+        try {
+            state = clusterSates.get(clusterName);
+            if (state == null) {
+                Map zkConf = UIUtils.resetZKConfig(Utils.readStormConfig(), clusterName);
+                state = new DistributedClusterState(zkConf);
+                ClusterState old = clusterSates.putIfAbsent(clusterName, state);
+                if (old != null) {
+                    try {
+                        state.close();
+                    } catch (Exception e) {
+                        LOG.warn("Close state error!", e);
+                    }
+                    state = old;
                 }
-                client = old;
             }
+        } catch (Exception e) {
+            LOG.error("Create cluster state error!");
         }
-        return client;
+
+        return state;
     }
 
-    public static boolean hasChildren(CuratorFramework client, String path) throws Exception {
-        List<String> children = getChildren(client, path);
+    public static boolean hasChildren(ClusterState clusterState, String path) throws Exception {
+        if (clusterState == null || path == null) {
+            return false;
+        }
+
+        List<String> children = clusterState.get_children(path, false);
         return children != null && !children.isEmpty();
-    }
-
-    public static List<String> getChildren(CuratorFramework client, String path) throws Exception {
-        return zookeeper.getChildren(client, path, false);
-    }
-
-    public static byte[] getData(CuratorFramework client, String path) throws Exception {
-        return zookeeper.getData(client, path, false);
     }
 }
