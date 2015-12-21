@@ -219,7 +219,7 @@
     <!-- ========================================================== -->
     <!------------------------- zookeeper summary --------------------->
     <!-- ========================================================== -->
-    <h2>Zookeeper Summary</h2>
+    <h2><a href="zookeeper?name=${clusterName}">Zookeeper Summary</a></h2>
     <table class="table table-bordered table-hover table-striped center">
         <thead>
         <tr>
