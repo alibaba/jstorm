@@ -58,11 +58,13 @@
                            data-table="${clusters.size() > PAGE_MAX ? "full" : "sort"}">
                         <thead>
                         <tr>
-                            <th>zkServers</th>
+                            <th>Cluster Name</th>
+                            <th>Zookeeper Servers</th>
                         </tr>
                         </thead>
                         <tbody>
                             <tr>
+                                <td >$!{clusterName}</td>
                                 <td onclick="showZKRoot('/', '${requestUri}')">${zkServers}</td>
                             </tr>
                         </tbody>
