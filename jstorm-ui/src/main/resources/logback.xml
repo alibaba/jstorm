@@ -28,7 +28,7 @@
     </appender>
 
 
-    <logger name="com.alibaba.jstorm.ui" additivity="false" level="DEBUG">
+    <logger name="com.alibaba.jstorm.ui" additivity="false" level="INFO">
         <appender-ref ref="PROJECT"/>
     </logger>
     <logger name="STDERR" additivity="false" level="ERROR">
