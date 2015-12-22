@@ -19,8 +19,7 @@ var setting = {
         }
     },
     callback: {
-        onClick: onClick,
-        onRightClick: OnRightClick
+        onClick: onClick
     }
 };
 
