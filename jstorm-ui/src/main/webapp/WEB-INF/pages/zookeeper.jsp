@@ -64,7 +64,7 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td >$!{clusterName}</td>
+                                <td >${clusterName}</td>
                                 <td onclick="showZKRoot('/', '${requestUri}')">${zkServers}</td>
                             </tr>
                         </tbody>
