@@ -36,7 +36,7 @@ function getUrl(treeId, treeNode) {
 function filter(treeId, parentNode, responseData) {
     if (!responseData)
         return null;
-    var childNodes = new Array();
+    var childNodes = [];
     var nodes = responseData.nodes;
     var length = nodes.length;
     for (var i = 0; i < length; i++) {
@@ -74,15 +74,15 @@ function onClick(event, treeId, treeNode, clickFlag) {
 }
 
 // show cluster root
-function showZKRoot(path, reqUri) {
-    var treeNodes = new Array();
+function showZKRoot() {
+    var treeNodes = [];
     $.ajax({
-        url: reqUri,
+        url: "/zookeeper/node",
         type: "get",
         dataType: "json",
         contentType: "application/json;charset=utf-8",
         data: {
-            path: path,
+            path: "/",
             clusterName: $("#clusterName").val()
         },
         success: function (data) {

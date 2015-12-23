@@ -35,12 +35,12 @@ public class ZookeeperController {
             for (String ip:config.getZkServers()){
                 builder.append(ip).append(",");
             }
-            builder.deleteCharAt(builder.length()-1);
+            builder.deleteCharAt(builder.length() - 1);
             builder.append(":");
             builder.append(config.getZkPort());
+            model.addAttribute("zkRoot", config.getZkRoot());
             model.addAttribute("zkServers", builder.toString());
             model.addAttribute("clusterName",name);
-            model.addAttribute("requestUri", "/zookeeper/node");
         }catch (Exception e){
             LOG.error(e.getMessage(), e);
             UIUtils.addErrorAttribute(model, e);
