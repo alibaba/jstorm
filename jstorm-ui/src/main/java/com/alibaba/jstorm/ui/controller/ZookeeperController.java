@@ -31,11 +31,11 @@ public class ZookeeperController {
         long start = System.currentTimeMillis();
         try{
             ClusterConfig config = UIUtils.clusterConfig.get(name);
-            StringBuffer builder = new StringBuffer("");
+            StringBuilder builder = new StringBuilder("");
             for (String ip:config.getZkServers()){
                 builder.append(ip).append(",");
             }
-            builder.substring(0, builder.length() -1);
+            builder.deleteCharAt(builder.length()-1);
             builder.append(":");
             builder.append(config.getZkPort());
             model.addAttribute("zkServers", builder.toString());
@@ -50,7 +50,7 @@ public class ZookeeperController {
         return "zookeeper";
     }
 
-    @RequestMapping(value = "/zookeeper/node", produces = "application/json;charset=UTF-8")
+    @RequestMapping(value = "/zookeeper/node", produces = "application/json;")
     @ResponseBody
     public Map<String, Object> getChildren(@RequestParam String path, String clusterName)  {
         List<ZookeeperNode> result  = ZookeeperManager.listZKNodes(clusterName, path);
@@ -59,7 +59,7 @@ public class ZookeeperController {
         return map;
     }
 
-    @RequestMapping(value = "/zookeeper/node/data", produces = "application/json;charset=UTF-8")
+    @RequestMapping(value = "/zookeeper/node/data", produces = "application/json;")
     @ResponseBody
     public Map<String, Object> getData(@RequestParam String path, String clusterName) {
         String data = ZookeeperManager.getZKNodeData(clusterName, path);
