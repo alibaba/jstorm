@@ -25,7 +25,7 @@
 <body>
 <link rel="stylesheet" href="<spring:url value='/assets/css/zTreeStyle/zTreeStyle.css'/>">
 <script src="<spring:url value='/assets/js/jquery.ztree.all-3.5.min.js'/>" type="text/javascript"></script>
-<script src="<spring:url value='/assets/js/storm.zk.js'/>"  type="text/javascript"></script>
+<script src="<spring:url value='/assets/js/storm.zk.js'/>" type="text/javascript"></script>
 
 <style>
     ul.ztree {
@@ -50,11 +50,11 @@
     <h1>Zookeeper details</h1>
 
     <div class="page-content">
-        <div>
-            <div class="col-xs-7">
-                <div class="row">
+        <div class="row">
+            <div class="col-md-8">
+                <div>
                     <input type="hidden" id="clusterName" value="${clusterName}"/>
-                    <table class="table table-bordered table-hover table-striped sortable center" data-table="full">
+                    <table class="table table-bordered table-hover table-striped sortable center">
                         <thead>
                         <tr>
                             <th>Cluster Name</th>
@@ -81,10 +81,10 @@
                     </div>
                 </div>
             </div>
-            <div class="col-xs-5" style="margin-top: 5px">
-                <div class="row panel panel-default">
+            <div class="col-md-4">
+                <div class="panel panel-default">
                     <div class="panel-heading">Node List</div>
-                    <div class="zTreeBackground left" style="border: 1px solid #e2e2e2;height: 510px;overflow-y:auto;">
+                    <div class="zTreeBackground left" style="height: 510px;overflow-y:auto;">
                         <ul id="zkTree" class="ztree"></ul>
                     </div>
                 </div>
