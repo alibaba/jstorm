@@ -249,7 +249,7 @@ public class TopologyMetricsRunnable extends Thread {
             try {
                 // wait for metricUploader to be ready, for some external plugin like database, it'll take a few seconds
                 if (this.metricUploader != null) {
-                    Event event = queue.poll();
+                    Event event = queue.poll(1,TimeUnit.MILLISECONDS);
                     if (event == null) {
                         continue;
                     }
@@ -478,9 +478,9 @@ public class TopologyMetricsRunnable extends Thread {
     private void syncMetaFromRemote(String topologyId, TopologyMetricContext context) {
         try {
             int memSize = context.getMemMeta().size();
-            Integer zkSize = (Integer)stormClusterState.get_topology_metric(topologyId);
+            Integer zkSize = (Integer) stormClusterState.get_topology_metric(topologyId);
 
-            if (zkSize != null  && memSize != zkSize.intValue()) {
+            if (zkSize != null && memSize != zkSize.intValue()) {
                 ConcurrentMap<String, Long> memMeta = context.getMemMeta();
                 for (MetaType metaType : MetaType.values()) {
                     List<MetricMeta> metaList = metricQueryClient.getMetricMeta(clusterName, topologyId, metaType);

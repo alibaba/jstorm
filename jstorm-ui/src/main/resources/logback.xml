@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <configuration>
+
+    <property name="LOG_HOME" value="${catalina.home:-.}/logs/" />
+
     <appender name="PROJECT" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_HOME:-.}/jstorm.ui.log</file>
+        <file>${LOG_HOME}/jstorm.ui.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_HOME:-.}/jstorm.ui.log.%d{yyyy-MM-dd}</fileNamePattern>
+            <fileNamePattern>${LOG_HOME}/jstorm.ui.log.%d{yyyy-MM-dd}</fileNamePattern>
             <maxHistory>7</maxHistory>
         </rollingPolicy>
         <encoder>
@@ -13,9 +16,9 @@
         </encoder>
     </appender>
     <appender name="APACHE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_HOME:-.}/jstorm.apache.log</file>
+        <file>${LOG_HOME}/jstorm.apache.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_HOME:-.}/jstorm.apache.log.%d{yyyy-MM-dd}</fileNamePattern>
+            <fileNamePattern>${LOG_HOME}/jstorm.apache.log.%d{yyyy-MM-dd}</fileNamePattern>
             <maxHistory>7</maxHistory>
         </rollingPolicy>
         <encoder>
