@@ -58,7 +58,11 @@ public class ZookeeperManager {
             byte[] data = clusterState.get_data(PathUtils.normalize_path(path), false);
             if (data != null && data.length > 0) {
                 Object obj = Utils.maybe_deserialize(data);
-                out = gson.toJson(obj);
+                if (obj != null){
+                    out = gson.toJson(obj);
+                } else {
+                    out = new String(data);
+                }
             }
         } catch (Exception e) {
             LOG.error("Get zookeeper data error!", e);
