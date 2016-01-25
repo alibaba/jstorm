@@ -241,7 +241,7 @@ public class TopologyMetricsRunnable extends Thread {
 
     @Override
     public void run() {
-        while (!isShutdown.get()) {
+        while (isShutdown != null && !isShutdown.get()) {
             if (localMode) {
                 return;
             }
@@ -738,7 +738,7 @@ public class TopologyMetricsRunnable extends Thread {
     class RefreshTopologiesThread extends RunnableCallback {
         @Override
         public void run() {
-            if (!isShutdown.get()) {
+            if (isShutdown != null && !isShutdown.get()) {
                 pushEvent(new Refresh());
             }
         }
@@ -761,7 +761,7 @@ public class TopologyMetricsRunnable extends Thread {
 
         @Override
         public void run() {
-            while (!isShutdown.get()) {
+            while (isShutdown != null && !isShutdown.get()) {
                 try {
                     if (metricUploader != null && nimbusData.isLeader()) {
                         final int idx = getFirstPendingUploadIndex();
@@ -804,7 +804,7 @@ public class TopologyMetricsRunnable extends Thread {
 
         @Override
         public void run() {
-            while (!isShutdown.get()) {
+            while (isShutdown != null && !isShutdown.get()) {
                 long start = System.currentTimeMillis();
                 try {
                     // if metricUploader is not fully initialized, return directly
