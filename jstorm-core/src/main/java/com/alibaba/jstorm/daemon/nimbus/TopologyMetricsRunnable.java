@@ -241,7 +241,7 @@ public class TopologyMetricsRunnable extends Thread {
 
     @Override
     public void run() {
-        while (!isShutdown.get()) {
+        while (isShutdown != null && !isShutdown.get()) {
             if (localMode) {
                 return;
             }
@@ -249,7 +249,7 @@ public class TopologyMetricsRunnable extends Thread {
             try {
                 // wait for metricUploader to be ready, for some external plugin like database, it'll take a few seconds
                 if (this.metricUploader != null) {
-                    Event event = queue.poll();
+                    Event event = queue.poll(1,TimeUnit.MILLISECONDS);
                     if (event == null) {
                         continue;
                     }
@@ -478,9 +478,9 @@ public class TopologyMetricsRunnable extends Thread {
     private void syncMetaFromRemote(String topologyId, TopologyMetricContext context) {
         try {
             int memSize = context.getMemMeta().size();
-            int zkSize = (Integer) stormClusterState.get_topology_metric(topologyId);
+            Integer zkSize = (Integer) stormClusterState.get_topology_metric(topologyId);
 
-            if (memSize != zkSize) {
+            if (zkSize != null && memSize != zkSize.intValue()) {
                 ConcurrentMap<String, Long> memMeta = context.getMemMeta();
                 for (MetaType metaType : MetaType.values()) {
                     List<MetricMeta> metaList = metricQueryClient.getMetricMeta(clusterName, topologyId, metaType);
@@ -738,7 +738,7 @@ public class TopologyMetricsRunnable extends Thread {
     class RefreshTopologiesThread extends RunnableCallback {
         @Override
         public void run() {
-            if (!isShutdown.get()) {
+            if (isShutdown != null && !isShutdown.get()) {
                 pushEvent(new Refresh());
             }
         }
@@ -761,7 +761,7 @@ public class TopologyMetricsRunnable extends Thread {
 
         @Override
         public void run() {
-            while (!isShutdown.get()) {
+            while (isShutdown != null && !isShutdown.get()) {
                 try {
                     if (metricUploader != null && nimbusData.isLeader()) {
                         final int idx = getFirstPendingUploadIndex();
@@ -804,7 +804,7 @@ public class TopologyMetricsRunnable extends Thread {
 
         @Override
         public void run() {
-            while (!isShutdown.get()) {
+            while (isShutdown != null && !isShutdown.get()) {
                 long start = System.currentTimeMillis();
                 try {
                     // if metricUploader is not fully initialized, return directly
