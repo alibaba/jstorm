@@ -23,6 +23,7 @@ import backtype.storm.utils.LocalState;
 import backtype.storm.utils.Utils;
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.utils.JStormUtils;
+import com.alibaba.jstorm.utils.LoadConf;
 import com.alibaba.jstorm.utils.PathUtils;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -52,7 +53,7 @@ public class StormConfig {
     }
 
     public static Map read_yaml_config(String name) {
-        return Utils.findAndReadConfigFile(name, true);
+        return LoadConf.findAndReadYaml(name, true, false);
     }
 
     public static Map read_default_config() {

@@ -261,28 +261,6 @@ public class Utils {
         }
     }
 
-    /**
-     * Please directly use LoadConf.findResources(name);
-     * 
-     * @param name
-     * @return
-     */
-    @Deprecated
-    public static List<URL> findResources(String name) {
-        return LoadConf.findResources(name);
-    }
-
-    /**
-     * Please directly use LoadConf.findAndReadYaml(name);
-     * 
-     * @param name
-     * @return
-     */
-    @Deprecated
-    public static Map findAndReadConfigFile(String name, boolean mustExist) {
-        return LoadConf.findAndReadYaml(name, mustExist, false);
-    }
-
     public static Map findAndReadConfigFile(String name) {
         return LoadConf.findAndReadYaml(name, true, false);
     }
@@ -344,7 +322,7 @@ public class Utils {
     public static Map loadDefinedConf(String confFile) {
         File file = new File(confFile);
         if (file.exists() == false) {
-            return findAndReadConfigFile(confFile, true);
+            return LoadConf.findAndReadYaml(confFile, true, false);
         }
 
         Yaml yaml = new Yaml();
@@ -365,7 +343,7 @@ public class Utils {
         String confFile = System.getProperty("storm.conf.file");
         Map storm;
         if (StringUtils.isBlank(confFile) == true) {
-            storm = findAndReadConfigFile("storm.yaml", false);
+            storm = LoadConf.findAndReadYaml("storm.yaml", false, false);
         } else {
             storm = loadDefinedConf(confFile);
         }
