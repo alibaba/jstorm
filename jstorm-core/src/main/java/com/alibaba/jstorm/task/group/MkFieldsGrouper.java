@@ -17,11 +17,11 @@
  */
 package com.alibaba.jstorm.task.group;
 
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 import backtype.storm.tuple.Fields;
 
+import com.alibaba.jstorm.task.execute.MsgInfo;
 import com.alibaba.jstorm.utils.JStormUtils;
 
 /**
@@ -34,6 +34,7 @@ public class MkFieldsGrouper {
     private Fields out_fields;
     private Fields group_fields;
     private List<Integer> out_tasks;
+    private Map<Integer, List<Integer>> hash_targetTasks;
 
     public MkFieldsGrouper(Fields _out_fields, Fields _group_fields, List<Integer> _out_tasks) {
 
@@ -47,6 +48,7 @@ public class MkFieldsGrouper {
         this.out_fields = _out_fields;
         this.group_fields = _group_fields;
         this.out_tasks = _out_tasks;
+        this.hash_targetTasks = new HashMap<Integer, List<Integer>>();
 
     }
 
@@ -54,5 +56,32 @@ public class MkFieldsGrouper {
         int hashcode = this.out_fields.select(this.group_fields, values).hashCode();
         int group = Math.abs(hashcode % this.out_tasks.size());
         return JStormUtils.mk_list(out_tasks.get(group));
+    }
+
+    public void batchGrouper(List<MsgInfo> batch, Map<List<Integer>, List<MsgInfo>> ret){
+        // field grouping for performance
+        Map<Integer, List<MsgInfo>> hashMsgs = new HashMap<Integer, List<MsgInfo>>();
+
+        for (int i = 0; i < batch.size(); i++ ) {
+            MsgInfo msg = batch.get(i);
+            int hashcode = this.out_fields.select(this.group_fields, msg.values).hashCode();
+            int group = Math.abs(hashcode % this.out_tasks.size());
+
+            List<MsgInfo> fieldBatch = hashMsgs.get(group);
+            if (fieldBatch == null) {
+                fieldBatch = JStormUtils.mk_list();
+                hashMsgs.put(group, fieldBatch);
+            }
+            fieldBatch.add(msg);
+        }
+
+        for (Map.Entry<Integer, List<MsgInfo>> entry : hashMsgs.entrySet()){
+            List<Integer> tasks = hash_targetTasks.get(entry.getKey());
+            if (tasks == null){
+                tasks = JStormUtils.mk_list(out_tasks.get(entry.getKey()));
+                hash_targetTasks.put(entry.getKey(), tasks);
+            }
+            ret.put(tasks, entry.getValue());
+        }
     }
 }

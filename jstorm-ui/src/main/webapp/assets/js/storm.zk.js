@@ -30,7 +30,7 @@ function Node(id, pid, name, isParent) {
     this.isParent = isParent;
 };
 function getUrl(treeId, treeNode) {
-    return "zookeeper/node?path=" + treeNode.id+"&clusterName="+$("#clusterName").val();
+    return "api/v2/zookeeper/node?path=" + treeNode.id+"&clusterName="+$("#clusterName").val();
 }
 
 function filter(treeId, parentNode, responseData) {
@@ -52,7 +52,7 @@ function filter(treeId, parentNode, responseData) {
 function getData(path) {
     var clusterName = $("#clusterName").val();
     $.ajax({
-        url: "zookeeper/node/data",
+        url: "api/v2/zookeeper/node/data",
         type: "get",
         dataType: "json",
         contentType: "application/json;charset=utf-8",
@@ -77,7 +77,7 @@ function onClick(event, treeId, treeNode, clickFlag) {
 function showZKRoot() {
     var treeNodes = [];
     $.ajax({
-        url: "/zookeeper/node",
+        url: "api/v2/zookeeper/node",
         type: "get",
         dataType: "json",
         contentType: "application/json;charset=utf-8",

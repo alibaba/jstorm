@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alibaba.jstorm.message.netty;
+package backtype.storm.messaging;
 
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBufferOutputStream;
@@ -39,11 +39,11 @@ public enum ControlMessage {
 
     /**
      * Return a control message per an encoded status code
-     * 
+     *
      * @param encoded
      * @return
      */
-    static ControlMessage mkMessage(short encoded) {
+    public static ControlMessage mkMessage(short encoded) {
         for (ControlMessage cm : ControlMessage.values()) {
             if (encoded == cm.code)
                 return cm;
@@ -51,33 +51,25 @@ public enum ControlMessage {
         return null;
     }
 
-    static int encodeLength() {
+    public static int encodeLength() {
         return 14; // short + long + int
     }
 
     /**
      * encode the current Control Message into a channel buffer
-     * 
+     *
      * @throws Exception
      */
-    ChannelBuffer buffer() throws Exception {
+    public ChannelBuffer buffer() throws Exception {
         ChannelBufferOutputStream bout = new ChannelBufferOutputStream(ChannelBuffers.directBuffer(encodeLength()));
         write(bout);
         bout.close();
         return bout.buffer();
     }
 
-    void write(ChannelBufferOutputStream bout) throws Exception {
+    public void write(ChannelBufferOutputStream bout) throws Exception {
         bout.writeShort(code);
         bout.writeLong(System.currentTimeMillis());
         bout.writeInt(port);
-    }
-
-    long getTimeStamp() {
-        return timeStamp;
-    }
-
-    void setTimeStamp(long timeStamp) {
-        this.timeStamp = timeStamp;
     }
 }

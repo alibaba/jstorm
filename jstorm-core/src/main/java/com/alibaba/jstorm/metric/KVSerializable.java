@@ -5,7 +5,7 @@ package com.alibaba.jstorm.metric;
  * @since 2.0.5
  */
 public interface KVSerializable {
-     String START = "S", END = "E";
+    String START = "S", END = "E";
     int LONG_SIZE = 8;
     int INT_SIZE = 4;
 

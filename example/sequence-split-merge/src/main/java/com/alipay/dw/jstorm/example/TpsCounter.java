@@ -19,8 +19,8 @@ package com.alipay.dw.jstorm.example;
 
 import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicLong;
-
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TpsCounter implements Serializable{
 
@@ -49,7 +49,7 @@ public class TpsCounter implements Serializable{
 
 	public TpsCounter(String id, Class tclass) {
 		this.id = id;
-		this.LOG = Logger.getLogger(tclass);
+		this.LOG = LoggerFactory.getLogger(tclass);
 
 		intervalCheck = new IntervalCheck();
 		intervalCheck.setInterval(60);

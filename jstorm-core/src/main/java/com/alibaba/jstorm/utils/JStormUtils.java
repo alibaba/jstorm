@@ -17,14 +17,7 @@
  */
 package com.alibaba.jstorm.utils;
 
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
+import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
@@ -52,6 +45,8 @@ import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.ExecuteException;
 import org.apache.commons.exec.ExecuteResultHandler;
 import org.apache.commons.exec.PumpStreamHandler;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.thrift.TFieldIdEnum;
 import org.slf4j.Logger;
@@ -66,7 +61,7 @@ import com.alibaba.jstorm.client.ConfigExtension;
 
 /**
  * JStorm utility
- * 
+ *
  * @author yannian/Longda/Xin.Zhou/Xin.Li
  */
 public class JStormUtils {
@@ -107,7 +102,7 @@ public class JStormUtils {
 
     /**
      * filter the map
-     * 
+     *
      * @param filter
      * @param all
      * @return
@@ -197,7 +192,7 @@ public class JStormUtils {
 
     /**
      * "{:a 1 :b 1 :c 2} -> {1 [:a :b] 2 :c}"
-     * 
+     *
      * @param map
      * @return
      */
@@ -223,7 +218,7 @@ public class JStormUtils {
 
     /**
      * Gets the pid of this JVM, because Java doesn't provide a real way to do this.
-     * 
+     *
      * @return
      */
     public static String process_pid() {
@@ -236,32 +231,69 @@ public class JStormUtils {
         return split[0];
     }
 
+    /**
+     * All exe command will go launchProcess
+     *
+     * @param command
+     * @throws ExecuteException
+     * @throws IOException
+     */
     public static void exec_command(String command) throws ExecuteException, IOException {
-        String[] cmdlist = command.split(" ");
-        CommandLine cmd = new CommandLine(cmdlist[0]);
-        for (int i = 1; i < cmdlist.length; i++) {
-            cmd.addArgument(cmdlist[i]);
-        }
-
-        DefaultExecutor exec = new DefaultExecutor();
-        exec.execute(cmd);
+        launchProcess(command, new HashMap<String, String>(), false);
     }
+
 
     /**
      * Extra dir from the jar to destdir
-     * 
+     *
      * @param jarpath
      * @param dir
      * @param destdir
      */
-    public static void extract_dir_from_jar(String jarpath, String dir, String destdir) {
-        String cmd = "unzip -qq " + jarpath + " " + dir + "/** -d " + destdir;
+    public static void extractDirFromJar(String jarpath, String dir, String destdir) {
+        ZipFile zipFile = null;
         try {
-            exec_command(cmd);
+            zipFile = new ZipFile(jarpath);
+            Enumeration<? extends ZipEntry> entries = zipFile.entries();
+            while (entries != null && entries.hasMoreElements()) {
+                ZipEntry ze = entries.nextElement();
+                if (!ze.isDirectory() && ze.getName().startsWith(dir)) {
+                    InputStream in = zipFile.getInputStream(ze);
+                    try {
+                        File file = new File(destdir, ze.getName());
+                        if (!file.getParentFile().mkdirs()) {
+                            if (!file.getParentFile().isDirectory()) {
+                                throw new IOException("Mkdirs failed to create " +
+                                        file.getParentFile().toString());
+                            }
+                        }
+                        OutputStream out = new FileOutputStream(file);
+                        try {
+                            byte[] buffer = new byte[8192];
+                            int i;
+                            while ((i = in.read(buffer)) != -1) {
+                                out.write(buffer, 0, i);
+                            }
+                        } finally {
+                            out.close();
+                        }
+                    } finally {
+                        if (in != null)
+                            in.close();
+                    }
+                }
+            }
         } catch (Exception e) {
-            LOG.warn("No " + dir + " from " + jarpath + " by cmd:" + cmd + "!\n" + e.getMessage());
-        }
+            LOG.warn("No " + dir + " from " + jarpath + "!\n" + e.getMessage());
+        } finally {
+            if (zipFile != null)
+                try {
+                    zipFile.close();
+                } catch (Exception e) {
+                    LOG.warn(e.getMessage());
+                }
 
+        }
     }
 
     public static void ensure_process_killed(Integer pid) {
@@ -313,7 +345,7 @@ public class JStormUtils {
 
     /**
      * This function is only for linux
-     * 
+     *
      * @param pid
      * @return
      */
@@ -334,11 +366,11 @@ public class JStormUtils {
     }
 
     public static Double getCpuUsage() {
-        if (OSInfo.isLinux() == false) {
+        if (!OSInfo.isLinux()) {
             return 0.0;
         }
 
-        Double value = 0.0;
+        Double value;
         String output = null;
         try {
             String pid = JStormUtils.process_pid();
@@ -364,12 +396,20 @@ public class JStormUtils {
         return value;
     }
 
+    public static double getTotalCpuUsage() {
+        if (!OSInfo.isLinux()) {
+            return 0.0;
+        }
+        return LinuxResource.getCpuUsage();
+    }
+
     public static Double getDiskUsage() {
         if (!OSInfo.isLinux() && !OSInfo.isMac()) {
             return 0.0;
         }
         try {
-            String output = SystemOperation.exec("df -h /");
+           // String output = JStormUtils.launchProcess("df -h /home", new HashMap<String, String>(), false);
+            String output = SystemOperation.exec("df -h /home");
             if (output != null) {
                 String[] lines = output.split("[\\r\\n]+");
                 if (lines.length >= 2) {
@@ -383,15 +423,55 @@ public class JStormUtils {
                 }
             }
         } catch (Exception e) {
-            LOG.warn("failed to get disk usage:", e);
+            LOG.warn("failed to get disk usage.");
         }
         return 0.0;
     }
 
+    public static double getTotalMemUsage() {
+        if (!OSInfo.isLinux()) {
+            return 0.0;
+        }
+
+        try {
+            List<String> lines = IOUtils.readLines(new FileInputStream("/proc/meminfo"));
+            String total = lines.get(0).split("\\s+")[1];
+            String free = lines.get(1).split("\\s+")[1];
+            return 1 - Double.valueOf(free) / Double.valueOf(total);
+        } catch (Exception ignored) {
+            LOG.warn("failed to get total memory usage.");
+        }
+        return 0.0;
+    }
+
+    public static Long getFreePhysicalMem() {
+        if (!OSInfo.isLinux()) {
+            return 0L;
+        }
+        try {
+            List<String> lines = IOUtils.readLines(new FileInputStream("/proc/meminfo"));
+            String free = lines.get(1).split("\\s+")[1];
+            return Long.valueOf(free);
+        } catch (Exception ignored) {
+            LOG.warn("failed to get total free memory.");
+        }
+        return 0L;
+    }
+
+    public static int getNumProcessors(){
+        int sysCpuNum = 0;
+        try {
+            sysCpuNum = Runtime.getRuntime().availableProcessors();
+        } catch (Exception e) {
+            LOG.info("Failed to get CPU cores .");
+        }
+        return sysCpuNum;
+    }
+
     public static Double getMemUsage() {
-        if (OSInfo.isLinux() == true) {
+        if (OSInfo.isLinux()) {
             try {
-                Double value = 0.0;
+                Double value;
                 String pid = JStormUtils.process_pid();
                 String command = String.format("top -b -n 1 -p %s | grep -w %s", pid, pid);
                 String output = SystemOperation.exec(command);
@@ -416,7 +496,7 @@ public class JStormUtils {
                         } else {
                             value = Double.parseDouble(info);
                         }
-                        
+
                         //LOG.info("!!!! Get Memory Size:{}, info:{}", value, info);
                         return value;
                     }
@@ -432,7 +512,6 @@ public class JStormUtils {
                 }
             } catch (Exception e) {
                 LOG.warn("Failed to get memory usage .");
-
             }
         }
 
@@ -440,14 +519,58 @@ public class JStormUtils {
         MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
         MemoryUsage memoryUsage = memoryMXBean.getHeapMemoryUsage();
 
-        return Double.valueOf(memoryUsage.getUsed());
+        return (double) memoryUsage.getUsed();
+    }
+
+    public static double getJVMHeapMemory() {
+        MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
+        MemoryUsage memoryUsage = memoryMXBean.getHeapMemoryUsage();
+
+        return (double) memoryUsage.getUsed();
+    }
+
+    /**
+     * Attention
+     * Hook signal in JVM is too dangerous to
+     */
+    public static void registerJStormSignalHandler() {
+        if (!OSInfo.isLinux()) {
+            LOG.info("Skip register signal for current OS");
+            return;
+        }
+
+        JStormSignalHandler instance = JStormSignalHandler.getInstance();
+        /**
+         * These signal will lead to JVM exit
+         */
+        int[] signals = {
+                1, //SIGHUP
+                2, //SIGINT
+                //3, //Signal already used by VM or OS: SIGQUIT
+                //4, //Signal already used by VM or OS: SIGILL
+                5, //SIGTRAP
+                6, //SIGABRT
+                7, // SIGBUS
+                //8, //Signal already used by VM or OS: SIGFPE
+                //10, //Signal already used by VM or OS: SIGUSR1
+                //11, Signal already used by VM or OS: SIGSEGV
+                12, //SIGUSER2
+                14, //SIGALM
+                16, //SIGSTKFLT
+        };
+
+
+        for (int signal : signals) {
+            instance.registerSignal(signal, null, true);
+        }
+
     }
 
     /**
      * If it is backend, please set resultHandler, such as DefaultExecuteResultHandler If it is frontend, ByteArrayOutputStream.toString get the result
      * <p/>
      * This function don't care whether the command is successfully or not
-     * 
+     *
      * @param command
      * @param environment
      * @param workDir
@@ -455,6 +578,7 @@ public class JStormUtils {
      * @return
      * @throws IOException
      */
+    @Deprecated
     public static ByteArrayOutputStream launchProcess(String command, final Map environment, final String workDir, ExecuteResultHandler resultHandler)
             throws IOException {
 
@@ -497,15 +621,9 @@ public class JStormUtils {
 
     }
 
-    protected static Process launchProcess(final String[] cmdlist, final Map<String, String> environment) throws IOException {
-        ArrayList<String> buff = new ArrayList<String>();
-        for (String tok : cmdlist) {
-            if (!tok.isEmpty()) {
-                buff.add(tok);
-            }
-        }
-
-        ProcessBuilder builder = new ProcessBuilder(buff);
+    protected static java.lang.Process launchProcess(final List<String> cmdlist,
+                                                     final Map<String, String> environment) throws IOException {
+        ProcessBuilder builder = new ProcessBuilder(cmdlist);
         builder.redirectErrorStream(true);
         Map<String, String> process_evn = builder.environment();
         for (Entry<String, String> entry : environment.entrySet()) {
@@ -515,35 +633,97 @@ public class JStormUtils {
         return builder.start();
     }
 
-    /**
-     * @param command
-     * @param environment
-     * @param backend
-     * @return
-     * @throws IOException
-     * @@@ it should use DefaultExecutor to start a process, but some little problem have been found, such as exitCode/output string so still use the old method
-     *     to start process
-     */
-    public static Process launch_process(final String command, final Map<String, String> environment, boolean backend) throws IOException {
+    public static String getOutput(InputStream input) {
+        BufferedReader in = new BufferedReader(new InputStreamReader(input));
+        StringBuilder sb = new StringBuilder();
+        String line;
+        try {
+            while ((line = in.readLine()) != null) {
+                sb.append(line).append("\n");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                in.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return sb.toString();
+    }
 
-        if (backend == true) {
+
+    public static String launchProcess(final String command, final List<String> cmdlist,
+                                       final Map<String, String> environment, boolean backend) throws IOException {
+        if (backend) {
             new Thread(new Runnable() {
-
                 @Override
                 public void run() {
-                    String[] cmdlist = (new String("nohup " + command + " &")).split(" ");
+                    List<String> cmdWrapper = new ArrayList<String>();
+
+                    cmdWrapper.add("nohup");
+                    cmdWrapper.addAll(cmdlist);
+                    cmdWrapper.add("&");
+
                     try {
-                        launchProcess(cmdlist, environment);
+                        launchProcess(cmdWrapper, environment);
                     } catch (IOException e) {
-                        LOG.error("Failed to run " + command + ":" + e.getCause(), e);
+                        LOG.error("Failed to run nohup " + command + " &," + e.getCause(), e);
                     }
                 }
             }).start();
             return null;
         } else {
-            String[] cmdlist = command.split(" ");
-            return launchProcess(cmdlist, environment);
+            try {
+                Process process = launchProcess(cmdlist, environment);
+
+                StringBuilder sb = new StringBuilder();
+                String output = JStormUtils.getOutput(process.getInputStream());
+                String errorOutput = JStormUtils.getOutput(process.getErrorStream());
+                sb.append(output);
+                sb.append("\n");
+                sb.append(errorOutput);
+
+                int ret = process.waitFor();
+                if (ret != 0) {
+                    LOG.warn(command + " is terminated abnormally. ret={}, str={}", ret, sb.toString());
+                }
+                return sb.toString();
+            } catch (Throwable e) {
+                LOG.error("Failed to run " + command + ", " + e.getCause(), e);
+            }
+
+            return "";
         }
+    }
+
+    /**
+     * Attention
+     *
+     * All launchProcess should go this function
+     *
+     * it should use DefaultExecutor to start a process,
+     * but some little problem have been found,
+     * such as exitCode/output string so still use the old method to start process
+     *
+     * @param command
+     * @param environment
+     * @param backend
+     * @return outputString
+     * @throws IOException
+     */
+    public static String launchProcess(final String command, final Map<String, String> environment, boolean backend) throws IOException {
+        String[] cmds = command.split(" ");
+
+        ArrayList<String> cmdList = new ArrayList<String>();
+        for (String tok : cmds) {
+            if (!StringUtils.isBlank(tok)) {
+                cmdList.add(tok);
+            }
+        }
+
+        return launchProcess(command, cmdList, environment, backend);
     }
 
     public static String current_classpath() {
@@ -581,9 +761,6 @@ public class JStormUtils {
      * if the list exist repeat string, return the repeated string
      * <p/>
      * this function will be used to check wheter bolt or spout exist same id
-     * 
-     * @param sets
-     * @return
      */
     public static List<String> getRepeat(List<String> list) {
 
@@ -603,7 +780,7 @@ public class JStormUtils {
 
     /**
      * balance all T
-     * 
+     *
      * @param <T>
      * @param splitup
      * @return
@@ -629,8 +806,8 @@ public class JStormUtils {
         return rtn;
     }
 
-    public static Long bit_xor_vals(Object... vals) {
-        Long rtn = 0l;
+    public static long bit_xor_vals(Object... vals) {
+        long rtn = 0l;
         for (Object n : vals) {
             rtn = bit_xor(rtn, n);
         }
@@ -638,8 +815,8 @@ public class JStormUtils {
         return rtn;
     }
 
-    public static <T> Long bit_xor_vals(List<T> vals) {
-        Long rtn = 0l;
+    public static <T> long bit_xor_vals(java.util.List<T> vals) {
+        long rtn = 0l;
         for (T n : vals) {
             rtn = bit_xor(rtn, n);
         }
@@ -647,29 +824,29 @@ public class JStormUtils {
         return rtn;
     }
 
-    public static <T> Long bit_xor_vals_sets(Set<T> vals) {
-        Long rtn = 0l;
+    public static <T> long bit_xor_vals_sets(java.util.Set<T> vals) {
+        long rtn = 0l;
         for (T n : vals) {
             rtn = bit_xor(rtn, n);
         }
         return rtn;
     }
 
-    public static Long bit_xor(Object a, Object b) {
-        Long rtn = 0l;
+    public static long bit_xor(Object a, Object b) {
+        long rtn;
 
         if (a instanceof Long && b instanceof Long) {
             rtn = ((Long) a) ^ ((Long) b);
             return rtn;
         } else if (b instanceof Set) {
-            Long bs = bit_xor_vals_sets((Set) b);
+            long bs = bit_xor_vals_sets((Set) b);
             return bit_xor(a, bs);
         } else if (a instanceof Set) {
-            Long as = bit_xor_vals_sets((Set) a);
+            long as = bit_xor_vals_sets((Set) a);
             return bit_xor(as, b);
         } else {
-            Long ai = Long.parseLong(String.valueOf(a));
-            Long bi = Long.parseLong(String.valueOf(b));
+            long ai = Long.parseLong(String.valueOf(a));
+            long bi = Long.parseLong(String.valueOf(b));
             rtn = ai ^ bi;
             return rtn;
         }
@@ -684,7 +861,7 @@ public class JStormUtils {
         return rtn;
     }
 
-    public static <V> List<V> mk_list(Set<V> args) {
+    public static <V> List<V> mk_list(java.util.Set<V> args) {
         ArrayList<V> rtn = new ArrayList<V>();
         if (args != null) {
             for (V o : args) {
@@ -717,7 +894,7 @@ public class JStormUtils {
             return Long.valueOf(String.valueOf(o));
         } else if (o instanceof Integer) {
             Integer value = (Integer) o;
-            return Long.valueOf((Integer) value);
+            return Long.valueOf(value);
         } else if (o instanceof Long) {
             return (Long) o;
         } else {
@@ -783,7 +960,7 @@ public class JStormUtils {
             return Integer.parseInt(String.valueOf(o));
         } else if (o instanceof Long) {
             long value = (Long) o;
-            return Integer.valueOf((int) value);
+            return (int) value;
         } else if (o instanceof Integer) {
             return (Integer) o;
         } else {
@@ -800,7 +977,7 @@ public class JStormUtils {
             return Integer.parseInt(String.valueOf(o));
         } else if (o instanceof Long) {
             long value = (Long) o;
-            return Integer.valueOf((int) value);
+            return (int) value;
         } else if (o instanceof Integer) {
             return (Integer) o;
         } else {
@@ -848,7 +1025,7 @@ public class JStormUtils {
 
     /**
      * Check whether the zipfile contain the resources
-     * 
+     *
      * @param zipfile
      * @param resources
      * @return
@@ -1075,7 +1252,8 @@ public class JStormUtils {
     public static Long getPhysicMemorySize() {
         Object object;
         try {
-            object = ManagementFactory.getPlatformMBeanServer().getAttribute(new ObjectName("java.lang", "type", "OperatingSystem"), "TotalPhysicalMemorySize");
+            object = ManagementFactory.getPlatformMBeanServer().getAttribute(
+                    new ObjectName("java.lang", "type", "OperatingSystem"), "TotalPhysicalMemorySize");
         } catch (Exception e) {
             LOG.warn("Failed to get system physical memory size,", e);
             return null;
@@ -1112,12 +1290,12 @@ public class JStormUtils {
 
     public static String getLogFileName() {
         try {
-            Logger rootLogger = LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+            Logger rootLogger = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
             if (rootLogger instanceof ch.qos.logback.classic.Logger) {
                 ch.qos.logback.classic.Logger logbackLogger = (ch.qos.logback.classic.Logger) rootLogger;
                 // Logger framework is Logback
                 for (Iterator<ch.qos.logback.core.Appender<ch.qos.logback.classic.spi.ILoggingEvent>> index = logbackLogger.iteratorForAppenders(); index
-                        .hasNext();) {
+                        .hasNext(); ) {
                     ch.qos.logback.core.Appender<ch.qos.logback.classic.spi.ILoggingEvent> appender = index.next();
                     if (appender instanceof ch.qos.logback.core.FileAppender) {
                         ch.qos.logback.core.FileAppender fileAppender = (ch.qos.logback.core.FileAppender) appender;
@@ -1206,53 +1384,70 @@ public class JStormUtils {
         return rtn;
     }
 
-    public static List<Integer> getSupervisorPortList(Map conf) {
-        List<Integer> portList = (List<Integer>) conf.get(Config.SUPERVISOR_SLOTS_PORTS);
-        if (portList != null && portList.size() > 0) {
-            return portList;
-        }
-
-        LOG.info("Generate port list through CPU cores and system memory size");
-
+    public static int getSupervisorPortNum(Map conf, int sysCpuNum, Long physicalMemSize, boolean reserved) {
         double cpuWeight = ConfigExtension.getSupervisorSlotsPortCpuWeight(conf);
-        int sysCpuNum = 4;
-        try {
-            sysCpuNum = Runtime.getRuntime().availableProcessors();
-        } catch (Exception e) {
-            LOG.info("Failed to get CPU cores, set cpu cores as 4");
-            sysCpuNum = 4;
-        }
-        int cpuPortNum = (int) (sysCpuNum / cpuWeight);
-        if (cpuPortNum < 1) {
 
+        int cpuPortNum = (int) (sysCpuNum / cpuWeight);
+
+        if (cpuPortNum < 1) {
             LOG.info("Invalid supervisor.slots.port.cpu.weight setting :" + cpuWeight + ", cpu cores:" + sysCpuNum);
             cpuPortNum = 1;
         }
 
         Double memWeight = ConfigExtension.getSupervisorSlotsPortMemWeight(conf);
+
         int memPortNum = Integer.MAX_VALUE;
-        Long physicalMemSize = JStormUtils.getPhysicMemorySize();
+
         if (physicalMemSize == null) {
             LOG.info("Failed to get memory size");
         } else {
             LOG.info("Get system memory size :" + physicalMemSize);
+
             long workerMemSize = ConfigExtension.getMemSizePerWorker(conf);
+
             memPortNum = (int) (physicalMemSize / (workerMemSize * memWeight));
+
             if (memPortNum < 1) {
-                LOG.info("Invalide worker.memory.size setting:" + workerMemSize);
-                memPortNum = 4;
+                LOG.info("Invalid worker.memory.size setting:" + workerMemSize);
+                memPortNum = reserved ? 1 : 4;
             } else if (memPortNum < 4) {
-                LOG.info("System memory is too small for jstorm");
-                memPortNum = 4;
+                LOG.info("System memory is too small for Jstorm");
+                memPortNum = reserved ? 1 : 4;
             }
         }
 
-        int portNum = Math.min(cpuPortNum, memPortNum);
-        if (portNum < 1) {
-            portNum = 1;
+        return Math.min(cpuPortNum, memPortNum);
+    }
+
+    public static List<Integer> getSupervisorPortList(Map conf) {
+        List<Integer> portList = (List<Integer>) conf.get(Config.SUPERVISOR_SLOTS_PORTS);
+
+        if (portList != null && portList.size() > 0) {
+            return portList;
         }
 
+        int sysCpuNum = 4;
+
+        try {
+            sysCpuNum = Runtime.getRuntime().availableProcessors();
+        } catch (Exception e) {
+            LOG.info("Failed to get CPU cores, set cpu cores as 4");
+        }
+
+        Long physicalMemSize = JStormUtils.getPhysicMemorySize();
+
+        if (physicalMemSize > 8589934592L) {
+            long reserveMemory = ConfigExtension.getStormMachineReserveMem(conf);
+            if (physicalMemSize < reserveMemory) {
+                throw new RuntimeException("ReserveMemory configured too larger ,because PhysicalMemSize is only :" + physicalMemSize);
+            }
+            physicalMemSize -= reserveMemory;
+        }
+
+        int portNum = getSupervisorPortNum(conf, sysCpuNum, physicalMemSize, false);
+
         int portBase = ConfigExtension.getSupervisorSlotsPortsBase(conf);
+
         portList = new ArrayList<Integer>();
         for (int i = 0; i < portNum; i++) {
             portList.add(portBase + i);
@@ -1286,56 +1481,56 @@ public class JStormUtils {
 
         return ret;
     }
-    
-    public static Object thriftToObject(Object obj) {
-    	Object ret = null;
-    	if (obj instanceof org.apache.thrift.TBase) {
-			ret = thriftToMap((org.apache.thrift.TBase)obj);
-		}else if (obj instanceof List) {
-			ret = new ArrayList<>();
-			for (Object item : (List)obj) {
-				((List)ret).add(thriftToObject(item));
-			}
-		}else if (obj instanceof Map) {
-			ret = new HashMap<String, Object>();
-			Set<Entry> entrySet = ((Map)obj).entrySet();
-			for (Entry entry : entrySet) {
-				((Map)ret).put(String.valueOf(entry.getKey()), thriftToObject(entry.getValue()));
-			}
-		}else {
 
-			ret = String.valueOf(obj);
-		}
-    	
-    	return ret;
+    public static Object thriftToObject(Object obj) {
+        Object ret = null;
+        if (obj instanceof org.apache.thrift.TBase) {
+            ret = thriftToMap((org.apache.thrift.TBase) obj);
+        } else if (obj instanceof List) {
+            ret = new ArrayList<>();
+            for (Object item : (List) obj) {
+                ((List) ret).add(thriftToObject(item));
+            }
+        } else if (obj instanceof Map) {
+            ret = new HashMap<String, Object>();
+            Set<Map.Entry> entrySet = ((Map) obj).entrySet();
+            for (Map.Entry entry : entrySet) {
+                ((Map) ret).put(String.valueOf(entry.getKey()), thriftToObject(entry.getValue()));
+            }
+        } else {
+
+            ret = String.valueOf(obj);
+        }
+
+        return ret;
     }
-    
-    public static  Map<String, Object> thriftToMap(
-    		org.apache.thrift.TBase thriftObj) {
-    	Map<String, Object> ret = new HashMap<String, Object>();
-    	
-    	int i = 1;
-    	TFieldIdEnum field = thriftObj.fieldForId(i);
-    	while(field != null) {
-    		if (thriftObj.isSet(field)) {
-    			Object obj = thriftObj.getFieldValue(field);
-    			ret.put(field.getFieldName(), thriftToObject(obj));
-    			
-    		}
-    		field = thriftObj.fieldForId(++i);
-    	}
-    	
-    	return ret;
+
+    public static Map<String, Object> thriftToMap(
+            org.apache.thrift.TBase thriftObj) {
+        Map<String, Object> ret = new HashMap<String, Object>();
+
+        int i = 1;
+        TFieldIdEnum field = thriftObj.fieldForId(i);
+        while (field != null) {
+            if (thriftObj.isSet(field)) {
+                Object obj = thriftObj.getFieldValue(field);
+                ret.put(field.getFieldName(), thriftToObject(obj));
+
+            }
+            field = thriftObj.fieldForId(++i);
+        }
+
+        return ret;
     }
-    
+
     public static List<Map<String, Object>> thriftToMap(List thriftObjs) {
-    	List<Map<String, Object> > ret = new ArrayList<Map<String, Object> > () ;
-    	
-    	for (Object thriftObj : thriftObjs) {
-    		ret.add(thriftToMap((org.apache.thrift.TBase)thriftObj));
-    	}
-    	
-    	return ret;
+        List<Map<String, Object>> ret = new ArrayList<Map<String, Object>>();
+
+        for (Object thriftObj : thriftObjs) {
+            ret.add(thriftToMap((org.apache.thrift.TBase) thriftObj));
+        }
+
+        return ret;
     }
 
 

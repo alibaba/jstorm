@@ -22,7 +22,11 @@ import backtype.storm.generated.MetricSnapshot;
 import com.alibaba.jstorm.metric.MetricDef;
 import com.alibaba.jstorm.ui.utils.UIMetricUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
+import java.beans.Transient;
 import java.util.*;
 
 /**
@@ -32,7 +36,7 @@ public class UIComponentMetric extends UIBasicMetric {
     protected String componentName;
     protected int parallel;
     protected String type;
-    protected List<ErrorInfo> errors;
+    protected List<ErrorEntity> errors;
     protected String sortedKey;
 
     // <metricName, <parentCompName, value>>
@@ -147,22 +151,33 @@ public class UIComponentMetric extends UIBasicMetric {
     }
 
 
+    @JsonIgnore
     public Map<String, String> getSubMetrics() {
         return subMetrics;
     }
 
+    @JsonIgnore
     public Set<String> getParentComponent() {
         return parentComponent;
     }
 
-    public List<ErrorInfo> getErrors() {
+    public List<ErrorEntity> getErrors() {
         return errors;
     }
 
     public void setErrors(List<ErrorInfo> errors) {
-        this.errors = errors;
+        if (errors == null){
+            this.errors = null;
+            return;
+        }
+        this.errors = new ArrayList<>();
+        for (ErrorInfo info : errors){
+            ErrorEntity err = new ErrorEntity(info.get_errorTimeSecs(), info.get_error());
+            this.errors.add(err);
+        }
     }
 
+    @JsonIgnore
     public String getSortedKey() {
         return sortedKey;
     }

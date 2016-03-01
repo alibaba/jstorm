@@ -24,6 +24,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 
+import com.alibaba.jstorm.task.execute.BoltCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,12 +65,12 @@ public class BackpressureTrigger extends Backpressure {
 
     private IntervalCheck intervalCheck;
 
-    OutputCollector output;
+    BoltCollector output;
 
     private List<EventType> samplingSet;
     private double triggerSampleRate;
 
-    public BackpressureTrigger(Task task, BoltExecutors boltExecutor, Map stormConf, OutputCollector output) {
+    public BackpressureTrigger(Task task, BoltExecutors boltExecutor, Map stormConf, BoltCollector output) {
         super(stormConf);
 
         this.task = task;
@@ -131,7 +132,7 @@ public class BackpressureTrigger extends Backpressure {
         }
 
         LOG.debug("Backpressure Check: exeQueue load=" + (exeQueue.pctFull() * 100) + ", recvQueue load=" + (recvQueue.pctFull() * 100));
-        if (exeQueue.pctFull() > highWaterMark) {
+        if (exeQueue.pctFull() > (float)highWaterMark) {
             samplingSet.add(EventType.startBackpressure);
         } else if (exeQueue.pctFull() <= lowWaterMark) {
             samplingSet.add(EventType.stopBackpressure);
@@ -167,7 +168,7 @@ public class BackpressureTrigger extends Backpressure {
 
     private boolean sampleRateCheck(double count) {
         double sampleRate = count / samplingSet.size();
-        if (sampleRate > triggerSampleRate)
+        if (sampleRate >= triggerSampleRate)
             return true;
         else
             return false;
@@ -179,7 +180,7 @@ public class BackpressureTrigger extends Backpressure {
             EventType type = event.getEventType();
             if (type.equals(EventType.stopBackpressure)) {
                 isUnderBackpressure = false;
-                LOG.info("Received stop backpressure event for task-" + task.getTaskId());
+                LOG.debug("Received stop backpressure event for task-" + task.getTaskId());
             } else if (type.equals(EventType.updateBackpressureConfig)) {
                 Map stormConf = (Map) event.getEventValue().get(0);
                 updateConfig(stormConf);
@@ -201,16 +202,16 @@ public class BackpressureTrigger extends Backpressure {
 
     private void startBackpressure() {
         List<Object> value = new ArrayList<Object>();
-        Double flowCtrlTime = Double.valueOf(boltExecutor.getExecuteTime() / 1000);
+        Double flowCtrlTime = boltExecutor.getExecuteTime();
         value.add(flowCtrlTime.intValue());
         TopoMasterCtrlEvent startBp = new TopoMasterCtrlEvent(EventType.startBackpressure, value);
-        output.emit(Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, new Values(startBp));
+        output.emitCtrl(Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null, new Values(startBp));
         LOG.debug("Send start backpressure request for task-{}, flowCtrlTime={}", taskId, flowCtrlTime.intValue());
     }
 
     private void stopBackpressure() {
         TopoMasterCtrlEvent stopBp = new TopoMasterCtrlEvent(EventType.stopBackpressure, null);
-        output.emit(Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, new Values(stopBp));
+        output.emitCtrl(Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null, new Values(stopBp));
         LOG.debug("Send stop backpressure request for task-{}", taskId);
     }
 }

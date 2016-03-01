@@ -52,4 +52,6 @@ public interface ClusterState {
     public ClusterStateCallback unregister(UUID id);
 
     public boolean node_existed(String path, boolean watch) throws Exception;
+
+    public Integer get_version(String path, boolean watch) throws Exception;
 }

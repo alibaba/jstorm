@@ -18,23 +18,18 @@
 package com.alibaba.jstorm.task.execute;
 
 import backtype.storm.Config;
-import backtype.storm.Constants;
-import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.utils.DisruptorQueue;
 import backtype.storm.utils.Utils;
 import backtype.storm.utils.WorkerClassLoader;
 import com.alibaba.jstorm.callback.RunnableCallback;
-import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.common.metric.AsmGauge;
 import com.alibaba.jstorm.common.metric.QueueGauge;
 import com.alibaba.jstorm.daemon.worker.timer.RotatingMapTrigger;
-import com.alibaba.jstorm.daemon.worker.timer.TaskBatchFlushTrigger;
 import com.alibaba.jstorm.daemon.worker.timer.TaskHeartbeatTrigger;
 import com.alibaba.jstorm.metric.*;
 import com.alibaba.jstorm.task.Task;
 import com.alibaba.jstorm.task.TaskBaseMetric;
-import com.alibaba.jstorm.task.TaskBatchTransfer;
 import com.alibaba.jstorm.task.TaskStatus;
 import com.alibaba.jstorm.task.TaskTransfer;
 import com.alibaba.jstorm.task.error.ITaskReportErr;
@@ -48,9 +43,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.TimeUnit;
 
 //import com.alibaba.jstorm.message.zeroMq.IRecvConnection;
 
@@ -71,8 +63,6 @@ public class BaseExecutors extends RunnableCallback {
 
     protected Map storm_conf;
 
-    protected final boolean isDebug;
-
     protected TopologyContext userTopologyCtx;
     protected TopologyContext sysTopologyCtx;
     protected TaskBaseMetric task_stats;
@@ -86,7 +76,7 @@ public class BaseExecutors extends RunnableCallback {
     protected ITaskReportErr report_error;
 
     protected DisruptorQueue exeQueue;
-    protected BlockingQueue<Object> controlQueue;
+    protected DisruptorQueue controlQueue;
     protected Map<Integer, DisruptorQueue> innerTaskTransfer;
 
     protected Task task;
@@ -121,27 +111,32 @@ public class BaseExecutors extends RunnableCallback {
         this.taskTransfer = task.getTaskTransfer();
         this.metricsReporter = task.getWorkerData().getMetricsReporter();
 
-        this.isDebug = JStormUtils.parseBoolean(storm_conf.get(Config.TOPOLOGY_DEBUG), false);
-
         message_timeout_secs = JStormUtils.parseInt(storm_conf.get(Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS), 30);
 
         int queue_size = Utils.getInt(storm_conf.get(Config.TOPOLOGY_EXECUTOR_RECEIVE_BUFFER_SIZE), 256);
         WaitStrategy waitStrategy = (WaitStrategy) JStormUtils.createDisruptorWaitStrategy(storm_conf);
         this.exeQueue = DisruptorQueue.mkInstance(idStr, ProducerType.MULTI, queue_size, waitStrategy);
-        this.exeQueue.consumerStarted();
-        this.controlQueue = new LinkedBlockingDeque<Object>();
+        //this.exeQueue.consumerStarted();
+        queue_size = Utils.getInt(storm_conf.get(Config.TOPOLOGY_CTRL_BUFFER_SIZE), 32);
+        this.controlQueue = DisruptorQueue.mkInstance(idStr + " for control message", ProducerType.MULTI, queue_size, waitStrategy);
+        //this.controlQueue.consumerStarted();
 
         this.registerInnerTransfer(exeQueue);
+        this.task.getControlQueues().put(taskId, this.controlQueue);
 
         QueueGauge exeQueueGauge = new QueueGauge(exeQueue, idStr, MetricDef.EXECUTE_QUEUE);
         JStormMetrics.registerTaskMetric(MetricUtils.taskMetricName(topologyId, componentId, taskId, MetricDef.EXECUTE_QUEUE, MetricType.GAUGE), new AsmGauge(
                 exeQueueGauge));
         JStormHealthCheck.registerTaskHealthCheck(taskId, MetricDef.EXECUTE_QUEUE, exeQueueGauge);
+        //metric for control queue
+        QueueGauge controlQueueGauge = new QueueGauge(controlQueue, idStr, MetricDef.CONTROL_QUEUE);
+        JStormMetrics.registerTaskMetric(MetricUtils.taskMetricName(topologyId, componentId, taskId, MetricDef.CONTROL_QUEUE, MetricType.GAUGE), new AsmGauge(
+                controlQueueGauge));
+        JStormHealthCheck.registerTaskHealthCheck(taskId, MetricDef.CONTROL_QUEUE, controlQueueGauge);
 
-        rotatingMapTrigger = new RotatingMapTrigger(storm_conf, idStr + "_rotating", exeQueue);
+        rotatingMapTrigger = new RotatingMapTrigger(storm_conf, idStr + "_rotating", controlQueue);
         rotatingMapTrigger.register();
-        taskHbTrigger = new TaskHeartbeatTrigger(storm_conf, idStr + "_taskHeartbeat", exeQueue, controlQueue, taskId, componentId, sysTopologyCtx, report_error);
-        taskHbTrigger.register();
+        taskHbTrigger = new TaskHeartbeatTrigger(storm_conf, idStr + "_taskHeartbeat", controlQueue, taskId, componentId, sysTopologyCtx, report_error);
         
         assignmentTs = System.currentTimeMillis();
         
@@ -157,6 +152,8 @@ public class BaseExecutors extends RunnableCallback {
             LOG.info("{} begin to init", idStr);
             
             init();
+
+            taskHbTrigger.register();
             
             if (taskId == getMinTaskIdOfWorker()) {
                 metricsReporter.setOutputCollector(getOutputCollector());
@@ -201,7 +198,7 @@ public class BaseExecutors extends RunnableCallback {
     @Override
     public void shutdown() {
         LOG.info("Shutdown executing thread of " + idStr);
-        if (taskStatus.isShutdown() == false) {
+        if (!taskStatus.isShutdown()) {
             LOG.info("Taskstatus isn't shutdown, but enter shutdown method, Occur exception");
         }
         this.unregistorInnerTransfer();

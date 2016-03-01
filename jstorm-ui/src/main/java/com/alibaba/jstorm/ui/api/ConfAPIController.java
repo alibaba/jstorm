@@ -32,7 +32,7 @@ import java.util.Map;
  * @author Jark (wuchong.wc@alibaba-inc.com)
  */
 @RestController
-@RequestMapping(UIDef.API_V1 + "/cluster/{name}")
+@RequestMapping(UIDef.API_V2 + "/cluster/{name}")
 public class ConfAPIController {
     private final static Logger LOG = LoggerFactory.getLogger(ConfAPIController.class);
 

@@ -47,7 +47,7 @@ public class KryoTupleSerializer implements ITupleSerializer {
     }
     /**
      * @@@ in the furture, it will skill serialize 'targetTask' through check some flag
-     * @see ITupleSerializer#serialize(int, Tuple)
+     * @see backtype.storm.serialization.ITupleSerializer#serialize(int, backtype.storm.tuple.Tuple)
      */
     private void serializeTuple(Output output, Tuple tuple) {
         try {

@@ -17,6 +17,7 @@
  */
 package com.alibaba.jstorm.common.metric;
 
+import backtype.storm.utils.MutableInt;
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.common.metric.snapshot.AsmSnapshot;
 import com.alibaba.jstorm.metric.AsmWindow;
@@ -26,6 +27,7 @@ import com.alibaba.jstorm.utils.TimeUtils;
 import com.codahale.metrics.Metric;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +43,7 @@ public abstract class AsmMetric<T extends Metric> {
             .newArrayList(AsmWindow.M1_WINDOW, AsmWindow.M10_WINDOW, AsmWindow.H2_WINDOW, AsmWindow.D1_WINDOW);
     protected static final List<Integer> nettyWindows = Lists.newArrayList(AsmWindow.M1_WINDOW);
 
-    protected static int minWindow = AsmWindow.M1_WINDOW;
+    protected static int minWindow = getMinWindow(windowSeconds);
     protected static final List<Integer> EMPTY_WIN = Lists.newArrayListWithCapacity(0);
     /**
      * sample rate for meter, histogram and timer, note that counter & gauge are not sampled.
@@ -52,6 +54,7 @@ public abstract class AsmMetric<T extends Metric> {
     protected volatile long metricId = 0L;
     protected String metricName;
     protected boolean aggregate = true;
+    protected AtomicBoolean enabled = new AtomicBoolean(true);
     protected volatile long lastFlushTime = TimeUtils.current_time_secs() - AsmWindow.M1_WINDOW;
     protected Map<Integer, Long> rollingTimeMap = new ConcurrentHashMap<>();
     protected Map<Integer, Boolean> rollingDirtyMap = new ConcurrentHashMap<>();
@@ -71,19 +74,28 @@ public abstract class AsmMetric<T extends Metric> {
      * keep a random for each instance to avoid competition (although it's thread-safe).
      */
     private final Random rand = new Random();
+    private final int freq = (int) (1 / sampleRate);
+    private MutableInt curr = new MutableInt(-1);
+    private MutableInt target = new MutableInt(rand.nextInt(freq));
 
     protected boolean sample() {
-        return rand.nextDouble() <= sampleRate;
+        if (curr.increment() >= freq) {
+            curr.set(0);
+            target.set(rand.nextInt(freq));
+        }
+        return curr.get() == target.get();
     }
 
     public static void setSampleRate(double sampleRate) {
         AsmMetric.sampleRate = sampleRate;
     }
 
-    /**
-     * In order to improve performance
-     */
     public abstract void update(Number obj);
+
+    /**
+     * reserved for histograms
+     */
+    public abstract void updateTime(long obj);
 
 
     public void updateDirectly(Number obj) {
@@ -152,10 +164,9 @@ public abstract class AsmMetric<T extends Metric> {
 
         doFlush();
 
-        List<Integer> rollwindows = rollWindows(time, windows);
-
+        List<Integer> rollWindows = rollWindows(time, windows);
         for (int win : windows) {
-            if (rollwindows.contains(win)) {
+            if (rollWindows.contains(win)) {
                 updateSnapshot(win);
 
                 Map<Integer, T> metricMap = getWindowMetricMap();
@@ -204,13 +215,17 @@ public abstract class AsmMetric<T extends Metric> {
      * so we subtract 5 sec from a min flush window.
      */
     public List<Integer> getValidWindows() {
+        if (!this.enabled.get()) {
+            return EMPTY_WIN;
+        }
+
         long diff = TimeUtils.current_time_secs() - this.lastFlushTime + 5;
         if (diff < minWindow) {
             // logger.warn("no valid windows for metric:{}, diff:{}", this.metricName, diff);
             return EMPTY_WIN;
         }
-        // for netty metrics, use only 1min window
-        if (this.metricName.startsWith(MetaType.NETTY.getV())) {
+        // for gauge & netty metrics, use only 1min window
+        if (this instanceof AsmGauge || this.metricName.startsWith(MetaType.NETTY.getV())) {
             return nettyWindows;
         }
 
@@ -223,6 +238,11 @@ public abstract class AsmMetric<T extends Metric> {
 
     public void setAggregate(boolean aggregate) {
         this.aggregate = aggregate;
+    }
+
+    public AsmMetric setEnabled(boolean enabled) {
+        this.enabled.set(enabled);
+        return this;
     }
 
     public static String mkName(Object... parts) {
@@ -243,25 +263,10 @@ public abstract class AsmMetric<T extends Metric> {
                 metric = new AsmMeter();
             } else if (metricType == MetricType.HISTOGRAM) {
                 metric = new AsmHistogram();
-            } else if (metricType == MetricType.TIMER) {
-                metric = new AsmTimer();
             } else {
                 throw new IllegalArgumentException("invalid metric type:" + metricType);
             }
             return metric;
         }
-    }
-
-    public static void main(String[] args) throws Exception {
-        AsmMeter meter = new AsmMeter();
-        int t = 0, f = 0;
-        for (int i = 0; i < 100; i++) {
-            if (meter.sample()) {
-                t++;
-            } else {
-                f++;
-            }
-        }
-        System.out.println(t + "," + f);
     }
 }

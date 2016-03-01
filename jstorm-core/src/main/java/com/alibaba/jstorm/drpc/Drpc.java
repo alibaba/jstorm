@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.alibaba.jstorm.utils.DefaultUncaughtExceptionHandler;
 import com.alibaba.jstorm.utils.JStormServerUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -60,6 +61,8 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
 
     public static void main(String[] args) throws Exception {
         LOG.info("Begin to start Drpc server");
+
+        Thread.setDefaultUncaughtExceptionHandler(new DefaultUncaughtExceptionHandler());
 
         final Drpc service = new Drpc();
 
@@ -191,6 +194,8 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
     private ConcurrentHashMap<String, Semaphore> idtoSem = new ConcurrentHashMap<String, Semaphore>();
     private ConcurrentHashMap<String, Object> idtoResult = new ConcurrentHashMap<String, Object>();
     private ConcurrentHashMap<String, Integer> idtoStart = new ConcurrentHashMap<String, Integer>();
+    private ConcurrentHashMap<String, String> idtoFunction = new ConcurrentHashMap<String, String>();
+    private ConcurrentHashMap<String, DRPCRequest> idtoRequest = new ConcurrentHashMap<String, DRPCRequest>();
     private ConcurrentHashMap<String, ConcurrentLinkedQueue<DRPCRequest>> requestQueues = new ConcurrentHashMap<String, ConcurrentLinkedQueue<DRPCRequest>>();
 
     public void cleanup(String id) {
@@ -199,6 +204,8 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
         idtoSem.remove(id);
         idtoResult.remove(id);
         idtoStart.remove(id);
+        idtoFunction.remove(id);
+        idtoRequest.remove(id);
     }
 
     @Override
@@ -217,6 +224,8 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
         DRPCRequest req = new DRPCRequest(args, strid);
         this.idtoStart.put(strid, TimeUtils.current_time_secs());
         this.idtoSem.put(strid, sem);
+        this.idtoFunction.put(strid, function);
+        this.idtoRequest.put(strid, req);
         ConcurrentLinkedQueue<DRPCRequest> queue = acquireQueue(function);
         queue.add(req);
         LOG.info("Waiting for DRPC request for " + function + " " + args + " at " + (System.currentTimeMillis()));
@@ -228,6 +237,9 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
         LOG.info("Acquired for DRPC request for " + function + " " + args + " at " + (System.currentTimeMillis()));
 
         Object result = this.idtoResult.get(strid);
+        if (!this.idtoResult.containsKey(strid)){
+            result = new DRPCExecutionException("Request timed out");   // this request is timeout, set exception
+        }
         LOG.info("Returning for DRPC request for " + function + " " + args + " at " + (System.currentTimeMillis()));
 
         this.cleanup(strid);
@@ -273,7 +285,7 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
         }
     }
 
-    private ConcurrentLinkedQueue<DRPCRequest> acquireQueue(String function) {
+    protected ConcurrentLinkedQueue<DRPCRequest> acquireQueue(String function) {
         ConcurrentLinkedQueue<DRPCRequest> reqQueue = requestQueues.get(function);
         if (reqQueue == null) {
             reqQueue = new ConcurrentLinkedQueue<DRPCRequest>();
@@ -292,6 +304,14 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
 
     public ConcurrentHashMap<String, Integer> getIdtoStart() {
         return idtoStart;
+    }
+
+    public ConcurrentHashMap<String, String> getIdtoFunction() {
+        return idtoFunction;
+    }
+
+    public ConcurrentHashMap<String, DRPCRequest> getIdtoRequest() {
+        return idtoRequest;
     }
 
     public AtomicBoolean isShutdown() {

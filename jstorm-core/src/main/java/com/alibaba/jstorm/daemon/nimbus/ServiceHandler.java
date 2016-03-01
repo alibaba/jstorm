@@ -22,6 +22,7 @@ import backtype.storm.Config;
 import backtype.storm.daemon.Shutdownable;
 import backtype.storm.generated.*;
 import backtype.storm.generated.Nimbus.Iface;
+import backtype.storm.nimbus.ITopologyActionNotifierPlugin;
 import backtype.storm.utils.BufferFileInputStream;
 import backtype.storm.utils.TimeCacheMap;
 import backtype.storm.utils.Utils;
@@ -85,7 +86,9 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
     public void shutdown() {
         LOG.info("Begin to shut down master");
         // Timer.cancelTimer(nimbus.getTimer());
-
+        ITopologyActionNotifierPlugin nimbusNotify = data.getNimbusNotify();
+        if (nimbusNotify != null)
+            nimbusNotify.cleanup();
         LOG.info("Successfully shut down master");
 
     }
@@ -217,6 +220,8 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
             startEvent.sampleRate = metricsSampleRate;
             this.data.getMetricRunnable().pushEvent(startEvent);
 
+            notifyTopologyActionListener(topologyName, "submitTopology");
+
         } catch (FailedAssignTopologyException e) {
             StringBuilder sb = new StringBuilder();
             sb.append("Fail to sumbit topology, Root cause:");
@@ -293,6 +298,7 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
             Remove event = new Remove();
             event.topologyId = topologyId;
             data.getMetricRunnable().pushEvent(event);
+            notifyTopologyActionListener(topologyName, "killTopology");
         } catch (NotAliveException e) {
             String errMsg = "KillTopology Error, no this topology " + topologyName;
             LOG.error(errMsg, e);
@@ -314,6 +320,7 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
     public void activate(String topologyName) throws TException, NotAliveException {
         try {
             NimbusUtils.transitionName(data, topologyName, true, StatusType.activate);
+            notifyTopologyActionListener(topologyName, "activate");
         } catch (NotAliveException e) {
             String errMsg = "Activate Error, no this topology " + topologyName;
             LOG.error(errMsg, e);
@@ -335,6 +342,7 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
     public void deactivate(String topologyName) throws TException, NotAliveException {
         try {
             NimbusUtils.transitionName(data, topologyName, true, StatusType.inactivate);
+            notifyTopologyActionListener(topologyName, "inactivate");
         } catch (NotAliveException e) {
             String errMsg = "Deactivate Error, no this topology " + topologyName;
             LOG.error(errMsg, e);
@@ -377,6 +385,8 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
             Map<Object, Object> conf = (Map<Object, Object>) JStormUtils.from_json(jsonConf);
 
             NimbusUtils.transitionName(data, topologyName, true, StatusType.rebalance, wait_amt, reassign, conf);
+
+            notifyTopologyActionListener(topologyName, "rebalance");
         } catch (NotAliveException e) {
             String errMsg = "Rebalance Error, no this topology " + topologyName;
             LOG.error(errMsg, e);
@@ -435,6 +445,7 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
             FileUtils.copyDirectory(stormDistDir, new File(topologyCodeLocation));
 
             LOG.info("Successfully read old jar/conf/topology " + name);
+            notifyTopologyActionListener(name, "restart");
         } catch (Exception e) {
             LOG.error("Failed to read old jar/conf/topology", e);
             if (topologyCodeLocation != null) {
@@ -881,7 +892,8 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
                 List<TaskError> taskErrorList = taskErrors.get(taskId);
                 if (taskErrorList != null && taskErrorList.size() != 0) {
                     for (TaskError taskError : taskErrorList) {
-                        ErrorInfo errorInfo = new ErrorInfo(taskError.getError(), taskError.getTimSecs());
+                        ErrorInfo errorInfo = new ErrorInfo(taskError.getError(), taskError.getTimSecs(),
+                                taskError.getLevel(), taskError.getCode());
                         taskSummary.add_to_errors(errorInfo);
                         String component = taskToComponent.get(taskId);
                         componentSummaryMap.get(component).add_to_errors(errorInfo);
@@ -1297,7 +1309,7 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
         List<MetricInfo> metricInfoList = data.getMetricCache().getMetricData(topologyId, MetaType.NETTY);
         if (metricInfoList != null && metricInfoList.size() > 0) {
             MetricInfo metricInfo = metricInfoList.get(0);
-            for (Entry<String, Map<Integer, MetricSnapshot>> metricEntry : metricInfo.get_metrics().entrySet()) {
+            for (Map.Entry<String, Map<Integer, MetricSnapshot>> metricEntry : metricInfo.get_metrics().entrySet()) {
                 String metricName = metricEntry.getKey();
                 Map<Integer, MetricSnapshot> data = metricEntry.getValue();
                 if (metricName.contains(host)) {
@@ -1325,7 +1337,7 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
         List<MetricInfo> metricInfoList = data.getMetricCache().getMetricData(topologyId, MetaType.NETTY);
         if (metricInfoList != null && metricInfoList.size() > 0) {
             MetricInfo metricInfo = metricInfoList.get(0);
-            for (Entry<String, Map<Integer, MetricSnapshot>> metricEntry : metricInfo.get_metrics().entrySet()) {
+            for (Map.Entry<String, Map<Integer, MetricSnapshot>> metricEntry : metricInfo.get_metrics().entrySet()) {
                 String metricName = metricEntry.getKey();
                 Map<Integer, MetricSnapshot> data = metricEntry.getValue();
                 if (metricName.contains(host)) {
@@ -1459,9 +1471,10 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
             StormConfig.write_nimbus_topology_conf(data.getConf(), topologyId,
                     topoConf);
 
-            LOG.info("update topology " + name + " successfully");
             NimbusUtils.transitionName(data, name, true,
                     StatusType.update_topology, config);
+            LOG.info("update topology " + name + " successfully");
+            notifyTopologyActionListener(name, "updateTopology");
 
         } catch (NotAliveException e) {
             String errMsg = "Error, no this topology " + name;
@@ -1498,5 +1511,10 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
                 nimbusTaskHbMap.put(entry.getKey(), entry.getValue());
             }
         }
+    }
+    private void notifyTopologyActionListener(String topologyName, String action){
+        ITopologyActionNotifierPlugin nimbusNotify = data.getNimbusNotify();
+        if (nimbusNotify != null)
+            nimbusNotify.notify(topologyName, action);
     }
 }

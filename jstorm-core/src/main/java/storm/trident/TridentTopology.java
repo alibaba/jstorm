@@ -241,6 +241,10 @@ public class TridentTopology {
     }    
         
     public StormTopology build() {
+        // Trident is not compatible with jstorm batch mode(task.batch.tuple)
+        // so we close batch mode via system property
+        System.setProperty("trident.batch.option", "off");
+
         DefaultDirectedGraph<Node, IndexedEdge> graph = (DefaultDirectedGraph) _graph.clone();
         
         

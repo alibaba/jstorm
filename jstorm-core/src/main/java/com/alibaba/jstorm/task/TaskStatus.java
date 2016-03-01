@@ -25,7 +25,7 @@ public class TaskStatus {
     // task is shutdown
     public static final byte SHUTDOWN = 2;
 
-    private volatile byte status = TaskStatus.RUN;
+    private volatile byte status = TaskStatus.PAUSE;
 
     public byte getStatus() {
         return status;

@@ -39,7 +39,7 @@ public class PartitionedTridentSpoutExecutor implements ITridentSpout<Integer> {
         return _spout;
     }
 
-    class Coordinator implements BatchCoordinator<Object> {
+    class Coordinator implements ITridentSpout.BatchCoordinator<Object> {
         private IPartitionedTridentSpout.Coordinator _coordinator;
 
         public Coordinator(Map conf, TopologyContext context) {
@@ -145,7 +145,7 @@ public class PartitionedTridentSpoutExecutor implements ITridentSpout<Integer> {
     }
 
     @Override
-    public BatchCoordinator getCoordinator(String txStateId, Map conf, TopologyContext context) {
+    public ITridentSpout.BatchCoordinator getCoordinator(String txStateId, Map conf, TopologyContext context) {
         return new Coordinator(conf, context);
     }
 

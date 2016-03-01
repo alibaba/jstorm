@@ -80,7 +80,7 @@ public class LocalUtils {
         return null;
     }
 
-    private static Factory startLocalZookeeper(String tmpDir) {
+    public static Factory startLocalZookeeper(String tmpDir) {
         for (int i = 2000; i < 65535; i++) {
             try {
                 return Zookeeper.mkInprocessZookeeper(tmpDir, i);
@@ -91,11 +91,11 @@ public class LocalUtils {
         throw new RuntimeException("No port is available to launch an inprocess zookeeper.");
     }
 
-    private static String getTmpDir() {
+    public static String getTmpDir() {
         return System.getProperty("java.io.tmpdir") + File.separator + UUID.randomUUID();
     }
 
-    private static Map getLocalConf(int port) {
+    public static Map getLocalConf(int port) {
         List<String> zkServers = new ArrayList<String>(1);
         zkServers.add("localhost");
         Map conf = Utils.readStormConfig();

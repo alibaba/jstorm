@@ -37,5 +37,7 @@ public class SequenceTopologyDef {
     public static final String TRADE_STREAM_ID     = "trade_stream";
     
     public static final String CUSTOMER_STREAM_ID  = "customer_stream";
+
+    public static final String CONTROL_STREAM_ID  = "spout_control_stream";
     
 }

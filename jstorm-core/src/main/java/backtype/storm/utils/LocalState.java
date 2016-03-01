@@ -18,6 +18,8 @@
 package backtype.storm.utils;
 
 import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.Map;
@@ -30,6 +32,8 @@ import java.io.IOException;
  * @@@ Right now, This class hasn't upgrade to storm's LocalState It is need define every type in thrift, it is too complicated to do
  */
 public class LocalState {
+    public static final Logger LOG = LoggerFactory.getLogger(LocalState.class);
+
     private VersionedStore _vs;
 
     public LocalState(String backingDir) throws IOException {
@@ -39,11 +43,8 @@ public class LocalState {
     public synchronized Map<Object, Object> snapshot() throws IOException {
         int attempts = 0;
         while (true) {
-            String latestPath = _vs.mostRecentVersionPath();
-            if (latestPath == null)
-                return new HashMap<Object, Object>();
             try {
-                return (Map<Object, Object>) Utils.javaDeserialize(FileUtils.readFileToByteArray(new File(latestPath)));
+                return deserializeLatestVersion();
             } catch (IOException e) {
                 attempts++;
                 if (attempts >= 10) {
@@ -51,6 +52,24 @@ public class LocalState {
                 }
             }
         }
+    }
+
+    private Map<Object, Object> deserializeLatestVersion() throws IOException {
+        String latestPath = _vs.mostRecentVersionPath();
+        Long latestVersion = _vs.mostRecentVersion();
+        Map<Object, Object> result = new HashMap<Object, Object>();
+        while (latestPath != null) {
+            byte[] serialized = FileUtils.readFileToByteArray(new File(latestPath));
+            if (serialized.length == 0) {
+                LOG.warn("LocalState file '{}' contained no data, skip this state", latestPath);
+                latestPath = _vs.mostRecentVersionPath(latestVersion - 1);
+                latestVersion = _vs.mostRecentVersion(latestVersion - 1);
+            } else {
+                result = (Map<Object, Object>) Utils.javaDeserialize(serialized);
+                break;
+            }
+        }
+        return result;
     }
 
     public Object get(Object key) throws IOException {

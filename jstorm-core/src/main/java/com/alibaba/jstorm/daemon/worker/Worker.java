@@ -29,7 +29,9 @@ import com.alibaba.jstorm.callback.AsyncLoopThread;
 import com.alibaba.jstorm.callback.RunnableCallback;
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.cluster.StormConfig;
-import com.alibaba.jstorm.metric.JStormMetricsReporter;
+import com.alibaba.jstorm.common.metric.AsmGauge;
+import com.alibaba.jstorm.common.metric.QueueGauge;
+import com.alibaba.jstorm.metric.*;
 import com.alibaba.jstorm.daemon.worker.hearbeat.SyncContainerHb;
 import com.alibaba.jstorm.daemon.worker.hearbeat.WorkerHeartbeatRunable;
 import com.alibaba.jstorm.task.Task;
@@ -48,7 +50,7 @@ import java.util.*;
 
 /**
  * worker entrance
- * 
+ *
  * @author yannian/Longda
  */
 public class Worker {
@@ -60,7 +62,7 @@ public class Worker {
      */
     private WorkerData workerData;
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public Worker(Map conf, IContext context, String topology_id, String supervisor_id, int port, String worker_id, String jar_path) throws Exception {
         workerData = new WorkerData(conf, context, topology_id, supervisor_id, port, worker_id, jar_path);
     }
@@ -114,7 +116,7 @@ public class Worker {
         List<Task> taskArrayList = new ArrayList<Task>();
         for (int taskid : taskids) {
             Task task = new Task(workerData, taskid);
-            Thread thread =new Thread(task);
+            Thread thread = new Thread(task);
             threads.add(thread);
             taskArrayList.add(task);
             thread.start();
@@ -122,41 +124,56 @@ public class Worker {
         for (Thread thread : threads) {
             thread.join();
         }
-        for (Task t : taskArrayList){
+        for (Task t : taskArrayList) {
             shutdowntasks.add(t.getTaskShutdownDameon());
         }
         return shutdowntasks;
     }
 
-    @Deprecated
-    private DisruptorQueue startDispatchDisruptor() {
-        Map stormConf = workerData.getStormConf();
-
-        int queue_size = Utils.getInt(stormConf.get(Config.TOPOLOGY_TRANSFER_BUFFER_SIZE), 1024);
-        WaitStrategy waitStrategy = (WaitStrategy) JStormUtils.createDisruptorWaitStrategy(stormConf);
-        DisruptorQueue recvQueue = DisruptorQueue.mkInstance("Dispatch", ProducerType.MULTI, queue_size, waitStrategy);
-        // stop consumerStarted
-        recvQueue.consumerStarted();
-
-        return recvQueue;
-    }
-
-    private void startDispatchThread() {
-        // remove dispatch thread, send tuple directly from nettyserver
+    private AsyncLoopThread startDispatchThread() {
+        // send tuple directly from nettyserver
+        // send control tuple to dispatch thread
         // startDispatchDisruptor();
 
         IContext context = workerData.getContext();
         String topologyId = workerData.getTopologyId();
 
-        IConnection recvConnection = context.bind(topologyId, workerData.getPort(), workerData.getDeserializeQueues());
+        //create recv connection
+        Map stormConf = workerData.getStormConf();
+        WaitStrategy waitStrategy = (WaitStrategy) JStormUtils.createDisruptorWaitStrategy(stormConf);
+        int queueSize = JStormUtils.parseInt(stormConf.get(Config.TOPOLOGY_CTRL_BUFFER_SIZE), 256);
+        DisruptorQueue recvControlQueue = DisruptorQueue.mkInstance("Dispatch-control", ProducerType.MULTI,
+                queueSize, waitStrategy);
 
+        //metric for recvControlQueue
+        QueueGauge revCtrlGauge = new QueueGauge(recvControlQueue, MetricDef.RECV_CTRL_QUEUE);
+        JStormMetrics.registerWorkerMetric(JStormMetrics.workerMetricName(MetricDef.RECV_CTRL_QUEUE, MetricType.GAUGE), new AsmGauge(
+                revCtrlGauge));
+
+        IConnection recvConnection = context.bind(topologyId, workerData.getPort(), workerData.getDeserializeQueues(), recvControlQueue);
         workerData.setRecvConnection(recvConnection);
+
+        // create recvice control messages's thread
+        RunnableCallback recvControlDispather = null;
+
+        boolean isTaskBatchTuple = ConfigExtension.isTaskBatchTuple(stormConf);
+        if (isTaskBatchTuple) {
+            recvControlDispather = new VirtualPortBatchCtrlDispatch(workerData, recvConnection, recvControlQueue, MetricDef.BATCH_RECV_THREAD);
+        } else {
+            recvControlDispather = new VirtualPortCtrlDispatch(workerData, recvConnection, recvControlQueue, MetricDef.RECV_THREAD);
+        }
+
+        AsyncLoopThread recvControlThread = new AsyncLoopThread(recvControlDispather, false,
+                Thread.MAX_PRIORITY, true);
+        return recvControlThread;
     }
 
     public WorkerShutdown execute() throws Exception {
         List<AsyncLoopThread> threads = new ArrayList<AsyncLoopThread>();
 
-        startDispatchThread();
+        // create recv connection
+        AsyncLoopThread controlRvthread = startDispatchThread();
+        threads.add(controlRvthread);
 
         // create client before create task
         // so create client connection before create task
@@ -169,6 +186,17 @@ public class Worker {
         RefreshActive refreshZkActive = new RefreshActive(workerData);
         AsyncLoopThread refreshzk = new AsyncLoopThread(refreshZkActive, false, Thread.MIN_PRIORITY, true);
         threads.add(refreshzk);
+
+        //create send control message thread
+        DrainerCtrlRunable drainerCtrlRunable;
+        boolean isTaskBatchTuple = ConfigExtension.isTaskBatchTuple(workerData.getStormConf());
+        if (isTaskBatchTuple) {
+            drainerCtrlRunable = new DrainerBatchCtrlRunable(workerData, MetricDef.BATCH_SEND_THREAD);
+        } else {
+            drainerCtrlRunable = new DrainerCtrlRunable(workerData, MetricDef.SEND_THREAD);
+        }
+        AsyncLoopThread controlSendThread = new AsyncLoopThread(drainerCtrlRunable, false, Thread.MAX_PRIORITY, true);
+        threads.add(controlSendThread);
 
         // Sync heartbeat to Apsara Container
         AsyncLoopThread syncContainerHbThread = SyncContainerHb.mkWorkerInstance(workerData.getStormConf());
@@ -189,13 +217,14 @@ public class Worker {
         List<TaskShutdownDameon> shutdowntasks = createTasks();
         workerData.setShutdownTasks(shutdowntasks);
 
+
         return new WorkerShutdown(workerData, threads);
 
     }
 
     /**
      * create worker instance and run it
-     * 
+     *
      * @param conf
      * @param topology_id
      * @param supervisor_id
@@ -218,7 +247,7 @@ public class Worker {
 
         Worker w = new Worker(conf, context, topology_id, supervisor_id, port, worker_id, jar_path);
 
-        w.redirectOutput();
+        //   w.redirectOutput();
 
         return w.execute();
     }
@@ -269,7 +298,7 @@ public class Worker {
 
     /**
      * Have one problem if the worker's start parameter length is longer than 4096, ps -ef|grep com.alibaba.jstorm.daemon.worker.Worker can't find worker
-     * 
+     *
      * @param port
      */
 
@@ -289,11 +318,9 @@ public class Worker {
 
         try {
             LOG.info("Begin to execute " + sb.toString());
-            Process process = JStormUtils.launch_process(sb.toString(), new HashMap<String, String>(), false);
-            // Process process = Runtime.getRuntime().exec(sb.toString());
+            String output = JStormUtils.launchProcess(sb.toString(), new HashMap<String, String>(), false);
 
-            InputStream stdin = process.getInputStream();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(stdin));
+            BufferedReader reader = new BufferedReader(new StringReader(output));
 
             JStormUtils.sleepMs(1000);
 
@@ -378,22 +405,24 @@ public class Worker {
 
     /**
      * worker entrance
-     * 
+     *
      * @param args
      */
     @SuppressWarnings("rawtypes")
     public static void main(String[] args) {
+        StringBuilder sb = new StringBuilder();
+        for (String arg : args) {
+            sb.append(arg + " ");
+        }
+        LOG.info("!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+        LOG.info("Begin to start worker:" + sb.toString());
+        LOG.info("!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         if (args.length < 5) {
-            StringBuilder sb = new StringBuilder();
-            sb.append("The length of args is less than 5 ");
-            for (String arg : args) {
-                sb.append(arg + " ");
-            }
-            LOG.error(sb.toString());
+            LOG.error("The length of args is less than 5 ");
             System.exit(-1);
         }
 
-        StringBuilder sb = new StringBuilder();
+        sb = new StringBuilder();
         try {
             String topology_id = args[0];
             String supervisor_id = args[1];
@@ -416,7 +445,9 @@ public class Worker {
             WorkerShutdown sd = mk_worker(conf, null, topology_id, supervisor_id, Integer.parseInt(port_str), worker_id, jar_path);
             sd.join();
 
+            LOG.info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
             LOG.info("Successfully shutdown worker " + sb.toString());
+            LOG.info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
         } catch (Throwable e) {
             String errMsg = "Failed to create worker, " + sb.toString();
             LOG.error(errMsg, e);

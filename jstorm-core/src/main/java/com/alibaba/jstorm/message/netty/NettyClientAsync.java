@@ -24,7 +24,6 @@ import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.utils.IntervalCheck;
 import com.alibaba.jstorm.utils.JStormServerUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
-import com.alibaba.jstorm.utils.TimeUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.jboss.netty.channel.Channel;
@@ -52,7 +51,7 @@ class NettyClientAsync extends NettyClient {
     protected final boolean blockSend;
 
     boolean isDirectSend(Map conf) {
-        if (JStormServerUtils.isOnePending(conf) == true) {
+        if (JStormServerUtils.isOnePending(conf)) {
             return true;
         }
 
@@ -60,7 +59,7 @@ class NettyClientAsync extends NettyClient {
     }
 
     boolean isBlockSend(Map storm_conf) {
-        if (ConfigExtension.isTopologyContainAcker(storm_conf) == false) {
+        if (!ConfigExtension.isTopologyContainAcker(storm_conf)) {
             return false;
         }
 
@@ -104,15 +103,14 @@ class NettyClientAsync extends NettyClient {
             return;
         }
 
-        long start = System.nanoTime();
+        long start = enableNettyMetrics ? sendTimer.getTime() : 0L;
         try {
             pushBatch(messages);
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
-            long end = System.nanoTime();
-            if (sendTimer != null) {
-                sendTimer.update((end - start) / TimeUtils.NS_PER_US);
+            if (sendTimer != null && enableNettyMetrics) {
+                sendTimer.updateTime(start);
             }
         }
     }
@@ -125,15 +123,14 @@ class NettyClientAsync extends NettyClient {
             return;
         }
 
-        long start = System.nanoTime();
+        long start = enableNettyMetrics ? sendTimer.getTime() : 0L;
         try {
             pushBatch(message);
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
-            long end = System.nanoTime();
-            if (sendTimer != null) {
-                sendTimer.update((end - start) / TimeUtils.NS_PER_US);
+            if (sendTimer != null && enableNettyMetrics) {
+                sendTimer.updateTime(start);
             }
         }
     }
@@ -149,11 +146,11 @@ class NettyClientAsync extends NettyClient {
 
             long now = System.currentTimeMillis();
             long delt = now - begin;
-            if (oneSecond.check() == true) {
+            if (oneSecond.check()) {
                 LOG.warn("Target server  {} is unavailable, pending {}, bufferSize {}, block sending {}ms", name, pendings.get(), cachedSize, delt);
             }
 
-            if (timeoutIntervalCheck.check() == true) {
+            if (timeoutIntervalCheck.check()) {
                 if (messageBatchRef.get() != null) {
                     LOG.warn("Target server  {} is unavailable, wait too much time, throw timeout message", name);
                     messageBatchRef.set(null);
@@ -161,7 +158,7 @@ class NettyClientAsync extends NettyClient {
                 setChannel(null);
                 LOG.warn("Reset channel as null");
 
-                if (blockSend == false) {
+                if (!blockSend) {
                     reconnect();
                     break;
                 }
@@ -170,7 +167,7 @@ class NettyClientAsync extends NettyClient {
             reconnect();
             JStormUtils.sleepMs(sleepMs);
 
-            if (delt > 2 * timeoutMs * 1000L && changeThreadhold == false) {
+            if (delt > 2 * timeoutMs * 1000L && !changeThreadhold) {
                 if (channelRef.get() != null && BATCH_THREASHOLD_WARN >= 2 * messageBatchSize) {
                     // it is just channel isn't writable;
                     BATCH_THREASHOLD_WARN = BATCH_THREASHOLD_WARN / 2;
@@ -208,7 +205,6 @@ class NettyClientAsync extends NettyClient {
             long sleepMs = getDelaySec(cachedSize);
             waitChannelReady(cachedSize, sleepMs);
         }
-        return;
     }
 
     void pushBatch(List<TaskMessage> messages) {
@@ -243,12 +239,9 @@ class NettyClientAsync extends NettyClient {
         Channel channel = isChannelReady();
         if (channel == null) {
             handleFailedChannel(messageBatch);
-            return;
-        } else if (messageBatch.isEmpty() == false) {
+        } else if (!messageBatch.isEmpty()) {
             flushRequest(channel, messageBatch);
         }
-
-        return;
     }
 
     void pushBatch(TaskMessage message) {
@@ -287,11 +280,11 @@ class NettyClientAsync extends NettyClient {
     }
 
     void flush() {
-        if (isClosed() == true) {
+        if (isClosed()) {
             return;
         }
 
-        if (flush_later.get() == false) {
+        if (!flush_later.get()) {
             return;
         }
 
@@ -312,7 +305,7 @@ class NettyClientAsync extends NettyClient {
             return null;
         }
 
-        if (blockSend == true && pendings.get() >= MAX_SEND_PENDING) {
+        if (blockSend && pendings.get() >= MAX_SEND_PENDING) {
             return null;
         }
         return channel;

@@ -105,12 +105,13 @@ public class TransactionalGlobalCount {
     @Override
     public void execute(Tuple tuple) {
       _count++;
+      LOG.info("---BatchCount.execute(), _count=" + _count);
     }
 
     @Override
     public void finishBatch() {
       _collector.emit(new Values(_id, _count));
-      LOG.info("@@@@@@@@@@@@@@ BatchCount finishBatch @@@@@@@@@@@@@@@");
+      LOG.info("---BatchCount.finishBatch(), _id=" + _id + ", _count=" + _count);
     }
 
     @Override
@@ -134,6 +135,7 @@ public class TransactionalGlobalCount {
     @Override
     public void execute(Tuple tuple) {
       _sum += tuple.getInteger(1);
+      LOG.info("---UpdateGlobalCount.execute(), _sum=" + _sum);
     }
 
     @Override
@@ -155,7 +157,8 @@ public class TransactionalGlobalCount {
         newval = val;
       }
       _collector.emit(new Values(_attempt, newval.count));
-      LOG.info("@@@@@@@@@@@@@@ UpdateGlobalCount finishBatch @@@@@@@@@@@@@@@");
+      LOG.info("---UpdateGlobalCount.finishBatch(), _attempt=" + _attempt
+              + ", newval=(" + newval.txid + "," + newval.count + ")");
     }
 
     @Override
@@ -166,9 +169,9 @@ public class TransactionalGlobalCount {
 
   public static void main(String[] args) throws Exception {
     MemoryTransactionalSpout spout = new MemoryTransactionalSpout(DATA, new Fields("word"), PARTITION_TAKE_PER_BATCH);
-    TransactionalTopologyBuilder builder = new TransactionalTopologyBuilder("global-count", "spout", spout, 3);
-    builder.setBolt("partial-count", new BatchCount(), 5).noneGrouping("spout");
-    builder.setBolt("sum", new UpdateGlobalCount()).globalGrouping("partial-count");
+    TransactionalTopologyBuilder builder = new TransactionalTopologyBuilder("global-count", "spout", spout, 1);
+    builder.setBolt("partial-count", new BatchCount(), 2).noneGrouping("spout");
+    builder.setBolt("sum", new UpdateGlobalCount(), 1).globalGrouping("partial-count");
 
     Config config = new Config();
     config.setDebug(true);

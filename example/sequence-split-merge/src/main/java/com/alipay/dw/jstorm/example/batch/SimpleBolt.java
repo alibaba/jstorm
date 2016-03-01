@@ -20,8 +20,6 @@ package com.alipay.dw.jstorm.example.batch;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.log4j.Logger;
-
 import backtype.storm.Config;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.BasicOutputCollector;
@@ -36,12 +34,14 @@ import backtype.storm.utils.Utils;
 import com.alibaba.jstorm.batch.BatchId;
 import com.alibaba.jstorm.batch.ICommitter;
 import com.alibaba.jstorm.utils.JStormUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SimpleBolt implements IBasicBolt, ICommitter {
 
 	private static final long serialVersionUID = 5720810158625748042L;
 
-	private static final Logger LOG = Logger.getLogger(SimpleBolt.class);
+	private static final Logger LOG = LoggerFactory.getLogger(SimpleBolt.class);
 
 	public static final String COUNT_BOLT_NAME = "Count";
 	public static final String SUM_BOLT_NAME = "Sum";

@@ -40,6 +40,9 @@
                 "lengthMenu": [[15, 25, 50, -1], [15, 25, 50, "ALL"]]
             });
         });
+
+        // we do this to make sure error popover can stay when we move mouse to the content
+        // , so that we can copy error messages
         $(".pop").popover({
             container: 'body',
             trigger: "manual",

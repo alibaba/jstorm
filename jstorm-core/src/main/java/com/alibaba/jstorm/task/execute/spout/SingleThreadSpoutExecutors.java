@@ -19,6 +19,7 @@ package com.alibaba.jstorm.task.execute.spout;
 
 import backtype.storm.task.TopologyContext;
 import backtype.storm.utils.DisruptorQueue;
+import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.metric.JStormMetricsReporter;
 import com.alibaba.jstorm.task.Task;
 import com.alibaba.jstorm.task.TaskBaseMetric;
@@ -52,7 +53,11 @@ public class SingleThreadSpoutExecutors extends SpoutExecutors {
     @Override
     public void mkPending() {
     	// sending Tuple's TimeCacheMap
-        pending = new RotatingMap<Long, TupleInfo>(Acker.TIMEOUT_BUCKET_NUM, null, true);
+        if (ConfigExtension.isTaskBatchTuple(storm_conf)) {
+            pending = new RotatingMap<Long, TupleInfo>(Acker.TIMEOUT_BUCKET_NUM, null, false);
+        }else {
+            pending = new RotatingMap<Long, TupleInfo>(Acker.TIMEOUT_BUCKET_NUM, null, true);
+        }
     }
 
     @Override

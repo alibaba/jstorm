@@ -34,6 +34,7 @@ import com.esotericsoftware.kryo.Serializer;
 import com.esotericsoftware.kryo.serializers.DefaultSerializers.BigIntegerSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.trident.tuple.ConsList;
 
 import java.math.BigInteger;
 import java.util.*;
@@ -66,6 +67,7 @@ public class SerializationFactory {
         k.register(Values.class);
         k.register(backtype.storm.metric.api.IMetricsConsumer.DataPoint.class);
         k.register(backtype.storm.metric.api.IMetricsConsumer.TaskInfo.class);
+        k.register(ConsList.class);
         try {
             JavaBridge.registerPrimitives(k);
             JavaBridge.registerCollections(k);

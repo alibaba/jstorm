@@ -17,10 +17,9 @@
  */
 package com.alibaba.jstorm.task.execute.spout;
 
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
+import com.alibaba.jstorm.daemon.worker.JStormDebugger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,19 +29,14 @@ import com.alibaba.jstorm.cluster.Common;
 import com.alibaba.jstorm.common.metric.AsmGauge;
 import com.alibaba.jstorm.common.metric.AsmHistogram;
 import com.alibaba.jstorm.common.metric.TimerRatio;
-import com.alibaba.jstorm.daemon.worker.timer.TaskBatchFlushTrigger;
 import com.alibaba.jstorm.daemon.worker.timer.TimerConstants;
 import com.alibaba.jstorm.daemon.worker.timer.TimerTrigger;
 import com.alibaba.jstorm.metric.JStormMetrics;
-import com.alibaba.jstorm.metric.JStormMetricsReporter;
 import com.alibaba.jstorm.metric.MetricDef;
 import com.alibaba.jstorm.metric.MetricType;
 import com.alibaba.jstorm.metric.MetricUtils;
 import com.alibaba.jstorm.task.Task;
-import com.alibaba.jstorm.task.TaskBatchTransfer;
-import com.alibaba.jstorm.task.TaskTransfer;
 import com.alibaba.jstorm.task.acker.Acker;
-import com.alibaba.jstorm.task.comm.TaskSendTargets;
 import com.alibaba.jstorm.task.comm.TupleInfo;
 import com.alibaba.jstorm.task.execute.BaseExecutors;
 import com.alibaba.jstorm.task.master.TopoMasterCtrlEvent;
@@ -53,13 +47,10 @@ import com.codahale.metrics.Gauge;
 import com.lmax.disruptor.EventHandler;
 
 import backtype.storm.Config;
-import backtype.storm.Constants;
 import backtype.storm.spout.ISpout;
 import backtype.storm.spout.SpoutOutputCollector;
-import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.BatchTuple;
 import backtype.storm.tuple.Tuple;
-import backtype.storm.utils.WorkerClassLoader;
 
 /**
  * spout executor
@@ -79,7 +70,6 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
     protected SpoutOutputCollector outputCollector;
 
     protected AsmHistogram nextTupleTimer;
-    protected AsmHistogram ackerTimer;
     protected TimerRatio emptyCpuGauge;
 
     private String topologyId;
@@ -104,13 +94,8 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
         this.componentId = sysTopologyCtx.getThisComponentId();
         this.taskId = task.getTaskId();
 
-        this.nextTupleTimer =
-                (AsmHistogram) JStormMetrics.registerTaskMetric(
-                        MetricUtils.taskMetricName(topologyId, componentId, taskId, MetricDef.EXECUTE_TIME, MetricType.HISTOGRAM), new AsmHistogram());
-
-        this.ackerTimer =
-                (AsmHistogram) JStormMetrics.registerTaskMetric(
-                        MetricUtils.taskMetricName(topologyId, componentId, taskId, MetricDef.ACKER_TIME, MetricType.HISTOGRAM), new AsmHistogram());
+        this.nextTupleTimer = (AsmHistogram) JStormMetrics.registerTaskMetric(MetricUtils.taskMetricName(
+                topologyId, componentId, taskId, MetricDef.EXECUTE_TIME, MetricType.HISTOGRAM), new AsmHistogram());
 
         this.emptyCpuGauge = new TimerRatio();
         JStormMetrics.registerTaskMetric(MetricUtils.taskMetricName(topologyId, componentId, taskId, MetricDef.EMPTY_CPU_RATIO, MetricType.GAUGE),
@@ -132,10 +117,16 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
                 }));
 
         // collector, in fact it call send_spout_msg
-        SpoutCollector collector = new SpoutCollector(task, pending, exeQueue);
+        SpoutCollector collector = null;
+        if (ConfigExtension.isTaskBatchTuple(storm_conf)) {
+            collector = new SpoutBatchCollector(task, pending, exeQueue);
+        } else {
+            collector = new SpoutCollector(task, pending, exeQueue);
+        }
+
         this.outputCollector = new SpoutOutputCollector(collector);
-        taskTransfer.getBackpressureController().setOutputCollector(outputCollector);
-        taskHbTrigger.setSpoutOutputCollector(outputCollector);
+        taskTransfer.getBackpressureController().setSpoutCollector(collector);
+        taskHbTrigger.setSpoutOutputCollector(collector);
 
         LOG.info("Successfully create SpoutExecutors " + idStr);
     }
@@ -168,7 +159,6 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
     }
 
     public void nextTuple() {
-        
         if (!taskStatus.isRun()) {
             JStormUtils.sleepMs(1);
             return;
@@ -178,7 +168,7 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
         if (max_spout_pending == null || pending.size() < max_spout_pending) {
             emptyCpuGauge.stop();
 
-            long start = System.nanoTime();
+            long start = nextTupleTimer.getTime();
             try {
                 spout.nextTuple();
             } catch (Throwable e) {
@@ -186,8 +176,7 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
                 LOG.error("spout execute error ", e);
                 report_error.report(e);
             } finally {
-                long end = System.nanoTime();
-                nextTupleTimer.update((end - start) / TimeUtils.NS_PER_US);
+                nextTupleTimer.updateTime(start);
             }
         } else {
             if (isSpoutFullSleep) {
@@ -200,18 +189,16 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
 
     @Override
     public void run() {
-
         throw new RuntimeException("Should implement this function");
     }
 
     /**
      * Handle acker message
      *
-     * @see EventHandler#onEvent(Object, long, boolean)
+     * @see com.lmax.disruptor.EventHandler#onEvent(java.lang.Object, long, boolean)
      */
     @Override
     public void onEvent(Object event, long sequence, boolean endOfBatch) throws Exception {
-        long start = System.nanoTime();
         try {
             if (event == null) {
                 return;
@@ -248,13 +235,10 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
                 runnable.run();
 
         } catch (Throwable e) {
-            if (taskStatus.isShutdown() == false) {
+            if (!taskStatus.isShutdown()) {
                 LOG.info("Unknow excpetion ", e);
                 report_error.report(e);
             }
-        } finally {
-            long end = System.nanoTime();
-            ackerTimer.update((end - start) / TimeUtils.NS_PER_US);
         }
     }
 
@@ -269,7 +253,7 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
             Object obj = pending.remove((Long) id);
 
             if (obj == null) {
-                if (isDebug) {
+                if (JStormDebugger.isDebug(id)) {
                     LOG.info("Pending map no entry:" + id);
                 }
                 runnable = null;
@@ -279,10 +263,9 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
                 String stream_id = tuple.getSourceStreamId();
 
                 if (stream_id.equals(Acker.ACKER_ACK_STREAM_ID)) {
-
-                    runnable = new AckSpoutMsg(spout, tuple, tupleInfo, task_stats, isDebug);
+                    runnable = new AckSpoutMsg(id, spout, tuple, tupleInfo, task_stats);
                 } else if (stream_id.equals(Acker.ACKER_FAIL_STREAM_ID)) {
-                    runnable = new FailSpoutMsg(id, spout, tupleInfo, task_stats, isDebug);
+                    runnable = new FailSpoutMsg(id, spout, tupleInfo, task_stats);
                 } else {
                     LOG.warn("Receive one unknow source Tuple " + idStr);
                     runnable = null;
@@ -302,9 +285,9 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
         switch (event.getOpCode()) {
             case TimerConstants.ROTATING_MAP: {
                 Map<Long, TupleInfo> timeoutMap = pending.rotate();
-                for (Map.Entry<Long, TupleInfo> entry : timeoutMap.entrySet()) {
+                for (java.util.Map.Entry<Long, TupleInfo> entry : timeoutMap.entrySet()) {
                     TupleInfo tupleInfo = entry.getValue();
-                    FailSpoutMsg fail = new FailSpoutMsg(entry.getKey(), spout, (TupleInfo) tupleInfo, task_stats, isDebug);
+                    FailSpoutMsg fail = new FailSpoutMsg(entry.getKey(), spout, (TupleInfo) tupleInfo, task_stats);
                     fail.run();
                 }
                 break;
@@ -326,6 +309,12 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
         if (event != null) {
             if (event instanceof TimerTrigger.TimerEvent) {
                 processTimerEvent((TimerTrigger.TimerEvent) event);
+            } else if (event instanceof Tuple) {
+                    processTupleEvent((Tuple) event);
+            } else if (event instanceof BatchTuple) {
+                for (Tuple tuple : ((BatchTuple) event).getTuples()) {
+                    processTupleEvent(tuple);
+                }
             } else {
                 LOG.warn("Received unknown control event, " + event.getClass().getName());
             }

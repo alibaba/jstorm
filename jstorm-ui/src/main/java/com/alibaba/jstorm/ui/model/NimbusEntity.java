@@ -17,9 +17,9 @@
  */
 package com.alibaba.jstorm.ui.model;
 
-import com.alibaba.jstorm.common.metric.old.window.StatBuckets;
 import com.alibaba.jstorm.ui.utils.UIUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
+import com.alibaba.jstorm.utils.NetWorkUtils;
 
 /**
  * @author Jark (wuchong.wc@alibaba-inc.com)
@@ -28,39 +28,28 @@ public class NimbusEntity {
     private String host;
     private String ip;
     private String port;
-    private String uptime_secs;
-    private int supervisor_num;
-    private int total_port_num;
-    private int used_port_num;
-    private int free_port_num;
-    private int task_num;
-    private int topology_num;
+    private String status;
+    private String nimbusUpTime;
+    private String nimbusUpTimeSeconds;
     private String version;
 
 
-    public NimbusEntity(String host, String uptime_secs, int supervisor_num, int total_port_num,
-                        int used_port_num, int free_port_num, int task_num, int topology_num, String version) {
-        this.host = host;
-        this.ip = UIUtils.getIp(host);
-        this.port = UIUtils.getPort(host);
-        this.uptime_secs = StatBuckets.prettyUptime(JStormUtils.parseInt(uptime_secs, 0));
-        this.supervisor_num = supervisor_num;
-        this.total_port_num = total_port_num;
-        this.used_port_num = used_port_num;
-        this.free_port_num = free_port_num;
-        this.task_num = task_num;
-        this.topology_num = topology_num;
-        this.version = version;
-    }
-
     public NimbusEntity(String host, String uptime_secs, String version) {
-        this.host = host;
-        this.ip = UIUtils.getIp(host);
+        this.ip= UIUtils.getIp(host);
         this.port = UIUtils.getPort(host);
-        this.uptime_secs = StatBuckets.prettyUptime(JStormUtils.parseInt(uptime_secs, 0));
+        this.host = NetWorkUtils.ip2Host(ip);
+        this.nimbusUpTime = UIUtils.prettyUptime(JStormUtils.parseInt(uptime_secs, 0));
+        this.nimbusUpTimeSeconds = uptime_secs;
         this.version = version;
     }
 
+    public String getHost() {
+        return host;
+    }
+
+    public void setHost(String host) {
+        this.host = host;
+    }
 
     public String getIp() {
         return ip;
@@ -78,68 +67,28 @@ public class NimbusEntity {
         this.port = port;
     }
 
-    public String getHost() {
-        return host;
+    public String getStatus() {
+        return status;
     }
 
-    public void setHost(String host) {
-        this.host = host;
+    public void setStatus(String status) {
+        this.status = status;
     }
 
-    public String getUptime_secs() {
-        return uptime_secs;
+    public String getNimbusUpTime() {
+        return nimbusUpTime;
     }
 
-    public void setUptime_secs(String uptime_secs) {
-        this.uptime_secs = uptime_secs;
+    public void setNimbusUpTime(String nimbusUpTime) {
+        this.nimbusUpTime = nimbusUpTime;
     }
 
-    public int getSupervisor_num() {
-        return supervisor_num;
+    public String getNimbusUpTimeSeconds() {
+        return nimbusUpTimeSeconds;
     }
 
-    public void setSupervisor_num(int supervisor_num) {
-        this.supervisor_num = supervisor_num;
-    }
-
-    public int getTotal_port_num() {
-        return total_port_num;
-    }
-
-    public void setTotal_port_num(int total_port_num) {
-        this.total_port_num = total_port_num;
-    }
-
-    public int getUsed_port_num() {
-        return used_port_num;
-    }
-
-    public void setUsed_port_num(int used_port_num) {
-        this.used_port_num = used_port_num;
-    }
-
-    public int getFree_port_num() {
-        return free_port_num;
-    }
-
-    public void setFree_port_num(int free_port_num) {
-        this.free_port_num = free_port_num;
-    }
-
-    public int getTask_num() {
-        return task_num;
-    }
-
-    public void setTask_num(int task_num) {
-        this.task_num = task_num;
-    }
-
-    public int getTopology_num() {
-        return topology_num;
-    }
-
-    public void setTopology_num(int topology_num) {
-        this.topology_num = topology_num;
+    public void setNimbusUpTimeSeconds(String nimbusUpTimeSeconds) {
+        this.nimbusUpTimeSeconds = nimbusUpTimeSeconds;
     }
 
     public String getVersion() {

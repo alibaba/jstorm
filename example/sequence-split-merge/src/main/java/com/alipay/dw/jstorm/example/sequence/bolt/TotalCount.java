@@ -20,6 +20,9 @@ package com.alipay.dw.jstorm.example.sequence.bolt;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
+import backtype.storm.Constants;
+import backtype.storm.tuple.TupleImplExt;
+import com.alipay.dw.jstorm.example.sequence.SequenceTopologyDef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,10 +74,16 @@ public class TotalCount implements IRichBolt {
     
     @Override
     public void execute(Tuple input) {
+
     	if (TupleHelpers.isTickTuple(input) ){
     		LOG.info("Receive one Ticket Tuple " + input.getSourceComponent());
     		return ;
     	}
+        if (input.getSourceStreamId().equals(SequenceTopologyDef.CONTROL_STREAM_ID)){
+            String str = (input.getStringByField("CONTROL"));
+            LOG.warn(str);
+            return;
+        }
     	long before = System.currentTimeMillis();
 
     	try {
@@ -87,8 +96,15 @@ public class TotalCount implements IRichBolt {
 	            }
 	            lastTupleId = tupleId;
 	    	}
-	
-	        TradeCustomer tradeCustomer = (TradeCustomer) input.getValue(1);
+
+            TradeCustomer tradeCustomer = null;
+            try {
+                 tradeCustomer = (TradeCustomer) input.getValue(1);
+            }catch (Exception e){
+                LOG.error(input.getSourceComponent() + "  " + input.getSourceTask() + " " + input.getSourceStreamId() + " target " + ((TupleImplExt)input));
+                throw new RuntimeException(e);
+            }
+
 	        
 	        tradeSum.addAndGet(tradeCustomer.getTrade().getValue());
 	        customerSum.addAndGet(tradeCustomer.getCustomer().getValue());

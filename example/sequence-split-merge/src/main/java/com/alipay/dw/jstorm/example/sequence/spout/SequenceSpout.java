@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.alibaba.jstorm.task.execute.spout.SpoutCollector;
+import com.alipay.dw.jstorm.example.sequence.SequenceTopologyDef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,6 +75,8 @@ public class SequenceSpout implements IRichSpout {
 	private int bufferLen = 0;
 	private Random random;
 
+	private boolean isSendCtrlMsg = false;
+
 	public boolean isDistributed() {
 		return true;
 	}
@@ -112,6 +116,13 @@ public class SequenceSpout implements IRichSpout {
 					.get("spout.max.sending.num"));
 		}
 
+		Boolean btrue = JStormUtils.parseBoolean(conf.get("spout.send.contrl.message"));
+		if (btrue != null && btrue) {
+			isSendCtrlMsg = true;
+		} else {
+			isSendCtrlMsg = false;
+		}
+
 		isFinished = false;
 
 		tpsCounter = new TpsCounter(context.getThisComponentId() + ":"
@@ -123,6 +134,8 @@ public class SequenceSpout implements IRichSpout {
 		
 		random = new Random();
 		random.setSeed(System.currentTimeMillis());
+
+		JStormUtils.sleepMs(20*1000);
 		
 		LOG.info("Finish open, buffer Len:"  + bufferLen);
 
@@ -182,8 +195,14 @@ public class SequenceSpout implements IRichSpout {
 		}
 
 		if (isFinished == true) {
+			if (isSendCtrlMsg){
+			//	LOG.info("spout will send control message due to finish sending ");
+				long now = System.currentTimeMillis();
+				String ctrlMsg = "spout don't send message due to pending num at " + now;
+				((SpoutCollector)(collector.getDelegate())).emitCtrl(SequenceTopologyDef.CONTROL_STREAM_ID, new Values(String.valueOf(now)), ctrlMsg);
+			}
 			LOG.info("Finish sending ");
-			JStormUtils.sleepMs(10000);
+			JStormUtils.sleepMs(500);
 			return;
 		}
 
@@ -205,7 +224,6 @@ public class SequenceSpout implements IRichSpout {
 	}
 
 	public void ack(Object id) {
-		Long tupleId = (Long) id;
 
 		// if (tupleId != this.tupleId - 1) {
 		// LOG.error("Not sync, current :" + this.tupleId + ",ack:" + tupleId);
@@ -222,14 +240,20 @@ public class SequenceSpout implements IRichSpout {
 
 		failedCount++;
 		handleCounter.decrementAndGet();
-		Long failId = (Long) id;
-		LOG.info("Failed to handle " + failId);
+		if (id instanceof Long){
+			Long failId = (Long) id;
+			LOG.info("Failed to handle " + failId);
+		}else if (id instanceof String){
+			LOG.info("Failed to handle " + id);
+		}
+
 
 		return;
 	}
 
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
 		declarer.declare(new Fields("ID", "RECORD"));
+		declarer.declareStream(SequenceTopologyDef.CONTROL_STREAM_ID, new Fields("CONTROL"));
 		// declarer.declare(new Fields("ID"));
 	}
 

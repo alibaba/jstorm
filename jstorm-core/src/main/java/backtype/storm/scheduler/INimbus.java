@@ -29,7 +29,7 @@ public interface INimbus {
      * is used and can be reassigned.
      */
     Collection<WorkerSlot> allSlotsAvailableForScheduling(Collection<SupervisorDetails> existingSupervisors, Topologies topologies,
-                                                          Set<String> topologiesMissingAssignments);
+            Set<String> topologiesMissingAssignments);
 
     // this is called after the assignment is changed in ZK
     void assignSlots(Topologies topologies, Map<String, Collection<WorkerSlot>> newSlotsByTopologyId);

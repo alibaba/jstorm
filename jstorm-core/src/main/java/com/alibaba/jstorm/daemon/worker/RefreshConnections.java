@@ -40,13 +40,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * 
  * Update current worker and other workers' zeroMQ connection.
- * 
+ *
  * When worker shutdown/create, need update these connection
- * 
+ *
  * @author yannian/Longda
- * 
  */
 public class RefreshConnections extends RunnableCallback {
     private static Logger LOG = LoggerFactory.getLogger(RefreshConnections.class);
@@ -64,7 +62,10 @@ public class RefreshConnections extends RunnableCallback {
 
     private Set<Integer> outboundTasks;
 
-    private ConcurrentHashMap<WorkerSlot, IConnection> nodeportSocket;
+    /**
+     * it's actually a HashMap, but for jdk 1.8 compatibility, use the base Map interface
+     */
+    private Map<WorkerSlot, IConnection> nodeportSocket;
 
     private IContext context;
 
@@ -75,6 +76,8 @@ public class RefreshConnections extends RunnableCallback {
     private String supervisorId;
 
     private int taskTimeoutSecs;
+
+    private Integer assignmentVersion = -1;
 
     // private ReentrantReadWriteLock endpoint_socket_lock;
 
@@ -108,24 +111,37 @@ public class RefreshConnections extends RunnableCallback {
             // @@@ does lock need?
             // endpoint_socket_lock.writeLock().lock();
             //
-
             synchronized (this) {
-                Assignment assignment = zkCluster.assignment_info(topologyId, this);
-                if (assignment == null) {
-                    String errMsg = "Failed to get Assignment of " + topologyId;
-                    LOG.error(errMsg);
-                    // throw new RuntimeException(errMsg);
-                    return;
+
+                Integer recordedVersion = zkCluster.assignment_version(topologyId, this);
+
+                boolean isUpdateAssignment = !(recordedVersion != null && recordedVersion.equals(assignmentVersion));
+
+                boolean isUpdateSupervisorTimeStamp = false;
+                Long localAssignmentTS = null;
+                try {
+                    localAssignmentTS = StormConfig.read_supervisor_topology_timestamp(conf, topologyId);
+                    isUpdateSupervisorTimeStamp = localAssignmentTS.longValue() > workerData.getAssignmentTs().longValue();
+                } catch (FileNotFoundException e) {
+                    LOG.warn("Failed to read supervisor topology timeStamp for " + topologyId + " port=" + workerData.getPort(), e);
                 }
 
-                // Compare the assignment timestamp of
-                // "jstorm_home/data/supervisor/topo-id/timestamp"
-                // with one in workerData to check if the topology code is
-                // updated. If so, the outbound
-                // task map should be updated accordingly.
-                try {
-                    Long localAssignmentTS = StormConfig.read_supervisor_topology_timestamp(conf, topologyId);
-                    if (localAssignmentTS.longValue() > workerData.getAssignmentTs().longValue()) {
+                if (isUpdateAssignment || isUpdateSupervisorTimeStamp) {
+                    LOG.info("update worker data due to changed assignment!!!");
+                    Assignment assignment = zkCluster.assignment_info(topologyId, this);
+                    if (assignment == null) {
+                        String errMsg = "Failed to get Assignment of " + topologyId;
+                        LOG.error(errMsg);
+                        // throw new RuntimeException(errMsg);
+                        return;
+                    }
+
+                    // Compare the assignment timestamp of
+                    // "jstorm_home/data/supervisor/topo-id/timestamp"
+                    // with one in workerData to check if the topology code is
+                    // updated. If so, the outbound
+                    // task map should be updated accordingly.
+                    if (isUpdateSupervisorTimeStamp) {
                         try {
                             if (assignment.getAssignmentType() == AssignmentType.UpdateTopology) {
                                 LOG.info("Get config reload request for " + topologyId);
@@ -136,6 +152,9 @@ public class RefreshConnections extends RunnableCallback {
                                 for (TaskShutdownDameon taskSD : taskShutdowns) {
                                     taskSD.update(newConf);
                                 }
+                                // disable/enable metrics on the fly
+                                workerData.getUpdateListener().update(newConf);
+
                                 workerData.setAssignmentType(AssignmentType.UpdateTopology);
                             } else {
                                 Set<Integer> addedTasks = getAddedTasks(assignment);
@@ -143,6 +162,7 @@ public class RefreshConnections extends RunnableCallback {
                                 Set<Integer> updatedTasks = getUpdatedTasks(assignment);
 
                                 workerData.updateWorkerData(assignment);
+                                workerData.updateKryoSerializer();
 
                                 shutdownTasks(removedTasks);
                                 createTasks(addedTasks);
@@ -168,94 +188,105 @@ public class RefreshConnections extends RunnableCallback {
                             // If everything is OK, update the assignment TS.
                             // Then the tasks is
                             // going to update the related data.
-                            workerData.setAssignmentTs(localAssignmentTS);
+                            if (localAssignmentTS != null)
+                                workerData.setAssignmentTs(localAssignmentTS);
                         } catch (Exception e) {
                             LOG.warn("Failed to update worker data", e);
                         }
+
                     }
 
-                } catch (FileNotFoundException e) {
-                    LOG.warn("Failed to read supervisor topology timeStamp for " + topologyId + " port=" + workerData.getPort(), e);
-                }
+                    Set<ResourceWorkerSlot> workers = assignment.getWorkers();
+                    if (workers == null) {
+                        String errMsg = "Failed to get taskToResource of " + topologyId;
+                        LOG.error(errMsg);
+                        return;
+                    }
 
-                Set<ResourceWorkerSlot> workers = assignment.getWorkers();
-                if (workers == null) {
-                    String errMsg = "Failed to get taskToResource of " + topologyId;
-                    LOG.error(errMsg);
-                    return;
-                }
+                    workerData.updateWorkerToResource(workers);
 
-                workerData.updateWorkerToResource(workers);
+                    Map<Integer, WorkerSlot> my_assignment = new HashMap<Integer, WorkerSlot>();
 
-                Map<Integer, WorkerSlot> my_assignment = new HashMap<Integer, WorkerSlot>();
+                    Map<String, String> node = assignment.getNodeHost();
 
-                Map<String, String> node = assignment.getNodeHost();
+                    // only reserve outboundTasks
+                    Set<WorkerSlot> need_connections = new HashSet<WorkerSlot>();
 
-                // only reserve outboundTasks
-                Set<WorkerSlot> need_connections = new HashSet<WorkerSlot>();
+                    Set<Integer> localTasks = new HashSet<Integer>();
+                    Set<Integer> localNodeTasks = new HashSet<Integer>();
 
-                Set<Integer> localTasks = new HashSet<Integer>();
-                Set<Integer> localNodeTasks = new HashSet<Integer>();
-
-                if (workers != null && outboundTasks != null) {
-                    for (ResourceWorkerSlot worker : workers) {
-                        if (supervisorId.equals(worker.getNodeId()))
-                            localNodeTasks.addAll(worker.getTasks());
-                        if (supervisorId.equals(worker.getNodeId()) && worker.getPort() == workerData.getPort())
-                            localTasks.addAll(worker.getTasks());
-                        for (Integer id : worker.getTasks()) {
-                            if (outboundTasks.contains(id)) {
-                                my_assignment.put(id, worker);
-                                need_connections.add(worker);
+                    if (outboundTasks != null) {
+                        for (ResourceWorkerSlot worker : workers) {
+                            if (supervisorId.equals(worker.getNodeId()))
+                                localNodeTasks.addAll(worker.getTasks());
+                            if (supervisorId.equals(worker.getNodeId()) && worker.getPort() == workerData.getPort())
+                                localTasks.addAll(worker.getTasks());
+                            for (Integer id : worker.getTasks()) {
+                                if (outboundTasks.contains(id)) {
+                                    my_assignment.put(id, worker);
+                                    need_connections.add(worker);
+                                }
                             }
                         }
                     }
-                }
-                taskNodeport.putAll(my_assignment);
-                workerData.setLocalTasks(localTasks);
-                workerData.setLocalNodeTasks(localNodeTasks);
+                    taskNodeport.putAll(my_assignment);
+                    workerData.setLocalTasks(localTasks);
+                    workerData.setLocalNodeTasks(localNodeTasks);
 
-                // get which connection need to be remove or add
-                Set<WorkerSlot> current_connections = nodeportSocket.keySet();
-                Set<WorkerSlot> new_connections = new HashSet<WorkerSlot>();
-                Set<WorkerSlot> remove_connections = new HashSet<WorkerSlot>();
+                    // get which connection need to be remove or add
+                    Set<WorkerSlot> current_connections = nodeportSocket.keySet();
+                    Set<WorkerSlot> new_connections = new HashSet<WorkerSlot>();
+                    Set<WorkerSlot> remove_connections = new HashSet<WorkerSlot>();
 
-                for (WorkerSlot node_port : need_connections) {
-                    if (!current_connections.contains(node_port)) {
-                        new_connections.add(node_port);
+                    for (WorkerSlot node_port : need_connections) {
+                        if (!current_connections.contains(node_port)) {
+                            new_connections.add(node_port);
+                        }
                     }
-                }
 
-                for (WorkerSlot node_port : current_connections) {
-                    if (!need_connections.contains(node_port)) {
-                        remove_connections.add(node_port);
+                    for (WorkerSlot node_port : current_connections) {
+                        if (!need_connections.contains(node_port)) {
+                            remove_connections.add(node_port);
+                        }
                     }
-                }
 
-                // create new connection
-                for (WorkerSlot nodePort : new_connections) {
+                    // create new connection
+                    for (WorkerSlot nodePort : new_connections) {
 
-                    String host = node.get(nodePort.getNodeId());
+                        String host = node.get(nodePort.getNodeId());
 
-                    int port = nodePort.getPort();
+                        int port = nodePort.getPort();
 
-                    IConnection conn = context.connect(topologyId, host, port);
+                        IConnection conn = context.connect(topologyId, host, port);
 
-                    nodeportSocket.put(nodePort, conn);
+                        nodeportSocket.put(nodePort, conn);
 
-                    LOG.info("Add connection to " + nodePort);
-                }
+                        LOG.info("Add connection to " + nodePort);
+                    }
 
-                // close useless connection
-                for (WorkerSlot node_port : remove_connections) {
-                    LOG.info("Remove connection to " + node_port);
-                    nodeportSocket.remove(node_port).close();
+                    // close useless connection
+                    for (WorkerSlot node_port : remove_connections) {
+                        LOG.info("Remove connection to " + node_port);
+                        nodeportSocket.remove(node_port).close();
+                    }
+
                 }
 
                 // check the status of connections to all outbound tasks
+                boolean allConnectionReady = true;
                 for (Integer taskId : outboundTasks) {
-                    workerData.updateOutboundTaskStatus(taskId, isOutTaskConnected(taskId));
+                    boolean isConnected = isOutTaskConnected(taskId);
+                    if (!isConnected)
+                        allConnectionReady = isConnected;
+                    workerData.updateOutboundTaskStatus(taskId, isConnected);
                 }
+                if (allConnectionReady) {
+                    workerData.getWorkeInitConnectionStatus().getAndSet(allConnectionReady);
+                }
+
+                if (recordedVersion != null)
+                    assignmentVersion = recordedVersion;
+
             }
         } catch (Exception e) {
             LOG.error("Failed to refresh worker Connection", e);
@@ -327,6 +358,7 @@ public class RefreshConnections extends RunnableCallback {
                 workerData.addShutdownTask(shutdown);
             } catch (Exception e) {
                 LOG.error("Failed to create task-" + taskId, e);
+                throw new RuntimeException(e);
             }
         }
     }
@@ -363,7 +395,7 @@ public class RefreshConnections extends RunnableCallback {
         boolean ret = false;
 
         if (workerData.getInnerTaskTransfer().get(taskId) != null) {
-            // Connections to inner tasks should be done after initialization. 
+            // Connections to inner tasks should be done after initialization.
             // So return true here for all inner tasks.
             ret = true;
         } else {

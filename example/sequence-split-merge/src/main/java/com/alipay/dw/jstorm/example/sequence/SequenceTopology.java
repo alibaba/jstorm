@@ -20,6 +20,8 @@ package com.alipay.dw.jstorm.example.sequence;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.alipay.dw.jstorm.example.sequence.kryo.PairSerializer;
+import com.alipay.dw.jstorm.example.sequence.kryo.TradeCustomerSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,6 +73,7 @@ public class SequenceTopology {
 			// boltDeclarer.localFirstGrouping(SequenceTopologyDef.SEQUENCE_SPOUT_NAME);
 			boltDeclarer
 					.shuffleGrouping(SequenceTopologyDef.SEQUENCE_SPOUT_NAME)
+					.allGrouping(SequenceTopologyDef.SEQUENCE_SPOUT_NAME, SequenceTopologyDef.CONTROL_STREAM_ID)
 					.addConfiguration(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, 3);
 		} else {
 
@@ -109,8 +112,8 @@ public class SequenceTopology {
 
 			Config.setFallBackOnJavaSerialization(conf, useJavaSer);
 
-			Config.registerSerialization(conf, TradeCustomer.class);
-			Config.registerSerialization(conf, Pair.class);
+			Config.registerSerialization(conf, TradeCustomer.class, TradeCustomerSerializer.class);
+			Config.registerSerialization(conf, Pair.class, PairSerializer.class);
 		}
 
 		// conf.put(Config.TOPOLOGY_DEBUG, false);

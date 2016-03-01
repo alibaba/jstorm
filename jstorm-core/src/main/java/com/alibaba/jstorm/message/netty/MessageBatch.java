@@ -25,6 +25,7 @@ import org.jboss.netty.buffer.ChannelBuffers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import backtype.storm.messaging.ControlMessage;
 import backtype.storm.messaging.TaskMessage;
 
 class MessageBatch {
@@ -85,7 +86,7 @@ class MessageBatch {
 
     /**
      * try to add a TaskMessage to a batch
-     * 
+     *
      * @param taskMsg
      * @return false if the msg could not be added due to buffer size limit; true otherwise
      */
@@ -100,7 +101,7 @@ class MessageBatch {
         if (taskMsg == null)
             return 0;
 
-        int size = 6; // INT + SHORT
+        int size = 8; // INT + SHORT + SHORT
         if (taskMsg.message() != null)
             size += taskMsg.message().length;
         return size;
@@ -108,7 +109,7 @@ class MessageBatch {
 
     /**
      * Has this batch used up allowed buffer size
-     * 
+     *
      * @return
      */
     boolean isFull() {
@@ -117,7 +118,7 @@ class MessageBatch {
 
     /**
      * true if this batch doesn't have any messages
-     * 
+     *
      * @return
      */
     boolean isEmpty() {
@@ -126,7 +127,7 @@ class MessageBatch {
 
     /**
      * # of msgs in this batch
-     * 
+     *
      * @return
      */
     int size() {
@@ -162,13 +163,16 @@ class MessageBatch {
 
     /**
      * write a TaskMessage into a stream
-     * 
+     *
      * Each TaskMessage is encoded as: task ... short(2) len ... int(4) payload ... byte[] *
      */
     private void writeTaskMessage(ChannelBufferOutputStream bout, TaskMessage message) throws Exception {
         int payload_len = 0;
         if (message.message() != null)
             payload_len = message.message().length;
+
+        short type = message.get_type();
+        bout.writeShort(type);
 
         int task_id = message.task();
         if (task_id > Short.MAX_VALUE)

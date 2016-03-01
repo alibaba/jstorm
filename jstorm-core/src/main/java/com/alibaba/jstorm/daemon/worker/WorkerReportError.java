@@ -1,6 +1,7 @@
 package com.alibaba.jstorm.daemon.worker;
 
 import com.alibaba.jstorm.cluster.StormClusterState;
+import com.alibaba.jstorm.task.error.ErrorConstants;
 import com.alibaba.jstorm.utils.TimeFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,14 +23,15 @@ public class WorkerReportError {
         this.hostName = _hostName;
     }
     public void report(String topology_id, Integer worker_port,
-                       Set<Integer> tasks, String error) {
+                       Set<Integer> tasks, String error, int errorCode) {
         // Report worker's error to zk
         try {
             Date now = new Date();
             String nowStr = TimeFormat.getSecond(now);
             String errorInfo = error + "on " + this.hostName + ":" + worker_port + "," + nowStr;
             for (Integer task : tasks){
-                zkCluster.report_task_error(topology_id, task, errorInfo, null);
+                zkCluster.report_task_error(topology_id, task, errorInfo, ErrorConstants.FATAL,
+                        errorCode);
             }
         } catch (Exception e) {
             LOG.error("Failed update "+worker_port+ "errors to ZK" + "\n", e);

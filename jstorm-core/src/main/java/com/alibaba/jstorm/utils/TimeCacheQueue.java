@@ -42,7 +42,7 @@ public class TimeCacheQueue<K> {
     }
 
     public static class DefaultExpiredCallback<K> implements ExpiredCallback<K> {
-        protected static final Logger LOG = LoggerFactory.getLogger(DefaultExpiredCallback.class);
+        protected static final Logger LOG = LoggerFactory.getLogger(TimeCacheQueue.DefaultExpiredCallback.class);
 
         protected String queueName;
 

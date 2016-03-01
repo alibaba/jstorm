@@ -35,7 +35,7 @@ import storm.trident.topology.TransactionAttempt;
 public class OpaquePartitionedTridentSpoutExecutor implements ICommitterTridentSpout<Object> {
     IOpaquePartitionedTridentSpout _spout;
 
-    public class Coordinator implements BatchCoordinator<Object> {
+    public class Coordinator implements ITridentSpout.BatchCoordinator<Object> {
         IOpaquePartitionedTridentSpout.Coordinator _coordinator;
 
         public Coordinator(Map conf, TopologyContext context) {
@@ -178,7 +178,7 @@ public class OpaquePartitionedTridentSpoutExecutor implements ICommitterTridentS
     }
 
     @Override
-    public BatchCoordinator<Object> getCoordinator(String txStateId, Map conf, TopologyContext context) {
+    public ITridentSpout.BatchCoordinator<Object> getCoordinator(String txStateId, Map conf, TopologyContext context) {
         return new Coordinator(conf, context);
     }
 

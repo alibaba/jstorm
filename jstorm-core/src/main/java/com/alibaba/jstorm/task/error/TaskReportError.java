@@ -57,7 +57,17 @@ public class TaskReportError implements ITaskReportErr {
 
         LOG.error("Report error to /ZK/taskerrors/" + topology_id + "/" + task_id + ": " + error);
         try {
-            zkCluster.report_task_error(topology_id, task_id, error, null);
+            zkCluster.report_task_error(topology_id, task_id, error, ErrorConstants.ERROR, ErrorConstants.CODE_USER);
+        } catch (Exception e) {
+            LOG.error("Failed update error to /ZK/taskerrors/" + topology_id + "/" + task_id + "\n", e);
+        }
+    }
+
+    @Override
+    public void report(String error, String errorLevel, int errorCode, int duration) {
+        LOG.error("Report error to /ZK/taskerrors/" + topology_id + "/" + task_id + ": " + error);
+        try {
+            zkCluster.report_task_error(topology_id, task_id, error, errorLevel, errorCode, duration);
         } catch (Exception e) {
             LOG.error("Failed update error to /ZK/taskerrors/" + topology_id + "/" + task_id + "\n", e);
         }

@@ -30,6 +30,7 @@ import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import backtype.storm.messaging.ControlMessage;
 import backtype.storm.messaging.TaskMessage;
 
 class StormServerHandler extends SimpleChannelUpstreamHandler {

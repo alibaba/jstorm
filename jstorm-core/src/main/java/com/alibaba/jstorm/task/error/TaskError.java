@@ -29,11 +29,25 @@ public class TaskError implements Serializable {
 
     private static final long serialVersionUID = 5028789764629555542L;
     private String error;
+    private String level;
+    private int code;
     private int timSecs;
+    private int durationSecs;
 
-    public TaskError(String error, int timSecs) {
+    public TaskError(String error, String level, int code, int timSecs) {
         this.error = error;
+        this.level = level;
+        this.code = code;
         this.timSecs = timSecs;
+        this.durationSecs = ErrorConstants.DURATION_SECS_DEFAULT;
+    }
+
+    public TaskError(String error, String level, int code, int timSecs, int durationSecs) {
+        this.error = error;
+        this.level = level;
+        this.code = code;
+        this.timSecs = timSecs;
+        this.durationSecs = durationSecs;
     }
 
     public String getError() {
@@ -52,4 +66,58 @@ public class TaskError implements Serializable {
         this.timSecs = timSecs;
     }
 
+    public String getLevel() {
+        return level;
+    }
+
+    public void setLevel(String level) {
+        this.level = level;
+    }
+
+    public int getCode() {
+        return code;
+    }
+
+    public void setCode(int code) {
+        this.code = code;
+    }
+
+    public int getDurationSecs() {
+        return durationSecs;
+    }
+
+    public void setDurationSecs(int durationSecs) {
+        this.durationSecs = durationSecs;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null || !(obj instanceof TaskError)) {
+            return false;
+        } else if (obj == this) {
+            return true;
+        } else {
+            TaskError taskError = (TaskError) obj;
+            if (taskError.getError().equals(error)
+                    && taskError.getCode() == code
+                    && taskError.getLevel().equals(level)
+                    && taskError.getTimSecs() == timSecs
+                    && taskError.getDurationSecs() == durationSecs) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "TaskError{" +
+                "error='" + error + '\'' +
+                ", level='" + level + '\'' +
+                ", code=" + code +
+                ", timSecs=" + timSecs +
+                ", durationSecs=" + durationSecs +
+                '}';
+    }
 }

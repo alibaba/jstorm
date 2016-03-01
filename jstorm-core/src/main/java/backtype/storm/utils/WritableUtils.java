@@ -211,7 +211,7 @@ public final class WritableUtils {
      * 
      * @param stream Binary output stream
      * @param i Integer to be serialized
-     * @throws IOException
+     * @throws java.io.IOException
      */
     public static void writeVInt(DataOutput stream, int i) throws IOException {
         writeVLong(stream, i);
@@ -225,7 +225,7 @@ public final class WritableUtils {
      * 
      * @param stream Binary output stream
      * @param i Long to be serialized
-     * @throws IOException
+     * @throws java.io.IOException
      */
     public static void writeVLong(DataOutput stream, long i) throws IOException {
         if (i >= -112 && i <= 127) {
@@ -260,7 +260,7 @@ public final class WritableUtils {
      * Reads a zero-compressed encoded long from input stream and returns it.
      * 
      * @param stream Binary input stream
-     * @throws IOException
+     * @throws java.io.IOException
      * @return deserialized long from stream.
      */
     public static long readVLong(DataInput stream) throws IOException {
@@ -282,7 +282,7 @@ public final class WritableUtils {
      * Reads a zero-compressed encoded integer from input stream and returns it.
      * 
      * @param stream Binary input stream
-     * @throws IOException
+     * @throws java.io.IOException
      * @return deserialized integer from stream.
      */
     public static int readVInt(DataInput stream) throws IOException {

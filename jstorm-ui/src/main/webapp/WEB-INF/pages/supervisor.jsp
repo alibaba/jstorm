@@ -47,8 +47,8 @@
                 <tr>
                     <td><ct:host ip="${supervisor.host}"/></td>
                     <td>${supervisor.host}</td>
-                    <td data-order="${supervisor.uptimeSecs}"><ct:pretty type="uptime" input="${supervisor.uptimeSecs}"/></td>
-                    <td>${supervisor.numUsedWorkers} / ${supervisor.numWorkers}</td>
+                    <td data-order="${supervisor.uptimeSeconds}">${supervisor.uptime}</td>
+                    <td>${supervisor.slotsUsed} / ${supervisor.slotsTotal}</td>
                     <td>
                         <a href="conf?name=${clusterName}&type=supervisor&host=${supervisor.host}" target="_blank">
                             conf
@@ -96,7 +96,7 @@
                 <td class="middle">
                     <a href="netty?cluster=${clusterName}&topology=${worker.topology}&host=${host}&port=${worker.port}">
                         netty</a></td>
-                <td class="middle" data-order="${worker.uptime}"><ct:pretty type="uptime" input="${worker.uptime}"/></td>
+                <td class="middle" data-order="${worker.uptimeSeconds}">${worker.uptime}</td>
                 <td class="middle">
                     <a href="topology?cluster=${clusterName}&id=${worker.topology}" target="_blank">
                             ${worker.topology}</a></td>
@@ -104,8 +104,8 @@
                     <ul>
                         <c:forEach var="task" items="${worker.tasks}">
                             <li>
-                                <a href="task?cluster=${clusterName}&topology=${worker.topology}&component=${task.component}&id=${task.taskId}"
-                                   target="_blank">${task.component}-${task.taskId} </a></li>
+                                <a href="task?cluster=${clusterName}&topology=${worker.topology}&component=${task.component}&id=${task.id}"
+                                   target="_blank">${task.component}-${task.id} </a></li>
                         </c:forEach>
                     </ul>
                 </td>

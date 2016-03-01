@@ -27,10 +27,20 @@ public class TradeCustomer implements Serializable {
      * 
      */
     private static final long serialVersionUID = 1294530416638900059L;
-    protected final long      timestamp        = System.currentTimeMillis();
+    protected final long      timestamp;
     protected Pair            trade;
     protected Pair            customer;
     protected String          buffer;
+
+    public TradeCustomer(){
+        timestamp = System.currentTimeMillis();
+    }
+    public TradeCustomer(long timestamp, Pair trade, Pair customer, String str){
+        this.timestamp = timestamp;
+        this.trade = trade;
+        this.customer = customer;
+        this.buffer = str;
+    }
     
     public Pair getTrade() {
         return trade;

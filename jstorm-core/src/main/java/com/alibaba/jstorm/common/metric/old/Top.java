@@ -39,9 +39,9 @@ public class Top<T> extends Metric<List<T>, TreeSet<T>> {
         this.n = n;
 
         this.defaultValue = new TreeSet<T>(comparator);
-        this.updater = new TopUpdator<T>(comparator, n);
-        this.merger = new TopMerger<T>(comparator, n);
-        this.convertor = new SetToList<T>();
+        this.updater = new Top.TopUpdator<T>(comparator, n);
+        this.merger = new Top.TopMerger<T>(comparator, n);
+        this.convertor = new Top.SetToList<T>();
 
         init();
     }

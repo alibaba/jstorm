@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import backtype.storm.tuple.TupleImplExt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +39,6 @@ import com.alibaba.jstorm.metric.MetricType;
 import com.alibaba.jstorm.metric.MetricUtils;
 import com.alibaba.jstorm.task.backpressure.BackpressureController;
 import com.alibaba.jstorm.utils.JStormUtils;
-import com.alibaba.jstorm.utils.TimeUtils;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
@@ -48,6 +48,7 @@ import backtype.storm.messaging.IConnection;
 import backtype.storm.messaging.TaskMessage;
 import backtype.storm.scheduler.WorkerSlot;
 import backtype.storm.serialization.KryoTupleSerializer;
+import backtype.storm.tuple.BatchTuple;
 import backtype.storm.tuple.ITupleExt;
 import backtype.storm.tuple.TupleExt;
 import backtype.storm.utils.DisruptorQueue;
@@ -60,7 +61,7 @@ import backtype.storm.utils.WorkerClassLoader;
  * Task sending all tuples through this Object
  * <p/>
  * Serialize the Tuple and put the serialized data to the sending queue
- * 
+ *
  * @author yannian
  */
 public class TaskTransfer {
@@ -68,9 +69,10 @@ public class TaskTransfer {
     private static Logger LOG = LoggerFactory.getLogger(TaskTransfer.class);
 
     protected Map storm_conf;
-    protected DisruptorQueue transferQueue;
+    protected DisruptorQueue transferControlQueue;
     protected KryoTupleSerializer serializer;
     protected Map<Integer, DisruptorQueue> innerTaskTransfer;
+    protected Map<Integer, DisruptorQueue> controlQueues;
     protected DisruptorQueue serializeQueue;
     protected final AsyncLoopThread serializeThread;
     protected volatile TaskStatus taskStatus;
@@ -86,14 +88,17 @@ public class TaskTransfer {
 
     protected BackpressureController backpressureController;
 
+    protected boolean isTopologyMaster;
+
     public TaskTransfer(Task task, String taskName, KryoTupleSerializer serializer, TaskStatus taskStatus, WorkerData workerData) {
         this.task = task;
         this.taskName = taskName;
         this.serializer = serializer;
         this.taskStatus = taskStatus;
         this.storm_conf = workerData.getStormConf();
-        this.transferQueue = workerData.getTransferQueue();
+        this.transferControlQueue = workerData.getTransferCtrlQueue();
         this.innerTaskTransfer = workerData.getInnerTaskTransfer();
+        this.controlQueues = workerData.getControlQueues();
 
         this.nodeportSocket = workerData.getNodeportSocket();
         this.taskNodeport = workerData.getTaskNodeport();
@@ -105,20 +110,21 @@ public class TaskTransfer {
         int queue_size = Utils.getInt(storm_conf.get(Config.TOPOLOGY_EXECUTOR_SEND_BUFFER_SIZE));
         WaitStrategy waitStrategy = (WaitStrategy) JStormUtils.createDisruptorWaitStrategy(storm_conf);
         this.serializeQueue = DisruptorQueue.mkInstance(taskName, ProducerType.MULTI, queue_size, waitStrategy);
-        this.serializeQueue.consumerStarted();
+        //this.serializeQueue.consumerStarted();
 
         String taskId = taskName.substring(taskName.indexOf(":") + 1);
         QueueGauge serializeQueueGauge = new QueueGauge(serializeQueue, taskName, MetricDef.SERIALIZE_QUEUE);
         JStormMetrics.registerTaskMetric(MetricUtils.taskMetricName(topolgyId, componentId, this.taskId, MetricDef.SERIALIZE_QUEUE, MetricType.GAUGE),
                 new AsmGauge(serializeQueueGauge));
         JStormHealthCheck.registerTaskHealthCheck(Integer.valueOf(taskId), MetricDef.SERIALIZE_QUEUE, serializeQueueGauge);
-        serializeTimer =
-                (AsmHistogram) JStormMetrics.registerTaskMetric(
-                        MetricUtils.taskMetricName(topolgyId, componentId, this.taskId, MetricDef.SERIALIZE_TIME, MetricType.HISTOGRAM), new AsmHistogram());
+        serializeTimer = (AsmHistogram) JStormMetrics.registerTaskMetric(MetricUtils.taskMetricName(
+                topolgyId, componentId, this.taskId, MetricDef.SERIALIZE_TIME, MetricType.HISTOGRAM), new AsmHistogram());
 
         serializeThread = setupSerializeThread();
 
         backpressureController = new BackpressureController(storm_conf, task.getTaskId(), serializeQueue, queue_size);
+        isTopologyMaster = (task.getTopologyContext().getTopologyMasterId() == task.getTaskId());
+
         LOG.info("Successfully start TaskTransfer thread");
 
     }
@@ -138,9 +144,28 @@ public class TaskTransfer {
             backpressureController.flowControl();
         }
     }
-    
+
+    public void transferControl(TupleExt tuple) {
+
+        int taskId = tuple.getTargetTaskId();
+
+        DisruptorQueue controlQueue = controlQueues.get(taskId);
+        if (controlQueue != null) {
+            controlQueue.publish(tuple);
+        } else {
+            transferControlQueue.publish(tuple);
+        }
+    }
+
+    public void transferControl(BatchTuple batch) {
+        LOG.error("It is not allowed to send batch here!");
+    }
+    public void transfer(BatchTuple batch) {
+        LOG.error("It is not allowed to send batch here!");
+    }
+
     public void push(int taskId, TupleExt tuple) {
-    	serializeQueue.publish(tuple);
+        serializeQueue.publish(tuple);
     }
 
     protected AsyncLoopThread setupSerializeThread() {
@@ -163,7 +188,7 @@ public class TaskTransfer {
         public String getThreadName() {
             return taskName + "-" + TransferRunnable.class.getSimpleName();
         }
-		
+
 
         @Override
         public void preRun() {
@@ -172,7 +197,7 @@ public class TaskTransfer {
 
         @Override
         public void run() {
-            while (shutdown.get() == false) {
+            while (!shutdown.get()) {
                 serializeQueue.consumeBatchWhenAvailable(this);
             }
         }
@@ -181,23 +206,20 @@ public class TaskTransfer {
         public void postRun() {
             WorkerClassLoader.restoreThreadContext();
         }
-        
+
         public byte[] serialize(ITupleExt tuple) {
-        	return serializer.serialize((TupleExt)tuple);
+            return serializer.serialize((TupleExt) tuple);
         }
 
         @Override
         public void onEvent(Object event, long sequence, boolean endOfBatch) throws Exception {
-
             if (event == null) {
                 return;
             }
 
-            long start = System.nanoTime();
-
+            long start = serializeTimer.getTime();
             try {
-			
-			    ITupleExt tuple = (ITupleExt) event;
+                ITupleExt tuple = (ITupleExt) event;
                 int taskid = tuple.getTargetTaskId();
                 IConnection conn = getConnection(taskid);
                 if (conn != null) {
@@ -206,8 +228,7 @@ public class TaskTransfer {
                     conn.send(taskMessage);
                 }
             } finally {
-                long end = System.nanoTime();
-                serializeTimer.update((end - start)/TimeUtils.NS_PER_US);
+                serializeTimer.updateTime(start);
             }
 
         }
@@ -226,24 +247,6 @@ public class TaskTransfer {
                 }
             }
             return conn;
-        }
-
-        protected void pullTuples(Object event) {
-            TupleExt tuple = (TupleExt) event;
-            int taskid = tuple.getTargetTaskId();
-            IConnection conn = getConnection(taskid);
-            if (conn != null) {
-                while (conn.available() == false) {
-                    try {
-                        Thread.sleep(1);
-                    } catch (InterruptedException e) {
-
-                    }
-                }
-                byte[] tupleMessage = serializer.serialize(tuple);
-                TaskMessage taskMessage = new TaskMessage(taskid, tupleMessage);
-                conn.send(taskMessage);
-            }
         }
 
     }

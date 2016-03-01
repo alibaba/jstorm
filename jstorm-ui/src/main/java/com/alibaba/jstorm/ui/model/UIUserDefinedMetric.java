@@ -18,6 +18,7 @@
 package com.alibaba.jstorm.ui.model;
 
 import com.alibaba.jstorm.metric.MetricType;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  * @author Jark (wuchong.wc@alibaba-inc.com)
@@ -51,6 +52,7 @@ public class UIUserDefinedMetric {
         this.componentName = componentName;
     }
 
+    @JsonIgnore
     public String getComponentType() {
         return componentType;
     }
@@ -74,8 +76,6 @@ public class UIUserDefinedMetric {
                 this.type = "Meter";
             case HISTOGRAM:
                 this.type = "Histogram";
-            case TIMER:
-                this.type = "Timer";
         }
     }
 

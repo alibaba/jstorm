@@ -1,20 +1,18 @@
 topology.name=SequenceTest
-topology.workers=8
-topology.max.spout.pending=10000
-topology.acker.executors=1
+topology.workers=5
+#topology.max.spout.pending=1000
+topology.acker.executors=2
 topology.debug=false
 
 
 
 
 spout.parallel=1
-bolt.parallel=1
+bolt.parallel=2
 #send.sleep.second=100
-check.sequence=true
+#bolt.check.tupleId=true
 kryo.enable=false
 fall.back.on.java.serialization=true
 
 enable.split=false
-
-storm.cluster.mode=local
-#topology.enable.classloader=true
+storm.messaging.netty.transfer.async.batch=true

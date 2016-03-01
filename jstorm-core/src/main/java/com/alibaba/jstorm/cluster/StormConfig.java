@@ -79,9 +79,9 @@ public class StormConfig {
     }
 
     public static HashMap<String, Object> getClassFields(Class<?> cls) throws IllegalArgumentException, IllegalAccessException {
-        Field[] list = cls.getDeclaredFields();
+        java.lang.reflect.Field[] list = cls.getDeclaredFields();
         HashMap<String, Object> rtn = new HashMap<String, Object>();
-        for (Field f : list) {
+        for (java.lang.reflect.Field f : list) {
             String name = f.getName();
             rtn.put(name, f.get(null).toString());
 

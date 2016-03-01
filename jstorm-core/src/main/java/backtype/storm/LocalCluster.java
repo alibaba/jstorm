@@ -19,6 +19,7 @@ package backtype.storm;
 
 import backtype.storm.generated.*;
 import backtype.storm.utils.Utils;
+import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.utils.JStormUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -88,6 +89,8 @@ public class LocalCluster implements ILocalCluster {
             throw new RuntimeException("Topology conf is not json-serializable");
         JStormUtils.setLocalMode(true);
         conf.put(Config.STORM_CLUSTER_MODE, "local");
+        conf.put(ConfigExtension.TOPOLOGY_BACKPRESSURE_ENABLE, false);
+        conf.putAll(Utils.readCommandLineOpts());
 
         try {
             if (submitOpts == null) {

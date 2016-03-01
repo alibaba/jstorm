@@ -26,15 +26,15 @@ import backtype.storm.utils.WorkerClassLoader;
 
 import com.alibaba.jstorm.callback.AsyncLoopThread;
 import com.alibaba.jstorm.callback.RunnableCallback;
-import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.common.metric.AsmGauge;
 import com.alibaba.jstorm.common.metric.AsmHistogram;
 import com.alibaba.jstorm.common.metric.QueueGauge;
+import com.alibaba.jstorm.daemon.worker.JStormDebugger;
 import com.alibaba.jstorm.metric.*;
 import com.alibaba.jstorm.utils.JStormUtils;
-import com.alibaba.jstorm.utils.TimeUtils;
 import com.esotericsoftware.kryo.KryoException;
 import com.lmax.disruptor.EventHandler;
+import com.lmax.disruptor.InsufficientCapacityException;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
 
@@ -52,8 +52,6 @@ public class TaskReceiver {
 
     protected TopologyContext topologyContext;
     protected Map<Integer, DisruptorQueue> innerTaskTransfer;
-
-    protected final boolean isDebugRecv;
 
     protected DisruptorQueue deserializeQueue;
     protected KryoTupleDeserializer deserializer;
@@ -73,8 +71,6 @@ public class TaskReceiver {
 
         this.taskStatus = taskStatus;
 
-        this.isDebugRecv = ConfigExtension.isTopologyDebugRecvTuple(stormConf);
-
         int queueSize = JStormUtils.parseInt(stormConf.get(Config.TOPOLOGY_EXECUTOR_RECEIVE_BUFFER_SIZE), 256);
 
         WaitStrategy waitStrategy = (WaitStrategy) JStormUtils.createDisruptorWaitStrategy(stormConf);
@@ -85,12 +81,12 @@ public class TaskReceiver {
         String topologyId = topologyContext.getTopologyId();
         String component = topologyContext.getThisComponentId();
 
-        deserializeTimer =
-                (AsmHistogram) JStormMetrics.registerTaskMetric(
-                        MetricUtils.taskMetricName(topologyId, component, taskId, MetricDef.DESERIALIZE_TIME, MetricType.HISTOGRAM), new AsmHistogram());
+        deserializeTimer = (AsmHistogram) JStormMetrics.registerTaskMetric(MetricUtils.taskMetricName(
+                topologyId, component, taskId, MetricDef.DESERIALIZE_TIME, MetricType.HISTOGRAM), new AsmHistogram());
 
         QueueGauge deserializeQueueGauge = new QueueGauge(deserializeQueue, idStr, MetricDef.DESERIALIZE_QUEUE);
-        JStormMetrics.registerTaskMetric(MetricUtils.taskMetricName(topologyId, component, taskId, MetricDef.DESERIALIZE_QUEUE, MetricType.GAUGE),
+        JStormMetrics.registerTaskMetric(MetricUtils.taskMetricName(
+                        topologyId, component, taskId, MetricDef.DESERIALIZE_QUEUE, MetricType.GAUGE),
                 new AsmGauge(deserializeQueueGauge));
         JStormHealthCheck.registerTaskHealthCheck(taskId, MetricDef.DESERIALIZE_QUEUE, deserializeQueueGauge);
     }
@@ -107,10 +103,12 @@ public class TaskReceiver {
         return deserializeQueue;
     }
 
+
     class DeserializeRunnable extends RunnableCallback implements EventHandler {
 
         DisruptorQueue deserializeQueue;
         DisruptorQueue exeQueue;
+
 
         DeserializeRunnable(DisruptorQueue deserializeQueue, DisruptorQueue exeQueue) {
             this.deserializeQueue = deserializeQueue;
@@ -123,7 +121,7 @@ public class TaskReceiver {
         }
 
         protected Object deserialize(byte[] ser_msg) {
-            long start = System.nanoTime();
+            long start = deserializeTimer.getTime();
             try {
                 if (ser_msg == null) {
                     return null;
@@ -142,7 +140,7 @@ public class TaskReceiver {
                 // ser_msg.length > 1
                 Tuple tuple = deserializer.deserialize(ser_msg);
 
-                if (isDebugRecv) {
+                if (JStormDebugger.isDebugRecv(tuple.getMessageId().getAnchors())) {
                     LOG.info(idStr + " receive " + tuple.toString());
                 }
 
@@ -150,12 +148,11 @@ public class TaskReceiver {
             } catch (KryoException e) {
                 throw new RuntimeException(e);
             } catch (Throwable e) {
-                if (taskStatus.isShutdown() == false) {
+                if (!taskStatus.isShutdown()) {
                     LOG.error(idStr + " recv thread error " + JStormUtils.toPrintableString(ser_msg) + "\n", e);
                 }
             } finally {
-                long end = System.nanoTime();
-                deserializeTimer.update((end - start) / TimeUtils.NS_PER_US);
+                deserializeTimer.updateTime(start);
             }
 
             return null;
@@ -182,15 +179,14 @@ public class TaskReceiver {
 
         @Override
         public void run() {
-            deserializeQueue.consumerStarted();
+            //deserializeQueue.consumerStarted();
             LOG.info("Successfully start recvThread of " + idStr);
 
-            while (taskStatus.isShutdown() == false) {
+            while (!taskStatus.isShutdown()) {
                 try {
-
                     deserializeQueue.consumeBatchWhenAvailable(this);
                 } catch (Throwable e) {
-                    if (taskStatus.isShutdown() == false) {
+                    if (!taskStatus.isShutdown()) {
                         LOG.error("Unknow exception ", e);
                     }
                 }

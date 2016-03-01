@@ -7,7 +7,7 @@ import java.util.Random;
 import static org.junit.Assert.*;
 
 /**
- * Created by wuchong on 15/10/13.
+ * @author wuchong
  */
 public class AsmMetricTest {
 
@@ -24,6 +24,19 @@ public class AsmMetricTest {
         counter.flush();
 
         assertEquals(4, counter.getSnapshots().size());
+    }
 
+    @Test
+    public void testSample() {
+        AsmMeter meter = new AsmMeter();
+        int t = 0, f = 0;
+        for (int i = 0; i < 100; i++) {
+            if (meter.sample()) {
+                t++;
+            } else {
+                f++;
+            }
+        }
+        System.out.println(t + "," + f);
     }
 }

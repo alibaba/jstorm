@@ -61,7 +61,7 @@ public class DisruptorQueueImpl extends DisruptorQueue {
 
     // TODO: consider having a threadlocal cache of this variable to speed up
     // reads?
-    volatile boolean consumerStartedFlag = false;
+    //volatile boolean consumerStartedFlag = false;
 
     private final HashMap<String, Object> state = new HashMap<String, Object>(4);
     private final ConcurrentLinkedQueue<Object> _cache = new ConcurrentLinkedQueue<Object>();
@@ -75,7 +75,7 @@ public class DisruptorQueueImpl extends DisruptorQueue {
         _consumer = new Sequence();
         _barrier = _buffer.newBarrier();
         _buffer.addGatingSequences(_consumer);
-        if (producerType == ProducerType.SINGLE) {
+        /*if (producerType == ProducerType.SINGLE) {
             consumerStartedFlag = true;
         } else {
             // make sure we flush the pending messages in cache first
@@ -87,7 +87,7 @@ public class DisruptorQueueImpl extends DisruptorQueue {
             } catch (InsufficientCapacityException e) {
                 throw new RuntimeException("This code should be unreachable!", e);
             }
-        }
+        }*/
     }
 
     public String getName() {
@@ -106,9 +106,9 @@ public class DisruptorQueueImpl extends DisruptorQueue {
         // @@@
         // should use _cache.isEmpty, but it is slow
         // I will change the logic later
-        if (consumerStartedFlag == false) {
-            return _cache.poll();
-        }
+        //if (consumerStartedFlag == false) {
+        //    return _cache.poll();
+        //}
 
         final long nextSequence = _consumer.get() + 1;
         if (nextSequence <= _barrier.getCursor()) {
@@ -125,9 +125,9 @@ public class DisruptorQueueImpl extends DisruptorQueue {
         // @@@
         // should use _cache.isEmpty, but it is slow
         // I will change the logic later
-        if (consumerStartedFlag == false) {
-            return _cache.poll();
-        }
+        //if (consumerStartedFlag == false) {
+        //    return _cache.poll();
+        //}
 
         final long nextSequence = _consumer.get() + 1;
         // final long availableSequence;
@@ -176,7 +176,7 @@ public class DisruptorQueueImpl extends DisruptorQueue {
                 MutableObject mo = _buffer.get(curr);
                 Object o = mo.o;
                 mo.setObject(null);
-                if (o == FLUSH_CACHE) {
+                /*if (o == FLUSH_CACHE) {
                     Object c = null;
                     while (true) {
                         c = _cache.poll();
@@ -187,9 +187,9 @@ public class DisruptorQueueImpl extends DisruptorQueue {
                     }
                 } else if (o == INTERRUPT) {
                     throw new InterruptedException("Disruptor processing interrupted");
-                } else {
+                } else {*/
                     handler.onEvent(o, curr, curr == cursor);
-                }
+                //}
             } catch (InterruptedException e) {
                 // throw new RuntimeException(e);
                 LOG.error(e.getMessage(), e);
@@ -220,7 +220,7 @@ public class DisruptorQueueImpl extends DisruptorQueue {
 
     public void publish(Object obj, boolean block) throws InsufficientCapacityException {
 
-        boolean publishNow = consumerStartedFlag;
+        /*boolean publishNow = consumerStartedFlag;
 
         if (!publishNow) {
             readLock.lock();
@@ -234,9 +234,9 @@ public class DisruptorQueueImpl extends DisruptorQueue {
             }
         }
 
-        if (publishNow) {
+        if (publishNow) {*/
             publishDirect(obj, block);
-        }
+        //}
     }
 
     protected void publishDirect(Object obj, boolean block) throws InsufficientCapacityException {
@@ -250,14 +250,14 @@ public class DisruptorQueueImpl extends DisruptorQueue {
         m.setObject(obj);
         _buffer.publish(id);
     }
-
+/*
     public void consumerStarted() {
 
         writeLock.lock();
         consumerStartedFlag = true;
 
         writeLock.unlock();
-    }
+    }*/
 
     public void clear() {
         while (population() != 0L) {

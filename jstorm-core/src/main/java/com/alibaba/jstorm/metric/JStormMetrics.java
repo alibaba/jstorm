@@ -24,6 +24,8 @@ import com.alibaba.jstorm.common.metric.snapshot.AsmSnapshot;
 import com.alibaba.jstorm.utils.NetWorkUtils;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import java.nio.ByteBuffer;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,12 +37,22 @@ import java.util.*;
  * @author Cody (weiyue.wy@alibaba-inc.com)
  * @since 2.0.5
  */
+@SuppressWarnings({"unused", "unchecked"})
 public class JStormMetrics implements Serializable {
     private static final long serialVersionUID = -2580242512743243267L;
 
     public static final String NIMBUS_METRIC_KEY = "__NIMBUS__";
     public static final String CLUSTER_METRIC_KEY = "__CLUSTER__";
     public static final String SUPERVISOR_METRIC_KEY = "__SUPERVISOR__";
+
+    public static final String[] SYS_TOPOLOGIES = {
+            NIMBUS_METRIC_KEY, CLUSTER_METRIC_KEY, SUPERVISOR_METRIC_KEY
+    };
+
+    public static final Set<String> SYS_TOPOLOGY_SET = Sets.newHashSet(SYS_TOPOLOGIES);
+
+    public static final String DEFAULT_GROUP = "sys";
+    public static final String NETTY_GROUP = "netty";
 
     protected static final Logger LOG = LoggerFactory.getLogger(JStormMetrics.class);
 
@@ -62,16 +74,18 @@ public class JStormMetrics implements Serializable {
     protected static int port;
     protected static boolean debug;
 
-    public static final String DEFAULT_GROUP = "sys";
-    public static final String NETTY_GROUP = "netty";
-
     protected static Set<String> debugMetricNames = new HashSet<String>();
 
     static {
         host = NetWorkUtils.ip();
     }
 
-    private static boolean enabled = true;
+    public static volatile boolean enabled = true;
+    public static volatile boolean enableStreamMetrics = true;
+
+    public static void setTimerUpdateInterval(long interval) {
+        AsmHistogram.setUpdateInterval(interval);
+    }
 
     public static int getPort() {
         return port;
@@ -106,14 +120,6 @@ public class JStormMetrics implements Serializable {
         LOG.info("topology metrics debug enabled:{}", debug);
     }
 
-    public static void setEnabled(boolean enabled) {
-        JStormMetrics.enabled = enabled;
-    }
-
-    public static boolean isEnabled() {
-        return enabled;
-    }
-
     public static String workerMetricName(String name, MetricType type) {
         return MetricUtils.workerMetricName(topologyId, host, port, name, type);
     }
@@ -146,6 +152,7 @@ public class JStormMetrics implements Serializable {
         name = fixNameIfPossible(name);
         LOG.info("register stream metric:{}", name);
         AsmMetric ret = streamMetrics.register(name, metric);
+        //ret.setEnabled(enableStreamMetrics);
 
         if (metric.isAggregate()) {
             List<AsmMetric> assocMetrics = new ArrayList<>();
@@ -159,13 +166,13 @@ public class JStormMetrics implements Serializable {
             assocMetrics.add(componentMetric);
 
             String metricName = MetricUtils.getMetricName(name);
-            if (metricName.contains(".")){
+            if (metricName.contains(".")) {
                 compMetricName = MetricUtils.task2MergeCompName(taskMetricName);
                 AsmMetric mergeCompMetric = componentMetrics.register(compMetricName, taskMetric.clone());
                 assocMetrics.add(mergeCompMetric);
             }
 
-            if (mergeTopology){
+            if (mergeTopology) {
                 String topologyMetricName = MetricUtils.comp2topologyName(compMetricName);
                 AsmMetric topologyMetric = topologyMetrics.register(topologyMetricName, ret.clone());
                 assocMetrics.add(topologyMetric);
@@ -271,14 +278,6 @@ public class JStormMetrics implements Serializable {
                 MetricUtils.workerMetricName(topologyId, host, 0, name, MetricType.COUNTER), counter);
     }
 
-    /**
-     * simplified helper method to register a worker timer
-     */
-    public static AsmTimer registerWorkerTimer(String topologyId, String name, AsmTimer timer) {
-        return (AsmTimer) registerWorkerMetric(
-                MetricUtils.workerMetricName(topologyId, host, 0, name, MetricType.TIMER), timer);
-    }
-
     public static AsmMetric getStreamMetric(String name) {
         name = fixNameIfPossible(name);
         return streamMetrics.getMetric(name);
@@ -334,6 +333,10 @@ public class JStormMetrics implements Serializable {
         return streamMetrics;
     }
 
+    public static AsmMetricRegistry getTopologyMetrics() {
+        return topologyMetrics;
+    }
+
     /**
      * convert snapshots to thrift objects, note that timestamps are aligned to min during the conversion,
      * so nimbus server will get snapshots with aligned timestamps (still in ms as TDDL will use it).
@@ -342,8 +345,10 @@ public class JStormMetrics implements Serializable {
         long start = System.currentTimeMillis();
         MetricInfo metricInfo = MetricUtils.mkMetricInfo();
 
-        List<Map.Entry<String, AsmMetric>> entries = Lists.newArrayList();
-        entries.addAll(streamMetrics.metrics.entrySet());
+        List<Map.Entry<String, AsmMetric>> entries = Lists.newLinkedList();
+        if (enableStreamMetrics) {
+            entries.addAll(streamMetrics.metrics.entrySet());
+        }
         entries.addAll(taskMetrics.metrics.entrySet());
         entries.addAll(componentMetrics.metrics.entrySet());
         entries.addAll(workerMetrics.metrics.entrySet());
@@ -354,6 +359,9 @@ public class JStormMetrics implements Serializable {
             String name = entry.getKey();
             AsmMetric metric = entry.getValue();
             Map<Integer, AsmSnapshot> snapshots = metric.getSnapshots();
+            if (snapshots.size() == 0) {
+                continue;
+            }
 
             int op = metric.getOp();
             if ((op & AsmMetric.MetricOp.LOG) == AsmMetric.MetricOp.LOG) {
@@ -374,9 +382,6 @@ public class JStormMetrics implements Serializable {
                         putIfNotEmpty(metricInfo.get_metrics(), name, data);
                     } else if (metric instanceof AsmHistogram) {
                         Map data = MetricUtils.toThriftHistoSnapshots(metaType, snapshots);
-                        putIfNotEmpty(metricInfo.get_metrics(), name, data);
-                    } else if (metric instanceof AsmTimer) {
-                        Map data = MetricUtils.toThriftTimerSnapshots(metaType, snapshots);
                         putIfNotEmpty(metricInfo.get_metrics(), name, data);
                     }
                 } catch (Exception ex) {

@@ -40,6 +40,7 @@
             <th>Supervisors</th>
             <th>Ports Usage</th>
             <th>Topologies</th>
+            <th>Tasks</th>
             <th>Version</th>
             <th>Conf</th>
         </tr>
@@ -47,12 +48,13 @@
         <tbody>
         <c:forEach var="c" items="${clusters}" varStatus="index">
             <tr>
-                <td><a href="cluster?name=${c.name}">${c.name}</a></td>
-                <td>${c.supervisor_num}</td>
-                <td>${c.used_ports} / ${c.total_ports}</td>
-                <td>${c.topology_num}</td>
-                <td>${c.version}</td>
-                <td><a href="conf?name=${c.name}" target="_blank">conf</a></td>
+                <td><a href="cluster?name=${c.clusterName}">${c.clusterName}</a></td>
+                <td>${c.supervisors}</td>
+                <td>${c.slotsUsed} / ${c.slotsTotal}</td>
+                <td>${c.topologies}</td>
+                <td>${c.taskTotal}</td>
+                <td>${c.stormVersion}</td>
+                <td><a href="conf?name=${c.clusterName}" target="_blank">conf</a></td>
             </tr>
         </c:forEach>
         </tbody>

@@ -1,6 +1,79 @@
 [JStorm English introduction](http://42.121.19.155/jstorm/JStorm-introduce-en.pptx)
 [JStorm Chinese introduction](http://42.121.19.155/jstorm/JStorm-introduce.pptx)
 
+# Release 2.1.1
+
+## New features
+* 相比2.1.0有1.5～6倍的性能提升
+* 添加了应用层的自动batch
+* 增加了独立的控制消息通道，将控制消息与业务消息分开，保证控制消息有较高的优先级被处理
+* 支持jdk1.8
+* 添加了nimbus hook和topology hook
+* Metrics系统:
+    * 支持动态开关特定的metrics
+    * 添加了metrics的设计文档，见JSTORM-METRICS.md
+* JStorm web UI相关:
+    * 添加了zk节点的查看功能，感谢@dingjun84的PR
+    * 添加了普通日志搜索以及topology日志搜索功能，支持正向和反向搜索
+    * 支持日志的下载
+* 支持动态修改日志级别
+* 修改了zk中ErrorInfo的结构，增加了errorLevel, errorCode和duration
+* 增加了supervisor的健康检查
+* 增加了-Dexclude.jars选项以手动排除特定的jar包
+
+## Improvements
+* Metrics相关：
+    * 使用JHistogram/JMeter代替codahale的Histogram/Meter, 把内部的Clock.tick改为System.currentTimeMillis，Meter和Histogram分别有50%和25%+的性能提升
+    * 添加了TupleLifeCycle指标，用于统计消息从当前component发出来到下一个component被处理的总耗时
+    * 添加了supervisor的指标: total_cpu_usage, total_mem_usage, disk_usage
+    * 删除了一些不必要的指标，如emitTime等
+    * 使用HeapByteBuffer代替List<Long>来发送histogram中的点数据，节省60+%的metrics内存使用 
+    * 将metrics采样率从10%调为5%
+    * 删除AsmTimer及相关代码
+* 日志相关：
+    * 默认不再使用log4j，而是使用logback，除非slf4j-log4j12依赖
+    * 使用jstorm.log.dir配置取代原来的${jstorm.home}/logs, 详见jstorm.logback.xml 
+    * 将logback/log4j中日志文件的默认编码改为UTF-8
+    * 修改日志目录结构，添加了${topology.name}目录, 详见jstorm.logback.xml
+    * 将代码中所有log4j的Logger改为slf4j的Logger
+    * 将defaults.yaml中默认的日志page size(log.page.size)由32K调整为128K
+    * 将supervisor/nimbus的gc日志文件加上时间戳，防止重启后被覆盖; 重启worker前备份worker之前的gc日志
+* 优化反压策略，防止过度反压
+* 将acker中的pending map改为单线程，以提高性能
+* 修改RefreshConnections逻辑，防止频繁地从zk中下载assignments
+* 将Supervisor的默认内存由512MB调到1GB
+* 统一使用ProcessLauncher来起进程
+* 为supervisor和nimbus添加DefaultUncaughtExceptionHandler
+* 与0.9.x系列错开端口配置，见supervisor.slots.ports.base, nimbus.thrift.port, nimbus.deamon.logview.port, supervisor.deamon.logview.port配置
+* 将web UI的前端库highcharts改为echarts，防止潜在的版权冲突
+* 依赖升级
+    * 升级kryo至2.23.0
+    * 升级disruptor至3.2.2
+
+## Bug fix
+* 修复了起worker时可能的死锁
+* 修复了当localstate文件为空时，supervisor无法启动的问题
+* 修复了开启kryo时metrics中HeapByteBuffer无法被注册的bug
+* 修复了内存使用率计算不准确的bug
+* 修复了当用户自定义调度中分配的worker大于真实worker数时会创建空worker的bug
+* 修复web UI的日志目录设置错误的问题 
+* 修复了web UI中的XSS bug
+* 在local mode的时候，TopologyMetricsRunnable线程不运行，感谢@L-Donne的PR
+* 修复JSTORM-141, JSTORM-188：TopologyMetricsRunnable消耗CPU过多的bug
+* 删除MaxTenuringThreshold JVM参数
+* 修复MkLocalShuffer中outTasks可能为null的bug
+
+## Deploy and scripts
+* 增加了对core dump文件的清理
+* 增加了supervisor的健康检测，见healthCheck.sh
+* 修改了jstorm.py，起进程后结束父python进程
+
+## 升级指南
+* JStorm2.1.1基本与JStorm2.1.0保持兼容，但是为了保险起见，建议重启topology
+* 如果你的topology原先使用log4j，请在你的conf或者storm.yaml中加入"user.defined.log4j.conf: jstorm.log4j.properties"配置，以保证JStorm框架使用log4j
+* 如果你使用slf4j-api + log4j，请在你的应用中添加slf4j-log4j12的依赖
+
+
 # Release 2.1.0
 
 ## New features

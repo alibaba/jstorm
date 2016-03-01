@@ -137,7 +137,7 @@ VisNetWork.prototype = {
 
         var cycle_value_range = this.array_range(data.edges.map(function (e) {
             return e.cycleValue;
-        }), [5,50]);
+        }), [5,1000]);
 
         data.edges.forEach(function (e) {
             var arrow_factor = self.rangeMapper(e.value, value_range, self.edgeArrowSizeRange(), 0.25);
@@ -245,127 +245,112 @@ VisTable.prototype = {
     }
 };
 
-//highcharts
-Highcharts.SparkLine = function (options, callback) {
-    var defaultOptions = {
-        chart: {
-            renderTo: (options.chart && options.chart.renderTo) || this,
-            backgroundColor: null,
-            borderWidth: 0,
-            type: options.type,
-            margin: [0, 0, 0, 0],
-            width: options.width || 150,
-            height: 100,
-            style: {
-                overflow: 'visible'
-            },
-            skipClone: true
-        },
-        title: {
-            text: ''
-        },
-        credits: {
-            enabled: false
-        },
-        xAxis: {
-            labels: {
-                enabled: false
-            },
-            title: {
-                text: null
-            },
-            startOnTick: false,
-            endOnTick: false,
-            tickPositions: [],
-            categories: options.categories
-        },
-        yAxis: {
-            min: 0,
-            minRange: 0.1,
-            endOnTick: false,
-            startOnTick: true,
-            labels: {
-                enabled: false
-            },
-            title: {
-                text: null
-            },
-            tickPositions: [0]
-        },
-        legend: {
-            enabled: false
-        },
-        tooltip: {
-            useHTML: true,
-            headerFormat: '<span style="font-size: 10px">{point.x}</span><br/>',
-            pointFormat: '<b>{point.name}</b>'  //{series.name}:
-        },
-        plotOptions: {
-            series: {
-                animation: false,
-                lineWidth: 1,
-                shadow: false,
-                states: {
-                    hover: {
-                        lineWidth: 1
-                    }
-                },
-                marker: {
-                    enabled: false,
-                    radius: 1,
-                    states: {
-                        hover: {
-                            radius: 2
-                        }
-                    }
-                },
 
-                fillOpacity: 0.25
-            },
-            column: {
-                negativeColor: '#910000',
-                borderColor: 'silver'
-            }
+//ECharts
+function EChart(){}
+EChart.prototype = {
+    newOption: function (data) {
+        var isArea = false;
+        if (data.name == "CpuUsedRatio" || data.name == "MemoryUsed"){
+            isArea = true;
         }
-    };
-    options = Highcharts.merge(defaultOptions, options);
-
-    return new Highcharts.Chart(options, callback);
-};
-
-function ThumbChart() {
-
-}
-ThumbChart.prototype = {
-    newOptions: function (series, width) {
-        var self = this;
-        var chart = {};
-        var type = "spline";
-        if (series.name == "MemoryUsed" || series.name == "CpuUsedRatio") {
-            type = "areaspline"
-        }
-
         return {
-            series: [{
-                name: series.name,
-                data: self.newData(series)
-            }],
-            type: type,
-            chart: chart,
-            width: width,
-            categories: series.category
+            tooltip: {
+                trigger: 'axis',
+                formatter: function (params) {
+                    var res = params[0].name + '<br/>';
+                    res += '<strong>' + data.label[params[0].dataIndex] + '</strong>';
+                    return res;
+                },
+                backgroundColor: 'rgba(255, 255, 255, 0.85)',
+                borderColor: '#88BCED',
+                borderWidth: 1,
+                showDelay: 0,
+                transitionDuration: 0.2,
+                hideDelay: 0,
+                textStyle: {
+                    color: "#000",
+                    fontSize: "10"
+                },
+                //change the tooltip position, to avoid content display incompletely
+                position: function (p) {
+                    if (p[0] > 75){
+                        return [5, 5];
+                    } else {
+                        //console.log([width - 40, height - 40]);
+                        return [p[0], p[1] - 30];
+                    }
+                }
+            },
+            grid: {
+                x: 2, y: 1, x2: 2, y2: 0, borderWidth: 0
+            },
+            xAxis: [
+                {
+                    show: false,
+                    type: 'category',
+                    boundaryGap: false,
+                    data: data.category
+                }
+            ],
+            yAxis: [
+                {
+                    show: false,
+                    type: 'value'
+                }
+            ],
+            series: [
+                {
+                    type: 'line',
+                    smooth: true,
+                    symbol: 'none',
+                    itemStyle: {
+                        normal: {
+                            color: "#3880aa",
+                            areaStyle: isArea ?  {
+                                type: 'default',
+                                color: "#DFEDFB"
+                            } : undefined,
+                            lineStyle: {
+                                width: isArea ? 2 : 1,
+                                type: "solid",
+                                color: "#88BCED"
+                            }
+                        }
+                    },
+                    data: data.data
+                }
+            ]
         };
     },
 
-    newData: function (json) {
-        var data = [];
-        var len = json.data.length;
-        for (var i = 0; i < len; i += 1) {
-            data.push({
-                name: json.label[i],
-                y: json.data[i]
-            });
-        }
-        return data;
+    init: function(selector, data){
+        var self = this;
+        // configure for module loader
+        require.config({
+            paths: {
+                echarts: './assets/js/echarts'
+            }
+        });
+
+        // use
+        require(
+            [
+                'echarts',
+                'echarts/chart/line'
+            ],
+            function (ec) {
+                // Initialize after dom ready
+                var myChart = ec.init(selector);
+                //debugger
+                // Load data into the ECharts instance
+                var option = self.newOption(data);
+                myChart.setOption(option);
+                // we use this trick to make sure tooltip hide when mouse move out
+                selector.addEventListener("mouseout", function(){
+                    myChart.component.tooltip.hideTip();
+                });
+            }
+        );
     }
 };

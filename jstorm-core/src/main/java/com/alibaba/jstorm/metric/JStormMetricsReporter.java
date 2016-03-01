@@ -30,13 +30,18 @@ import com.alibaba.jstorm.callback.RunnableCallback;
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.cluster.Common;
 import com.alibaba.jstorm.cluster.StormConfig;
+import com.alibaba.jstorm.common.metric.AsmHistogram;
 import com.alibaba.jstorm.common.metric.AsmMetric;
 import com.alibaba.jstorm.daemon.nimbus.NimbusData;
 import com.alibaba.jstorm.daemon.nimbus.TopologyMetricsRunnable.Update;
+import com.alibaba.jstorm.daemon.supervisor.SupervisorManger;
 import com.alibaba.jstorm.daemon.worker.WorkerData;
+import com.alibaba.jstorm.task.execute.BoltCollector;
+import com.alibaba.jstorm.task.execute.spout.SpoutCollector;
 import com.alibaba.jstorm.utils.JStormServerUtils;
 import com.alibaba.jstorm.utils.TimeUtils;
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,11 +82,10 @@ public class JStormMetricsReporter {
     private SpoutOutputCollector spoutOutput;
     private OutputCollector boltOutput;
 
-    private boolean enableMetrics;
     private NimbusClient client = null;
 
     public JStormMetricsReporter(Object role) {
-        LOG.info("starting jstorm metrics reporter");
+        LOG.info("starting jstorm metrics reporter in {}", role.getClass().getSimpleName());
         if (role instanceof WorkerData) {
             WorkerData workerData = (WorkerData) role;
             this.conf = workerData.getStormConf();
@@ -92,10 +96,19 @@ public class JStormMetricsReporter {
             NimbusData nimbusData = (NimbusData) role;
             this.conf = nimbusData.getConf();
             this.topologyId = JStormMetrics.NIMBUS_METRIC_KEY;
+        } else if (role instanceof SupervisorManger) {
+            SupervisorManger supervisor = (SupervisorManger) role;
+            this.conf = supervisor.getConf();
+            this.topologyId = JStormMetrics.SUPERVISOR_METRIC_KEY;
+            JStormMetrics.setTopologyId(this.topologyId);
         }
+        JStormMetrics.enabled = ConfigExtension.isEnableMetrics(conf);
+        JStormMetrics.setDebug(ConfigExtension.isEnableMetricDebug(conf));
+        JStormMetrics.addDebugMetrics(ConfigExtension.getDebugMetricNames(conf));
+        JStormMetrics.setTimerUpdateInterval(ConfigExtension.getTimerUpdateInterval(conf));
+
         this.host = JStormMetrics.getHost();
-        this.enableMetrics = JStormMetrics.isEnabled();
-        if (!enableMetrics) {
+        if (!JStormMetrics.enabled) {
             LOG.warn("***** topology metrics is disabled! *****");
         } else {
             LOG.info("topology metrics is enabled.");
@@ -105,7 +118,8 @@ public class JStormMetricsReporter {
         // flush metric snapshots when time is aligned, check every sec.
         this.flushMetricThreadCycle = 1;
 
-        LOG.info("check meta thread freq:{}, flush metrics thread freq:{}", checkMetaThreadCycle, flushMetricThreadCycle);
+        LOG.info("check meta thread freq: {} sec, flush metrics thread freq: {} sec",
+                checkMetaThreadCycle, flushMetricThreadCycle);
 
         this.localMode = StormConfig.local_mode(conf);
         this.clusterName = ConfigExtension.getClusterName(conf);
@@ -121,14 +135,14 @@ public class JStormMetricsReporter {
     }
 
     public void init() {
-        if (!localMode && enableMetrics) {
+        if (!localMode && JStormMetrics.enabled) {
             this.checkMetricMetaThread = new AsyncLoopThread(new CheckMetricMetaThread());
             this.flushMetricThread = new AsyncLoopThread(new FlushMetricThread());
         }
     }
 
     private Map<String, Long> registerMetrics(Set<String> names) {
-        if (test || !enableMetrics) {
+        if (test || !JStormMetrics.enabled) {
             return new HashMap<>();
         }
         try {
@@ -149,7 +163,7 @@ public class JStormMetricsReporter {
     }
 
     public void shutdown() {
-        if (!localMode && enableMetrics) {
+        if (!localMode && JStormMetrics.enabled) {
             this.checkMetricMetaThread.cleanup();
             this.flushMetricThread.cleanup();
         }
@@ -184,18 +198,22 @@ public class JStormMetricsReporter {
 
     public void uploadMetric(WorkerUploadMetrics metrics) {
         if (isInWorker) {
-        //in Worker, we upload data via netty transport
+            //in Worker, we upload data via netty transport
             if (boltOutput != null) {
                 LOG.info("emit metrics through bolt collector.");
-                boltOutput.emit(Common.TOPOLOGY_MASTER_METRICS_STREAM_ID,
+                ((BoltCollector)boltOutput.getDelegate()).emitCtrl(Common.TOPOLOGY_MASTER_METRICS_STREAM_ID, null,
                         new Values(JStormServerUtils.getName(host, port), metrics));
+/*                boltOutput.emit(Common.TOPOLOGY_MASTER_METRICS_STREAM_ID,
+                        new Values(JStormServerUtils.getName(host, port), metrics));*/
             } else if (spoutOutput != null) {
                 LOG.info("emit metrics through spout collector.");
-                spoutOutput.emit(Common.TOPOLOGY_MASTER_METRICS_STREAM_ID,
-                        new Values(JStormServerUtils.getName(host, port), metrics));
+                ((SpoutCollector)spoutOutput.getDelegate()).emitCtrl(Common.TOPOLOGY_MASTER_METRICS_STREAM_ID,
+                        new Values(JStormServerUtils.getName(host, port), metrics), null);
+/*                spoutOutput.emit(Common.TOPOLOGY_MASTER_METRICS_STREAM_ID,
+                        new Values(JStormServerUtils.getName(host, port), metrics));*/
             }
-        }else {
-        // in supervisor or nimbus, we upload metric data via thrift
+        } else {
+            // in supervisor or nimbus, we upload metric data via thrift
             LOG.info("emit metrics through nimbus client.");
             Update event = new Update();
             TopologyMetric tpMetric = MetricUtils.mkTopologyMetric();
@@ -228,6 +246,70 @@ public class JStormMetricsReporter {
             this.spoutOutput = (SpoutOutputCollector) outputCollector;
         }
 
+    }
+
+    public void updateMetricConfig(Map newConf) {
+        String enabledMetrics = ConfigExtension.getEnabledMetricNames(newConf);
+        String disabledMetrics = ConfigExtension.getDisabledMetricNames(newConf);
+        if (enabledMetrics != null || disabledMetrics != null) {
+            Set<String> enabledMetricSet = toSet(enabledMetrics, ",");
+            Set<String> disabledMetricsSet = toSet(disabledMetrics, ",");
+
+            AsmMetricRegistry[] registries = new AsmMetricRegistry[]{
+                    JStormMetrics.getTopologyMetrics(),
+                    JStormMetrics.getComponentMetrics(),
+                    JStormMetrics.getTaskMetrics(),
+                    JStormMetrics.getStreamMetrics(),
+                    JStormMetrics.getNettyMetrics(),
+                    JStormMetrics.getWorkerMetrics()
+            };
+            for (AsmMetricRegistry registry : registries) {
+                Collection<AsmMetric> metrics = registry.getMetrics().values();
+                for (AsmMetric metric : metrics) {
+                    String metricName = metric.getMetricName();
+                    if (enabledMetricSet.contains(metricName)) {
+                        metric.setEnabled(true);
+                    } else if (disabledMetricsSet.contains(metricName)) {
+                        metric.setEnabled(false);
+                    }
+                }
+            }
+        }
+
+        long updateInterval = ConfigExtension.getTimerUpdateInterval(newConf);
+        if (updateInterval != AsmHistogram.getUpdateInterval()) {
+            AsmHistogram.setUpdateInterval(updateInterval);
+        }
+
+        boolean enableStreamMetrics = ConfigExtension.isEnableStreamMetrics(newConf);
+        if (enableStreamMetrics != JStormMetrics.enableStreamMetrics) {
+            JStormMetrics.enableStreamMetrics = enableStreamMetrics;
+            LOG.info("switch topology stream metric enable to {}", enableStreamMetrics);
+        }
+
+        boolean enableMetrics = ConfigExtension.isEnableMetrics(newConf);
+        if (enableMetrics != JStormMetrics.enabled) {
+            JStormMetrics.enabled = enableMetrics;
+            if (enableMetrics) {
+                init();
+            } else {
+                shutdown();
+            }
+            LOG.info("switch topology metric enable to {}", enableMetrics);
+        }
+    }
+
+    private Set<String> toSet(String items, String delim) {
+        Set<String> ret = new HashSet<>();
+        if (!StringUtils.isBlank(items)) {
+            String[] metrics = items.split(delim);
+            for (String metric : metrics) {
+                if (!StringUtils.isBlank(metric)) {
+                    ret.add(metric);
+                }
+            }
+        }
+        return ret;
     }
 
 

@@ -108,7 +108,7 @@ public class TopologyMetricsRunnable extends Thread {
     /**
      * the thread for metric sending, checks every second.
      */
-    private final Thread uploadThread = new MetricsUploadThread();
+    private final Thread uploadControlThread = new MetricsUploadThread();
 
     /**
      * async flush metric meta
@@ -182,9 +182,7 @@ public class TopologyMetricsRunnable extends Thread {
                 new AsmGauge(new Gauge<Double>() {
                     @Override
                     public Double getValue() {
-                        MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
-                        MemoryUsage memoryUsage = memoryMXBean.getHeapMemoryUsage();
-                        return (double) memoryUsage.getUsed();
+                        return JStormUtils.getJVMHeapMemory();
                     }
                 }));
     }
@@ -193,6 +191,9 @@ public class TopologyMetricsRunnable extends Thread {
      * init metric uploader
      */
     public void init() {
+        if (localMode) {
+            return;
+        }
         String metricUploadClass = ConfigExtension.getMetricUploaderClass(nimbusData.getConf());
         if (StringUtils.isBlank(metricUploadClass)) {
             metricUploadClass = DefaultMetricUploader.class.getName();
@@ -226,7 +227,7 @@ public class TopologyMetricsRunnable extends Thread {
             throw new RuntimeException(e);
         }
 
-        this.uploadThread.start();
+        this.uploadControlThread.start();
         this.flushMetricMetaThread.start();
 
         LOG.info("init topology metric runnable done.");
@@ -249,7 +250,7 @@ public class TopologyMetricsRunnable extends Thread {
             try {
                 // wait for metricUploader to be ready, for some external plugin like database, it'll take a few seconds
                 if (this.metricUploader != null) {
-                    Event event = queue.poll(1,TimeUnit.MILLISECONDS);
+                    Event event = queue.poll(1, TimeUnit.MILLISECONDS);
                     if (event == null) {
                         continue;
                     }
@@ -374,24 +375,22 @@ public class TopologyMetricsRunnable extends Thread {
     }
 
 
+    @SuppressWarnings("unchecked")
     public void refreshTopologies() {
-        if (!topologyMetricContexts.containsKey(JStormMetrics.NIMBUS_METRIC_KEY)) {
-            LOG.info("adding __nimbus__ to metric context.");
-            Set<ResourceWorkerSlot> workerSlot = Sets.newHashSet(new ResourceWorkerSlot());
-            TopologyMetricContext metricContext = new TopologyMetricContext(workerSlot);
-            topologyMetricContexts.putIfAbsent(JStormMetrics.NIMBUS_METRIC_KEY, metricContext);
-            syncMetaFromCache(JStormMetrics.NIMBUS_METRIC_KEY, topologyMetricContexts.get(JStormMetrics.NIMBUS_METRIC_KEY));
-        }
-        if (!topologyMetricContexts.containsKey(JStormMetrics.CLUSTER_METRIC_KEY)) {
-            LOG.info("adding __cluster__ to metric context.");
-            Set<ResourceWorkerSlot> workerSlot = Sets.newHashSet(new ResourceWorkerSlot());
-            Map conf = new HashMap();
-            //there's no need to consider sample rate when cluster metrics merge
-            conf.put(ConfigExtension.TOPOLOGY_METRIC_SAMPLE_RATE, 1.0);
-            TopologyMetricContext metricContext = new TopologyMetricContext(
-                    JStormMetrics.CLUSTER_METRIC_KEY, workerSlot, conf);
-            topologyMetricContexts.putIfAbsent(JStormMetrics.CLUSTER_METRIC_KEY, metricContext);
-            syncMetaFromCache(JStormMetrics.CLUSTER_METRIC_KEY, topologyMetricContexts.get(JStormMetrics.CLUSTER_METRIC_KEY));
+        for (String topology : JStormMetrics.SYS_TOPOLOGIES) {
+            if (!topologyMetricContexts.containsKey(topology)) {
+                LOG.info("adding {} to metric context.", topology);
+                Map conf = new HashMap();
+                if (topology.equals(JStormMetrics.CLUSTER_METRIC_KEY)) {
+                    //there's no need to consider sample rate when cluster metrics merge
+                    conf.put(ConfigExtension.TOPOLOGY_METRIC_SAMPLE_RATE, 1.0);
+                }
+                Set<ResourceWorkerSlot> workerSlot = Sets.newHashSet(new ResourceWorkerSlot());
+                TopologyMetricContext metricContext = new TopologyMetricContext(
+                        topology, workerSlot, conf);
+                topologyMetricContexts.putIfAbsent(topology, metricContext);
+                syncMetaFromCache(topology, topologyMetricContexts.get(topology));
+            }
         }
 
         Map<String, Assignment> assignMap;
@@ -416,8 +415,7 @@ public class TopologyMetricsRunnable extends Thread {
 
         List<String> removing = new ArrayList<>();
         for (String topologyId : topologyMetricContexts.keySet()) {
-            if (!JStormMetrics.NIMBUS_METRIC_KEY.equals(topologyId)
-                    && !JStormMetrics.CLUSTER_METRIC_KEY.equals(topologyId)
+            if (!JStormMetrics.SYS_TOPOLOGY_SET.contains(topologyId)
                     && !assignMap.containsKey(topologyId)) {
                 removing.add(topologyId);
             }
@@ -434,13 +432,10 @@ public class TopologyMetricsRunnable extends Thread {
      * nimbus server will skip syncing, only followers do this
      */
     public void syncTopologyMeta() {
-        String nimbus = JStormMetrics.NIMBUS_METRIC_KEY;
-        if (topologyMetricContexts.containsKey(nimbus)) {
-            syncMetaFromRemote(nimbus, topologyMetricContexts.get(nimbus));
-        }
-        String cluster = JStormMetrics.CLUSTER_METRIC_KEY;
-        if (topologyMetricContexts.containsKey(cluster)) {
-            syncMetaFromRemote(cluster, topologyMetricContexts.get(cluster));
+        for (String topology : JStormMetrics.SYS_TOPOLOGIES) {
+            if (topologyMetricContexts.containsKey(topology)) {
+                syncMetaFromRemote(topology, topologyMetricContexts.get(topology));
+            }
         }
 
         Map<String, Assignment> assignMap;
@@ -480,7 +475,7 @@ public class TopologyMetricsRunnable extends Thread {
             int memSize = context.getMemMeta().size();
             Integer zkSize = (Integer) stormClusterState.get_topology_metric(topologyId);
 
-            if (zkSize != null && memSize != zkSize.intValue()) {
+            if (zkSize != null && memSize != zkSize) {
                 ConcurrentMap<String, Long> memMeta = context.getMemMeta();
                 for (MetaType metaType : MetaType.values()) {
                     List<MetricMeta> metaList = metricQueryClient.getMetricMeta(clusterName, topologyId, metaType);
@@ -580,8 +575,8 @@ public class TopologyMetricsRunnable extends Thread {
             for (Map.Entry<Integer, MetricSnapshot> metric : entry.getValue().entrySet()) {
                 MetricSnapshot snapshot = metric.getValue();
                 snapshot.set_metricId(metricId);
-                if (metricType == MetricType.HISTOGRAM || metricType == MetricType.TIMER) {
-                    snapshot.set_points(new ArrayList<Long>(0));
+                if (metricType == MetricType.HISTOGRAM) {
+                    snapshot.set_points(new byte[0]);
                 }
 //                entry.getValue().put(metric.getKey(), snapshot);
             }
@@ -624,9 +619,9 @@ public class TopologyMetricsRunnable extends Thread {
                 for (Map.Entry<Integer, MetricSnapshot> entryData : entry.getValue().entrySet()) {
                     MetricSnapshot snapshot = entryData.getValue().deepCopy();
                     winData.put(entryData.getKey(), snapshot);
-                    if (metricType == MetricType.HISTOGRAM || metricType == MetricType.TIMER) {
+                    if (metricType == MetricType.HISTOGRAM) {
                         // reset topology metric points
-                        entryData.getValue().set_points(new ArrayList<Long>(0));
+                        entryData.getValue().set_points(new byte[0]);
                     }
                 }
                 clusterMetrics.put_to_metrics(metricName, winData);
@@ -650,7 +645,7 @@ public class TopologyMetricsRunnable extends Thread {
                 updateClusterMetrics(topologyId, topologyMetrics);
             }
 
-            // overwrite
+            // overwrite nimbus-local metrics data
             metricCache.putMetricData(topologyId, topologyMetrics);
 
             // below process is kind of a transaction, first we lock an empty slot, mark it as PRE_SET
@@ -659,33 +654,38 @@ public class TopologyMetricsRunnable extends Thread {
             int idx = getAndPresetFirstEmptyIndex();
             if (idx >= 0) {
                 TopologyMetricDataInfo summary = new TopologyMetricDataInfo();
+                int total = 0;
                 summary.topologyId = topologyId;
                 summary.timestamp = event.timestamp;
                 if (topologyId.equals(JStormMetrics.NIMBUS_METRIC_KEY) ||
                         topologyId.equals(JStormMetrics.CLUSTER_METRIC_KEY)) {
                     summary.type = MetricUploader.METRIC_TYPE_TOPLOGY;
                 } else {
-                    if (topologyMetrics.get_topologyMetric().get_metrics_size() > 0 ||
-                            topologyMetrics.get_componentMetric().get_metrics_size() > 0) {
-                        if (topologyMetrics.get_taskMetric().get_metrics_size() +
+                    total += topologyMetrics.get_topologyMetric().get_metrics_size()
+                            + topologyMetrics.get_componentMetric().get_metrics_size();
+                    if (total > 0) {
+                        int sub = topologyMetrics.get_taskMetric().get_metrics_size() +
                                 topologyMetrics.get_workerMetric().get_metrics_size() +
                                 topologyMetrics.get_nettyMetric().get_metrics_size() +
-                                topologyMetrics.get_streamMetric().get_metrics_size() > 0) {
+                                topologyMetrics.get_streamMetric().get_metrics_size();
+                        if (sub > 0) {
+                            total += sub;
                             summary.type = MetricUploader.METRIC_TYPE_ALL;
                         } else {
                             summary.type = MetricUploader.METRIC_TYPE_TOPLOGY;
                         }
                     } else {
                         summary.type = MetricUploader.METRIC_TYPE_TASK;
+                        total += topologyMetrics.get_taskMetric().get_metrics_size();
                     }
                 }
 
                 metricCache.put(PENDING_UPLOAD_METRIC_DATA_INFO + idx, summary);
                 metricCache.put(PENDING_UPLOAD_METRIC_DATA + idx, topologyMetrics);
                 markSet(idx);
-                LOG.info("put metric data to local cache, topology:{}, idx:{}", topologyId, idx);
+                LOG.info("put metric data to local cache, topology:{}, idx:{}, total:{}", topologyId, idx, total);
             } else {
-                LOG.error("exceeding maxPendingUploadMetrics, skip metrics data for topology:{}", topologyId);
+                LOG.error("exceeding maxPendingUploadMetrics, skip caching metrics data for topology:{}", topologyId);
             }
         } else {
             LOG.warn("topology {} has been killed or has not started, skip update.", topologyId);
@@ -756,7 +756,7 @@ public class TopologyMetricsRunnable extends Thread {
 
     class MetricsUploadThread extends Thread {
         public MetricsUploadThread() {
-            setName("main-upload-thread");
+            setName("main-upload-control-thread");
         }
 
         @Override

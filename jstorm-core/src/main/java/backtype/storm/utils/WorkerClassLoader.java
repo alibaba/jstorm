@@ -32,7 +32,6 @@ public class WorkerClassLoader extends URLClassLoader {
     public static Logger LOG = LoggerFactory.getLogger(WorkerClassLoader.class);
 
     private ClassLoader defaultClassLoader;
-
     private ClassLoader JDKClassLoader;
 
     private boolean isDebug;
@@ -48,32 +47,15 @@ public class WorkerClassLoader extends URLClassLoader {
         this.defaultClassLoader = defaultClassLoader;
         this.JDKClassLoader = JDKClassLoader;
         this.isDebug = isDebug;
-
-        // TODO Auto-generated constructor stub
     }
 
     // for all log go through logback when enable classloader
     protected boolean isLogByDefault(String name) {
-        if (name.startsWith("org.apache.log4j")) {
-            return true;
-        } else if (name.startsWith("org.slf4j")) {
-            return true;
-        }
-
-        return false;
-
+        return name.startsWith("org.apache.log4j") || name.startsWith("org.slf4j");
     }
 
     protected boolean isLoadByDefault(String name) {
-        if (name.startsWith("backtype.storm") == true) {
-            return true;
-        } else if (name.startsWith("com.alibaba.jstorm")) {
-            return true;
-        } else if (isLogByDefault(name)) {
-            return true;
-        } else {
-            return false;
-        }
+        return name.startsWith("backtype.storm") || name.startsWith("com.alibaba.jstorm") || isLogByDefault(name);
     }
 
     @Override
@@ -95,7 +77,7 @@ public class WorkerClassLoader extends URLClassLoader {
             }
 
             try {
-                if (isLoadByDefault(name) == false) {
+                if (!isLoadByDefault(name)) {
                     result = findClass(name);
 
                     if (result != null) {
@@ -126,9 +108,10 @@ public class WorkerClassLoader extends URLClassLoader {
 
     }
 
-    public static WorkerClassLoader mkInstance(URL[] urls, ClassLoader DefaultClassLoader, ClassLoader JDKClassLoader, boolean enable, boolean isDebug) {
+    public static WorkerClassLoader mkInstance(URL[] urls, ClassLoader DefaultClassLoader, ClassLoader JDKClassLoader,
+                                               boolean enable, boolean isDebug) {
         WorkerClassLoader.enable = enable;
-        if (enable == false) {
+        if (!enable) {
             LOG.info("Don't enable UserDefine ClassLoader");
             return null;
         }
@@ -155,7 +138,7 @@ public class WorkerClassLoader extends URLClassLoader {
     }
 
     public static void switchThreadContext() {
-        if (enable == false) {
+        if (!enable) {
             return;
         }
 
@@ -166,7 +149,7 @@ public class WorkerClassLoader extends URLClassLoader {
     }
 
     public static void restoreThreadContext() {
-        if (enable == false) {
+        if (!enable) {
             return;
         }
 

@@ -50,6 +50,11 @@ public class AsmCounter extends AsmMetric<Counter> {
         this.unFlushed.inc(val.longValue());
     }
 
+    @Override
+    public void updateTime(long obj) {
+        throw new RuntimeException("please use update method!");
+    }
+
     /**
      * flush temp counter data to all windows & assoc metrics.
      */

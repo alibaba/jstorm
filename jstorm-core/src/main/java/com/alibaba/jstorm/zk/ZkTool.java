@@ -20,8 +20,8 @@ package com.alibaba.jstorm.zk;
 import java.util.List;
 import java.util.Map;
 
+
 import com.alibaba.jstorm.cluster.Cluster;
-import org.apache.log4j.Logger;
 
 import backtype.storm.Config;
 import backtype.storm.utils.Utils;
@@ -29,9 +29,12 @@ import backtype.storm.utils.Utils;
 import com.alibaba.jstorm.cluster.ClusterState;
 import com.alibaba.jstorm.cluster.DistributedClusterState;
 import com.google.common.collect.Maps;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 public class ZkTool {
-    private static Logger LOG = Logger.getLogger(ZkTool.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ZkTool.class);
 
     public static final String READ_CMD = "read";
 
@@ -42,17 +45,17 @@ public class ZkTool {
     public static final String CLEAN_CMD = "clean";
 
     public static void usage() {
-        LOG.info("Read ZK node's data, please do as following:");
-        LOG.info(ZkTool.class.getName() + " read zkpath");
+        System.out.println("Read ZK node's data, please do as following:");
+        System.out.println(ZkTool.class.getName() + " read zkpath");
 
-        LOG.info("\nDelete topology backup assignment, please do as following:");
-        LOG.info(ZkTool.class.getName() + " rm topologyname");
+        System.out.println("\nDelete topology backup assignment, please do as following:");
+        System.out.println(ZkTool.class.getName() + " rm topologyname");
 
-        LOG.info("\nlist subdirectory of zkPath , please do as following:");
-        LOG.info(ZkTool.class.getName() + " list zkpath");
+        System.out.println("\nlist subdirectory of zkPath , please do as following:");
+        System.out.println(ZkTool.class.getName() + " list zkpath");
 
-        LOG.info("\nDelete all nodes about a topologyId of zk , please do as following:");
-        LOG.info(ZkTool.class.getName() + " clean topologyId");
+        System.out.println("\nDelete all nodes about a topologyId of zk , please do as following:");
+        System.out.println(ZkTool.class.getName() + " clean topologyId");
 
     }
 
@@ -79,7 +82,7 @@ public class ZkTool {
 
             List<String>  children = zkClusterState.get_children(path, false);
             if (children == null || children.isEmpty() ) {
-                LOG.info("No children of " + path);
+                System.out.println("No children of " + path);
             }
             else
             {
@@ -89,7 +92,7 @@ public class ZkTool {
                     sb.append(" " + str + ",");
                 }
                 sb.append("\n");
-                LOG.info(sb.toString());
+                System.out.println(sb.toString());
             }
         } catch (Exception e) {
             if (zkClusterState == null) {
@@ -125,7 +128,7 @@ public class ZkTool {
                     LOG.error("Could not remove assignments for " + topologyId, e);
                 }
             }else {
-                LOG.info(" node of " + rootDir + assignmentPath + " isn't existed ");
+                System.out.println(" node of " + rootDir + assignmentPath + " isn't existed ");
 
             }
 
@@ -136,7 +139,7 @@ public class ZkTool {
                     LOG.error("Failed to remove storm base for " + topologyId, e);
                 }
             }else {
-                LOG.info(" node of " + rootDir + stormBase + " isn't existed ");
+                System.out.println(" node of " + rootDir + stormBase + " isn't existed ");
 
             }
 
@@ -147,7 +150,7 @@ public class ZkTool {
                     LOG.error("Failed to remove taskbeats for " + topologyId, e);
                 }
             }else {
-                LOG.info(" node of " + rootDir + taskbeats + " isn't existed ");
+                System.out.println(" node of " + rootDir + taskbeats + " isn't existed ");
 
             }
 
@@ -158,7 +161,7 @@ public class ZkTool {
                     LOG.error("Failed to remove tasks for " + topologyId, e);
                 }
             }else {
-                LOG.info(" node of " + rootDir + tasks + " isn't existed ");
+                System.out.println(" node of " + rootDir + tasks + " isn't existed ");
 
             }
 
@@ -169,7 +172,7 @@ public class ZkTool {
                     LOG.error("Failed to remove taskerrors for " + topologyId, e);
                 }
             }else {
-                LOG.info(" node of " + rootDir + taskerrors + " isn't existed ");
+                System.out.println(" node of " + rootDir + taskerrors + " isn't existed ");
 
             }
 
@@ -180,7 +183,7 @@ public class ZkTool {
                     LOG.error("Failed to remove monitor for " + topologyId, e);
                 }
             }else {
-                LOG.info(" node of " + rootDir + monitor + " isn't existed ");
+                System.out.println(" node of " + rootDir + monitor + " isn't existed ");
 
             }
         } catch (Exception e) {
@@ -208,7 +211,7 @@ public class ZkTool {
 
             String data = getData(zkClusterState, path);
             if (data == null) {
-                LOG.info("No data of " + path);
+                System.out.println("No data of " + path);
             }
 
             StringBuilder sb = new StringBuilder();
@@ -218,7 +221,7 @@ public class ZkTool {
             sb.append("Readable data:" + data + "\n");
             sb.append("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n");
 
-            LOG.info(sb.toString());
+            System.out.println(sb.toString());
 
         } catch (Exception e) {
             if (zkClusterState == null) {
@@ -247,19 +250,19 @@ public class ZkTool {
 
             for (String tid : bakTopologys) {
                 if (tid.equals(topologyName)) {
-                    LOG.info("Find backup " + topologyName);
+                    System.out.println("Find backup " + topologyName);
 
                     String topologyPath = assignment_bak_path(topologyName);
                     zkClusterState.delete_node(topologyPath);
 
-                    LOG.info("Successfully delete topology " + topologyName
+                    System.out.println("Successfully delete topology " + topologyName
                             + " backup Assignment");
 
                     return;
                 }
             }
 
-            LOG.info("No backup topology " + topologyName + " Assignment");
+            System.out.println("No backup topology " + topologyName + " Assignment");
 
         } catch (Exception e) {
             if (zkClusterState == null) {
@@ -286,7 +289,7 @@ public class ZkTool {
         // TODO Auto-generated method stub
 
         if (args.length < 2) {
-            LOG.info("Invalid parameter");
+            System.out.println("Invalid parameter");
             usage();
             return;
         }

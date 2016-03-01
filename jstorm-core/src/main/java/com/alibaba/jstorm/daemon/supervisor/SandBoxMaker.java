@@ -131,12 +131,15 @@ public class SandBoxMaker {
         InputStream inputStream = SandBoxMaker.class.getClassLoader().getResourceAsStream(SANBOX_TEMPLATE_NAME);
 
         PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(tmpPolicy)));
+        BufferedReader reader = null;
+        InputStreamReader inputReader = null;
+
 
         try {
 
-            InputStreamReader inputReader = new InputStreamReader(inputStream);
+            inputReader = new InputStreamReader(inputStream);
 
-            BufferedReader reader = new BufferedReader(new LineNumberReader(inputReader));
+            reader = new BufferedReader(new LineNumberReader(inputReader));
 
             String line = null;
             while ((line = reader.readLine()) != null) {
@@ -155,6 +158,12 @@ public class SandBoxMaker {
             }
             if (writer != null) {
                 writer.close();
+            }
+            if (reader != null){
+                reader.close();
+            }
+            if (inputReader != null){
+                inputReader.close();
             }
 
         }
