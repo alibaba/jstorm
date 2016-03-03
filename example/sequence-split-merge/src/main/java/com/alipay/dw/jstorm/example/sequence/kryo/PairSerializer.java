@@ -27,7 +27,5 @@ public class PairSerializer extends Serializer<Pair> {
         output.writeLong(inner.getValue());
         output.writeString(inner.getKey());
     }
-
-
 }
 

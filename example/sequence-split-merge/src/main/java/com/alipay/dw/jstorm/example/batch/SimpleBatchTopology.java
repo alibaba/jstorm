@@ -17,13 +17,6 @@
  */
 package com.alipay.dw.jstorm.example.batch;
 
-import java.util.Map;
-
-import com.alibaba.jstorm.batch.BatchTopologyBuilder;
-import com.alibaba.jstorm.cluster.StormConfig;
-import com.alibaba.jstorm.utils.JStormUtils;
-import com.alibaba.jstorm.utils.LoadConf;
-
 import backtype.storm.LocalCluster;
 import backtype.storm.StormSubmitter;
 import backtype.storm.generated.AlreadyAliveException;
@@ -31,70 +24,59 @@ import backtype.storm.generated.InvalidTopologyException;
 import backtype.storm.generated.TopologyAssignException;
 import backtype.storm.topology.BoltDeclarer;
 import backtype.storm.topology.TopologyBuilder;
+import com.alibaba.jstorm.batch.BatchTopologyBuilder;
+import com.alibaba.jstorm.cluster.StormConfig;
+import com.alibaba.jstorm.utils.JStormUtils;
+import com.alibaba.jstorm.utils.LoadConf;
+import java.util.Map;
 
 public class SimpleBatchTopology {
+    private static String topologyName = "Batch";
+    private static Map conf;
 
-	private static String topologyName = "Batch";
+    public static TopologyBuilder SetBuilder() {
+        BatchTopologyBuilder topologyBuilder = new BatchTopologyBuilder(topologyName);
 
-	private static Map conf;
+        int spoutParallel = JStormUtils.parseInt(conf.get("topology.spout.parallel"), 1);
 
+        BoltDeclarer boltDeclarer = topologyBuilder.setSpout("Spout",
+                new SimpleSpout(), spoutParallel);
 
-	public static TopologyBuilder SetBuilder() {
-		BatchTopologyBuilder topologyBuilder = new BatchTopologyBuilder(
-				topologyName);
-		
-		int spoutParallel = JStormUtils.parseInt(conf.get("topology.spout.parallel"), 1);
+        int boltParallel = JStormUtils.parseInt(conf.get("topology.bolt.parallel"), 2);
+        topologyBuilder.setBolt("Bolt", new SimpleBolt(), boltParallel).shuffleGrouping("Spout");
 
-		BoltDeclarer boltDeclarer = topologyBuilder.setSpout("Spout",
-				new SimpleSpout(), spoutParallel);
+        return topologyBuilder.getTopologyBuilder();
+    }
 
-		int boltParallel = JStormUtils.parseInt(conf.get("topology.bolt.parallel"), 2);
-		topologyBuilder.setBolt("Bolt", new SimpleBolt(), boltParallel).shuffleGrouping(
-				"Spout");
+    public static void SetLocalTopology() throws Exception {
+        TopologyBuilder builder = SetBuilder();
 
-		return topologyBuilder.getTopologyBuilder();
-	}
+        LocalCluster cluster = new LocalCluster();
+        cluster.submitTopology(topologyName, conf, builder.createTopology());
 
-	public static void SetLocalTopology() throws Exception {
-		TopologyBuilder builder = SetBuilder();
+        Thread.sleep(60000);
 
-		LocalCluster cluster = new LocalCluster();
-		cluster.submitTopology(topologyName, conf, builder.createTopology());
+        cluster.shutdown();
+    }
 
-		Thread.sleep(60000);
+    public static void SetRemoteTopology() throws AlreadyAliveException,
+            InvalidTopologyException, TopologyAssignException {
+        TopologyBuilder builder = SetBuilder();
+        StormSubmitter.submitTopology(topologyName, conf, builder.createTopology());
+    }
 
-		cluster.shutdown();
-	}
+    public static void main(String[] args) throws Exception {
+        if (args.length < 1) {
+            System.err.println("Please input parameters topology.yaml");
+            System.exit(-1);
+        }
 
-	public static void SetRemoteTopology() throws AlreadyAliveException,
-			InvalidTopologyException, TopologyAssignException {
-
-		TopologyBuilder builder = SetBuilder();
-
-		StormSubmitter.submitTopology(topologyName, conf,
-				builder.createTopology());
-
-	}
-
-	public static void main(String[] args) throws Exception {
-
-		if (args.length < 1) {
-			System.err.println("Please input parameters topology.yaml");
-			System.exit(-1);
-		}
-
-		conf = LoadConf.LoadYaml(args[0]);
-		
-
-		boolean isLocal = StormConfig.local_mode(conf);
-
-		if (isLocal) {
-			SetLocalTopology();
-			return;
-		} else {
-			SetRemoteTopology();
-		}
-
-	}
-
+        conf = LoadConf.LoadYaml(args[0]);
+        boolean isLocal = StormConfig.local_mode(conf);
+        if (isLocal) {
+            SetLocalTopology();
+        } else {
+            SetRemoteTopology();
+        }
+    }
 }

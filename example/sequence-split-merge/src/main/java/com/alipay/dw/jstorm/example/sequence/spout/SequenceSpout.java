@@ -17,15 +17,6 @@
  */
 package com.alipay.dw.jstorm.example.sequence.spout;
 
-import java.util.Map;
-import java.util.Random;
-import java.util.concurrent.atomic.AtomicLong;
-
-import com.alibaba.jstorm.task.execute.spout.SpoutCollector;
-import com.alipay.dw.jstorm.example.sequence.SequenceTopologyDef;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import backtype.storm.Config;
 import backtype.storm.spout.SpoutOutputCollector;
 import backtype.storm.task.TopologyContext;
@@ -33,246 +24,215 @@ import backtype.storm.topology.IRichSpout;
 import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Values;
-
 import com.alibaba.jstorm.client.ConfigExtension;
+import com.alibaba.jstorm.task.execute.spout.SpoutCollector;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alipay.dw.jstorm.example.TpsCounter;
+import com.alipay.dw.jstorm.example.sequence.SequenceTopologyDef;
 import com.alipay.dw.jstorm.example.sequence.bean.Pair;
 import com.alipay.dw.jstorm.example.sequence.bean.PairMaker;
 import com.alipay.dw.jstorm.example.sequence.bean.TradeCustomer;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.atomic.AtomicLong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SequenceSpout implements IRichSpout {
+    private static final long serialVersionUID = 1L;
 
-	/**
-     * 
-     */
-	private static final long serialVersionUID = 1L;
+    public static final Logger LOG = LoggerFactory.getLogger(SequenceSpout.class);
 
-	public static final Logger LOG = LoggerFactory
-			.getLogger(SequenceSpout.class);
+    SpoutOutputCollector collector;
 
-	public static final String STREAM_ID = "extra_stream_id";
+    // I special use long not AtomicLong to check competition
+    private long tupleId;
+    private long succeedCount;
+    private long failedCount;
 
-	SpoutOutputCollector collector;
+    private AtomicLong handleCounter = new AtomicLong(0);
 
-	// I special use long not AtomicLong to check competition
-	private long tupleId;
-	private long succeedCount;
-	private long failedCount;
+    private Long MAX_PENDING_COUNTER;
 
-	private AtomicLong handleCounter = new AtomicLong(0);
+    private TpsCounter tpsCounter;
 
-	private Long MAX_PENDING_COUNTER;
+    private boolean isFinished;
 
-	private TpsCounter tpsCounter;
+    private boolean isLimited = false;
 
-	private boolean isFinished;
+    private long SPOUT_MAX_SEND_NUM;
 
-	private boolean isLimited = false;
+    private int bufferLen = 0;
+    private Random random;
 
-	private long SPOUT_MAX_SEND_NUM;
-	
-	private int bufferLen = 0;
-	private Random random;
+    private boolean isSendCtrlMsg = false;
 
-	private boolean isSendCtrlMsg = false;
+    public boolean isDistributed() {
+        return true;
+    }
 
-	public boolean isDistributed() {
-		return true;
-	}
+    public long getMaxPending(Map conf) {
+        // if single spout thread, MAX_PENDING should be Long.MAX_VALUE
+        if (ConfigExtension.isSpoutSingleThread(conf)) {
+            return Long.MAX_VALUE;
+        }
 
-	public void SequenceSpout() {
+        Object pending = conf.get(Config.TOPOLOGY_MAX_SPOUT_PENDING);
+        if (pending == null) {
+            return Long.MAX_VALUE;
+        }
 
-	}
+        int pendingNum = JStormUtils.parseInt(pending);
+        if (pendingNum == 1) {
+            return Long.MAX_VALUE;
+        }
 
-	public long getMaxPending(Map conf) {
-		// if single spout thread, MAX_PENDING should be Long.MAX_VALUE
-		if (ConfigExtension.isSpoutSingleThread(conf)) {
-			return Long.MAX_VALUE;
-		}
+        return pendingNum;
+    }
 
-		Object pending = conf.get(Config.TOPOLOGY_MAX_SPOUT_PENDING);
-		if (pending == null) {
-			return Long.MAX_VALUE;
-		}
+    public void open(Map conf, TopologyContext context,
+                     SpoutOutputCollector collector) {
+        this.collector = collector;
 
-		int pendingNum = JStormUtils.parseInt(pending);
-		if (pendingNum == 1) {
-			return Long.MAX_VALUE;
-		}
+        if (conf.get("spout.max.sending.num") == null) {
+            isLimited = false;
+        } else {
+            isLimited = true;
+            SPOUT_MAX_SEND_NUM = JStormUtils.parseLong(conf
+                    .get("spout.max.sending.num"));
+        }
 
-		return pendingNum;
-	}
+        Boolean btrue = JStormUtils.parseBoolean(conf.get("spout.send.contrl.message"));
+        if (btrue != null && btrue) {
+            isSendCtrlMsg = true;
+        } else {
+            isSendCtrlMsg = false;
+        }
 
-	public void open(Map conf, TopologyContext context,
-			SpoutOutputCollector collector) {
-		this.collector = collector;
+        isFinished = false;
 
-		if (conf.get("spout.max.sending.num") == null) {
-			isLimited = false;
-		} else {
-			isLimited = true;
-			SPOUT_MAX_SEND_NUM = JStormUtils.parseLong(conf
-					.get("spout.max.sending.num"));
-		}
+        tpsCounter = new TpsCounter(context.getThisComponentId() + ":"
+                + context.getThisTaskId());
 
-		Boolean btrue = JStormUtils.parseBoolean(conf.get("spout.send.contrl.message"));
-		if (btrue != null && btrue) {
-			isSendCtrlMsg = true;
-		} else {
-			isSendCtrlMsg = false;
-		}
+        MAX_PENDING_COUNTER = getMaxPending(conf);
 
-		isFinished = false;
+        bufferLen = JStormUtils.parseInt(conf.get("byte.buffer.len"), 0);
 
-		tpsCounter = new TpsCounter(context.getThisComponentId() + ":"
-				+ context.getThisTaskId());
+        random = new Random();
+        random.setSeed(System.currentTimeMillis());
 
-		MAX_PENDING_COUNTER = getMaxPending(conf);
-		
-		bufferLen = JStormUtils.parseInt(conf.get("byte.buffer.len"), 0);
-		
-		random = new Random();
-		random.setSeed(System.currentTimeMillis());
+        JStormUtils.sleepMs(20 * 1000);
 
-		JStormUtils.sleepMs(20*1000);
-		
-		LOG.info("Finish open, buffer Len:"  + bufferLen);
+        LOG.info("Finish open, buffer Len:" + bufferLen);
+    }
 
-	}
+    private AtomicLong tradeSum = new AtomicLong(0);
+    private AtomicLong customerSum = new AtomicLong(0);
 
-	private AtomicLong tradeSum = new AtomicLong(0);
-	private AtomicLong customerSum = new AtomicLong(0);
+    public void emit() {
+        String buffer = null;
+        if (bufferLen > 0) {
+            byte[] byteBuffer = new byte[bufferLen];
 
-	public void emit() {
-		
-		String buffer = null;
-		if (bufferLen > 0) {
-			byte[] byteBuffer = new byte[bufferLen];
-			
-			for (int i = 0; i < bufferLen; i++) {
-				byteBuffer[i] = (byte)random.nextInt(200);
-			}
-			
-			buffer = new String(byteBuffer);
-		}
-		
-
-		Pair trade = PairMaker.makeTradeInstance();
-		Pair customer = PairMaker.makeCustomerInstance();
-
-		TradeCustomer tradeCustomer = new TradeCustomer();
-		tradeCustomer.setTrade(trade);
-		tradeCustomer.setCustomer(customer);
-		tradeCustomer.setBuffer(buffer);
-
-		tradeSum.addAndGet(trade.getValue());
-		customerSum.addAndGet(customer.getValue());
-
-		collector.emit(new Values(tupleId, tradeCustomer),
-				Long.valueOf(tupleId));
-
-		tupleId++;
-
-		handleCounter.incrementAndGet();
-
-		while (handleCounter.get() >= MAX_PENDING_COUNTER - 1) {
-			try {
-				Thread.sleep(1);
-			} catch (InterruptedException e) {
-			}
-		}
-
-		tpsCounter.count();
-
-	}
-
-	public void nextTuple() {
-		if (isLimited == false) {
-			emit();
-
-			return;
-		}
-
-		if (isFinished == true) {
-			if (isSendCtrlMsg){
-			//	LOG.info("spout will send control message due to finish sending ");
-				long now = System.currentTimeMillis();
-				String ctrlMsg = "spout don't send message due to pending num at " + now;
-				((SpoutCollector)(collector.getDelegate())).emitCtrl(SequenceTopologyDef.CONTROL_STREAM_ID, new Values(String.valueOf(now)), ctrlMsg);
-			}
-			LOG.info("Finish sending ");
-			JStormUtils.sleepMs(500);
-			return;
-		}
-
-		if (tupleId > SPOUT_MAX_SEND_NUM) {
-			isFinished = true;
-			return;
-		}
-
-		emit();
-
-	}
-
-	public void close() {
-
-		tpsCounter.cleanup();
-		LOG.info("Sending :" + tupleId + ", success:" + succeedCount
-				+ ", failed:" + failedCount);
-		LOG.info("tradeSum:" + tradeSum + ",cumsterSum" + customerSum);
-	}
-
-	public void ack(Object id) {
-
-		// if (tupleId != this.tupleId - 1) {
-		// LOG.error("Not sync, current :" + this.tupleId + ",ack:" + tupleId);
-		// }
-
-		succeedCount++;
-
-		handleCounter.decrementAndGet();
-
-		return;
-	}
-
-	public void fail(Object id) {
-
-		failedCount++;
-		handleCounter.decrementAndGet();
-		if (id instanceof Long){
-			Long failId = (Long) id;
-			LOG.info("Failed to handle " + failId);
-		}else if (id instanceof String){
-			LOG.info("Failed to handle " + id);
-		}
+            for (int i = 0; i < bufferLen; i++) {
+                byteBuffer[i] = (byte) random.nextInt(200);
+            }
+            buffer = new String(byteBuffer);
+        }
 
 
-		return;
-	}
+        Pair trade = PairMaker.makeTradeInstance();
+        Pair customer = PairMaker.makeCustomerInstance();
 
-	public void declareOutputFields(OutputFieldsDeclarer declarer) {
-		declarer.declare(new Fields("ID", "RECORD"));
-		declarer.declareStream(SequenceTopologyDef.CONTROL_STREAM_ID, new Fields("CONTROL"));
-		// declarer.declare(new Fields("ID"));
-	}
+        TradeCustomer tradeCustomer = new TradeCustomer();
+        tradeCustomer.setTrade(trade);
+        tradeCustomer.setCustomer(customer);
+        tradeCustomer.setBuffer(buffer);
 
-	public Map<String, Object> getComponentConfiguration() {
-		// TODO Auto-generated method stub
-		return null;
-	}
+        tradeSum.addAndGet(trade.getValue());
+        customerSum.addAndGet(customer.getValue());
 
-	@Override
-	public void activate() {
-		// TODO Auto-generated method stub
-		LOG.info("Start active");
-	}
+        collector.emit(new Values(tupleId, tradeCustomer), tupleId);
+        tupleId++;
+        handleCounter.incrementAndGet();
+        while (handleCounter.get() >= MAX_PENDING_COUNTER - 1) {
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException ignored) {
+            }
+        }
 
-	@Override
-	public void deactivate() {
-		// TODO Auto-generated method stub
-		LOG.info("Start deactive");
+        tpsCounter.count();
 
-	}
+    }
+
+    public void nextTuple() {
+        if (!isLimited) {
+            emit();
+            return;
+        }
+
+        if (isFinished) {
+            if (isSendCtrlMsg) {
+                //	LOG.info("spout will send control message due to finish sending ");
+                long now = System.currentTimeMillis();
+                String ctrlMsg = "spout don't send message due to pending num at " + now;
+                ((SpoutCollector) (collector.getDelegate())).emitCtrl(SequenceTopologyDef.CONTROL_STREAM_ID, new Values(String.valueOf(now)), ctrlMsg);
+            }
+            LOG.info("Finish sending ");
+            JStormUtils.sleepMs(500);
+            return;
+        }
+
+        if (tupleId > SPOUT_MAX_SEND_NUM) {
+            isFinished = true;
+            return;
+        }
+
+        emit();
+    }
+
+    public void close() {
+        tpsCounter.cleanup();
+        LOG.info("Sending :" + tupleId + ", success:" + succeedCount
+                + ", failed:" + failedCount);
+        LOG.info("tradeSum:" + tradeSum + ",cumsterSum" + customerSum);
+    }
+
+    public void ack(Object id) {
+        succeedCount++;
+        handleCounter.decrementAndGet();
+    }
+
+    public void fail(Object id) {
+        failedCount++;
+        handleCounter.decrementAndGet();
+        if (id instanceof Long) {
+            Long failId = (Long) id;
+            LOG.info("Failed to handle " + failId);
+        } else if (id instanceof String) {
+            LOG.info("Failed to handle " + id);
+        }
+    }
+
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        declarer.declare(new Fields("ID", "RECORD"));
+        declarer.declareStream(SequenceTopologyDef.CONTROL_STREAM_ID, new Fields("CONTROL"));
+        // declarer.declare(new Fields("ID"));
+    }
+
+    public Map<String, Object> getComponentConfiguration() {
+        return null;
+    }
+
+    @Override
+    public void activate() {
+        LOG.info("Start active");
+    }
+
+    @Override
+    public void deactivate() {
+        LOG.info("Start deactive");
+    }
 
 }

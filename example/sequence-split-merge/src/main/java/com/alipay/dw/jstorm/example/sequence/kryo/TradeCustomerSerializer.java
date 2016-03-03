@@ -10,7 +10,7 @@ import com.esotericsoftware.kryo.io.Output;
 /**
  * @author JohnFang (xiaojian.fxj@alibaba-inc.com).
  */
-public class TradeCustomerSerializer  extends Serializer<TradeCustomer> {
+public class TradeCustomerSerializer extends Serializer<TradeCustomer> {
 
     PairSerializer pairSerializer = new PairSerializer();
 
