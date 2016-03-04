@@ -1,10 +1,10 @@
-*.git
-*.project
-*.classpath
 *.prefs
 *.bat
-target/*
-*/target/*
-/bin
 .idea
 *.iml
+/**/.project
+/**/.classpath
+/**/.settings
+/**/target
+/**/bin
+/**/.git
