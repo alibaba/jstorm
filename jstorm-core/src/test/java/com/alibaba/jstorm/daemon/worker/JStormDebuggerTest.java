@@ -33,6 +33,7 @@ import static org.junit.Assert.*;
  */
 public class JStormDebuggerTest {
 
+	private final double SAMPLE_RATE = 0.1d;
     Random random;
     Map conf;
 
@@ -41,7 +42,7 @@ public class JStormDebuggerTest {
         conf = new HashMap<>();
         conf.put(Config.TOPOLOGY_DEBUG, true);
         ConfigExtension.setTopologyDebugRecvTuple(conf, true);
-        ConfigExtension.setTopologyDebugSampleRate(conf, 0.1);
+        ConfigExtension.setTopologyDebugSampleRate(conf, SAMPLE_RATE);
         JStormDebugger.update(conf);
 
         random = new Random(System.currentTimeMillis());
@@ -69,7 +70,7 @@ public class JStormDebuggerTest {
     @Test
     public void testIsDebugForLong() throws Exception {
         int tries = 50000;
-        double expected = tries * 0.1;
+        double expected = tries * SAMPLE_RATE;
         int lottery = 0;
         int num = tries;
         while (num-- > 0) {
@@ -78,7 +79,7 @@ public class JStormDebuggerTest {
                 lottery++;
             }
         }
-        assertEquals(expected, lottery, expected * 0.01);
+        assertEquals(expected, lottery, expected * 0.05);
     }
 
     @Test
@@ -89,7 +90,7 @@ public class JStormDebuggerTest {
         assertEquals(false, actual);
 
         int tries = 50000;
-        double expected = tries * 0.1;
+        double expected = tries * SAMPLE_RATE;
         int lottery = 0;
         int num = tries;
         while (num-- > 0) {
@@ -98,7 +99,7 @@ public class JStormDebuggerTest {
                 lottery++;
             }
         }
-        assertEquals(expected, lottery, expected * 0.01);
+        assertEquals(expected, lottery, expected * 0.05);
 
     }
 

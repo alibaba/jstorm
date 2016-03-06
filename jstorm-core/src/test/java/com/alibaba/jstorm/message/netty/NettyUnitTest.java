@@ -30,6 +30,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import junit.framework.Assert;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +61,8 @@ public class NettyUnitTest {
     private static Map storm_conf = new HashMap<Object, Object>();
     private static IContext context = null;
 
-    static {
+    @BeforeClass
+    public static void setup() {
         storm_conf = Utils.readDefaultConfig();
         ConfigExtension.setLocalWorkerPort(storm_conf, port);
         boolean syncMode = false;
