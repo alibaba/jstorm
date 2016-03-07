@@ -75,7 +75,7 @@ public class AsyncLoopRunnable implements Runnable {
     private void shutdown() {
         fn.postRun();
         fn.shutdown();
-        LOG.info("Succefully shutdown");
+        LOG.info("Successfully shutdown");
     }
 
     @Override
