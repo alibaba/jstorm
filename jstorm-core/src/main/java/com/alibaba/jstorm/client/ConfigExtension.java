@@ -1037,7 +1037,7 @@ public class ConfigExtension {
         conf.put(TASK_MSG_BATCH_SIZE, batchSize);
     }
 
-    protected static String TASK_BATCH_TUPLE = "task.batch.tuple";
+    public static String TASK_BATCH_TUPLE = "task.batch.tuple";
 
     public static Boolean isTaskBatchTuple(Map conf) {
         return JStormUtils.parseBoolean(conf.get(TASK_BATCH_TUPLE), false);

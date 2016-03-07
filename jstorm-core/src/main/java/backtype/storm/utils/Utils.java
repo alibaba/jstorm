@@ -26,6 +26,7 @@ import backtype.storm.serialization.SerializationDelegate;
 import clojure.lang.IFn;
 import clojure.lang.RT;
 import com.alibaba.jstorm.client.ConfigExtension;
+import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.LoadConf;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -292,10 +293,11 @@ public class Utils {
         	ret.put("exclude.jars", excludeJars);
         }
 
-        String tridentOptions = System.getProperty("trident.batch.option");
-        if (tridentOptions != null && tridentOptions.equals("off")) {
-            ConfigExtension.setTaskBatchTuple(ret, false);
-            System.setProperty("trident.batch.option", "");
+        String batchOptions = System.getProperty(ConfigExtension.TASK_BATCH_TUPLE);
+        if (StringUtils.isBlank(batchOptions) == false) {
+            boolean isBatched = JStormUtils.parseBoolean(batchOptions, true);
+            ConfigExtension.setTaskBatchTuple(ret, isBatched);
+            System.out.println(ConfigExtension.TASK_BATCH_TUPLE + " is " + batchOptions);
         }
         return ret;
     }
