@@ -31,6 +31,8 @@ import backtype.storm.topology.base.BaseBatchBolt;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
+
+import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.LoadConf;
 import java.util.Arrays;
@@ -209,7 +211,7 @@ public class ReachTopology {
             LocalCluster cluster = new LocalCluster();
             cluster.submitTopology(TOPOLOGY_NAME, conf, builder.createLocalTopology(drpc));
 
-            JStormUtils.sleepMs(50000);
+            JStormUtils.sleepMs(10000);
 
             String[] urlsToTry = new String[]{"foo.com/blog/1", "engineering.twitter.com/blog/5", "notaurl.com"};
             for (String url : urlsToTry) {
