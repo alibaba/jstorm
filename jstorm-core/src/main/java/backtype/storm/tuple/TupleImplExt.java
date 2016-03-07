@@ -19,6 +19,9 @@ package backtype.storm.tuple;
 
 import java.util.List;
 
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+
 import backtype.storm.task.GeneralTopologyContext;
 
 public class TupleImplExt extends TupleImpl implements TupleExt {
@@ -53,5 +56,10 @@ public class TupleImplExt extends TupleImpl implements TupleExt {
 	public void setCreationTimeStamp(long timeStamp) {
 		this.creationTimeStamp = timeStamp;
 	}
+	
+	@Override
+    public String toString() {
+        return ToStringBuilder.reflectionToString(this, ToStringStyle.SHORT_PREFIX_STYLE);
+    }
 
 }
