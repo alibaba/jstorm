@@ -57,11 +57,18 @@
             <fileMode>0755</fileMode>
             <destName>jstorm-ui-${project.version}.war</destName>
         </file>
+        <file>
+            <source>example/sequence-split-merge/target/sequence-split-merge-${project.version}.jar</source>
+            <outputDirectory>./example/sequence_test</outputDirectory>
+            <fileMode>0755</fileMode>
+            <destName>sequence-split-merge.jar</destName>
+        </file>
+        
 
     </files>
     <fileSets>
         <fileSet>
-            <directory>./jstorm-core/conf</directory>
+            <directory>./conf</directory>
             <outputDirectory>/conf</outputDirectory>
             <includes>
                 <include>**/*</include>
@@ -82,6 +89,26 @@
             <excludes>
                 <exclude>*</exclude>
             </excludes>
+        </fileSet>
+        <fileSet>
+            <directory>./example/sequence-split-merge/conf</directory>
+            <outputDirectory>/example/sequence_test</outputDirectory>
+            <directoryMode>0755</directoryMode>
+            <fileMode>0644</fileMode>
+            <includes>
+            	
+                <include>**/*</include>
+            </includes>
+        </fileSet>
+        <fileSet>
+            <directory>./example/sequence-split-merge/deploy</directory>
+            <outputDirectory>/example/sequence_test</outputDirectory>
+            <directoryMode>0755</directoryMode>
+            <fileMode>0755</fileMode>
+            <includes>
+            	
+                <include>**/*</include>
+            </includes>
         </fileSet>
 
         <fileSet>
