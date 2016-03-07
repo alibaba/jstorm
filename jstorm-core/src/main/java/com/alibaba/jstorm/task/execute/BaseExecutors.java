@@ -152,9 +152,7 @@ public class BaseExecutors extends RunnableCallback {
             LOG.info("{} begin to init", idStr);
             
             init();
-
-            taskHbTrigger.register();
-            
+  
             if (taskId == getMinTaskIdOfWorker()) {
                 metricsReporter.setOutputCollector(getOutputCollector());
             }

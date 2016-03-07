@@ -116,6 +116,8 @@ public class BoltExecutors extends BaseExecutors implements EventHandler {
     @Override
     public void init() {
         bolt.prepare(storm_conf, userTopologyCtx, outputCollector);
+        LOG.info("Succeesfully do Bolt.prepare");
+        taskHbTrigger.register();
     }
 
     @Override
