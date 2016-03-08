@@ -391,4 +391,4 @@ storm.machine.resource.warning.check.dir: null
 
 ###supervisor machine resource limit
 storm.machine.resource.reserve.mem: 1073741824
-storm.machine.resource.reserve.cpu.percent: 10
+storm.machine.resource.reserve.cpu.percent: 30
