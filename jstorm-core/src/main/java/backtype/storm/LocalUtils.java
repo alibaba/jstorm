@@ -100,7 +100,7 @@ public class LocalUtils {
 
         JStormUtils.setLocalMode(true);
         
-        Map conf = Utils.readStormConfig();
+        Map conf = new HashMap();
         
         conf.put(Config.STORM_CLUSTER_MODE, "local");
         
@@ -119,13 +119,15 @@ public class LocalUtils {
     }
 
     public static Map getLocalConf(int port) {
+        Map conf = Utils.readStormConfig();
+        conf.putAll(getLocalBaseConf());
+        
         List<String> zkServers = new ArrayList<String>(1);
         zkServers.add("localhost");
-        Map conf = getLocalBaseConf();
         
         conf.put(Config.STORM_ZOOKEEPER_SERVERS, zkServers);
         conf.put(Config.STORM_ZOOKEEPER_PORT, port);
-
+        
         return conf;
     }
 
