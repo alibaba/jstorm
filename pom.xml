@@ -234,6 +234,7 @@
   -->
   </profiles>
 
+<!--
   <distributionManagement>
     <repository>
       <id>releases</id>
@@ -245,7 +246,7 @@
       <name>snapshots</name>
       <url>http://mvnrepo.alibaba-inc.com/nexus/content/repositories/snapshots/</url>
     </snapshotRepository>
-    <!--
+    
     <snapshotRepository>
       <id>ossrh</id>
       <url>https://oss.sonatype.org/content/repositories/snapshots</url>
@@ -254,8 +255,9 @@
       <id>ossrh</id>
       <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
     </repository>
-  -->
+  
   </distributionManagement>
+-->
 
   <repositories>
     <repository>
@@ -408,6 +410,7 @@
           </execution>
         </executions>
         </plugin> 
+       -->
             <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-gpg-plugin</artifactId>
@@ -421,7 +424,7 @@
             </execution>
           </executions>
         </plugin>
-      -->
+       
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>
         <configuration>
