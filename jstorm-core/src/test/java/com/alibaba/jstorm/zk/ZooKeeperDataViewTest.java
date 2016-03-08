@@ -15,6 +15,7 @@ import com.alibaba.jstorm.cluster.StormBase;
 import com.alibaba.jstorm.daemon.supervisor.SupervisorInfo;
 import com.alibaba.jstorm.schedule.Assignment;
 import com.alibaba.jstorm.task.TaskInfo;
+import com.alibaba.jstorm.zk.Zookeeper;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -27,7 +28,7 @@ import backtype.storm.utils.Utils;
  */
 public class ZooKeeperDataViewTest {
     
-    private static Zookeeper zkobj = new Zookeeper();
+    private static Zookeeper zkobj;
     static CuratorFramework  zk;
     static Gson              gson;
     
@@ -44,6 +45,7 @@ public class ZooKeeperDataViewTest {
         }
         
         try {
+            zkobj = new Zookeeper();
             System.getProperties().setProperty("storm.conf.file", CONFIG_PATH);
             Map conf = Utils.readStormConfig();
             zk = zkobj.mkClient(conf,
@@ -231,7 +233,11 @@ public class ZooKeeperDataViewTest {
     @AfterClass
     public static void close() {
         if (zk != null) {
-            zk.close();
+            try {
+                zk.close();
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
         }
     }
     

@@ -19,6 +19,10 @@ package com.alibaba.jstorm.topology;
 
 import junit.framework.Assert;
 
+import static org.junit.Assert.assertNotSame;
+
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,9 +38,12 @@ import com.alibaba.jstorm.utils.JStormUtils;
 
 public class SingleJoinTest {
     private static Logger LOG = LoggerFactory.getLogger(SingleJoinTest.class);
+    
+    public static AtomicInteger receiveCounter = new AtomicInteger(0);
 
     @Test
     public void test_single_join() {
+	receiveCounter.set(0);
         try {
             FeederSpout genderSpout = new FeederSpout(new Fields("id", "gender"));
             FeederSpout ageSpout = new FeederSpout(new Fields("id", "age"));
@@ -68,6 +75,9 @@ public class SingleJoinTest {
             }
 
             JStormUtils.sleepMs(60 * 1000);
+            
+            assertNotSame(0, receiveCounter.get());
+            
             cluster.shutdown();
         } catch (Exception e) {
             Assert.fail("Failed to run SingleJoinExample");
