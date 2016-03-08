@@ -175,6 +175,8 @@ public class LocalCluster implements ILocalCluster {
         JStormUtils.sleepMs(10 * 1000);
         this.state.clean();
         instance = null;
+        //wait 10 second to exit to make run multiple junit test
+        JStormUtils.sleepMs(10 * 1000);
     }
 
     @Override

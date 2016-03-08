@@ -277,13 +277,14 @@ public class TransactionalWordsTest {
 
             cluster.submitTopology("top-n-topology", config, builder.buildTopology());
 
-            JStormUtils.sleepMs(100 * 1000);
+            JStormUtils.sleepMs(60 * 1000);
             
             
             assertEquals(false, outOfOrder.get() );
             assertNotSame(0, receiveCounter1.get());
             assertNotSame(0, receiveCounter2.get());
             
+            cluster.killTopology("top-n-topology");
             cluster.shutdown();
         } catch (Exception e) {
             Assert.fail("Failed to run simple transaction");
