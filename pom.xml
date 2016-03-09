@@ -24,12 +24,17 @@
       <groupId>org.apache</groupId>
       <artifactId>apache</artifactId>
       <version>10</version>
-    </parent> -->
+    </parent> 
+    
+    // if release jstorm to maven center repository
+    // please set parent as oss-parent
     <parent>
       <groupId>org.sonatype.oss</groupId>
       <artifactId>oss-parent</artifactId>
       <version>7</version>
     </parent>
+    
+    -->
 
     
   <groupId>com.alibaba.jstorm</groupId>
@@ -423,6 +428,9 @@
                 </executions>
             </plugin>
         
+        <!-- 
+        // if release jstorm to maven center repository
+        // please set parent as oss-parent
             <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-gpg-plugin</artifactId>
@@ -436,6 +444,7 @@
             </execution>
           </executions>
         </plugin>
+         -->
        
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>
