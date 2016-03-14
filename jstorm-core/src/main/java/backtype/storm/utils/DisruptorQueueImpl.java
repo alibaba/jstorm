@@ -95,7 +95,9 @@ public class DisruptorQueueImpl extends DisruptorQueue {
     }
 
     public void consumeBatch(EventHandler<Object> handler) {
-        consumeBatchToCursor(_barrier.getCursor(), handler);
+        //write pos > read pos
+        if (_buffer.getCursor() > _consumer.get())
+            consumeBatchWhenAvailable(handler);
     }
 
     public void haltWithInterrupt() {
