@@ -83,6 +83,8 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
         int port = JStormUtils.parseInt(conf.get(Config.DRPC_PORT));
         int workerThreadNum = JStormUtils.parseInt(conf.get(Config.DRPC_WORKER_THREADS));
         int queueSize = JStormUtils.parseInt(conf.get(Config.DRPC_QUEUE_SIZE));
+        
+        LOG.info("Begin to init Handler Server " + port);
 
         TNonblockingServerSocket socket = new TNonblockingServerSocket(port);
         THsHaServer.Args targs = new THsHaServer.Args(socket);
@@ -101,6 +103,8 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
 
     private THsHaServer initInvokeServer(Map conf, final Drpc service) throws Exception {
         int port = JStormUtils.parseInt(conf.get(Config.DRPC_INVOCATIONS_PORT));
+        
+        LOG.info("Begin to init Invoke Server " + port);
 
         TNonblockingServerSocket socket = new TNonblockingServerSocket(port);
         THsHaServer.Args targsInvoke = new THsHaServer.Args(socket);

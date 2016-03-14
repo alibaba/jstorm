@@ -19,19 +19,24 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <!--
+<!--    
     <parent>
       <groupId>org.apache</groupId>
       <artifactId>apache</artifactId>
       <version>10</version>
-    </parent>
+    </parent> 
+    
+    // if release jstorm to maven center repository
+    // please set parent as oss-parent
     <parent>
       <groupId>org.sonatype.oss</groupId>
       <artifactId>oss-parent</artifactId>
       <version>7</version>
     </parent>
-
+    
     -->
+
+    
   <groupId>com.alibaba.jstorm</groupId>
   <artifactId>jstorm-all</artifactId>
   <version>2.1.1</version>
@@ -234,6 +239,7 @@
   -->
   </profiles>
 
+<!--
   <distributionManagement>
     <repository>
       <id>releases</id>
@@ -245,7 +251,7 @@
       <name>snapshots</name>
       <url>http://mvnrepo.alibaba-inc.com/nexus/content/repositories/snapshots/</url>
     </snapshotRepository>
-    <!--
+    
     <snapshotRepository>
       <id>ossrh</id>
       <url>https://oss.sonatype.org/content/repositories/snapshots</url>
@@ -254,8 +260,9 @@
       <id>ossrh</id>
       <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
     </repository>
-  -->
+  
   </distributionManagement>
+-->
 
   <repositories>
     <repository>
@@ -330,7 +337,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-javadoc-plugin</artifactId>
-          <version>2.9</version>
+          <version>2.10.1</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -395,19 +402,35 @@
           </execution>
         </executions>
       </plugin>
-      <!-- 
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-javadoc-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>attach-javadocs</id>
-            <goals>
-              <goal>jar</goal>
-            </goals>
-          </execution>
-        </executions>
-        </plugin> 
+      
+      		<plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <!-- 
+                <configuration>
+                    <outputDirectory>${project.build.directory}/javadoc</outputDirectory>
+                    <reportOutputDirectory>./docs/javadoc</reportOutputDirectory>
+                </configuration> -->
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>aggregate</id>
+                        <goals>
+                            <goal>aggregate</goal>
+                        </goals>
+                        <phase>site</phase>
+                    </execution>
+                </executions>
+            </plugin>
+        
+        <!-- 
+        // if release jstorm to maven center repository
+        // please set parent as oss-parent
             <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-gpg-plugin</artifactId>
@@ -421,7 +444,8 @@
             </execution>
           </executions>
         </plugin>
-      -->
+         -->
+       
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>
         <configuration>

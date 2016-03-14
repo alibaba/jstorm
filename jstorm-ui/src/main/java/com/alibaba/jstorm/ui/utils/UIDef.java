@@ -57,6 +57,6 @@ public class UIDef {
         put(MetricDef.CONTROL_QUEUE, "CtrlQueue(%)");
         put(MetricDef.SEND_QUEUE, "SendCtrlQueue(%)");
         put(MetricDef.RECV_CTRL_QUEUE, "RevCtrlQueue(%)");
-        put(MetricDef.NETWORK_MSG_DECODE_TIME, "Network Msg Decode Time(us)");
+        put(MetricDef.NETWORK_MSG_DECODE_TIME, "NettyMsgDecodeTime(us)");
     }};
 }

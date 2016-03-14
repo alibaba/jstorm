@@ -213,7 +213,7 @@ class SyncProcessEvent extends ShutdownWork {
             try {
                 long lastModifytime = StormConfig.get_supervisor_topology_Bianrymodify_time(conf, topologyId);
                 if ((currTime - lastModifytime) / 1000 < (JStormUtils.MIN_1 * 2)) {
-                    LOG.debug("less 2 minite ,so removed " + topologyId);
+                    LOG.debug("less 2 miniute ,so removed " + topologyId);
                     needRemoveTopologies.add(topologyId);
                 }
             } catch (Exception e) {

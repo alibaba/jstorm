@@ -66,7 +66,7 @@ public class TaskSendTargets {
 
 
         taskId = topologyContext.getThisTaskId();
-        debugIdStr = " Emit from " + componentId + ":" + taskId + " ";
+        debugIdStr = " emit from " + componentId + ":" + taskId + " ";
     }
 
     // direct send tuple to special task
@@ -104,7 +104,7 @@ public class TaskSendTargets {
         if (componentCrouping == null) {
             // if the target component's parallelism is 0, don't need send to
             // them
-            LOG.debug("Failed to get Grouper of " + stream + " in " + debugIdStr);
+            LOG.debug("Failed to get Grouper of " + stream + " when " + debugIdStr);
             return out_tasks;
         }
 

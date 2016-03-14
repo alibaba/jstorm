@@ -26,8 +26,9 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <!--<forkCount>1</forkCount>-->
                     <forkMode>pertest</forkMode>
-                    <argLine>-Xms1024m -Xmx3072m</argLine>
+                    <argLine>-Xms1024m -Xmx4096m</argLine>
                 </configuration>
             </plugin>
             <plugin>
@@ -50,6 +51,7 @@
                     </execution>
                 </executions>
             </plugin>
+            
 
             <!--<plugin>-->
             <!--<groupId>org.apache.maven.plugins</groupId>-->

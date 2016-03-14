@@ -140,22 +140,24 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
     public void init() throws Exception {
         
         this.spout.open(storm_conf, userTopologyCtx, outputCollector);
-
+        
         LOG.info("Successfully open SpoutExecutors " + idStr);
         
-		int delayRun = ConfigExtension.getSpoutDelayRunSeconds(storm_conf);
-
-		// wait other bolt is ready
-		JStormUtils.sleepMs(delayRun * 1000);
-
-		if (taskStatus.isRun()) {
-			spout.activate();
-		} else {
-			spout.deactivate();
-		}
-
-		LOG.info(idStr + " is ready ");
-
+        taskHbTrigger.register();
+        
+        int delayRun = ConfigExtension.getSpoutDelayRunSeconds(storm_conf);
+        
+        // wait other bolt is ready
+        JStormUtils.sleepMs(delayRun * 1000);
+        
+        if (taskStatus.isRun()) {
+            spout.activate();
+        } else {
+            spout.deactivate();
+        }
+        
+        LOG.info(idStr + " is ready ");
+        
     }
 
     public void nextTuple() {

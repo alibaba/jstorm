@@ -25,8 +25,13 @@ import org.apache.commons.lang.builder.ToStringStyle;
 
 public class BatchId implements Serializable {
     private static final long serialVersionUID = 5720810158625748049L;
-    protected final long id;
+    protected long id;
 
+    // this is just for kryo
+    protected BatchId() {
+        
+    }
+    
     protected BatchId(long id) {
         this.id = id;
     }
