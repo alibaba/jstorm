@@ -144,7 +144,7 @@
     <h2>
         Topology Summary
         <button id="jar-btn" type="button" class="btn btn-warning" style="float:right;" data-title="ADD TOPOLOGY" data-container="body" data-placement="left"
-                data-toggle="popover">Add Topology
+                data-toggle="popover">New Topology
         </button>
     </h2>
     <table class="table table-bordered table-hover table-striped sortable center"
