@@ -132,12 +132,12 @@ public class PartitionConsumer {
             	short fetchResponseCode = consumer.getAndResetFetchResponseCode();
             	if (fetchResponseCode == ErrorMapping.OffsetOutOfRangeCode()) {
                 	this.emittingOffset = consumer.getOffset(config.topic, partition,  kafka.api.OffsetRequest.LatestTime());
-                	LOG.error("reset kafka offset {}", emittingOffset);
+                	LOG.warn("reset kafka offset {}", emittingOffset);
                 }else{
                 	this.consumerSleepEndTime = System.currentTimeMillis() + 100;
-                	LOG.error("sleep a litte {}", consumerSleepEndTime);
+                	LOG.warn("sleep until {}", consumerSleepEndTime);
                 }
-                LOG.error("fetch null message from offset {}", emittingOffset);
+                LOG.warn("fetch null message from offset {}", emittingOffset);
                 return;
             }
             	
@@ -158,10 +158,7 @@ public class PartitionConsumer {
     }
     
     public boolean isSleepingConsumer(){
-    	if(System.currentTimeMillis() < this.consumerSleepEndTime){
-    		return true;
-    	}
-    	return false;
+    	return System.currentTimeMillis() < this.consumerSleepEndTime;
     }
 
     public void commitState() {

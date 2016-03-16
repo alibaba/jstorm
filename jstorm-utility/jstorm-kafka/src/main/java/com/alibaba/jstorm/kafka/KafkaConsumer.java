@@ -83,9 +83,8 @@ public class KafkaConsumer {
             }
         }
         if (fetchResponse.hasError()) {
-        	fetchResponseCode = fetchResponse.errorCode(topic, partition);
+            fetchResponseCode = fetchResponse.errorCode(topic, partition);
             if (fetchResponseCode == ErrorMapping.OffsetOutOfRangeCode()) {
-            	
             }
 //            if (code == ErrorMapping.OffsetOutOfRangeCode() && config.resetOffsetIfOutOfRange) {
 //                long startOffset = getOffset(topic, partition, config.startOffsetTime);
