@@ -133,6 +133,11 @@ public class PartitionConsumer {
             	if (fetchResponseCode == ErrorMapping.OffsetOutOfRangeCode()) {
                 	this.emittingOffset = consumer.getOffset(config.topic, partition,  kafka.api.OffsetRequest.LatestTime());
                 	LOG.warn("reset kafka offset {}", emittingOffset);
+                }else if(fetchResponseCode == ErrorMapping.NotLeaderForPartitionCode()
+                		|| fetchResponseCode == ErrorMapping.LeaderNotAvailableCode()
+                		|| fetchResponseCode == ErrorMapping.BrokerNotAvailableCode()){
+                	consumer.setConsumer(null);
+                	LOG.warn("current consumer is not effective, reset kafka simpleConsumer");
                 }else{
                 	this.consumerSleepEndTime = System.currentTimeMillis() + 100;
                 	LOG.warn("sleep until {}", consumerSleepEndTime);
