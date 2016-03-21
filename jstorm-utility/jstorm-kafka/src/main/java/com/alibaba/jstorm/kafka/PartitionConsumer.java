@@ -70,7 +70,7 @@ public class PartitionConsumer {
         }
 
         try {
-        	if (config.fromBeginning) {
+            if (config.fromBeginning) {
                 emittingOffset = consumer.getOffset(config.topic, partition, kafka.api.OffsetRequest.EarliestTime());
             } else {
                 if (jsonOffset == null) {
