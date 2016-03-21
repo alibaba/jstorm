@@ -70,17 +70,16 @@ public class PartitionConsumer {
         }
 
         try {
-            if (jsonOffset == null) {
-                if (config.fromBeginning) {
-                    emittingOffset = consumer.getOffset(config.topic, partition, kafka.api.OffsetRequest.EarliestTime());
-                } else {
-                    lastCommittedOffset = consumer.getOffset(config.topic, partition, kafka.api.OffsetRequest.LatestTime());
-                }
+        	if (config.fromBeginning) {
+                emittingOffset = consumer.getOffset(config.topic, partition, kafka.api.OffsetRequest.EarliestTime());
             } else {
-                 lastCommittedOffset = jsonOffset;
+                if (jsonOffset == null) {
+                    lastCommittedOffset = consumer.getOffset(config.topic, partition, kafka.api.OffsetRequest.LatestTime());
+                } else {
+                    lastCommittedOffset = jsonOffset;
+                }
+                emittingOffset = lastCommittedOffset;
             }
-            emittingOffset = lastCommittedOffset;
-            
         } catch (Exception e) {
             LOG.error(e.getMessage(), e);
         }
