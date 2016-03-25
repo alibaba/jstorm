@@ -18,6 +18,7 @@ import com.google.common.collect.ImmutableMap;
 import kafka.javaapi.message.ByteBufferMessageSet;
 import kafka.message.Message;
 import kafka.message.MessageAndOffset;
+import kafka.common.ErrorMapping;
 import backtype.storm.Config;
 import backtype.storm.spout.SpoutOutputCollector;
 import backtype.storm.utils.Utils;
@@ -48,6 +49,7 @@ public class PartitionConsumer {
     private long lastCommittedOffset;
     private ZkState zkState;
     private Map stormConf;
+    private long consumerSleepEndTime = 0;
 
     public PartitionConsumer(Map conf, KafkaSpoutConfig config, int partition, ZkState offsetState) {
         this.stormConf = conf;
@@ -125,10 +127,21 @@ public class PartitionConsumer {
             msgs = consumer.fetchMessages(partition, emittingOffset + 1);
             
             if (msgs == null) {
-                LOG.error("fetch null message from offset {}", emittingOffset);
+            	short fetchResponseCode = consumer.getAndResetFetchResponseCode();
+            	if (fetchResponseCode == ErrorMapping.OffsetOutOfRangeCode()) {
+                	this.emittingOffset = consumer.getOffset(config.topic, partition,  kafka.api.OffsetRequest.LatestTime());
+                	LOG.warn("reset kafka offset {}", emittingOffset);
+                }else if(fetchResponseCode == ErrorMapping.NotLeaderForPartitionCode()){
+                	consumer.setConsumer(null);
+                	LOG.warn("current consumer is not leader, reset kafka simpleConsumer");
+                }else{
+                	this.consumerSleepEndTime = System.currentTimeMillis() + 100;
+                	LOG.warn("sleep until {}", consumerSleepEndTime);
+                }
+                LOG.warn("fetch null message from offset {}", emittingOffset);
                 return;
             }
-            
+            	
             int count = 0;
             for (MessageAndOffset msg : msgs) {
                 count += 1;
@@ -138,11 +151,19 @@ public class PartitionConsumer {
                 LOG.debug("fillmessage fetched a message:{}, offset:{}", msg.message().toString(), msg.offset());
             }
             long end = System.currentTimeMillis();
+            if(count == 0){
+            	this.consumerSleepEndTime = System.currentTimeMillis() + 100;
+            	LOG.warn("sleep until {}", consumerSleepEndTime);
+            }
             LOG.info("fetch message from partition:"+partition+", offset:" + emittingOffset+", size:"+msgs.sizeInBytes()+", count:"+count +", time:"+(end-start));
         } catch (Exception e) {
             e.printStackTrace();
             LOG.error(e.getMessage(),e);
         }
+    }
+    
+    public boolean isSleepingConsumer(){
+    	return System.currentTimeMillis() < this.consumerSleepEndTime;
     }
 
     public void commitState() {
