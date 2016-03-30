@@ -172,6 +172,7 @@ public class ConfigExtension {
     public static boolean isOutworkerDump(Map conf) {
         return JStormUtils.parseBoolean(conf.get(OUTPUT_WOEKER_DUMP), false);
     }
+
     /**
      * Usually, spout finish prepare before bolt, so spout need wait several seconds so that bolt finish preparation
      * <p/>
@@ -217,6 +218,7 @@ public class ConfigExtension {
         }
         conf.put(CPU_SLOTS_PER_TASK, slotNum);
     }
+
     /**
      * * *  worker machine minimum available memory (reserved)
      */
@@ -292,11 +294,13 @@ public class ConfigExtension {
     public static String getStormMachineResourcePanicCheckDir(Map conf) {
         return (String) (conf.get(STORM_MACHINE_RESOURCE_PANIC_CHECK_DIR));
     }
+
     protected static final String STORM_MACHINE_RESOURCE_ERROR_CHECK_DIR = "storm.machine.resource.error.check.dir";
 
     public static String getStormMachineResourceErrorCheckDir(Map conf) {
         return (String) (conf.get(STORM_MACHINE_RESOURCE_ERROR_CHECK_DIR));
     }
+
     protected static final String STORM_MACHINE_RESOURCE_WARNING_CHECK_DIR = "storm.machine.resource.warning.check.dir";
 
     public static String getStormMachineResourceWarningCheckDir(Map conf) {
@@ -752,16 +756,17 @@ public class ConfigExtension {
 
     // logger name -> log level map <String, String>
     public static String CHANGE_LOG_LEVEL_CONFIG = "change.log.level.config";
-    public static Map<String, String> getChangeLogLevelConfig(Map conf){
+
+    public static Map<String, String> getChangeLogLevelConfig(Map conf) {
         return (Map<String, String>) conf.get(CHANGE_LOG_LEVEL_CONFIG);
     }
 
     // this timestamp is used to check whether we need to change log level
     public static String CHANGE_LOG_LEVEL_TIMESTAMP = "change.log.level.timestamp";
+
     public static Long getChangeLogLevelTimeStamp(Map conf) {
         return (Long) conf.get(CHANGE_LOG_LEVEL_TIMESTAMP);
     }
-
 
 
     public static String TASK_STATUS_ACTIVE = "Active";
@@ -855,6 +860,12 @@ public class ConfigExtension {
         } else {
             return ret;
         }
+    }
+
+    protected static String SUPERVISOR_ENABLE_AUTO_ADJUST_SLOTS = "supervisor.enable.auto.adjust.slots";
+
+    public static boolean isSupervisorEnableAutoAdjustSlots(Map conf) {
+        return JStormUtils.parseBoolean(conf.get(SUPERVISOR_ENABLE_AUTO_ADJUST_SLOTS), false);
     }
 
     // SUPERVISOR_SLOTS_PORT_CPU_WEIGHT don't provide setting function, it must
@@ -1139,19 +1150,22 @@ public class ConfigExtension {
     public static int getTopologyTaskHbSendNumber(Map conf) {
         return JStormUtils.parseInt(conf.get(TOPOLOGY_TASK_HEARTBEAT_SEND_NUMBER), 2000);
     }
-    
+
     protected static String PROCESS_LAUNCHER_ENABLE = "process.launcher.enable";
+
     public static boolean isProcessLauncherEnable(Map conf) {
-    	return JStormUtils.parseBoolean(conf.get(PROCESS_LAUNCHER_ENABLE), true);
+        return JStormUtils.parseBoolean(conf.get(PROCESS_LAUNCHER_ENABLE), true);
     }
-    
+
     protected static String PROCESS_LAUNCHER_SLEEP_SECONDS = "process.launcher.sleep.seconds";
+
     public static int getProcessLauncherSleepSeconds(Map conf) {
         return JStormUtils.parseInt(conf.get(PROCESS_LAUNCHER_SLEEP_SECONDS), 60);
     }
-    
+
     protected static String PROCESS_LAUNCHER_CHILDOPTS = "process.launcher.childopts";
+
     public static String getProcessLauncherChildOpts(Map conf) {
-    	return (String)conf.get(PROCESS_LAUNCHER_CHILDOPTS);
+        return (String) conf.get(PROCESS_LAUNCHER_CHILDOPTS);
     }
 }

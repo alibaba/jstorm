@@ -39,6 +39,7 @@ import com.alibaba.jstorm.utils.TimeUtils;
 
 /**
  * supervisor Heartbeat, just write SupervisorInfo to ZK
+ *
  * @author Johnfang (xiaojian.fxj@alibaba-inc.com)
  */
 class Heartbeat extends RunnableCallback {
@@ -70,13 +71,14 @@ class Heartbeat extends RunnableCallback {
     protected volatile MachineCheckStatus checkStatus;
 
     private LocalState localState;
+
     /**
      * @param conf
      * @param stormClusterState
      * @param supervisorId
      * @param status
      */
-    @SuppressWarnings({ "rawtypes", "unchecked" })
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public Heartbeat(Map conf, StormClusterState stormClusterState, String supervisorId, LocalState localState,
                      MachineCheckStatus status) {
 
@@ -186,8 +188,7 @@ class Heartbeat extends RunnableCallback {
     }
 
     private List<Integer> calculatorAvailablePorts() {
-
-        if (JStormUtils.getTotalCpuUsage() <= 0.0) {
+        if (JStormUtils.getTotalCpuUsage() <= 0.0 || !ConfigExtension.isSupervisorEnableAutoAdjustSlots(conf)) {
             return JStormUtils.getSupervisorPortList(conf);
         }
         long freeMemory = JStormUtils.getFreePhysicalMem() * 1024L;
@@ -262,7 +263,7 @@ class Heartbeat extends RunnableCallback {
             LOG.error("get LS_LOCAL_ASSIGNMENTS of localState failed .");
             throw e;
         }
-        if (localAssignment == null){
+        if (localAssignment == null) {
             return null;
         }
         return JStormUtils.mk_list(localAssignment.keySet());
