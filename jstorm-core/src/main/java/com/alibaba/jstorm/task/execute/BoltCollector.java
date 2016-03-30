@@ -153,11 +153,6 @@ public class BoltCollector extends OutputCollectorCb {
     protected MessageId getMessageId(Collection<Tuple> anchors) {
         Map<Long, Long> anchors_to_ids = new HashMap<Long, Long>();
         if (anchors != null) {
-            long now = System.currentTimeMillis();
-            if (now - lastRotate > rotateTime) {
-                pending_acks.rotate();
-                lastRotate = now;
-            }
             for (Tuple a : anchors) {
                 Long edge_id = MessageId.generateId(random);
                 put_xor(pending_acks, a, edge_id);
@@ -180,6 +175,7 @@ public class BoltCollector extends OutputCollectorCb {
                 out_tasks = sendTargets.get(out_stream_id, values, anchors, null);
             }
 
+            tryRotate();
             for (Integer t : out_tasks) {
                 MessageId msgid = getMessageId(anchors);
 
@@ -198,6 +194,14 @@ public class BoltCollector extends OutputCollectorCb {
             emitTimer.updateTime(start);
         }
         return out_tasks;
+    }
+
+    private void tryRotate() {
+        long now = System.currentTimeMillis();
+        if (now - lastRotate > rotateTime) {
+            pending_acks.rotate();
+            lastRotate = now;
+        }
     }
 
     void unanchoredSend(TopologyContext topologyContext, TaskSendTargets taskTargets, TaskTransfer transfer_fn, String stream, List<Object> values){
@@ -219,6 +223,7 @@ public class BoltCollector extends OutputCollectorCb {
                 out_tasks = sendTargets.get(out_stream_id, values, anchors, null);
             }
 
+            tryRotate();
             for (Integer t : out_tasks) {
                 MessageId msgid = getMessageId(anchors);
 
