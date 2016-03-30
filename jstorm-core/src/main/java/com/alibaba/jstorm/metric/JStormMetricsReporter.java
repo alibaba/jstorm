@@ -325,7 +325,7 @@ public class JStormMetricsReporter {
                             cnt++;
                         }
                     }
-                    LOG.info("flush metrics, total:{}.", cnt);
+                    LOG.debug("flush metrics, total:{}.", cnt);
 
                     doUpload();
                 } catch (Exception ex) {
@@ -352,7 +352,7 @@ public class JStormMetricsReporter {
             }
 
             if (processing) {
-                LOG.info("still processing, skip...");
+                LOG.debug("still processing, skip...");
             } else {
                 processing = true;
                 long start = System.currentTimeMillis();
@@ -381,7 +381,7 @@ public class JStormMetricsReporter {
                                 }
                             }
                         }
-                        LOG.info("register metrics, size:{}, cost:{}", names.size(), System.currentTimeMillis() - start);
+                        LOG.debug("register metrics, size:{}, cost:{}", names.size(), System.currentTimeMillis() - start);
                     }
                 } catch (Exception ex) {
                     LOG.error("Error", ex);

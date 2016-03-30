@@ -172,7 +172,7 @@ public class TopologyMetricsRunnable extends Thread {
                     JStormUtils.sleepMs((60 - secOffset + offset) * 1000);
                 }
 
-                LOG.info("cluster metrics force upload.");
+                LOG.debug("cluster metrics force upload.");
                 mergeAndUploadClusterMetrics();
             }
         }, 5, 60, TimeUnit.SECONDS);
@@ -480,7 +480,7 @@ public class TopologyMetricsRunnable extends Thread {
                 for (MetaType metaType : MetaType.values()) {
                     List<MetricMeta> metaList = metricQueryClient.getMetricMeta(clusterName, topologyId, metaType);
                     if (metaList != null) {
-                        LOG.info("get remote metric meta, topology:{}, metaType:{}, mem:{}, zk:{}, new size:{}",
+                        LOG.debug("get remote metric meta, topology:{}, metaType:{}, mem:{}, zk:{}, new size:{}",
                                 topologyId, metaType, memSize, zkSize, metaList.size());
                         for (MetricMeta meta : metaList) {
                             memMeta.putIfAbsent(meta.getFQN(), meta.getId());
@@ -543,10 +543,10 @@ public class TopologyMetricsRunnable extends Thread {
         TimeTicker ticker = new TimeTicker(TimeUnit.MILLISECONDS, true);
         try {
             refreshTopologies();
-            LOG.info("refresh topologies, cost:{}", ticker.stopAndRestart());
+            LOG.debug("refresh topologies, cost:{}", ticker.stopAndRestart());
             if (!nimbusData.isLeader()) {
                 syncTopologyMeta();
-                LOG.info("sync topology meta, cost:{}", ticker.stop());
+                LOG.debug("sync topology meta, cost:{}", ticker.stop());
             }
         } catch (Exception ex) {
             LOG.error("handleRefreshEvent error:", ex);
@@ -601,7 +601,7 @@ public class TopologyMetricsRunnable extends Thread {
         event.topologyId = JStormMetrics.CLUSTER_METRIC_KEY;
         pushEvent(event);
 
-        LOG.info("send update event for cluster metrics, size : {}", clusterMetrics.get_metrics_size());
+        LOG.debug("send update event for cluster metrics, size : {}", clusterMetrics.get_metrics_size());
     }
 
     //update cluster metrics local cache
@@ -683,7 +683,7 @@ public class TopologyMetricsRunnable extends Thread {
                 metricCache.put(PENDING_UPLOAD_METRIC_DATA_INFO + idx, summary);
                 metricCache.put(PENDING_UPLOAD_METRIC_DATA + idx, topologyMetrics);
                 markSet(idx);
-                LOG.info("put metric data to local cache, topology:{}, idx:{}, total:{}", topologyId, idx, total);
+                LOG.debug("put metric data to local cache, topology:{}, idx:{}, total:{}", topologyId, idx, total);
             } else {
                 LOG.error("exceeding maxPendingUploadMetrics, skip caching metrics data for topology:{}", topologyId);
             }
@@ -828,7 +828,7 @@ public class TopologyMetricsRunnable extends Thread {
                                 metricContext.setFlushedMetaNum(curSize);
 
                                 metricUploader.registerMetrics(clusterName, topologyId, cachedMeta);
-                                LOG.info("flush metric meta, topology:{}, total:{}, cost:{}.",
+                                LOG.debug("flush metric meta, topology:{}, total:{}, cost:{}.",
                                         topologyId, curSize, System.currentTimeMillis() - start);
                             }
                             stormClusterState.set_topology_metric(topologyId, curSize);

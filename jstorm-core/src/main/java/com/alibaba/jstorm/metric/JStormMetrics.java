@@ -150,7 +150,7 @@ public class JStormMetrics implements Serializable {
 
     public static AsmMetric registerStreamMetric(String name, AsmMetric metric, boolean mergeTopology) {
         name = fixNameIfPossible(name);
-        LOG.info("register stream metric:{}", name);
+        LOG.debug("register stream metric:{}", name);
         AsmMetric ret = streamMetrics.register(name, metric);
         //ret.setEnabled(enableStreamMetrics);
 
@@ -393,7 +393,7 @@ public class JStormMetrics implements Serializable {
         if (debug) {
             MetricUtils.printMetricInfo(metricInfo, debugMetricNames);
         }
-        LOG.info("compute all metrics, cost:{}", System.currentTimeMillis() - start);
+        LOG.debug("compute all metrics, cost:{}", System.currentTimeMillis() - start);
 
         return metricInfo;
     }
