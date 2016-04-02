@@ -1423,7 +1423,7 @@ public class JStormUtils {
         List<Integer> portList = (List<Integer>) conf.get(Config.SUPERVISOR_SLOTS_PORTS);
 
         if (portList != null && portList.size() > 0) {
-            return portList;
+            return new ArrayList<Integer>(portList);
         }
 
         int sysCpuNum = 4;
