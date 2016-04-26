@@ -134,8 +134,9 @@ public class BoltExecutors extends BaseExecutors implements EventHandler {
             try {
                 //if (backpressureTrigger != null)
                 //    backpressureTrigger.checkAndTrigger();
+                controlQueue.consumeBatch(this);
                 exeQueue.consumeBatchWhenAvailable(this);
-                processControlEvent();
+/*                processControlEvent();*/
             } catch (Throwable e) {
                 if (!taskStatus.isShutdown()) {
                     LOG.error(idStr + " bolt exeutor  error", e);
@@ -153,11 +154,11 @@ public class BoltExecutors extends BaseExecutors implements EventHandler {
         long start = System.currentTimeMillis();
         try {
             if (event instanceof Tuple) {
-                processControlEvent();
+/*                processControlEvent();*/
                 processTupleEvent((Tuple) event);
             } else if (event instanceof BatchTuple) {
                 for (Tuple tuple : ((BatchTuple) event).getTuples()) {
-                    processControlEvent();
+/*                    processControlEvent();*/
                     processTupleEvent((Tuple) tuple);
                 }
             } else if (event instanceof TimerTrigger.TimerEvent) {

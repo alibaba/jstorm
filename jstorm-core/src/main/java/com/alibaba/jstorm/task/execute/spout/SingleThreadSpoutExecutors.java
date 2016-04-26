@@ -75,7 +75,8 @@ public class SingleThreadSpoutExecutors extends SpoutExecutors {
 
         super.nextTuple();
 
-        processControlEvent();
+/*        processControlEvent();*/
+        controlQueue.consumeBatch(this);
 
     }
 

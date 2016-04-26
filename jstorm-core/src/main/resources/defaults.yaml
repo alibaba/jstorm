@@ -267,7 +267,7 @@ topology.buffer.size.limited: true #topology queue capacity is unlimited
 topology.tick.tuple.freq.secs: null
 topology.worker.shared.thread.pool.size: 4
 topology.disruptor.wait.strategy: "com.lmax.disruptor.TimeoutBlockingWaitStrategy"
-topology.disruptor.wait.timeout: 10 # ms
+topology.disruptor.wait.timeout: 5 # ms
 topology.spout.wait.strategy: "backtype.storm.spout.SleepSpoutWaitStrategy"
 topology.sleep.spout.wait.strategy.time.ms: 1
 topology.error.throttle.interval.secs: 10
