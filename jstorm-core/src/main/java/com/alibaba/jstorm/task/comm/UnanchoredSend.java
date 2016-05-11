@@ -20,8 +20,10 @@ package com.alibaba.jstorm.task.comm;
 import java.util.List;
 
 import backtype.storm.task.TopologyContext;
+import backtype.storm.tuple.BatchTuple;
 import backtype.storm.tuple.TupleImplExt;
 
+import com.alibaba.jstorm.task.TaskBatchTransfer;
 import com.alibaba.jstorm.task.TaskTransfer;
 
 /**
@@ -34,7 +36,7 @@ import com.alibaba.jstorm.task.TaskTransfer;
 public class UnanchoredSend {
     public static void send(TopologyContext topologyContext, TaskSendTargets taskTargets, TaskTransfer transfer_fn, String stream, List<Object> values) {
 
-        List<Integer> tasks = taskTargets.get(stream, values);
+        List<Integer> tasks = taskTargets.get(stream, values, null, values.get(0));
         if (tasks.size() == 0) {
             return;
         }
@@ -46,6 +48,23 @@ public class UnanchoredSend {
             tup.setTargetTaskId(task);
 
             transfer_fn.transfer(tup);
+        }
+    }
+
+    public static void sendBatch(TopologyContext topologyContext, TaskSendTargets taskTargets, TaskTransfer transfer_fn, String stream, List<Object> values) {
+
+        java.util.List<Integer> tasks = taskTargets.get(stream, values, null, values.get(0));
+        if (tasks.size() == 0) {
+            return;
+        }
+
+        Integer taskId = topologyContext.getThisTaskId();
+        for (Integer task : tasks) {
+            TupleImplExt tup = new TupleImplExt(topologyContext, values, taskId, stream);
+            tup.setTargetTaskId(task);
+            BatchTuple batchTuple = new BatchTuple(taskId, 1);
+            batchTuple.addToBatch(tup);
+            transfer_fn.transfer(batchTuple);
         }
     }
 }

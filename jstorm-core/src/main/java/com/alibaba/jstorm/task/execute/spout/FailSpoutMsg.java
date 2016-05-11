@@ -17,6 +17,7 @@
  */
 package com.alibaba.jstorm.task.execute.spout;
 
+import com.alibaba.jstorm.daemon.worker.JStormDebugger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,14 +39,12 @@ public class FailSpoutMsg implements IAckMsg {
     private ISpout spout;
     private TupleInfo tupleInfo;
     private TaskBaseMetric task_stats;
-    private boolean isDebug = false;
 
-    public FailSpoutMsg(Object id, ISpout _spout, TupleInfo _tupleInfo, TaskBaseMetric _task_stats, boolean _isDebug) {
+    public FailSpoutMsg(Object id, ISpout _spout, TupleInfo _tupleInfo, TaskBaseMetric _task_stats) {
         this.id = id;
         this.spout = _spout;
         this.tupleInfo = _tupleInfo;
         this.task_stats = _task_stats;
-        this.isDebug = _isDebug;
     }
 
     public void run() {
@@ -61,7 +60,7 @@ public class FailSpoutMsg implements IAckMsg {
 
         task_stats.spout_failed_tuple(tupleInfo.getStream());
 
-        if (isDebug) {
+        if (JStormDebugger.isDebug(id)) {
             LOG.info("Failed message rootId: {}, messageId:{} : {}", id, msg_id, tupleInfo.getValues().toString());
         }
     }

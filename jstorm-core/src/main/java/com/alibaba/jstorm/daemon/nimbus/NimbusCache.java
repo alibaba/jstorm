@@ -85,7 +85,7 @@ public class NimbusCache {
                 memCache = new TimeoutMemCache();
                 memCache.init(conf);
             }
-        } catch (UnsupportedClassVersionError e) {
+        } catch (java.lang.UnsupportedClassVersionError e) {
 
             if (e.getMessage().indexOf("Unsupported major.minor version") >= 0) {
                 LOG.error("!!!Please update jdk version to 7 or higher!!!");

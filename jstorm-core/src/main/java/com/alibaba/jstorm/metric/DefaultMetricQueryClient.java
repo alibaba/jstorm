@@ -20,6 +20,16 @@ public class DefaultMetricQueryClient implements MetricQueryClient {
     }
 
     @Override
+    public boolean isInited() {
+        return true;
+    }
+
+    @Override
+    public String getIdentity(Map conf) {
+        return getClass().getCanonicalName();
+    }
+
+    @Override
     public List<MetricMeta> getMetricMeta(String clusterName, String topologyId, MetaType type, MetaFilter filter, Object arg) {
         return Lists.newArrayList();
     }
@@ -51,11 +61,21 @@ public class DefaultMetricQueryClient implements MetricQueryClient {
 
     @Override
     public MetricMeta getMetricMeta(String clusterName, String topologyId, MetaType metaType, long metricId) {
-        return null;
+        return new MetricMeta();
+    }
+
+    @Override
+    public MetricMeta getMetricMeta(String key) {
+        return new MetricMeta();
     }
 
     @Override
     public List<Object> getMetricData(long metricId, MetricType metricType, int win, long start, long end) {
+        return Lists.newArrayList();
+    }
+
+    @Override
+    public List<Object> getMetricData(long metricId, MetricType metricType, int win, long start, long end, int size) {
         return Lists.newArrayList();
     }
 

@@ -142,6 +142,21 @@ public class Zookeeper {
 
     }
 
+    public Integer getVersion(CuratorFramework zk, String path, boolean watch) throws Exception {
+        String npath = PathUtils.normalize_path(path);
+        Stat stat = null;
+        if (existsNode(zk, npath, watch)){
+            if (watch) {
+                stat = zk.checkExists().watched().forPath(PathUtils.normalize_path(path));
+            } else {
+                stat = zk.checkExists().forPath(PathUtils.normalize_path(path));
+            }
+            return Integer.valueOf(stat.getVersion());
+        }
+
+        return null;
+    }
+
     public byte[] getData(CuratorFramework zk, String path, boolean watch) throws Exception {
         String npath = PathUtils.normalize_path(path);
         try {

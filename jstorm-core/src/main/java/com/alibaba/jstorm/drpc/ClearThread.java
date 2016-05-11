@@ -18,13 +18,14 @@
 package com.alibaba.jstorm.drpc;
 
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 
+import backtype.storm.generated.DRPCRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import backtype.storm.Config;
-import backtype.storm.generated.DRPCExecutionException;
 
 import com.alibaba.jstorm.callback.RunnableCallback;
 import com.alibaba.jstorm.utils.JStormUtils;
@@ -52,7 +53,9 @@ public class ClearThread extends RunnableCallback {
             if (TimeUtils.time_delta(e.getValue()) > REQUEST_TIMEOUT_SECS) {
                 String id = e.getKey();
 
-                drpcService.getIdtoResult().put(id, new DRPCExecutionException("Request timed out"));
+                LOG.warn("Timeout DRPC request id: {} start at {}", id, e.getValue());
+                ConcurrentLinkedQueue<DRPCRequest> queue = drpcService.acquireQueue(drpcService.getIdtoFunction().get(id));
+                queue.remove(drpcService.getIdtoRequest().get(id));     //remove timeout request
                 Semaphore s = drpcService.getIdtoSem().get(id);
                 if (s != null) {
                     s.release();

@@ -41,7 +41,6 @@ import backtype.storm.utils.DisruptorQueue;
 import backtype.storm.utils.Utils;
 
 import com.alibaba.jstorm.utils.JStormUtils;
-import com.alibaba.jstorm.client.ConfigExtension;
 
 class NettyServer implements IConnection {
     private static final Logger LOG = LoggerFactory.getLogger(NettyServer.class);
@@ -58,13 +57,16 @@ class NettyServer implements IConnection {
     private final boolean isSyncMode;
 
     private ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues;
+    private DisruptorQueue recvControlQueue;
 
     @SuppressWarnings("rawtypes")
-    NettyServer(Map storm_conf, int port, boolean isSyncMode, ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues) {
+    NettyServer( Map storm_conf, int port, boolean isSyncMode, ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues,
+                DisruptorQueue recvControlQueue) {
         this.storm_conf = storm_conf;
         this.port = port;
         this.isSyncMode = isSyncMode;
         this.deserializeQueues = deserializeQueues;
+        this.recvControlQueue = recvControlQueue;
 
         // Configure the server.
         int buffer_size = Utils.getInt(storm_conf.get(Config.STORM_MESSAGING_NETTY_BUFFER_SIZE));
@@ -108,16 +110,27 @@ class NettyServer implements IConnection {
      * @throws InterruptedException
      */
     public void enqueue(TaskMessage message) {
+        short type = message.get_type();
 
-        int task = message.task();
+        if (type == 0){
+            //enqueue a received message
+            int task = message.task();
+            DisruptorQueue queue = deserializeQueues.get(task);
+            if (queue == null) {
+                LOG.warn("Received invalid message directed at port " + task + ". Dropping...");
+                return;
+            }
 
-        DisruptorQueue queue = deserializeQueues.get(task);
-        if (queue == null) {
-            LOG.debug("Received invalid message directed at port " + task + ". Dropping...");
-            return;
+            queue.publish(message.message());
+        }else if (type == 1){
+            //enqueue a control message
+            if (recvControlQueue == null) {
+                LOG.info("this worker's recvControlQueue is null, so  Dropping this control message");
+                return;
+            }
+            recvControlQueue.publish(message);
         }
 
-        queue.publish(message.message());
     }
 
     /**

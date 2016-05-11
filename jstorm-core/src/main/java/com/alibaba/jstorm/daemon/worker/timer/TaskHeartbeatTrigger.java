@@ -21,6 +21,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 
+import com.alibaba.jstorm.task.error.ErrorConstants;
+import com.alibaba.jstorm.task.execute.BoltCollector;
+import com.alibaba.jstorm.task.execute.spout.SpoutCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +31,6 @@ import backtype.storm.Config;
 import backtype.storm.spout.SpoutOutputCollector;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
-import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.TupleExt;
 import backtype.storm.tuple.TupleImplExt;
 import backtype.storm.tuple.Values;
@@ -48,10 +50,8 @@ public class TaskHeartbeatTrigger extends TimerTrigger {
     private String componentId;
     private TopologyContext sysTopologyCtx;
 
-    private BlockingQueue<Object> controlQueue = null;
-
-    private OutputCollector boltOutputCollector = null;
-    private SpoutOutputCollector spoutOutputCollector = null;
+    private BoltCollector boltCollector = null;
+    private SpoutCollector spoutCollector = null;
 
     private long executeThreadHbTime;
     private int taskHbTimeout;
@@ -62,11 +62,10 @@ public class TaskHeartbeatTrigger extends TimerTrigger {
 
     private UptimeComputer uptime;
 
-    public TaskHeartbeatTrigger(Map conf, String name, DisruptorQueue queue, BlockingQueue<Object> controlQueue, int taskId, String componentId,
+    public TaskHeartbeatTrigger(Map conf, String name, DisruptorQueue controlQueue, int taskId, String componentId,
             TopologyContext sysTopologyCtx, ITaskReportErr reportError) {
         this.name = name;
-        this.queue = queue;
-        this.controlQueue = controlQueue;
+        this.queue = controlQueue;
         this.opCode = TimerConstants.TASK_HEARTBEAT;
 
         this.taskId = taskId;
@@ -116,12 +115,8 @@ public class TaskHeartbeatTrigger extends TimerTrigger {
             }
 
             // Send message used to monitor execute thread 
-            TimerEvent event = new TimerEvent(opCode, object);
-            boolean ret = controlQueue.offer(event);
-            if (ret)
-                LOG.debug("Offer task HB event to controlQueue, taskId=" + taskId);
-            else
-                LOG.debug("Failed to offer task HB event to controlQueue, taskId=" + taskId);
+            queue.publish(new TimerEvent(opCode, object), false);
+            LOG.debug("Offer task HB event to controlQueue, taskId=" + taskId);
         } catch (Exception e) {
             LOG.warn("Failed to publish timer event to " + name, e);
             return;
@@ -131,24 +126,25 @@ public class TaskHeartbeatTrigger extends TimerTrigger {
 
     }
 
-    public void setSpoutOutputCollector(SpoutOutputCollector spoutOutputCollector) {
-        this.spoutOutputCollector = spoutOutputCollector;
+    public void setSpoutOutputCollector(SpoutCollector spoutCollector) {
+        this.spoutCollector = spoutCollector;
     }
 
-    public void setBoltOutputCollector(OutputCollector boltOutputCollector) {
-        this.boltOutputCollector = boltOutputCollector;
+    public void setBoltOutputCollector(BoltCollector boltCollector) {
+        this.boltCollector = boltCollector;
     }
 
     public void setExeThreadHbTime(long hbTime) {
         this.executeThreadHbTime = hbTime;
     }
 
+    //taskheartbeat send control message
     private void sendHbMsg() {
         List values = JStormUtils.mk_list(uptime.uptime());
-        if (spoutOutputCollector != null) {
-            spoutOutputCollector.emit(Common.TOPOLOGY_MASTER_HB_STREAM_ID, values);
-        } else if (boltOutputCollector != null) {
-            boltOutputCollector.emit(Common.TOPOLOGY_MASTER_HB_STREAM_ID, values);
+        if (spoutCollector != null) {
+            spoutCollector.emitCtrl(Common.TOPOLOGY_MASTER_HB_STREAM_ID, values, null);
+        } else if (boltCollector != null) {
+            boltCollector.emitCtrl(Common.TOPOLOGY_MASTER_HB_STREAM_ID, null, values);
         } else {
             LOG.warn("Failed to send hearbeat msg. OutputCollector has not been initialized!");
         }
@@ -158,7 +154,7 @@ public class TaskHeartbeatTrigger extends TimerTrigger {
         long currentTime = TimeUtils.current_time_secs();
         if (currentTime - executeThreadHbTime > taskHbTimeout) {
             String error = "No response from Task-" + taskId + ", last report time(sec) is " + executeThreadHbTime;
-            reportError.report(error);
+            reportError.report(error, ErrorConstants.WARN, ErrorConstants.CODE_TASK_NO_RESPONSE, ErrorConstants.DURATION_SECS_DEFAULT);
         }
     }
 }

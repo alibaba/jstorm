@@ -84,23 +84,7 @@ public class ContextMaker {
         Map stormConf = workerData.getStormConf();
         String topologyId = workerData.getTopologyId();
 
-        HashMap<String, Map<String, Fields>> componentToStreamToFields = new HashMap<String, Map<String, Fields>>();
-
-        Set<String> components = ThriftTopologyUtils.getComponentIds(topology);
-        for (String component : components) {
-
-            Map<String, Fields> streamToFieldsMap = new HashMap<String, Fields>();
-
-            Map<String, StreamInfo> streamInfoMap = ThriftTopologyUtils.getComponentCommon(topology, component).get_streams();
-            for (Entry<String, StreamInfo> entry : streamInfoMap.entrySet()) {
-                String streamId = entry.getKey();
-                StreamInfo streamInfo = entry.getValue();
-
-                streamToFieldsMap.put(streamId, new Fields(streamInfo.get_output_fields()));
-            }
-
-            componentToStreamToFields.put(component, streamToFieldsMap);
-        }
+        HashMap<String, Map<String, Fields>> componentToStreamToFields = workerData.generatecomponentToStreamToFields(topology);
 
         return new TopologyContext(topology, stormConf, workerData.getTasksToComponent(), workerData.getComponentToSortedTasks(), componentToStreamToFields,
                 topologyId, resourcePath, pidDir, taskId, workerData.getPort(), workerTasks, workerData.getDefaultResources(), workerData.getUserResources(),

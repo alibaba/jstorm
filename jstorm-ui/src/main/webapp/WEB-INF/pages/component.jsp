@@ -137,9 +137,9 @@
         <c:forEach var="task" items="${tasks}">
             <tr>
                 <td>
-                    <a href="task?cluster=${clusterName}&topology=${topologyId}&component=${task.component}&id=${task.task_id}"
+                    <a href="task?cluster=${clusterName}&topology=${topologyId}&component=${task.component}&id=${task.id}"
                        target="_blank">
-                            ${task.task_id}
+                            ${task.id}
                     </a>
                 </td>
                 <td>${task.component}</td>
@@ -148,7 +148,7 @@
                     <a href="supervisor?cluster=${clusterName}&host=${task.host}">
                             ${task.host}</a></td>
                 <td>${task.port}</td>
-                <td><ct:pretty type="uptime" input="${task.uptime}"/></td>
+                <td>${task.uptime}</td>
                 <td><ct:status status="${task.status}"/></td>
                 <td><ct:error e="${task.errors}"/></td>
                 <td>

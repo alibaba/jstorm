@@ -27,60 +27,37 @@
 
 <div class="container-fluid">
     <!-- ========================================================== -->
-    <!------------------------- nimbus summary --------------------->
+    <!------------------------- cluster summary --------------------->
     <!-- ========================================================== -->
-    <h2>Nimbus Summary</h2>
+    <h2>Cluster Summary</h2>
     <table class="table table-bordered table-hover table-striped center">
         <thead>
         <tr>
-            <th>Role</th>
-            <th>Host</th>
-            <th>Uptime</th>
+            <th>Cluster Name</th>
             <th>Supervisors</th>
             <th>Ports Usage</th>
-            <th>Tasks</th>
             <th>Topologies</th>
             <th>Version</th>
             <th>Conf</th>
-            <th>Logs</th>
         </tr>
         </thead>
         <tbody>
-        <c:forEach var="nb" items="${nimbus}" varStatus="index">
-            <tr>
-                <c:choose>
-                    <c:when test="${index.first}">
-                        <td>Nimbus Master</td>
-                    </c:when>
-                    <c:otherwise>
-                        <td>Nimbus Slave</td>
-                    </c:otherwise>
-                </c:choose>
-                <td>${nb.host}</td>
-                <td>${nb.uptime_secs}</td>
-                <c:if test="${index.first}">
-                    <td rowspan="${nimbus.size()}" class="middle">${nb.supervisor_num}</td>
-                    <td rowspan="${nimbus.size()}" class="middle">${nb.used_port_num} / ${nb.total_port_num}</td>
-                    <td rowspan="${nimbus.size()}" class="middle">${nb.task_num}</td>
-                    <td rowspan="${nimbus.size()}" class="middle">${nb.topology_num}</td>
-                </c:if>
-                <td>${nb.version}</td>
-                <td><a href="conf?name=${clusterName}" target="_blank">conf</a></td>
-                <td>
-                    <a href="files?cluster=${clusterName}&host=${nimbus.get(0).ip}&port=${nimbusPort}"
-                       target="_blank">log files</a> |
-                    <a href="log?cluster=${clusterName}&host=${nimbus.get(0).ip}&port=${nimbusPort}&file=nimbus.log"
-                       target="_blank">nimbus log</a></td>
-            </tr>
-        </c:forEach>
+        <tr>
+            <td>${cluster.clusterName}</td>
+            <td>${cluster.supervisors}</td>
+            <td>${cluster.slotsUsed} / ${cluster.slotsTotal}</td>
+            <td>${cluster.topologies}</td>
+            <td>${cluster.stormVersion}</td>
+            <td><a href="conf?name=${cluster.clusterName}" target="_blank">conf</a></td>
+        </tr>
         </tbody>
     </table>
 
     <c:if test="${clusterData != null}">
         <!-- ========================================================== -->
-        <!------------------------- nimbus stats --------------------->
+        <!------------------------- cluster stats --------------------->
         <!-- ========================================================== -->
-        <h2>Nimbus Stats</h2>
+        <h2>Cluster Stats</h2>
         <table class="table table-bordered table-striped center text-wrap">
             <thead class="center">
             <tr>
@@ -110,7 +87,7 @@
                     <tr id="chart-tr" class="hidden">
                         <c:forEach var="head" items="${clusterHead}">
                             <td class="topo-chart">
-                                <div class="chart-canvas" data-id="chart-${head}"></div>
+                                <div class="chart-canvas" id="chart-${head}"></div>
                             </td>
                         </c:forEach>
                     </tr>
@@ -126,6 +103,40 @@
             </tbody>
         </table>
     </c:if>
+
+    <!-- ========================================================== -->
+    <!------------------------- nimbus summary --------------------->
+    <!-- ========================================================== -->
+    <h2>Nimbus Summary</h2>
+    <table class="table table-bordered table-hover table-striped center">
+        <thead>
+        <tr>
+            <th>Role</th>
+            <th>Host</th>
+            <th>Uptime</th>
+            <th>Version</th>
+            <th>Logs</th>
+        </tr>
+        </thead>
+        <tbody>
+        <c:forEach var="nb" items="${nimbus}" varStatus="index">
+            <tr>
+                <td>${nb.status}</td>
+                <td>${nb.ip}:${nb.port}</td>
+                <td>${nb.nimbusUpTime}</td>
+                <td>${nb.version}</td>
+                <td>
+                    <a href="files?cluster=${clusterName}&host=${nimbus.get(0).ip}&port=${nimbusPort}"
+                       target="_blank">log files</a>
+                    <c:if test="${index.first}">
+                    | <a href="log?cluster=${clusterName}&host=${nimbus.get(0).ip}&port=${nimbusPort}&file=nimbus.log"
+                       target="_blank">nimbus log</a></td>
+                    </c:if>
+            </tr>
+        </c:forEach>
+        </tbody>
+    </table>
+
 
     <!-- ========================================================== -->
     <!------------------------- topology summary --------------------->
@@ -151,9 +162,9 @@
                 <td><a href="topology?id=${topo.id}&cluster=${clusterName}">${topo.name}</a></td>
                 <td>${topo.id}</td>
                 <td><ct:status status="${topo.status}"/></td>
-                <td><ct:pretty type="uptime" input="${topo.uptimeSecs}"/></td>
-                <td>${topo.numWorkers}</td>
-                <td>${topo.numTasks}</td>
+                <td>${topo.uptime}</td>
+                <td>${topo.workersTotal}</td>
+                <td>${topo.tasksTotal}</td>
                 <td>
                     <a href="conf?name=${clusterName}&type=topology&topology=${topo.id}" target="_blank">
                         conf
@@ -197,20 +208,20 @@
         <tbody>
         <c:forEach var="sv" items="${supervisors}">
             <tr>
-                <td><a href="supervisor?cluster=${clusterName}&host=${sv.host}">
-                        ${sv.host}</a></td>
-                <td><ct:host ip="${sv.host}"/></td>
-                <td><ct:pretty type="uptime" input="${sv.uptimeSecs}"/></td>
-                <td>${sv.numUsedWorkers} / ${sv.numWorkers}</td>
+                <td><a href="supervisor?cluster=${clusterName}&host=${sv.ip}">
+                        ${sv.ip}</a></td>
+                <td>${sv.host}</td>
+                <td>${sv.uptime}</td>
+                <td>${sv.slotsUsed} / ${sv.slotsTotal}</td>
                 <td>
-                    <a href="conf?name=${clusterName}&type=supervisor&host=${sv.host}" target="_blank">
+                    <a href="conf?name=${clusterName}&type=supervisor&host=${sv.ip}" target="_blank">
                         conf
                     </a>
                 </td>
                 <td>
-                    <a href="files?cluster=${clusterName}&host=${sv.host}&port=${supervisorPort}"
+                    <a href="files?cluster=${clusterName}&host=${sv.ip}&port=${supervisorPort}"
                        target="_blank">log files</a> |
-                    <a href="log?cluster=${clusterName}&host=${sv.host}&port=${supervisorPort}&file=supervisor.log"
+                    <a href="log?cluster=${clusterName}&host=${sv.ip}&port=${supervisorPort}&file=supervisor.log"
                        target="_blank">supervisor log</a></td>
             </tr>
         </c:forEach>
@@ -245,19 +256,21 @@
 </div>
 
 <jsp:include page="layout/_footer.jsp"/>
-<script src="assets/js/highcharts.js"></script>
+<script src="assets/js/echarts/echarts.js"></script>
 <script src="assets/js/storm.js"></script>
 <script>
     $(function () {
         $('[data-toggle="tooltip"]').tooltip();
 
-        //draw metrics highcharts
-        $.getJSON("api/v1/cluster/${clusterName}/summary/metrics", function (data) {
-            var thumbChart = new ThumbChart();
+        //draw metrics charts
+        $.getJSON("api/v2/cluster/${clusterName}/metrics", function (data) {
+            var echarts = new EChart();
+            data = data['metrics'];
+            var width = ($('.container-fluid').width() / data.length) - 2;
             data.forEach(function (e) {
-                var selector = 'div[data-id="chart-' + e.name + '"]';
-                var width = ($('.container-fluid').width() / data.length) - 2;
-                $(selector).highcharts("SparkLine", thumbChart.newOptions(e, width));
+                var selector = document.getElementById('chart-' + e.name);
+                selector.setAttribute("style", "width:"+ width + "; height: 100px");
+                echarts.init(selector, e);
             });
 
             $("#chart-tr").toggleClass("hidden");

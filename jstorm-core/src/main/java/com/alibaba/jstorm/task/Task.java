@@ -17,12 +17,16 @@
  */
 package com.alibaba.jstorm.task;
 
+import backtype.storm.Config;
+import backtype.storm.hooks.ITaskHook;
 import backtype.storm.messaging.IContext;
+import backtype.storm.serialization.KryoTupleDeserializer;
 import backtype.storm.serialization.KryoTupleSerializer;
 import backtype.storm.spout.ISpout;
 import backtype.storm.task.IBolt;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.utils.DisruptorQueue;
+import backtype.storm.utils.Utils;
 import backtype.storm.utils.WorkerClassLoader;
 import clojure.lang.Atom;
 import com.alibaba.jstorm.callback.AsyncLoopDefaultKill;
@@ -71,6 +75,7 @@ public class Task implements Runnable{
     private TaskReceiver taskReceiver;
     private Map<Integer, DisruptorQueue> innerTaskTransfer;
     private Map<Integer, DisruptorQueue> deserializeQueues;
+    private Map<Integer, DisruptorQueue> controlQueues;
     private AsyncLoopDefaultKill workHalt;
 
     private String topologyId;
@@ -94,7 +99,7 @@ public class Task implements Runnable{
 
     @SuppressWarnings("rawtypes")
     public Task(WorkerData workerData, int taskId) throws Exception {
-        openOrPrepareWasCalled = new Atom(Boolean.valueOf(false));
+        openOrPrepareWasCalled = new Atom(false);
 
         this.workerData = workerData;
         this.topologyContext = workerData.getContextMaker().makeTopologyContext(workerData.getSysTopology(), taskId, openOrPrepareWasCalled);
@@ -107,12 +112,18 @@ public class Task implements Runnable{
 
         this.innerTaskTransfer = workerData.getInnerTaskTransfer();
         this.deserializeQueues = workerData.getDeserializeQueues();
+        this.controlQueues = workerData.getControlQueues();
         this.topologyId = workerData.getTopologyId();
         this.context = workerData.getContext();
         this.workHalt = workerData.getWorkHalt();
         this.zkCluster =workerData.getZkCluster();
-        this.taskStats = new TaskBaseMetric(topologyId, componentId, taskId,
-                ConfigExtension.isEnableMetrics(workerData.getStormConf()));
+        this.taskStats = new TaskBaseMetric(topologyId, componentId, taskId);
+        //register auto hook
+        List<String> listHooks = Config.getTopologyAutoTaskHooks(stormConf);
+        for (String hook : listHooks){
+            ITaskHook iTaskHook = (ITaskHook)Utils.newInstance(hook);
+            userContext.addTaskHook(iTaskHook);
+        }
 
         LOG.info("Begin to deserialize taskObj " + componentId + ":" + this.taskId);
 
@@ -153,7 +164,11 @@ public class Task implements Runnable{
 
         // create task receive object
         TaskSendTargets sendTargets = makeSendTargets();
-        UnanchoredSend.send(topologyContext, sendTargets, taskTransfer, Common.SYSTEM_STREAM_ID, msg);
+
+        if (isTaskBatchTuple)
+            UnanchoredSend.sendBatch(topologyContext, sendTargets, taskTransfer, Common.SYSTEM_STREAM_ID, msg);
+        else
+            UnanchoredSend.send(topologyContext, sendTargets, taskTransfer, Common.SYSTEM_STREAM_ID, msg);
         return sendTargets;
     }
 
@@ -204,6 +219,7 @@ public class Task implements Runnable{
         else
             taskReceiver = new TaskReceiver(this, taskId, stormConf, topologyContext, innerTaskTransfer, taskStatus, taskName);
         deserializeQueues.put(taskId, taskReceiver.getDeserializeQueue());
+        
         return taskReceiver;
     }
 
@@ -271,6 +287,12 @@ public class Task implements Runnable{
             taskShutdownDameon=this.execute();
         }catch (Throwable e){
             LOG.error("init task take error", e);
+            if (reportErrorDie != null){
+                reportErrorDie.report(e);
+            }else {
+                throw new RuntimeException(e);
+            }
+
         }
     }
 
@@ -351,6 +373,10 @@ public class Task implements Runnable{
 		return deserializeQueues;
 	}
 
+    public Map<Integer, DisruptorQueue> getControlQueues() {
+        return controlQueues;
+    }
+
 	public String getTopologyId() {
 		return topologyId;
 	}
@@ -386,6 +412,5 @@ public class Task implements Runnable{
 	public boolean isTaskBatchTuple() {
 		return isTaskBatchTuple;
 	}
-    
-    
+
 }

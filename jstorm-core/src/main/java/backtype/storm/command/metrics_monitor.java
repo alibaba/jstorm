@@ -26,17 +26,11 @@ import java.util.Map;
 
 /**
  * Monitor topology
- * 
+ *
  * @author Basti
- * 
  */
 public class metrics_monitor {
-
-    /**
-     * @param args
-     */
     public static void main(String[] args) {
-        // TODO Auto-generated method stub
         if (args == null || args.length <= 1) {
             throw new InvalidParameterException("Should input topology name and enable flag");
         }
@@ -49,7 +43,7 @@ public class metrics_monitor {
             Map conf = Utils.readStormConfig();
             client = NimbusClient.getConfiguredClient(conf);
 
-            boolean isEnable = Boolean.valueOf(args[1]).booleanValue();
+            boolean isEnable = Boolean.valueOf(args[1]);
 
             MonitorOptions options = new MonitorOptions();
             options.set_isEnable(isEnable);

@@ -20,14 +20,13 @@ package com.alibaba.jstorm.task.backpressure;
 import java.util.List;
 import java.util.Map;
 
+import com.alibaba.jstorm.task.execute.spout.SpoutCollector;
 import com.alibaba.jstorm.utils.JStormUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.alibaba.jstorm.cluster.Common;
-import com.alibaba.jstorm.task.TaskTransfer;
 
-import backtype.storm.spout.SpoutOutputCollector;
 import backtype.storm.tuple.Values;
 import backtype.storm.utils.DisruptorQueue;
 
@@ -49,7 +48,7 @@ public class BackpressureController extends Backpressure {
 
     private boolean isBackpressureMode = false;
 
-    private SpoutOutputCollector outputCollector;
+    private SpoutCollector spoutCollector;
 
     private long maxBound, minBound;
 
@@ -63,8 +62,8 @@ public class BackpressureController extends Backpressure {
         this.minBound = 0l;
     }
 
-    public void setOutputCollector(SpoutOutputCollector outputCollector) {
-        this.outputCollector = outputCollector;
+    public void setSpoutCollector(SpoutCollector spoutCollector) {
+        this.spoutCollector = spoutCollector;
     }
 
     public void control(TopoMasterCtrlEvent ctrlEvent) {
@@ -151,7 +150,7 @@ public class BackpressureController extends Backpressure {
         queueSizeReduced = size > 10 ? size : 10;
         isBackpressureMode = true;
 
-        LOG.info("Start backpressure at spout-{}, sleepTime={}, queueSizeReduced={}, flowCtrlTime={}", taskId, sleepTime, queueSizeReduced, flowCtrlTime);
+        LOG.debug("Start backpressure at spout-{}, sleepTime={}, queueSizeReduced={}, flowCtrlTime={}", taskId, sleepTime, queueSizeReduced, flowCtrlTime);
     }
 
     private void stop() {
@@ -164,12 +163,12 @@ public class BackpressureController extends Backpressure {
             resetBackpressureInfo();
 
             TopoMasterCtrlEvent stopBp = new TopoMasterCtrlEvent(EventType.stopBackpressure, null);
-            outputCollector.emit(Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, new Values(stopBp));
+            spoutCollector.emitCtrl(Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, new Values(stopBp), null);
         } else {
             minBound = sleepTime;
         }
 
-        LOG.info("Stop backpressure at spout-{}, sleepTime={}, queueSizeReduced={}, flowCtrlTime={}", taskId, sleepTime, queueSizeReduced);
+        LOG.debug("Stop backpressure at spout-{}, sleepTime={}, queueSizeReduced={}, flowCtrlTime={}", taskId, sleepTime, queueSizeReduced);
     }
 
     public boolean isBackpressureMode() {

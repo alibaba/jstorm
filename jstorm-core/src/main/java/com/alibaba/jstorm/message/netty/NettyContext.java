@@ -85,11 +85,12 @@ public class NettyContext implements IContext {
     }
 
     @Override
-    public IConnection bind(String topology_id, int port, ConcurrentHashMap<Integer, DisruptorQueue> deserializedueue) {
+    public IConnection bind(String topology_id, int port, ConcurrentHashMap<Integer, DisruptorQueue> deserializedQueue,
+                            DisruptorQueue recvControlQueue) {
         IConnection retConnection = null;
         try {
 
-            retConnection = new NettyServer(storm_conf, port, isSyncMode, deserializedueue);
+            retConnection = new NettyServer(storm_conf, port, isSyncMode, deserializedQueue, recvControlQueue);
         } catch (Throwable e) {
             LOG.error("Failed to instance NettyServer", e.getCause());
             JStormUtils.halt_process(-1, "Failed to bind " + port);

@@ -17,7 +17,7 @@
  */
 package com.alibaba.jstorm.ui.tags;
 
-import backtype.storm.generated.ErrorInfo;
+import com.alibaba.jstorm.ui.model.ErrorEntity;
 import com.alibaba.jstorm.ui.utils.UIUtils;
 import com.google.common.base.Joiner;
 
@@ -27,7 +27,6 @@ import javax.servlet.jsp.tagext.SimpleTagSupport;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * @author Jark (wuchong.wc@alibaba-inc.com)
@@ -36,11 +35,11 @@ public class ErrorTag extends SimpleTagSupport {
 
     private static String[] WARNING_LIST = new String[]{"is full", "Backpressure", "backpressure"};
 
-    private List<ErrorInfo> e;
+    private List<ErrorEntity> e;
 
     private boolean isWarning = false;
 
-    public void setE(List<ErrorInfo> e) {
+    public void setE(List<ErrorEntity> e) {
         this.e = e;
     }
 
@@ -71,8 +70,8 @@ public class ErrorTag extends SimpleTagSupport {
     }
 
     private String getErrorMsg() {
-        for (ErrorInfo er : e) {
-            if (isWarningMsg(er.get_error())) {
+        for (ErrorEntity er : e) {
+            if (isWarningMsg(er.getError())) {
                 isWarning = true;
             }
         }
@@ -95,22 +94,22 @@ public class ErrorTag extends SimpleTagSupport {
 
     private String getErrorContent() {
         List<String> ret = new ArrayList<>();
-        for (ErrorInfo er : e) {
-            long ts = ((long) er.get_errorTimeSecs()) * 1000;
-            int index = er.get_error().lastIndexOf(",");
+        for (ErrorEntity er : e) {
+            long ts = ((long) er.getErrorTime()) * 1000;
+            int index = er.getError().lastIndexOf(",");
             if (index == -1) {
-                int idx = er.get_error().indexOf("\n");
-                int length = er.get_error().length();
+                int idx = er.getError().indexOf("\n");
+                int length = er.getError().length();
                 if (idx != -1) {
-                    String first_line = er.get_error().substring(0, idx);
-                    String rest_lines = er.get_error().substring(idx + 1, length - 2);
+                    String first_line = er.getError().substring(0, idx);
+                    String rest_lines = er.getError().substring(idx + 1, length - 2);
                     ret.add(first_line + " , at " + UIUtils.parseDateTime(ts));
                     ret.add(rest_lines);
                 }else{
-                    ret.add(er.get_error() + " , at " + UIUtils.parseDateTime(ts));
+                    ret.add(er.getError() + " , at " + UIUtils.parseDateTime(ts));
                 }
             } else {
-                ret.add(er.get_error() + ", at " + UIUtils.parseDateTime(ts));
+                ret.add(er.getError() + ", at " + UIUtils.parseDateTime(ts));
             }
         }
         Joiner joiner = Joiner.on("\n");

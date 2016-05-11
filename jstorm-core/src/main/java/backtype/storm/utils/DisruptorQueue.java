@@ -63,7 +63,7 @@ public abstract class DisruptorQueue implements IStatefulObject {
 
     public abstract void publish(Object obj, boolean block) throws InsufficientCapacityException;
 
-    public abstract void consumerStarted();
+    //public abstract void consumerStarted();
 
     public abstract void clear();
 

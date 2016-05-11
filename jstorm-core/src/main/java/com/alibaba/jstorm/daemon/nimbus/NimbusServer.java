@@ -31,6 +31,7 @@ import com.alibaba.jstorm.daemon.worker.hearbeat.SyncContainerHb;
 import com.alibaba.jstorm.schedule.CleanRunnable;
 import com.alibaba.jstorm.schedule.FollowerRunnable;
 import com.alibaba.jstorm.schedule.MonitorRunnable;
+import com.alibaba.jstorm.utils.DefaultUncaughtExceptionHandler;
 import com.alibaba.jstorm.utils.JStormServerUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -78,6 +79,9 @@ public class NimbusServer {
     private List<AsyncLoopThread> smartThreads = new ArrayList<AsyncLoopThread>();
 
     public static void main(String[] args) throws Exception {
+
+        Thread.setDefaultUncaughtExceptionHandler(new DefaultUncaughtExceptionHandler());
+
         // read configuration files
         @SuppressWarnings("rawtypes")
         Map config = Utils.readStormConfig();
@@ -127,6 +131,9 @@ public class NimbusServer {
 
             init(conf);
         } catch (Throwable e) {
+            if (e instanceof OutOfMemoryError) {
+                    LOG.error("Halting due to Out Of Memory Error...");
+                }
             LOG.error("Fail to run nimbus ", e);
         } finally {
             cleanup();
@@ -279,6 +286,8 @@ public class NimbusServer {
             }
 
         });
+        
+        //JStormUtils.registerJStormSignalHandler();
     }
 
     public void cleanup() {

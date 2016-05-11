@@ -1,4 +1,4 @@
-#!/usr/local/bin/thrift --gen java:beans,nocamel,hashcode
+#!/usr/local/bin/thrift --gen java:beans,nocamel,hashcode --gen py:utf8strings
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -216,7 +216,8 @@ struct MetricSnapshot {
   16: optional double p99;
   17: optional double p999;
   18: optional double stddev;
-  19: optional list<i64> points;
+  19: optional binary points;
+  20: optional i32 pointSize;
 }
 
 struct MetricInfo {
@@ -233,6 +234,8 @@ struct SupervisorWorkers {
 struct ErrorInfo {
   1: required string error;
   2: required i32 errorTimeSecs;
+  3: required string errorLevel;
+  4: required i32 errorCode;
 }
 
 struct ComponentSummary {

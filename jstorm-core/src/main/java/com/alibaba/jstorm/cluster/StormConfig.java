@@ -23,6 +23,7 @@ import backtype.storm.utils.LocalState;
 import backtype.storm.utils.Utils;
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.utils.JStormUtils;
+import com.alibaba.jstorm.utils.LoadConf;
 import com.alibaba.jstorm.utils.PathUtils;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -52,7 +53,7 @@ public class StormConfig {
     }
 
     public static Map read_yaml_config(String name) {
-        return Utils.findAndReadConfigFile(name, true);
+        return LoadConf.findAndReadYaml(name, true, false);
     }
 
     public static Map read_default_config() {
@@ -78,9 +79,9 @@ public class StormConfig {
     }
 
     public static HashMap<String, Object> getClassFields(Class<?> cls) throws IllegalArgumentException, IllegalAccessException {
-        Field[] list = cls.getDeclaredFields();
+        java.lang.reflect.Field[] list = cls.getDeclaredFields();
         HashMap<String, Object> rtn = new HashMap<String, Object>();
-        for (Field f : list) {
+        for (java.lang.reflect.Field f : list) {
             String name = f.getName();
             rtn.put(name, f.get(null).toString());
 

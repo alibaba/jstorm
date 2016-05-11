@@ -51,7 +51,8 @@ public interface IContext {
      * @param distribute true -- receive other worker's data
      * @return server side connection
      */
-    public IConnection bind(String topology_id, int port, ConcurrentHashMap<Integer, DisruptorQueue> deserializedueue);
+    public IConnection bind(String topology_id, int port, ConcurrentHashMap<Integer, DisruptorQueue> deserializedQueue, 
+            DisruptorQueue recvControlQueue);
 
     /**
      * This method establish a client side connection to a remote server

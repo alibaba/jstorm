@@ -37,14 +37,12 @@ public class SpoutTimeoutCallBack<K, V> implements ExpiredCallback<K, V> {
     private backtype.storm.spout.ISpout spout;
     private Map storm_conf;
     private TaskBaseMetric task_stats;
-    private boolean isDebug;
 
     public SpoutTimeoutCallBack(DisruptorQueue disruptorEventQueue, backtype.storm.spout.ISpout _spout, Map _storm_conf, TaskBaseMetric stat) {
         this.storm_conf = _storm_conf;
         this.disruptorEventQueue = disruptorEventQueue;
         this.spout = _spout;
         this.task_stats = stat;
-        this.isDebug = JStormUtils.parseBoolean(storm_conf.get(Config.TOPOLOGY_DEBUG), false);
     }
 
     /**
@@ -57,7 +55,7 @@ public class SpoutTimeoutCallBack<K, V> implements ExpiredCallback<K, V> {
         }
         try {
             TupleInfo tupleInfo = (TupleInfo) val;
-            FailSpoutMsg fail = new FailSpoutMsg(key, spout, (TupleInfo) tupleInfo, task_stats, isDebug);
+            FailSpoutMsg fail = new FailSpoutMsg(key, spout, (TupleInfo) tupleInfo, task_stats);
 
             disruptorEventQueue.publish(fail);
         } catch (Exception e) {

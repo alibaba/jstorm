@@ -21,88 +21,89 @@ package com.alibaba.jstorm.ui.model;
  * @author Jark (wuchong.wc@alibaba-inc.com)
  */
 public class ClusterEntity {
-    private String name;
-    private int supervisor_num;
-    private int topology_num;
-    private String ip;
-    private int port;   //logview port
-    private String version;
-    private int total_ports;
-    private int used_ports;
+    private String clusterName;
+    private int supervisors;
+    private int topologies;
+    private int taskTotal;
+    private String stormVersion;
+    private int slotsTotal;
+    private int slotsUsed;
+    private int slotsFree;
 
-    public ClusterEntity(String name, int supervisor_num, int topology_num, String ip, int port,
-                         String version, int total_ports, int used_ports) {
-        this.name = name;
-        this.supervisor_num = supervisor_num;
-        this.topology_num = topology_num;
-        this.ip = ip;
-        this.port = port;
-        this.version = version;
-        this.total_ports = total_ports;
-        this.used_ports = used_ports;
+
+    public ClusterEntity(String name, int supervisor_num, int topology_num,
+                         String version, int total_ports, int used_ports, int task_num) {
+        this.clusterName = name;
+        this.supervisors = supervisor_num;
+        this.topologies = topology_num;
+        this.stormVersion = version;
+        this.taskTotal = task_num;
+        this.slotsTotal = total_ports;
+        this.slotsUsed = used_ports;
+        this.slotsFree = total_ports - used_ports;
     }
 
-    public String getName() {
-        return name;
+    public String getClusterName() {
+        return clusterName;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setClusterName(String clusterName) {
+        this.clusterName = clusterName;
     }
 
-    public int getSupervisor_num() {
-        return supervisor_num;
+    public int getSupervisors() {
+        return supervisors;
     }
 
-    public void setSupervisor_num(int supervisor_num) {
-        this.supervisor_num = supervisor_num;
+    public void setSupervisors(int supervisors) {
+        this.supervisors = supervisors;
     }
 
-    public int getTopology_num() {
-        return topology_num;
+    public int getTopologies() {
+        return topologies;
     }
 
-    public void setTopology_num(int topology_num) {
-        this.topology_num = topology_num;
+    public void setTopologies(int topologies) {
+        this.topologies = topologies;
     }
 
-    public int getPort() {
-        return port;
+    public int getTaskTotal() {
+        return taskTotal;
     }
 
-    public void setPort(int port) {
-        this.port = port;
+    public void setTaskTotal(int taskTotal) {
+        this.taskTotal = taskTotal;
     }
 
-    public String getVersion() {
-        return version;
+    public String getStormVersion() {
+        return stormVersion;
     }
 
-    public void setVersion(String version) {
-        this.version = version;
+    public void setStormVersion(String stormVersion) {
+        this.stormVersion = stormVersion;
     }
 
-    public String getIp() {
-        return ip;
+    public int getSlotsTotal() {
+        return slotsTotal;
     }
 
-    public void setIp(String ip) {
-        this.ip = ip;
+    public void setSlotsTotal(int slotsTotal) {
+        this.slotsTotal = slotsTotal;
     }
 
-    public int getTotal_ports() {
-        return total_ports;
+    public int getSlotsUsed() {
+        return slotsUsed;
     }
 
-    public void setTotal_ports(int total_ports) {
-        this.total_ports = total_ports;
+    public void setSlotsUsed(int slotsUsed) {
+        this.slotsUsed = slotsUsed;
     }
 
-    public int getUsed_ports() {
-        return used_ports;
+    public int getSlotsFree() {
+        return slotsFree;
     }
 
-    public void setUsed_ports(int used_ports) {
-        this.used_ports = used_ports;
+    public void setSlotsFree(int slotsFree) {
+        this.slotsFree = slotsFree;
     }
 }

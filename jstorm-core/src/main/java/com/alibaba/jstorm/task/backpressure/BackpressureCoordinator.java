@@ -18,6 +18,7 @@
 package com.alibaba.jstorm.task.backpressure;
 
 import backtype.storm.generated.*;
+import backtype.storm.spout.SpoutOutputCollectorCb;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.Tuple;
@@ -26,6 +27,9 @@ import backtype.storm.tuple.Values;
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.cluster.*;
 import com.alibaba.jstorm.task.acker.Acker;
+import com.alibaba.jstorm.task.error.ErrorConstants;
+import com.alibaba.jstorm.task.execute.BoltCollector;
+import com.alibaba.jstorm.task.execute.spout.SpoutCollector;
 import com.alibaba.jstorm.task.master.TopoMasterCtrlEvent;
 import com.alibaba.jstorm.task.master.TopoMasterCtrlEvent.EventType;
 
@@ -103,7 +107,7 @@ public class BackpressureCoordinator extends Backpressure {
     }
 
     private Set<String> getInputSpoutsForBolt(StormTopology topology, String boltComponentId, Set<String> componentsTraversed) {
-        Set<String> ret = new TreeSet<String>();
+        Set<String> ret = new HashSet<String>();
 
         if (componentsTraversed == null) {
             componentsTraversed = new HashSet<String>();
@@ -116,7 +120,7 @@ public class BackpressureCoordinator extends Backpressure {
 
         ComponentCommon common = bolt.get_common();
         Set<GlobalStreamId> inputstreams = common.get_inputs().keySet();
-        Set<String> inputComponents = new TreeSet<String>();
+        Set<String> inputComponents = new HashSet<String>();
         for (GlobalStreamId streamId : inputstreams) {
             inputComponents.add(streamId.get_componentId());
         }
@@ -176,7 +180,7 @@ public class BackpressureCoordinator extends Backpressure {
         TopoMasterCtrlEvent updateBpConfig = new TopoMasterCtrlEvent(EventType.updateBackpressureConfig, new ArrayList<Object>());
         updateBpConfig.addEventValue(conf);
         Values values = new Values(updateBpConfig);
-        Set<Integer> targetTasks = new TreeSet<Integer>(taskIdToComponentId.keySet());
+        Set<Integer> targetTasks = new HashSet<Integer>(taskIdToComponentId.keySet());
         targetTasks.remove(topologyMasterId);
         targetTasks.removeAll(context.getComponentTasks(Acker.ACKER_COMPONENT_ID));
         sendBackpressureMessage(targetTasks, values, EventType.updateBackpressureConfig);
@@ -232,7 +236,7 @@ public class BackpressureCoordinator extends Backpressure {
 
     private void sendBackpressureMessage(Set<Integer> targetTasks, Values value, EventType backpressureType) {
         for (Integer taskId : targetTasks) {
-            output.emitDirect(taskId, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, value);
+            ((BoltCollector) (output.getDelegate())).emitDirectCtrl(taskId, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null, value);
             LOG.debug("Send " + backpressureType.toString() + " request to taskId-" + taskId);
         }
     }
@@ -244,17 +248,21 @@ public class BackpressureCoordinator extends Backpressure {
         boolean update = false;
         if (type.equals(EventType.stopBackpressure)) {
             String spoutComponentId = taskIdToComponentId.get(sourceTask);
-            SourceBackpressureInfo info = SourceTobackpressureInfo.remove(spoutComponentId);
+            SourceBackpressureInfo info = SourceTobackpressureInfo.get(spoutComponentId);
             if (info != null) {
                 info.getTasks().remove(sourceTask);
-                if (info.getTasks().size() == 0) {  
+                if (info.getTasks().isEmpty()) {
+                	SourceTobackpressureInfo.remove(spoutComponentId);
+                }
+
+                if (info.getTasks().isEmpty()) {  
                     for (Entry<String, TargetBackpressureInfo> entry : info.getTargetTasks().entrySet()) {
                         String componentId = entry.getKey();
 
                         // Make sure if all source spouts for this bolt are NOT under backpressure mode.
                         Set<String> sourceSpouts = getInputSpoutsForBolt(topology, componentId, null);
                         if (checkSpoutsUnderBackpressure(sourceSpouts) == false) {
-                            Set<Integer> tasks = new TreeSet<Integer>();
+                            Set<Integer> tasks = new HashSet<Integer>();
                             tasks.addAll(context.getComponentTasks(componentId));
                             sendBackpressureMessage(tasks, new Values(ctrlEvent), type);
                         }
@@ -281,7 +289,7 @@ public class BackpressureCoordinator extends Backpressure {
 
         TopoMasterCtrlEvent ctrlEvent = (TopoMasterCtrlEvent) input.getValueByField("ctrlEvent");
         EventType type = ctrlEvent.getEventType();
-        Set<Integer> notifyList = new TreeSet<Integer>();
+        Set<Integer> notifyList = new HashSet<Integer>();
         Values values = null;
         TargetBackpressureInfo info = null;
         boolean update = false;
@@ -316,7 +324,7 @@ public class BackpressureCoordinator extends Backpressure {
                     // cause the over control.
                     double taskBpRatio = Double.valueOf(info.getTasks().size()) / Double.valueOf(context.getComponentTasks(componentId).size()) ;
                     if (taskBpRatio >= triggerBpRatio) {
-                        Set<Integer> spoutTasks = new TreeSet<Integer>(context.getComponentTasks(spout));
+                        Set<Integer> spoutTasks = new HashSet<Integer>(context.getComponentTasks(spout));
                         if (spoutTasks != null) {
                             SourceTobackpressureInfo.get(spout).getTasks().addAll(spoutTasks);
                             notifyList.addAll(spoutTasks);
@@ -347,8 +355,10 @@ public class BackpressureCoordinator extends Backpressure {
                 }
 
                 if (sourceInfo != null && checkIntervalExpired(sourceInfo.getLastestTimeStamp())) {
-                    info.setTimeStamp(System.currentTimeMillis());
-                    Set<Integer> spoutTasks = new TreeSet<Integer>(context.getComponentTasks(spout));
+                	if (info != null) {
+                        info.setTimeStamp(System.currentTimeMillis());
+                	}
+                    Set<Integer> spoutTasks = new HashSet<Integer>(context.getComponentTasks(spout));
                     if (spoutTasks != null) {
                         notifyList.addAll(spoutTasks);
                     }
@@ -378,7 +388,7 @@ public class BackpressureCoordinator extends Backpressure {
 
     private Set<Integer> getTasksUnderBackpressure() {
         Set<Integer> ret = new HashSet<Integer>();
-
+        
         for (Entry<String, SourceBackpressureInfo> entry : SourceTobackpressureInfo.entrySet()) {
             SourceBackpressureInfo sourceInfo = entry.getValue();
             if (sourceInfo.getTasks().size() > 0) {
@@ -386,8 +396,7 @@ public class BackpressureCoordinator extends Backpressure {
 
                 for (Entry<String, TargetBackpressureInfo> targetEntry: sourceInfo.getTargetTasks().entrySet()) {
                     ret.addAll(targetEntry.getValue().getTasks());
-                }
-                
+                } 
             }
         }
 
@@ -405,7 +414,8 @@ public class BackpressureCoordinator extends Backpressure {
                 stringBuilder.append("opened: ");
                 stringBuilder.append(underTasks);
             }
-            zkCluster.report_task_error(context.getTopologyId(), context.getThisTaskId(), stringBuilder.toString(), BACKPRESSURE_TAG);
+            zkCluster.report_task_error(context.getTopologyId(), context.getThisTaskId(), stringBuilder.toString(),
+                    ErrorConstants.WARN, ErrorConstants.CODE_BP, ErrorConstants.DURATION_SECS_DEFAULT, BACKPRESSURE_TAG);
             zkCluster.set_backpressure_info(context.getTopologyId(), SourceTobackpressureInfo);
             LOG.info(stringBuilder.toString());
         } catch (Exception e) {

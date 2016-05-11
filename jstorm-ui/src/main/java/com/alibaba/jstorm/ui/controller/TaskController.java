@@ -26,6 +26,7 @@ import com.alibaba.jstorm.ui.utils.NimbusClientManager;
 import com.alibaba.jstorm.ui.utils.UIMetricUtils;
 import com.alibaba.jstorm.ui.utils.UIUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -53,6 +54,8 @@ public class TaskController {
                        @RequestParam(value = "id", required = true) String task_id,
                        @RequestParam(value = "win", required = false) String win,
                        ModelMap model) {
+        clusterName = StringEscapeUtils.escapeHtml(clusterName);
+        topology_id = StringEscapeUtils.escapeHtml(topology_id);
         long start = System.currentTimeMillis();
         int window = UIUtils.parseWindow(win);
         UIUtils.addWindowAttribute(model, window);
@@ -63,18 +66,19 @@ public class TaskController {
             //get task entity
             TopologyInfo topologyInfo = client.getClient().getTopologyInfo(topology_id);
             int id = JStormUtils.parseInt(task_id);
-            TaskEntity task = getTaskEntity(topologyInfo.get_tasks(), id, component);
+            TaskEntity task = UIUtils.getTaskEntity(topologyInfo.get_tasks(), id);
+            task.setComponent(component);
             model.addAttribute("task", task);
 
             //get task metric
             List<MetricInfo> taskStreamMetrics = client.getClient().getTaskAndStreamMetrics(topology_id, id);
 //            System.out.println("taskMetrics size:"+getSize(taskMetrics));
-            UITaskMetric taskMetric = getTaskMetric(taskStreamMetrics, component, id, window);
+            UITaskMetric taskMetric = UIMetricUtils.getTaskMetric(taskStreamMetrics, component, id, window);
             model.addAttribute("taskMetric", taskMetric);
             model.addAttribute("taskHead", UIMetricUtils.sortHead(taskMetric, UITaskMetric.HEAD));
 
             //get stream metric
-            List<UIStreamMetric> streamData = getStreamData(taskStreamMetrics, component, id, window);
+            List<UIStreamMetric> streamData = UIMetricUtils.getStreamMetrics(taskStreamMetrics, component, id, window);
             model.addAttribute("streamData", streamData);
             model.addAttribute("streamHead", UIMetricUtils.sortHead(streamData, UIStreamMetric.HEAD));
 
@@ -95,97 +99,4 @@ public class TaskController {
         return "task";
     }
 
-
-    private int getSize(List<MetricInfo> infos) {
-        int size = 0;
-        for (MetricInfo info : infos) {
-            size += info.get_metrics_size();
-        }
-        return size;
-    }
-
-
-    private TaskEntity getTaskEntity(List<TaskSummary> tasks, int id, String component) {
-        TaskEntity entity = null;
-        for (TaskSummary task : tasks) {
-            if (task.get_taskId() == id) {
-                entity = new TaskEntity(task);
-                entity.setComponent(component);
-                break;
-            }
-        }
-        return entity;
-    }
-
-
-    private UITaskMetric getTaskMetric(List<MetricInfo> taskStreamMetrics, String component, int id, int window) {
-        UITaskMetric taskMetric = new UITaskMetric(component, id);
-        if (taskStreamMetrics.size() > 1) {
-            MetricInfo info = taskStreamMetrics.get(0);
-            if (info != null) {
-                for (Map.Entry<String, Map<Integer, MetricSnapshot>> metric : info.get_metrics().entrySet()) {
-                    String name = metric.getKey();
-                    String[] split_name = name.split("@");
-                    int taskId = JStormUtils.parseInt(UIMetricUtils.extractTaskId(split_name));
-                    if (taskId != id) continue;
-
-                    //only handle the specific task
-                    String metricName = UIMetricUtils.extractMetricName(split_name);
-
-                    String parentComp = null;
-                    if (metricName != null && metricName.contains(".")) {
-                        parentComp = metricName.split("\\.")[0];
-                        metricName = metricName.split("\\.")[1];
-                    }
-
-                    MetricSnapshot snapshot = metric.getValue().get(window);
-                    taskMetric.setMetricValue(snapshot, parentComp, metricName);
-                }
-            }
-        }
-        taskMetric.mergeValue();
-//        System.out.println("taskMetric:"+taskMetric);
-        return taskMetric;
-    }
-
-
-    private List<UIStreamMetric> getStreamData(List<MetricInfo> taskStreamMetrics, String component, int id, int window) {
-        Map<String, UIStreamMetric> streamData = new HashMap<>();
-        if (taskStreamMetrics.size() > 1){
-            MetricInfo info = taskStreamMetrics.get(1);
-            if (info != null) {
-                for (Map.Entry<String, Map<Integer, MetricSnapshot>> metric : info.get_metrics().entrySet()) {
-                    String name = metric.getKey();
-                    String[] split_name = name.split("@");
-                    int taskId = JStormUtils.parseInt(UIMetricUtils.extractTaskId(split_name));
-                    if (taskId != id) continue;
-
-                    //only handle the specific task
-                    String metricName = UIMetricUtils.extractMetricName(split_name);
-                    String streamId = UIMetricUtils.extractStreamId(split_name);
-
-                    String parentComp = null;
-                    if (metricName != null && metricName.contains(".")) {
-                        parentComp = metricName.split("\\.")[0];
-                        metricName = metricName.split("\\.")[1];
-                    }
-
-                    MetricSnapshot snapshot = metric.getValue().get(window);
-
-                    UIStreamMetric streamMetric;
-                    if (streamData.containsKey(streamId)) {
-                        streamMetric = streamData.get(streamId);
-                    } else {
-                        streamMetric = new UIStreamMetric(component, streamId);
-                        streamData.put(streamId, streamMetric);
-                    }
-                    streamMetric.setMetricValue(snapshot, parentComp, metricName);
-                }
-            }
-        }
-        for (UIStreamMetric stream : streamData.values()) {
-            stream.mergeValue();
-        }
-        return new ArrayList<>(streamData.values());
-    }
 }

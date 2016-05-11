@@ -62,7 +62,12 @@
                 <!-- ========================================================== -->
                 <!------------------------- topology summary --------------------->
                 <!-- ========================================================== -->
-                <h2>Topology Summary</h2>
+                <h2>Topology Summary
+                    <a href="deepSearch?cluster=${clusterName}&tid=${topology.id}" class="btn btn-primary path pull-right"
+                       target="_blank" title="Deep search log for topology" data-toggle="tooltip" data-placement="top">
+                        <i class="glyphicon glyphicon-search"></i>&nbsp;Search Log</a>
+                </h2>
+
                 <table class="table table-bordered table-hover table-striped center">
                     <thead>
                     <tr>
@@ -154,7 +159,7 @@
                                 <tr id="chart-tr" class="hidden">
                                     <c:forEach var="head" items="${topologyHead}">
                                         <td class="topo-chart">
-                                            <div class="chart-canvas" data-id="chart-${head}"></div>
+                                            <div class="chart-canvas" id="chart-${head}"></div>
                                         </td>
                                     </c:forEach>
                                 </tr>
@@ -405,9 +410,9 @@
                     <c:forEach var="task" items="${taskData}">
                         <tr>
                             <td>
-                                <a href="task?cluster=${clusterName}&topology=${topology.id}&component=${task.component}&id=${task.task_id}"
+                                <a href="task?cluster=${clusterName}&topology=${topology.id}&component=${task.component}&id=${task.id}"
                                    target="_blank">
-                                        ${task.task_id}
+                                        ${task.id}
                                 </a>
                             </td>
                             <td>
@@ -419,7 +424,7 @@
                             <td>${task.type}</td>
                             <td>${task.host}</td>
                             <td>${task.port}</td>
-                            <td><ct:pretty type="uptime" input="${task.uptime}"/></td>
+                            <td>${task.uptime}</td>
                             <td><ct:status status="${task.status}"/></td>
                             <td><ct:error e="${task.errors}"/></td>
                             <td>
@@ -442,8 +447,8 @@
 </div>
 
 <jsp:include page="layout/_footer.jsp"/>
-<script src="assets/js/highcharts.js"></script>
 <script src="assets/js/vis.min.js"></script>
+<script src="assets/js/echarts/echarts.js"></script>
 <script src="assets/js/storm.js"></script>
 <script>
     $(function () {
@@ -457,13 +462,15 @@
             async: false
         });
 
-        //draw metrics highcharts
-        $.getJSON("api/v1/cluster/${clusterName}/topology/${topology.id}/summary/metrics", function (data) {
-            var thumbChart = new ThumbChart();
+        //draw metrics charts
+        $.getJSON("api/v2/cluster/${clusterName}/topology/${topology.id}/metrics", function (data) {
+            var echarts = new EChart();
+            data = data['metrics'];
+            var width = (container_width / data.length) - 2;
             data.forEach(function (e) {
-                var selector = 'div[data-id="chart-' + e.name + '"]';
-                var width = (container_width / data.length) - 2;
-                $(selector).highcharts("SparkLine", thumbChart.newOptions(e, width));
+                var selector = document.getElementById('chart-' + e.name);
+                selector.setAttribute("style", "width:"+ width + "; height: 100px");
+                echarts.init(selector, e);
             });
 
             $("#chart-tr").toggleClass("hidden");
@@ -481,13 +488,13 @@
         });
 
         //draw vis topology graph
-        $.getJSON("api/v1/cluster/${clusterName}/topology/${topology.id}/graph", function (data) {
+        $.getJSON("api/v2/cluster/${clusterName}/topology/${topology.id}/graph", function (data) {
             if (data.error){
                 $('#topology-graph').hide();
                 $('#topology-graph-tips').html("<p class='text-muted'>" + data.error + "</p>");
                 return;
             }else{
-                data = data.data;
+                data = data.graph;
             }
 
             tableData = new VisTable().newData(data);

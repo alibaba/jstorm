@@ -17,18 +17,15 @@
  */
 package com.alipay.dw.jstorm.example.sequence;
 
+import backtype.storm.topology.TopologyBuilder;
+import com.alibaba.jstorm.client.ConfigExtension;
+import com.alibaba.jstorm.client.WorkerAssignment;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import backtype.storm.topology.TopologyBuilder;
-
-import com.alibaba.jstorm.client.ConfigExtension;
-import com.alibaba.jstorm.client.WorkerAssignment;
 
 public class SequenceTopologyUserDefine extends SequenceTopology {
 	private static Logger LOG = LoggerFactory

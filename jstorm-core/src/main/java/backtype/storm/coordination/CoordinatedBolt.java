@@ -24,6 +24,7 @@ import backtype.storm.generated.GlobalStreamId;
 import java.util.Collection;
 import backtype.storm.Constants;
 import backtype.storm.generated.Grouping;
+import backtype.storm.task.ICollectorCallback;
 import backtype.storm.task.IOutputCollector;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
@@ -80,21 +81,23 @@ public class CoordinatedBolt implements IRichBolt {
     }
 
     public class CoordinatedOutputCollector implements IOutputCollector {
-        IOutputCollector _delegate;
+        OutputCollector _delegate;
 
-        public CoordinatedOutputCollector(IOutputCollector delegate) {
+        public CoordinatedOutputCollector(OutputCollector delegate) {
             _delegate = delegate;
         }
 
         public List<Integer> emit(String stream, Collection<Tuple> anchors, List<Object> tuple) {
-            List<Integer> tasks = _delegate.emit(stream, anchors, tuple);
-            updateTaskCounts(tuple.get(0), tasks);
+            List<Integer> tasks = _delegate.emit(stream, anchors, tuple, new CollectorCb(tuple.get(0)));
+            
             return tasks;
         }
 
         public void emitDirect(int task, String stream, Collection<Tuple> anchors, List<Object> tuple) {
             updateTaskCounts(tuple.get(0), Arrays.asList(task));
             _delegate.emitDirect(task, stream, anchors, tuple);
+            // due to here do updateTaskCounts, so we do flush operation
+            _delegate.flush();
         }
 
         public void ack(Tuple tuple) {
@@ -137,6 +140,20 @@ public class CoordinatedBolt implements IRichBolt {
                         taskEmittedTuples.put(task, newCount);
                     }
                 }
+            }
+        }
+        
+        class CollectorCb implements ICollectorCallback {
+            Object id;
+            
+            public CollectorCb(Object id) {
+                this.id = id;
+            }
+
+            @Override
+            public void execute(List<Integer> outTasks) {
+                // TODO Auto-generated method stub
+                updateTaskCounts(id, outTasks);
             }
         }
     }
@@ -224,6 +241,8 @@ public class CoordinatedBolt implements IRichBolt {
     }
 
     private boolean checkFinishId(Tuple tup, TupleType type) {
+        _collector.flush();
+        
         Object id = tup.getValue(0);
         boolean failed = false;
 
@@ -250,15 +269,18 @@ public class CoordinatedBolt implements IRichBolt {
                         if (!(_sourceArgs.isEmpty() || type != TupleType.REGULAR)) {
                             throw new IllegalStateException("Coordination condition met on a non-coordinating tuple. Should be impossible");
                         }
+                        _collector.flush();
                         Iterator<Integer> outTasks = _countOutTasks.iterator();
                         while (outTasks.hasNext()) {
                             int task = outTasks.next();
                             int numTuples = get(track.taskEmittedTuples, task, 0);
                             _collector.emitDirect(task, Constants.COORDINATED_STREAM_ID, tup, new Values(id, numTuples));
+                            
                         }
                         for (Tuple t : track.ackTuples) {
                             _collector.ack(t);
                         }
+                        
                         track.finished = true;
                         _tracked.remove(id);
                     }
@@ -280,6 +302,8 @@ public class CoordinatedBolt implements IRichBolt {
                 }
                 _tracked.remove(id);
                 failed = true;
+            }finally {
+                _collector.flush();
             }
         }
         return failed;

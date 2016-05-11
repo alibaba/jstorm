@@ -57,26 +57,6 @@ public class MetricDataConverter {
         return data;
     }
 
-    public static TimerData toTimerData(MetricSnapshot snapshot, int win) {
-        TimerData data = new TimerData();
-        convertBase(snapshot, data, win);
-
-        data.setMin(snapshot.get_min());
-        data.setMax(snapshot.get_max());
-        data.setP50(snapshot.get_p50());
-        data.setP75(snapshot.get_p75());
-        data.setP95(snapshot.get_p95());
-        data.setP98(snapshot.get_p98());
-        data.setP99(snapshot.get_p99());
-        data.setP999(snapshot.get_p999());
-        data.setMean(snapshot.get_mean());
-        data.setM1(snapshot.get_m1());
-        data.setM5(snapshot.get_m5());
-        data.setM15(snapshot.get_m15());
-
-        return data;
-    }
-
     private static void convertBase(MetricSnapshot snapshot, MetricBaseData data, int win) {
         long newTs = TimeUtils.alignTimeToWin(snapshot.get_ts(), win);
         data.setWin(win);

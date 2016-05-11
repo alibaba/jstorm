@@ -69,19 +69,15 @@ public class FollowerRunnable implements Runnable {
     public FollowerRunnable(final NimbusData data, int sleepTime) {
         this.data = data;
         this.sleepTime = sleepTime;
-
+        boolean isLocaliP;
         if (!ConfigExtension.isNimbusUseIp(data.getConf())) {
             this.hostPort = NetWorkUtils.hostname() + ":" + String.valueOf(Utils.getInt(data.getConf().get(Config.NIMBUS_THRIFT_PORT)));
+            isLocaliP = NetWorkUtils.hostname().equals("localhost");
         } else {
             this.hostPort = NetWorkUtils.ip() + ":" + String.valueOf(Utils.getInt(data.getConf().get(Config.NIMBUS_THRIFT_PORT)));
+            isLocaliP = NetWorkUtils.ip().equals("127.0.0.1");
         }
         try {
-
-            String[] hostfigs = this.hostPort.split(":");
-            boolean isLocaliP = false;
-            if (hostfigs.length > 0) {
-                isLocaliP = hostfigs[0].equals("127.0.0.1");
-            }
             if (isLocaliP) {
                 throw new Exception("the hostname which Nimbus get is localhost");
             }
@@ -98,7 +94,10 @@ public class FollowerRunnable implements Runnable {
             throw new RuntimeException();
         }
         try{
-            update_nimbus_detail();
+            StormClusterState zkClusterState = data.getStormClusterState();
+            if (!zkClusterState.leader_existed()) {
+                this.tryToBeLeader(data.getConf());
+            }
         }catch (Exception e){
             LOG.error("register detail of nimbus fail!", e);
             throw new RuntimeException();

@@ -26,13 +26,42 @@
 
 <div class="container-fluid">
     <h2>View Log File:
-        <span class="path label label-primary">
+        <code class="path">
             ${dir}/${logName}
-        </span>
+        </code>
         <span class="path pull-right">
             [${host}]
         </span>
     </h2>
+
+
+    <div class="form-inline">
+    <form class="form-group" action="logSearch" method="get">
+        <input type="hidden" name="cluster" value="${clusterName}" >
+        <input type="hidden" name="host" value="${host}" >
+        <input type="hidden" name="workerPort" value="${workerPort}" >
+        <input type="hidden" name="port" value="${logServerPort}" >
+        <input type="hidden" name="dir" value="${dir}" >
+        <input type="hidden" name="file" value="${logName}" >
+        <input type="hidden" name="tid" value="${topologyId}" >
+        <div class="form-group">
+            <label>Log Search:</label>
+            <div class="input-group">
+                <input type="text" class="form-control" name="key">
+              <span class="input-group-btn">
+                <button class="btn btn-default" type="submit">Search</button>
+              </span>
+            </div><!-- /input-group -->
+        </div>
+    </form>
+    <div class="form-group">
+        <a href="download?host=${host}&port=${logServerPort}&file=${logName}&dir=${dir}"
+           target="_blank" title="Max download size: 10MB" data-toggle="tooltip" data-placement="top">
+            <button class="btn btn-primary btn-sm path">Download Log</button>
+        </a>
+    </div>
+    </div>
+
     <hr/>
 
     <div id="html-data">
@@ -65,11 +94,15 @@
 <jsp:include page="layout/_footer.jsp"/>
 <script src="assets/js/hilitor.js"></script>
 <script>
-    var myHilitor; // global variable
-    document.addEventListener("DOMContentLoaded", function () {
-        myHilitor = new Hilitor("html-data");
-        myHilitor.apply("error exception");
-    }, false);
+    $(function(){
+        $('[data-toggle="tooltip"]').tooltip();
+
+        var myHilitor; // global variable
+        document.addEventListener("DOMContentLoaded", function () {
+            myHilitor = new Hilitor("html-data");
+            myHilitor.apply("error exception");
+        }, false);
+    });
 </script>
 </body>
 </html>

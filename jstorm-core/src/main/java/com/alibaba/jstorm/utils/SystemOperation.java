@@ -18,6 +18,9 @@
 package com.alibaba.jstorm.utils;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -45,22 +48,12 @@ public class SystemOperation {
     }
 
     public static String exec(String cmd) throws IOException {
-        LOG.debug("Shell cmd: " + cmd);
-        Process process = new ProcessBuilder(new String[] { "/bin/bash", "-c", cmd }).start();
-        try {
-            process.waitFor();
-            String output = IOUtils.toString(process.getInputStream());
-            String errorOutput = IOUtils.toString(process.getErrorStream());
-            LOG.debug("Shell Output: " + output);
-            if (errorOutput.length() != 0) {
-                LOG.error("Shell Error Output: " + errorOutput);
-                throw new IOException(errorOutput);
-            }
-            return output;
-        } catch (InterruptedException ie) {
-            throw new IOException(ie.toString());
-        }
+        List<String> commands = new ArrayList<String>();
+        commands.add("/bin/bash");
+        commands.add("-c");
+        commands.add(cmd);
 
+        return JStormUtils.launchProcess(cmd, commands, new HashMap<String, String>(), false);
     }
 
     public static void main(String[] args) throws IOException {

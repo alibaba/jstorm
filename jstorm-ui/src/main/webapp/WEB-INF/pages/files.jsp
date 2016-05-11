@@ -83,6 +83,7 @@
                     <th>File Name</th>
                     <th>Modification Time</th>
                     <th>Size</th>
+                    <th>Action</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -93,6 +94,12 @@
                                target="_blank">${file.fileName}</a></td>
                         <td><ct:pretty input="${file.modifyTime}" type="datetime"/></td>
                         <td data-order="${file.size}"><ct:pretty input="${file.size}" type="filesize"/></td>
+                        <td>
+                            <a href="download?host=${host}&port=${port}&file=${file.fileName}&dir=${parent}"
+                               target="_blank" title="Max download size: 10MB" data-toggle="tooltip" data-placement="top">
+                                <button class="btn btn-primary">Download</button>
+                            </a>
+                        </td>
                     </tr>
                 </c:forEach>
                 </tbody>
@@ -105,4 +112,10 @@
 
 <jsp:include page="layout/_footer.jsp"/>
 </body>
+<script>
+    $(function () {
+        $('[data-toggle="tooltip"]').tooltip();
+    });
+
+</script>
 </html>

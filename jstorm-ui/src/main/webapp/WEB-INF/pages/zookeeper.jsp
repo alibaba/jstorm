@@ -74,7 +74,7 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="row panel panel-default">
+                <div class="panel panel-default">
                     <div class="panel-heading">Node Data</div>
                     <div class="panel-body">
                         <textarea rows="19" cols="69" style="overflow: auto;" id="data" readonly="readonly"></textarea>
@@ -92,9 +92,11 @@
         </div>
     </div>
 </div>
-<script>
-    showZKRoot();
-</script>
 <jsp:include page="layout/_footer.jsp"/>
 </body>
+<script>
+    $(function() {
+        showZKRoot();
+    });
+</script>
 </html>

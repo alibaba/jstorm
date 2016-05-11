@@ -1137,6 +1137,12 @@ public class Config extends HashMap<String, Object> {
     public static final Object TOPOLOGY_EXECUTOR_RECEIVE_BUFFER_SIZE_SCHEMA = ConfigValidation.PowerOf2Validator;
 
     /**
+     * The size of the Disruptor receive control queue for each executor. Must be a power of 2.
+     */
+    public static final String TOPOLOGY_CTRL_BUFFER_SIZE = "topology.ctrl.buffer.size";
+    public static final Object TOPOLOGY_CTRL_BUFFER_SIZE_SCHEMA = ConfigValidation.PowerOf2Validator;
+
+    /**
      * The maximum number of messages to batch from the thread receiving off the network to the executor queues. Must be a power of 2.
      */
     public static final String TOPOLOGY_RECEIVER_BUFFER_SIZE = "topology.receiver.buffer.size";
@@ -1305,6 +1311,12 @@ public class Config extends HashMap<String, Object> {
     public static final String TOPOLOGY_ISOLATED_MACHINES = "topology.isolate.machines";
     public static final Object TOPOLOGY_ISOLATED_MACHINES_SCHEMA = Number.class;
 
+    /**
+     * FQCN of a class that implements {@code ITopologyActionNotifierPlugin} @see backtype.storm.nimbus.ITopologyActionNotifierPlugin for details.
+     */
+    public static final String NIMBUS_TOPOLOGY_ACTION_NOTIFIER_PLUGIN = "nimbus.topology.action.notifier.plugin.class";
+    public static final Object NIMBUS_TOPOLOGY_ACTION_NOTIFIER_PLUGIN_SCHEMA = ConfigValidation.StringsValidator;
+
 
     public static void setClasspath(Map conf, String cp) {
         conf.put(Config.TOPOLOGY_CLASSPATH, cp);
@@ -1365,6 +1377,12 @@ public class Config extends HashMap<String, Object> {
     public static void registerSerialization(Map conf, Class klass, Class<? extends Serializer> serializerClass) {
         Map<String, String> register = new HashMap<String, String>();
         register.put(klass.getName(), serializerClass.getName());
+        getRegisteredSerializations(conf).add(register);
+    }
+
+    public static void registerSerialization(Map conf, String klass, Class<? extends Serializer> serializerClass) {
+        Map<String, String> register = new HashMap<String, String>();
+        register.put(klass, serializerClass.getName());
         getRegisteredSerializations(conf).add(register);
     }
 
@@ -1464,10 +1482,16 @@ public class Config extends HashMap<String, Object> {
 
     private static List getRegisteredSerializations(Map conf) {
         List ret;
-        if (!conf.containsKey(Config.TOPOLOGY_KRYO_REGISTER)) {
+        Object existing = conf.get(Config.TOPOLOGY_KRYO_REGISTER);
+        if (existing == null) {
             ret = new ArrayList();
         } else {
-            ret = new ArrayList((List) conf.get(Config.TOPOLOGY_KRYO_REGISTER));
+            if (existing instanceof Map) {
+                ret = new ArrayList();
+                ret.add(existing);
+            } else {
+                ret = (List) existing;
+            }
         }
         conf.put(Config.TOPOLOGY_KRYO_REGISTER, ret);
         return ret;
@@ -1490,5 +1514,15 @@ public class Config extends HashMap<String, Object> {
 
     public void setKryoRegisterRequired(boolean fallback) {
         setKryoRegisterRequired(this, fallback);
+    }
+
+    public static List getTopologyAutoTaskHooks(Map conf) {
+        List ret;
+        if (!conf.containsKey(Config.TOPOLOGY_AUTO_TASK_HOOKS)) {
+            ret = new ArrayList();
+        } else {
+            ret = new ArrayList((List) conf.get(Config.TOPOLOGY_AUTO_TASK_HOOKS));
+        }
+        return ret;
     }
 }

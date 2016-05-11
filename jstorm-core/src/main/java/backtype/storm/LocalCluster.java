@@ -19,6 +19,7 @@ package backtype.storm;
 
 import backtype.storm.generated.*;
 import backtype.storm.utils.Utils;
+import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.utils.JStormUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -86,9 +87,10 @@ public class LocalCluster implements ILocalCluster {
         // TODO Auto-generated method stub
         if (!Utils.isValidConf(conf))
             throw new RuntimeException("Topology conf is not json-serializable");
-        JStormUtils.setLocalMode(true);
-        conf.put(Config.STORM_CLUSTER_MODE, "local");
-
+        
+        conf.putAll(LocalUtils.getLocalBaseConf());
+        conf.putAll(Utils.readCommandLineOpts());
+        
         try {
             if (submitOpts == null) {
                 state.getNimbus().submitTopology(topologyName, null, Utils.to_json(conf), topology);
@@ -173,6 +175,8 @@ public class LocalCluster implements ILocalCluster {
         JStormUtils.sleepMs(10 * 1000);
         this.state.clean();
         instance = null;
+        //wait 10 second to exit to make run multiple junit test
+        JStormUtils.sleepMs(10 * 1000);
     }
 
     @Override

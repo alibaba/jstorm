@@ -51,7 +51,9 @@ public class TimeUtils {
         return System.currentTimeMillis() - time_ms;
     }
 
+    public static final long MS_PER_SEC = 1000l;
     public static final long NS_PER_US = 1000l;
+    public static final long US_PER_MS = 1000l;
 
     public static final int ONE_SEC = 1;
     public static final int SEC_PER_MIN = 60;
