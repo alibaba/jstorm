@@ -100,4 +100,8 @@ public class MessageId {
         }
         return new MessageId(anchorsToIds);
     }
+
+    public boolean isAnchored() {
+        return _anchorsToIds!= null && _anchorsToIds.size() > 0;
+    }
 }

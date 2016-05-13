@@ -175,7 +175,10 @@ public class BoltExecutors extends BaseExecutors implements EventHandler {
 
     private void processTupleEvent(Tuple tuple) {
         task_stats.recv_tuple(tuple.getSourceComponent(), tuple.getSourceStreamId());
-        tuple_start_times.put(tuple, System.currentTimeMillis());
+
+        if(ackerNum > 0 && tuple.getMessageId().isAnchored()) {
+            tuple_start_times.put(tuple, System.currentTimeMillis());
+        }
 
         try {
             if (!isSystemBolt && tuple.getSourceStreamId().equals(Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID)) {
