@@ -115,7 +115,7 @@ public class TaskHeartbeatTrigger extends TimerTrigger {
             }
 
             // Send message used to monitor execute thread 
-            queue.publish(new TimerEvent(opCode, object), false);
+            queue.publish(new TimerEvent(opCode, object), true);
             LOG.debug("Offer task HB event to controlQueue, taskId=" + taskId);
         } catch (Exception e) {
             LOG.warn("Failed to publish timer event to " + name, e);
