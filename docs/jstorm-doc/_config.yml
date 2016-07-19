@@ -21,9 +21,21 @@ github_username:  longda
 markdown: kramdown
 highlighter: pygments
 
-layout: 
+#------------------------------------------------------------------------------
+# BUILD CONFIG
+#------------------------------------------------------------------------------
+# These variables configure the jekyll build (./build_docs.sh). You don't need
+# to change anything here.
+#------------------------------------------------------------------------------
+
+defaults:
+  -
+    scope:
+      path: ""
     values:
-        layout: plain
+      layout: plain
+      top-nav-pos: 99999 # Move to end
+      sub-nav-pos: 99999 # Move to end
 
 host: 127.0.0.1
 
