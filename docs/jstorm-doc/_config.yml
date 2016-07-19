@@ -43,3 +43,7 @@ kramdown:
   input: GFM # GitHub syntax
   hard_wrap: false # Don't translate new lines to <br>s
   toc_levels: 1..3 # Include h1-h3 for ToC
+
+# News Posts
+paginate: 10
+paginate_path: "blog/page:num"
