@@ -17,7 +17,7 @@ specific language governing permissions and limitations
 under the License.
 -->
 <!--
-{% capture quickstart %}{{site.baseurl}}/quickstart{% endcapture %}
+{% capture Example %}{{site.baseurl}}/Example{% endcapture %}
 {% capture setup %}{{site.baseurl}}/setup{% endcapture %}
 {% capture apis %}{{site.baseurl}}/apis{% endcapture %}
 {% capture libs %}{{site.baseurl}}/libs{% endcapture %}
@@ -40,50 +40,50 @@ under the License.
         <!-- The navigation links. -->
         <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
           <ul class="nav navbar-nav">
-			<!-- Performance -->
-            <li class="hidden-sm {% if page.url == '/' %}active{% endif %}"><a href="{{ site.baseurl}}/">Performance</a></li>
-
-			<!-- Features -->
-            <li class="hidden-sm {% if page.url == '/features/' %}active{% endif %}"><a href="{{ site.baseurl}}/features/">Features</a></li>
-
-            <!-- Quickstart -->
-            <li class="dropdown{% if page.url contains '/quickstart/' %} active{% endif %}">
-              <a href="{{ quickstart }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Quickstart<span class="caret"></span></a>
-              <ul class="dropdown-menu" role="menu">
-                {% assign quickstart_group = (site.pages | where: "top-nav-group" , "quickstart" | sort: "top-nav-pos") %}
-                {% for quickstart_page in quickstart_group %}
-                <li class="{% if page.url contains quickstart_page.url %}active{% endif %}"><a href="{{ site.baseurl }}{{ quickstart_page.url }}">{% if quickstart_page.top-nav-title %}{{ quickstart_page.top-nav-title }}{% else %}{{ quickstart_page.title }}{% endif %}</a></li>
-                {% endfor %}
-              </ul>
-            </li>
+            <!-- Example -->
+            <li class="hidden-sm {% if page.url contains '/Example'/ %}active{% endif %}"><a href="{{ site.baseurl}}/Example/">Example</a></li>
 
             <!-- Downloads -->
-            <li class="hidden-sm {% if page.url contains 'downloads' %}active{% endif %}"><a href="{{ site.baseurl}}/downloads/">Downloads</a></li>
+            <li class="hidden-sm {% if page.url contains '/Downloads'/ %}active{% endif %}"><a href="{{ site.baseurl}}/Downloads/">Downloads</a></li>
 
-            <!-- Advance -->
-            <li class="dropdown{% if page.url contains '/advance/' %} active{% endif %}">
-              <a href="{{ advance }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Advance <span class="caret"></span></a>
+            <!-- Performance -->
+            <li class="hidden-sm {% if page.url contains '/Performance'/ %}active{% endif %}"><a href="{{ site.baseurl}}/Performance">Performance</a></li>
+
+            <!-- QuickStart -->
+            <li class="dropdown{% if page.url contains '/QuickStart/' %} active{% endif %}">
+              <a href="{{ QuickStart }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">QuickStart <span class="caret"></span></a>
               <ul class="dropdown-menu" role="menu">
-                {% assign advance_group = (site.pages | where: "top-nav-group" , "advance" | sort: "top-nav-pos") %}
-                {% for advance_group_page in advance_group %}
-                <li class="{% if page.url contains advance_group_page.url %}active{% endif %}"><a href="{{ site.baseurl }}{{ advance_group_page.url }}">{% if advance_group_page.top-nav-title %}{{ advance_group_page.top-nav-title }}{% else %}{{ advance_group_page.title }}{% endif %}</a></li>
+                {% assign QuickStart_group = (site.pages | where: "top-nav-group" , "QuickStart" | sort: "top-nav-pos") %}
+                {% for QuickStart_group_page in QuickStart_group %}
+                <li class="{% if page.url contains QuickStart_group_page.url %}active{% endif %}"><a href="{{ site.baseurl }}{{ QuickStart_group_page.url }}">{% if QuickStart_group_page.top-nav-title %}{{ QuickStart_group_page.top-nav-title }}{% else %}{{ QuickStart_group_page.title }}{% endif %}</a></li>
                 {% endfor %}
               </ul>
             </li>
 
-            <!-- API -->
-            <li class="dropdown{% if page.url contains '/api/' %} active{% endif %}">
-              <a href="{{ api }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">API <span class="caret"></span></a>
+            <!-- ProgrammingGuide -->
+            <li class="dropdown{% if page.url contains '/ProgrammingGuide/' %} active{% endif %}">
+              <a href="{{ ProgrammingGuide }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">ProgrammingGuide <span class="caret"></span></a>
                 <ul class="dropdown-menu" role="menu">
-                  {% assign api_group = (site.pages | where: "top-nav-group" , "api" | sort: "top-nav-pos") %}
-                  {% for api_page in api_group %}
-                  <li class="{% if page.url contains api_page.url %}active{% endif %}"><a href="{{ site.baseurl }}{{ api_page.url }}">{% if api_page.top-nav-title %}{{ api_page.top-nav-title }}{% else %}{{ api_page.title }}{% endif %}</a></li>
+                  {% assign ProgrammingGuide_group = (site.pages | where: "top-nav-group" , "ProgrammingGuide" | sort: "top-nav-pos") %}
+                  {% for ProgrammingGuide_page in ProgrammingGuide_group %}
+                  <li class="{% if page.url contains ProgrammingGuide_page.url %}active{% endif %}"><a href="{{ site.baseurl }}{{ ProgrammingGuide_page.url }}">{% if ProgrammingGuide_page.top-nav-title %}{{ ProgrammingGuide_page.top-nav-title }}{% else %}{{ ProgrammingGuide_page.title }}{% endif %}</a></li>
+                  {% endfor %}
+              </ul>
+            </li>
+
+            <!-- Maintenance -->
+            <li class="dropdown{% if page.url contains '/Maintenance/' %} active{% endif %}">
+              <a href="{{ ProgrammingGuide }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Maintenance <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  {% assign Maintenance_group = (site.pages | where: "top-nav-group" , "Maintenance" | sort: "top-nav-pos") %}
+                  {% for Maintenance_page in Maintenance_group %}
+                  <li class="{% if page.url contains Maintenance_page.url %}active{% endif %}"><a href="{{ site.baseurl }}{{ Maintenance_page.url }}">{% if Maintenance_page.top-nav-title %}{{ Maintenance_page.top-nav-title }}{% else %}{{ Maintenance_page.title }}{% endif %}</a></li>
                   {% endfor %}
               </ul>
             </li>
 
             <!-- FAQ -->
-            <li class="hidden-sm {% if page.url contains 'FAQ' %}active{% endif %}"><a href="{{ site.baseurl}}/FAQ/">FAQ</a></li>
+            <li class="hidden-sm {% if page.url contains '/FAQ'/ %}active{% endif %}"><a href="{{ site.baseurl}}/FAQ/">FAQ</a></li>
 
           </ul>
           <ul class="nav navbar-nav navbar-right">
@@ -94,7 +94,7 @@ under the License.
                   <li class="{% if page.url contains libs_page.url %}active{% endif %}"><a href="{{ site.baseurl }}/index_cn.html">中文</a></li>
               </ul>
             </li>
-            <li class="hidden-sm {% if page.url contains '/about/' %} active{% endif %}"><a href="{{ site.baseurl}}/">About</a></li>
+            <li class="hidden-sm {% if page.url contains '/Demo/' %} active{% endif %}"><a href="http://storm.taobao.org">Demo</a></li>
           </ul>          
         </div><!-- /.navbar-collapse -->
       </div><!-- /.container -->

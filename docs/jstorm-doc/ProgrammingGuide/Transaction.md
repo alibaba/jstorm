@@ -1,0 +1,9 @@
+---
+title:  "How to do exactly-once or transaction?"
+# Top-level navigation
+top-nav-group: ProgrammingGuide
+top-nav-pos: 3
+---
+
+* This will be replaced by the TOC
+{:toc}
