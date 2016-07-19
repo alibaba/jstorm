@@ -4,9 +4,9 @@ title: "Acker"
 
 # Sub navigation
 sub-nav-parent: Theory
-sub-nav-group: ProgrammingGuide
+sub-nav-group: AdvancedUsage
 sub-nav-id: Acker
-sub-nav-pos: 1
+#sub-nav-pos: 1
 sub-nav-title: Acker mechanism
 ---
 
