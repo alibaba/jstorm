@@ -54,8 +54,8 @@ under the License.
               <a href="{{ QuickStart }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">QuickStart <span class="caret"></span></a>
               <ul class="dropdown-menu" role="menu">
                 {% assign QuickStart_group = (site.pages | where: "top-nav-group" , "QuickStart" | sort: "top-nav-pos") %}
-                {% for QuickStart_group_page in QuickStart_group %}
-                <li class="{% if page.url contains QuickStart_group_page.url %}active{% endif %}"><a href="{{ site.baseurl }}{{ QuickStart_group_page.url }}">{% if QuickStart_group_page.top-nav-title %}{{ QuickStart_group_page.top-nav-title }}{% else %}{{ QuickStart_group_page.title }}{% endif %}</a></li>
+                {% for QuickStart_page in QuickStart_group %}
+                <li class="{% if page.url contains QuickStart_page.url %}active{% endif %}"><a href="{{ site.baseurl }}{{ QuickStart_page.url }}">{% if QuickStart_page.top-nav-title %}{{ QuickStart_page.top-nav-title }}{% else %}{{ QuickStart_page.title }}{% endif %}</a></li>
                 {% endfor %}
               </ul>
             </li>
