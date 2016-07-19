@@ -4,9 +4,9 @@ title: "IBasicBolt interface introduce"
 
 # Sub navigation
 sub-nav-parent: API
-sub-nav-group: ProgrammingGuide
+sub-nav-group: AdvancedUsage
 sub-nav-id: IBasicBolt
-sub-nav-pos: 1
+sub-nav-pos: 3
 sub-nav-title: IBasicBolt Introduce
 ---
 

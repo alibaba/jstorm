@@ -2,9 +2,9 @@
 title:  "Dynamic Adjust Application"
 
 sub-nav-parent: AdvancedUsage
-sub-nav-group: ProgrammingGuide
+sub-nav-group: AdvancedUsage
 sub-nav-id: DynamicAdjust
-sub-nav-pos: 5
+sub-nav-pos: 6
 sub-nav-title: Dynamic-Adjust
 ---
 

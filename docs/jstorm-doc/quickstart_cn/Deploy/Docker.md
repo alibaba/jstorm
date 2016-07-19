@@ -1,10 +1,10 @@
 ---
-title: JStorm-on-Docker
+title: JStorm-on-Docker 安装部署
 is_beta: false
 
-sub-nav-group: Deploy
-sub-nav-id: Docker
-sub-nav-pos: 3
+sub-nav-group: Deploy_cn
+sub-nav-id: Docker_cn
+sub-nav-pos: 5
 ---
 
 * This will be replaced by the TOC

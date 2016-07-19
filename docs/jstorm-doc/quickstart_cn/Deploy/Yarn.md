@@ -1,9 +1,9 @@
 ---
-title: JStorm-on-Yarn Deploy
+title: JStorm-on-Yarn 安装部署
 is_beta: false
 
-sub-nav-group: Deploy
-sub-nav-id: JStorm-on-Yarn
+sub-nav-group: Deploy_cn
+sub-nav-id: JStorm-on-Yarn_cn
 sub-nav-pos: 4
 ---
 

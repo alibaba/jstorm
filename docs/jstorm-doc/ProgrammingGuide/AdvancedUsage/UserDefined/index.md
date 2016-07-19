@@ -2,9 +2,9 @@
 title:  "User Defined Features"
 
 sub-nav-parent: AdvancedUsage
-sub-nav-group: ProgrammingGuide
+sub-nav-group: AdvancedUsage
 sub-nav-id: UserDefined
-sub-nav-pos: 4
+sub-nav-pos: 5
 sub-nav-title: User-Defined-API
 ---
 

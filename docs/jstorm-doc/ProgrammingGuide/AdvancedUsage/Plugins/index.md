@@ -2,9 +2,9 @@
 title:  "Plugins"
 
 sub-nav-parent: AdvancedUsage
-sub-nav-group: ProgrammingGuide
+sub-nav-group: AdvancedUsage
 sub-nav-id: Plugins
-sub-nav-pos: 3
+sub-nav-pos: 4
 sub-nav-title: Plugins
 ---
 

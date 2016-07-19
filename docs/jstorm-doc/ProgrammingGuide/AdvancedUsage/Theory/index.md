@@ -2,9 +2,9 @@
 title:  "Run mechanism & Theory"
 
 sub-nav-parent: AdvancedUsage
-sub-nav-group: ProgrammingGuide
+sub-nav-group: AdvancedUsage
 sub-nav-id: Theory
-sub-nav-pos: 2
+sub-nav-pos: 3
 sub-nav-title: Theory
 ---
 

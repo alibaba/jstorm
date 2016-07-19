@@ -1,11 +1,11 @@
 ---
-title:  "Submit Topology by API"
+title:  "How to use Window framework?"
 
 sub-nav-parent: AdvancedUsage
-sub-nav-group: ProgrammingGuide
-sub-nav-id: SubmitTopology
-sub-nav-pos: 6
-sub-nav-title: Submit-Topology-by-API
+sub-nav-group: AdvancedUsage
+sub-nav-id: Window
+sub-nav-pos: 8
+sub-nav-title: Window Framework
 ---
 
 * This will be replaced by the TOC

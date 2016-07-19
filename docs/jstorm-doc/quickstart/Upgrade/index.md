@@ -4,6 +4,11 @@ title:  "Deploy"
 top-nav-group: QuickStart
 top-nav-pos: 4
 top-nav-title: Upgrade
+
+sub-nav-group: Upgrade
+sub-nav-group-title: Upgrade
+sub-nav-pos: 1
+sub-nav-title: Upgrade
 ---
 
 * This will be replaced by the TOC

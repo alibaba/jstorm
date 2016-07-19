@@ -1,10 +1,10 @@
 ---
-title: Standalone JStorm Deploy
+title: Standalone模式安装
 is_beta: false
 
-sub-nav-group: Deploy
-sub-nav-id: Standalone
-sub-nav-pos: 1
+sub-nav-group: Deploy_cn
+sub-nav-id: Standalone_cn
+sub-nav-pos: 2
 ---
 
 * This will be replaced by the TOC
