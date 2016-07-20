@@ -247,6 +247,12 @@ a.anchorjs-link:hover { text-decoration: none; }
   font-size: .9em;
 }
 
+footer {
+    text-align: center;
+    color: #8f8f8f;
+    padding-bottom: 18px;
+}
+
 .user-table.table>tbody>tr>td {
 	vertical-align: middle;
 }
