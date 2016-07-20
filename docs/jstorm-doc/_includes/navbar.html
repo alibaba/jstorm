@@ -40,9 +40,7 @@ under the License.
         <!-- The navigation links. -->
         <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
           <ul class="nav navbar-nav">
-            <!-- Example -->
-            <li class="hidden-sm {% if page.url contains '/Example'/ %}active{% endif %}"><a href="{{ site.baseurl}}/Example/">Example</a></li>
-
+            
             <!-- Downloads -->
             <li class="hidden-sm {% if page.url contains '/Downloads'/ %}active{% endif %}"><a href="{{ site.baseurl}}/Downloads/">Downloads</a></li>
 
@@ -73,7 +71,7 @@ under the License.
 
             <!-- Maintenance -->
             <li class="dropdown{% if page.url contains '/Maintenance/' %} active{% endif %}">
-              <a href="{{ ProgrammingGuide }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Maintenance <span class="caret"></span></a>
+              <a href="{{ Maintenance }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Maintenance <span class="caret"></span></a>
                 <ul class="dropdown-menu" role="menu">
                   {% assign Maintenance_group = (site.pages | where: "top-nav-group" , "Maintenance" | sort: "top-nav-pos") %}
                   {% for Maintenance_page in Maintenance_group %}
@@ -85,13 +83,25 @@ under the License.
             <!-- FAQ -->
             <li class="hidden-sm {% if page.url contains '/FAQ'/ %}active{% endif %}"><a href="{{ site.baseurl}}/FAQ/">FAQ</a></li>
 
+            <!-- Community -->
+            <li class="dropdown{% if page.url contains '/Community/' %} active{% endif %}">
+              <a href="{{ Community }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Community <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  {% assign Community_group = (site.pages | where: "top-nav-group" , "Community" | sort: "top-nav-pos") %}
+                  {% for Community_page in Community_group %}
+                  <li class="{% if page.url contains Community_page.url %}active{% endif %}"><a href="{{ site.baseurl }}{{ Community_page.url }}">{% if Community_page.top-nav-title %}{{ Community.top-nav-title }}{% else %}{{ Community_page.title }}{% endif %}</a></li>
+                  {% endfor %}
+              </ul>
+            </li>
+
+
           </ul>
           <ul class="nav navbar-nav navbar-right">
             <li class="dropdown">
               <a href="{{ language }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Language <span class="caret"></span></a>
                 <ul class="dropdown-menu" role="menu">
-                  <li class="{% if page.url contains libs_page.url %}active{% endif %}"><a href="{{ site.baseurl }}">English</a></li>
-                  <li class="{% if page.url contains libs_page.url %}active{% endif %}"><a href="{{ site.baseurl }}/index_cn.html">中文</a></li>
+                  <li class="{% if page.url contains libs_page.url %}active{% endif %}"><a href="{{ page.url }}/">English</a></li>
+                  <li class="{% if page.url contains libs_page.url %}active{% endif %}"><a href="{{site.baseurl}}{{page.cn_url}}">中文</a></li>
               </ul>
             </li>
             <li class="hidden-sm {% if page.url contains '/Demo/' %} active{% endif %}"><a href="http://storm.taobao.org">Demo</a></li>

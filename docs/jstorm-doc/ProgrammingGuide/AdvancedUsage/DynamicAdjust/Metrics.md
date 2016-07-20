@@ -4,9 +4,9 @@ title: "Dynamic Adjust metrics, enable/disable metrics"
 
 # Sub navigation
 sub-nav-parent: DynamicAdjust
-sub-nav-group: ProgrammingGuide
+sub-nav-group: AdvancedUsage
 sub-nav-id: Metrics
-sub-nav-pos: 1
+#sub-nav-pos: 1
 sub-nav-title: Dynamic-Adjust-Metrics
 ---
 

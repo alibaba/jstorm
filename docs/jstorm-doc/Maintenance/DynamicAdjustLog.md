@@ -1,9 +1,9 @@
 ---
-title:  "How to use BlobStore"
+title:  "Dynamic Adjust Log"
 # Top-level navigation
 top-nav-group: Maintenance
-top-nav-pos: 7
-top-nav-title: BlobStore
+#top-nav-pos: 1
+top-nav-title: Dynamic Adjust Log
 ---
 
 * This will be replaced by the TOC
