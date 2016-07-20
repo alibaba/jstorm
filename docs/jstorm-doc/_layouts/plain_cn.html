@@ -79,6 +79,12 @@ The plain layout without a sub navigation (only text).
   <div class="col-md-8 col-md-offset-2 text">
     <h1>{{ page.title }}{% if page.is_beta %} <span class="beta">Beta</span>{% endif %}</h1>
 	{{ content }}
+  <div class="footer">
+      发现错误？想参与编辑？
+      <a href="https://github.com/alibaba/jstorm/edit/master/docs/jstorm-doc/{{ page.path }}" target="_blank">
+        在 Github 上编辑此页！
+      </a>
+  </div>
   </div>
   {% endif %}
 {% endif %}
