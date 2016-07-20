@@ -4,6 +4,7 @@ title:  "Build JStorm Source Code"
 top-nav-group: QuickStart_cn
 top-nav-pos: 6
 top-nav-title: 编译JStorm
+layout: plain_cn
 ---
 
 * This will be replaced by the TOC

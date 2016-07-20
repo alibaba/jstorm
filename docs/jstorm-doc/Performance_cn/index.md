@@ -1,6 +1,7 @@
 ---
 title: Performance
-layout: plain
+
+layout: plain_cn
 ---
 
 TBD

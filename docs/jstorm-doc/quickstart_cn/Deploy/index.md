@@ -10,6 +10,7 @@ sub-nav-group: Deploy_cn
 sub-nav-group-title: Deploy_cn
 sub-nav-pos: 1
 sub-nav-title: 安装部署
+layout: plain_cn
 ---
 
 * This will be replaced by the TOC

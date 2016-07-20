@@ -1,6 +1,5 @@
 ---
 title: Downloads
-layout: plain
 ---
 ## Current Stable Release
 

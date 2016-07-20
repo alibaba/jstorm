@@ -9,6 +9,7 @@ sub-nav-group: Upgrade_cn
 sub-nav-group-title: Upgrade_cn
 sub-nav-pos: 1
 sub-nav-title: 升级
+layout: plain_cn
 ---
 
 * This will be replaced by the TOC
