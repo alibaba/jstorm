@@ -82,13 +82,15 @@ under the License.
             <!-- FAQ -->
             <li class="hidden-sm {% if page.url contains '/FAQ_cn'/ %}active{% endif %}"><a href="{{ site.baseurl}}/FAQ_cn/">FAQ</a></li>
 
-            <!-- Maintenance -->
-            <li class="dropdown{% if page.url contains '/Community_cn/' %} active{% endif %}">
-              <a href="{{ Community_cn }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">社区 <span class="caret"></span></a>
+
+
+            <!-- Community -->
+            <li class="dropdown{% if page.url contains '/Community/' %} active{% endif %}">
+              <a href="{{ Community }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">社区 <span class="caret"></span></a>
                 <ul class="dropdown-menu" role="menu">
-                  {% assign Community_cn_group = (site.pages | where: "top-nav-group" , "Community_cn" | sort: "top-nav-pos") %}
-                  {% for Community_cn_page in Community_cn_group %}
-                  <li class="{% if page.url contains Community_cn_page.url %}active{% endif %}"><a href="{{ site.baseurl }}{{ Community_cn_page.url }}">{% if Community_cn_page.top-nav-title %}{{ Community_cn.top-nav-title }}{% else %}{{ Community_cn_page.title }}{% endif %}</a></li>
+                  {% assign Community_group = (site.pages | where: "top-nav-group" , "Community" | sort: "top-nav-pos") %}
+                  {% for Community_page in Community_group %}
+                  <li class="{% if page.url contains Community_page.url %}active{% endif %}"><a href="{{ site.baseurl }}{{ Community_page.url }}">{% if Community_page.top-nav-title %}{{ Community.top-nav-title }}{% else %}{{ Community_page.title }}{% endif %}</a></li>
                   {% endfor %}
               </ul>
             </li>
