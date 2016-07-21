@@ -67,7 +67,3 @@ The [programming guide]({{ site.docs-snapshot }}/apis/programming_guide.html) co
   </div>
 </div>
 
-<footer class="small">
-  <hr>
-  Google Groups: <a target="_blank" href="https://groups.google.com/forum/#!forum/jstorm-user">jstorm-user</a>, QQ Groups: 228374502
-</footer>
