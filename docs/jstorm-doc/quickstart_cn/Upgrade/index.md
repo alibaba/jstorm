@@ -14,3 +14,9 @@ layout: plain_cn
 
 * This will be replaced by the TOC
 {:toc}
+
+
+[集群升级]({{site.baseurl}}/QuickStart_cn/Upgrade/UpgradeCluster.html)
+
+
+[应用升级]({{site.baseurl}}/QuickStart_cn/Upgrade/UpgradeApplication.html)
