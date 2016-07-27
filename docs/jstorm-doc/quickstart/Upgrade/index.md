@@ -13,3 +13,6 @@ sub-nav-title: Upgrade
 
 * This will be replaced by the TOC
 {:toc}
+
+[UpgradeCluster]({{site.baseurl}}/QuickStart/Upgrade/UpgradeCluster.html)
+[UpgradeApplication]({{site.baseurl}}/QuickStart/Upgrade/UpgradeApplication.html)
