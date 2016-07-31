@@ -24,16 +24,21 @@ import backtype.storm.grouping.CustomStreamGrouping;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.Fields;
 import backtype.storm.utils.Utils;
+
 import com.alibaba.jstorm.daemon.worker.WorkerData;
+import com.alibaba.jstorm.task.execute.MsgInfo;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.RandomRange;
 import com.alibaba.jstorm.utils.Thrift;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 /**
@@ -186,6 +191,44 @@ public class MkGrouper {
         }
 
         return new ArrayList<Integer>();
+    }
+    
+    public Map<List<Integer>, List<MsgInfo>> grouperBatch(List<MsgInfo> batch) {
+        Map<List<Integer>, List<MsgInfo>> ret = new HashMap<List<Integer>, List<MsgInfo>>();
+        //optimize fieldGrouping & customGrouping
+        if (GrouperType.local_or_shuffle.equals(grouptype)) {
+           ret.put(local_shuffer_grouper.grouper(null), batch);
+        }  else if (GrouperType.global.equals(grouptype)) {
+            // send to task which taskId is 0
+            ret.put(JStormUtils.mk_list(out_tasks.get(0)), batch);
+        } else if (GrouperType.fields.equals(grouptype)) {
+            fields_grouper.batchGrouper(batch, ret);
+        } else if (GrouperType.all.equals(grouptype)) {
+            // send to every task
+            ret.put(out_tasks, batch);
+        } else if (GrouperType.shuffle.equals(grouptype)) {
+            // random, but the random is different from none
+            ret.put(shuffer.grouper(null), batch);
+        } else if (GrouperType.none.equals(grouptype)) {
+            int rnd = Math.abs(random.nextInt() % out_tasks.size());
+            ret.put(JStormUtils.mk_list(out_tasks.get(rnd)), batch);
+        } else if (GrouperType.custom_obj.equals(grouptype) || GrouperType.custom_serialized.equals(grouptype)) {
+            for (int i = 0; i < batch.size(); i++ ) {
+                MsgInfo msg = batch.get(i);
+                List<Integer> out = custom_grouper.grouper(msg.values);
+                List<MsgInfo> customBatch = ret.get(out);
+                if (customBatch == null) {
+                    customBatch = JStormUtils.mk_list();
+                    ret.put(out, customBatch);
+                }
+                customBatch.add(msg);
+            }
+        } else if (GrouperType.localFirst.equals(grouptype)) {
+            ret.put(localFirst.grouper(null), batch);
+        } else {
+            LOG.warn("Unsupportted group type");
+        }
+        return ret;
     }
 
 }

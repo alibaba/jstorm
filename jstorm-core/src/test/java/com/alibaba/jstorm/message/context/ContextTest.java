@@ -32,17 +32,6 @@ import backtype.storm.messaging.IContext;
 import backtype.storm.messaging.TransportFactory;
 
 public class ContextTest {
-
-    // @Test
-    // public void test_zmq() throws Exception {
-    // String klassName = "com.alibaba.jstorm.message.zeroMq.MQContext";
-    // Class klass = Class.forName(klassName);
-    // Constructor<IContext> constructor = klass.getDeclaredConstructor();
-    // constructor.setAccessible(true);
-    // IContext context = (IContext) constructor.newInstance();
-    // Assert.assertNotNull(context);
-    // }
-
     @Test
     public void test_netty() {
         Map storm_conf = Maps.newHashMap();

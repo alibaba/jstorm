@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -29,6 +30,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import junit.framework.Assert;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,7 +61,8 @@ public class NettyUnitTest {
     private static Map storm_conf = new HashMap<Object, Object>();
     private static IContext context = null;
 
-    static {
+    @BeforeClass
+    public static void setup() {
         storm_conf = Utils.readDefaultConfig();
         ConfigExtension.setLocalWorkerPort(storm_conf, port);
         boolean syncMode = false;
@@ -82,7 +85,12 @@ public class NettyUnitTest {
 
     private IConnection initNettyServer(int port) {
         ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues = new ConcurrentHashMap<Integer, DisruptorQueue>();
-        IConnection server = context.bind(null, port, deserializeQueues);
+        ConcurrentHashMap<Integer, DisruptorQueue> deserializeCtrlQueues = new ConcurrentHashMap<Integer, DisruptorQueue>();
+
+        WaitStrategy wait = (WaitStrategy)Utils.newInstance("com.lmax.disruptor.TimeoutBlockingWaitStrategy", 5, TimeUnit.MILLISECONDS);
+        DisruptorQueue recvControlQueue = DisruptorQueue.mkInstance("Dispatch-control", ProducerType.MULTI,
+                256, wait);
+        IConnection server = context.bind(null, port, deserializeQueues, recvControlQueue);
 
         WaitStrategy waitStrategy = (WaitStrategy) JStormUtils.createDisruptorWaitStrategy(storm_conf);
         DisruptorQueue recvQueue = DisruptorQueue.mkInstance("NettyUnitTest", ProducerType.SINGLE, 1024, waitStrategy);

@@ -58,7 +58,7 @@ table.sortable th{
 }
 
 /*** json pretty ***/
-pre { padding: 5px; margin: 5px; font: 13px/18px monospace; line-height: 20px;}
+pre { padding: 5px; margin: 5px; font: 13px/18px monospace; line-height: 20px;white-space: pre-line;}
 .string { color: #0B7500; }
 .number,.boolean,.null { font-weight: bold; color: #1A01CC; }
 .key { color: #000; }
@@ -81,7 +81,8 @@ pre { padding: 5px; margin: 5px; font: 13px/18px monospace; line-height: 20px;}
 }
 
 .path{
-    font-size: 60%;
+    font-size: 15px;
+    margin-left: 10px;
 }
 
 .pagination{

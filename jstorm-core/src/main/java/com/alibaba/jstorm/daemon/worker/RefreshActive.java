@@ -84,33 +84,32 @@ public class RefreshActive extends RunnableCallback {
             // Process the topology status change
             StatusType oldTopologyStatus = workerData.getTopologyStatus();
 
+            List<TaskShutdownDameon> tasks = workerData.getShutdownTasks();
+            if (tasks == null) {
+                LOG.info("Tasks aren't ready or begin to shutdown");
+                return;
+            }
+            boolean workerNewStatus = newTopologyStatus.equals(StatusType.active) && workerData.getWorkeInitConnectionStatus().get();
+            boolean workerOldStatus = workerData.getWorkerOldStatus().get();
+            if (workerNewStatus != workerOldStatus){
+                if (workerNewStatus) {
+                    for (TaskShutdownDameon task : tasks) {
+                        task.active();
+                    }
+                } else {
+                    for (TaskShutdownDameon task : tasks) {
+                        task.deactive();
+                    }
+                }
+                workerData.getWorkerOldStatus().set(workerNewStatus);
+            }
+
             if (newTopologyStatus.equals(oldTopologyStatus)) {
                 return;
             }
 
             LOG.info("Old TopologyStatus:" + oldTopologyStatus + ", new TopologyStatus:" + newTopologyStatus);
 
-            List<TaskShutdownDameon> tasks = workerData.getShutdownTasks();
-            if (tasks == null) {
-                LOG.info("Tasks aren't ready or begin to shutdown");
-                return;
-            }
-
-            if (newTopologyStatus.equals(StatusType.active)) {
-                for (TaskShutdownDameon task : tasks) {
-                    task.active();
-                }
-            } else if (newTopologyStatus.equals(StatusType.rebalancing)) {
-                // TODO
-                // But this may be updated in the future.
-                for (TaskShutdownDameon task : tasks) {
-                    task.deactive();
-                }
-            } else {
-                for (TaskShutdownDameon task : tasks) {
-                    task.deactive();
-                }
-            }
             workerData.setTopologyStatus(newTopologyStatus);
 
             boolean newMonitorEnable = base.isEnableMonitor();
@@ -126,7 +125,6 @@ public class RefreshActive extends RunnableCallback {
         }
 
     }
-
     @Override
     public Object getResult() {
         return frequence;

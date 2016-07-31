@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import backtype.storm.Config;
 import backtype.storm.spout.SpoutOutputCollector;
+import backtype.storm.task.ICollectorCallback;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.IRichSpout;
 import backtype.storm.topology.OutputFieldsDeclarer;
@@ -209,10 +210,8 @@ public class BatchSpoutTrigger implements IRichSpout {
         }
 
         String streamId = getStreamId(msgId.getBatchStatus());
-        List<Integer> outTasks = collector.emit(streamId, new Values(msgId.getBatchId()), msgId);
-        if (outTasks.isEmpty()) {
-            forward(msgId);
-        }
+        collector.emit(streamId, new Values(msgId.getBatchId()), msgId, new EmitCb(msgId) );
+        
         return;
 
     }
@@ -319,4 +318,19 @@ public class BatchSpoutTrigger implements IRichSpout {
         return map;
     }
 
+    class EmitCb implements ICollectorCallback {
+
+        private BatchSpoutMsgId msgId ;
+        public EmitCb(BatchSpoutMsgId msgId) {
+            this.msgId = msgId;
+        }
+        @Override
+        public void execute(List<Integer> outTasks) {
+            // TODO Auto-generated method stub
+            if (outTasks.isEmpty()) {
+                forward(msgId);
+            }
+        }
+        
+    }
 }

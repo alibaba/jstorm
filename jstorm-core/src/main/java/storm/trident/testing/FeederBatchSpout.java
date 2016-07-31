@@ -60,7 +60,7 @@ public class FeederBatchSpout implements ITridentSpout, IFeeder {
         }
     }
 
-    public class FeederCoordinator implements BatchCoordinator<Map<Integer, List<List<Object>>>> {
+    public class FeederCoordinator implements ITridentSpout.BatchCoordinator<Map<Integer, List<List<Object>>>> {
 
         int _numPartitions;
         int _emittedIndex = 0;
@@ -129,7 +129,7 @@ public class FeederBatchSpout implements ITridentSpout, IFeeder {
         }
     }
 
-    public class FeederEmitter implements Emitter<Map<Integer, List<List<Object>>>> {
+    public class FeederEmitter implements ITridentSpout.Emitter<Map<Integer, List<List<Object>>>> {
 
         int _index;
 

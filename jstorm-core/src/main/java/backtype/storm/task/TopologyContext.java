@@ -29,6 +29,7 @@ import com.alibaba.jstorm.cluster.StormClusterState;
 import org.apache.commons.lang.NotImplementedException;
 import org.json.simple.JSONValue;
 
+import java.lang.reflect.Method;
 import java.util.*;
 
 /**
@@ -349,7 +350,15 @@ public class TopologyContext extends WorkerTopologyContext implements IMetricsCo
     /*
     * Task error report callback
     * */
-    public void reportError(String errorMsg) throws Exception{
-            _zkCluster.report_task_error(getTopologyId(), _taskId, errorMsg, null);
+    public void reportError(String errorMsg) throws Exception {
+        _zkCluster.report_task_error(getTopologyId(), _taskId, errorMsg);
+    }
+
+    public void applyHooks(String methodName, Object object) throws Exception{
+        for (ITaskHook taskHook : _hooks){
+            Class clazz = taskHook.getClass();
+            Method method = clazz.getDeclaredMethod(methodName, object.getClass());
+            method.invoke(taskHook, object);
+        }
     }
 }

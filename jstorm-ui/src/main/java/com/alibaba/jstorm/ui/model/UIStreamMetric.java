@@ -18,6 +18,10 @@
 package com.alibaba.jstorm.ui.model;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import java.util.List;
+
 /**
  * @author Jark (wuchong.wc@alibaba-inc.com)
  */
@@ -40,5 +44,30 @@ public class UIStreamMetric extends UIComponentMetric {
 
     public String getStreamId() {
         return streamId;
+    }
+
+
+    @JsonIgnore
+    @Override
+    public List<ErrorEntity> getErrors() {
+        return super.getErrors();
+    }
+
+    @JsonIgnore
+    @Override
+    public String getType() {
+        return super.getType();
+    }
+
+    @JsonIgnore
+    @Override
+    public int getParallel() {
+        return super.getParallel();
+    }
+
+    @JsonIgnore
+    @Override
+    public String getComponentName() {
+        return super.getComponentName();
     }
 }

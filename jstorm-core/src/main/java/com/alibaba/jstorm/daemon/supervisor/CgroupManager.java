@@ -90,7 +90,8 @@ public class CgroupManager {
 
     private void setCpuUsageUpperLimit(CpuCore cpuCore, int cpuCoreUpperLimit) throws IOException {
         /*
-         * User cfs_period & cfs_quota to control the upper limit use of cpu core e.g. If making a process to fully use two cpu cores, set cfs_period_us to
+         * User cfs_period & cfs_quota to control the upper limit use of cpu core e.g. 
+         * If making a process to fully use two cpu cores, set cfs_period_us to
          * 100000 and set cfs_quota_us to 200000 The highest value of "cpu core upper limit" is 10
          */
         cpuCoreUpperLimit = validateCpuUpperLimitValue(cpuCoreUpperLimit);

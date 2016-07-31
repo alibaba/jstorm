@@ -19,9 +19,11 @@ package com.alibaba.jstorm.daemon.nimbus;
 
 import backtype.storm.Config;
 import backtype.storm.generated.TopologyTaskHbInfo;
+import backtype.storm.nimbus.ITopologyActionNotifierPlugin;
 import backtype.storm.scheduler.INimbus;
 import backtype.storm.utils.BufferFileInputStream;
 import backtype.storm.utils.TimeCacheMap;
+import backtype.storm.utils.Utils;
 import com.alibaba.jstorm.cache.JStormCache;
 import com.alibaba.jstorm.callback.AsyncLoopThread;
 import com.alibaba.jstorm.client.ConfigExtension;
@@ -100,6 +102,8 @@ public class NimbusData {
 
     private JStormMetricsReporter metricsReporter;
 
+    private ITopologyActionNotifierPlugin nimbusNotify;
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     public NimbusData(Map conf, INimbus inimbus) throws Exception {
         this.conf = conf;
@@ -136,6 +140,13 @@ public class NimbusData {
 
         if (!localMode) {
             startMetricThreads();
+        }
+        if (conf.containsKey(Config.NIMBUS_TOPOLOGY_ACTION_NOTIFIER_PLUGIN)) {
+            String string = (String)conf.get(Config.NIMBUS_TOPOLOGY_ACTION_NOTIFIER_PLUGIN);
+            nimbusNotify = (ITopologyActionNotifierPlugin)Utils.newInstance(string);
+            nimbusNotify.prepare(conf);
+        }else {
+            nimbusNotify = null;
         }
     }
 
@@ -328,4 +339,6 @@ public class NimbusData {
     public Map<String, TopologyTaskHbInfo> getTasksHeartbeat() {
         return tasksHeartbeat;
     }
+
+    public ITopologyActionNotifierPlugin getNimbusNotify(){return nimbusNotify; }
 }

@@ -1,9 +1,28 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.alibaba.jstorm.ui.controller;
 
 import com.alibaba.jstorm.ui.model.ClusterConfig;
 import com.alibaba.jstorm.ui.model.ZookeeperNode;
+import com.alibaba.jstorm.ui.utils.UIDef;
 import com.alibaba.jstorm.ui.utils.UIUtils;
 import com.alibaba.jstorm.ui.utils.ZookeeperManager;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -28,6 +47,7 @@ public class ZookeeperController {
     @RequestMapping(value = "/zookeeper", method = RequestMethod.GET)
     public String show(@RequestParam(value = "name", required = true) String name,
                        ModelMap model) {
+        name = StringEscapeUtils.escapeHtml(name);
         long start = System.currentTimeMillis();
         try{
             ClusterConfig config = UIUtils.clusterConfig.get(name);
@@ -50,18 +70,20 @@ public class ZookeeperController {
         return "zookeeper";
     }
 
-    @RequestMapping(value = "/zookeeper/node", produces = "application/json;")
+    @RequestMapping(value = UIDef.API_V2 + "/zookeeper/node", produces = "application/json;")
     @ResponseBody
     public Map<String, Object> getChildren(@RequestParam String path, String clusterName)  {
+        clusterName = StringEscapeUtils.escapeHtml(clusterName);
         List<ZookeeperNode> result  = ZookeeperManager.listZKNodes(clusterName, path);
         Map<String, Object> map = new HashMap<>();
         map.put("nodes", result);
         return map;
     }
 
-    @RequestMapping(value = "/zookeeper/node/data", produces = "application/json;")
+    @RequestMapping(value = UIDef.API_V2 + "/zookeeper/node/data", produces = "application/json;")
     @ResponseBody
     public Map<String, Object> getData(@RequestParam String path, String clusterName) {
+        clusterName = StringEscapeUtils.escapeHtml(clusterName);
         String data = ZookeeperManager.getZKNodeData(clusterName, path);
         Map<String, Object> map = new HashMap<>();
         map.put("data", data);

@@ -27,6 +27,7 @@ import com.alibaba.jstorm.ui.utils.UIMetricUtils;
 import com.alibaba.jstorm.ui.utils.UIUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.NetWorkUtils;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -55,6 +56,7 @@ public class NettyController {
                        @RequestParam(value = "page", required = false) String page,
                        @RequestParam(value = "win", required = false) String win,
                        ModelMap model) {
+        clusterName = StringEscapeUtils.escapeHtml(clusterName);
         long start = System.currentTimeMillis();
         host = NetWorkUtils.host2Ip(host);
         int window = UIUtils.parseWindow(win);

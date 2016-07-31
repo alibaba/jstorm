@@ -106,7 +106,8 @@ public class MultipleThreadSpoutExecutors extends SpoutExecutors {
 
                 try {
                     exeQueue.consumeBatchWhenAvailable(MultipleThreadSpoutExecutors.this);
-                    processControlEvent();
+                    controlQueue.consumeBatch(MultipleThreadSpoutExecutors.this);
+         /*           processControlEvent();*/
                 } catch (Exception e) {
                     if (shutdown.get() == false) {
                         LOG.error("Actor occur unknow exception ", e);

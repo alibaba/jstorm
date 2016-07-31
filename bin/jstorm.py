@@ -23,6 +23,7 @@ import sys
 import random
 import subprocess as sub
 import getopt
+import time
 
 def identity(x):
     return x
@@ -56,6 +57,19 @@ def check_java():
         print("Failed to find java, please add java to PATH")
         sys.exit(-1)
 
+def filter_array(array):
+    ret = []
+    for item in array:
+        temp = item.strip()
+        if temp != "":
+            ret.append(temp)
+    return ret
+
+def get_exclude_jars():
+    global EXCLUDE_JARS
+    return " -Dexclude.jars=" + (','.join(EXCLUDE_JARS))
+
+
 def get_config_opts():
     global CONFIG_OPTS
     return "-Dstorm.options=" + (','.join(CONFIG_OPTS)).replace(' ', "%%%%")
@@ -70,8 +84,9 @@ def get_client_childopts():
 
 def get_server_childopts(log_name):
     jstorm_log_dir = get_log_dir()
-    gc_log_path = jstorm_log_dir + "/" + log_name + ".gc"
-    ret = (" -Xloggc:%s -Dlogfile.name=%s -Dlogback.configurationFile=%s -Djstorm.log.dir=%s "  %(gc_log_path, log_name, LOGBACK_CONF, jstorm_log_dir))
+    filename = log_name + '.log'
+    gc_log_path = jstorm_log_dir + "/" + log_name + "-gc-" + str(int(time.time())) + ".log"
+    ret = (" -Xloggc:%s -Dlogfile.name=%s -Dlogback.configurationFile=%s -Djstorm.log.dir=%s "  %(gc_log_path, filename, LOGBACK_CONF, jstorm_log_dir))
     return ret
 
 if not os.path.exists(JSTORM_DIR + "/RELEASE"):
@@ -158,7 +173,8 @@ def print_remoteconfvalue(name):
 
 def exec_storm_class(klass, jvmtype="-server", childopts="", extrajars=[], args=[]):
     nativepath = confvalue("java.library.path", extrajars)
-    args_str = " ".join(map(lambda s: "\"" + s + "\"", args))
+    #args_str = " ".join(map(lambda s: "\"" + s + "\"", args))
+    args_str = " ".join(args)
     print args_str
     if "NimbusServer" in klass:
         # fix cmd > 4096, use dir in cp, only for nimbus server
@@ -167,7 +183,8 @@ def exec_storm_class(klass, jvmtype="-server", childopts="", extrajars=[], args=
         command = "java " + jvmtype + " -Djstorm.home=" + JSTORM_DIR + " " + get_config_opts() + " -Djava.library.path=" + nativepath + " " + childopts + " -cp " + get_classpath(extrajars) + " " + klass + " " + args_str
     print "Running: " + command
     global STATUS
-    STATUS = os.system(command)
+    STATUS = os.execvp("java", filter_array(command.split(" ")))
+    #STATUS = os.system(command)
 
 def jar(jarfile, klass, *args):
     """Syntax: [jstorm jar topology-jar-path class ...]
@@ -178,7 +195,7 @@ def jar(jarfile, klass, *args):
     (https://github.com/alibaba/jstorm/wiki/JStorm-Chinese-Documentation)
     will upload the jar at topology-jar-path when the topology is submitted.
     """
-    childopts = "-Dstorm.jar=" + jarfile + get_client_childopts()
+    childopts = "-Dstorm.jar=" + jarfile + get_client_childopts() + get_exclude_jars()
     exec_storm_class(
         klass,
         jvmtype="-client -Xms256m -Xmx256m",
@@ -305,7 +322,7 @@ def nimbus():
     """
     cppaths = [JSTORM_CONF_DIR]
     nimbus_classpath = confvalue("nimbus.classpath", cppaths)
-    childopts = confvalue("nimbus.childopts", cppaths) + get_server_childopts("nimbus.log")
+    childopts = confvalue("nimbus.childopts", cppaths) + get_server_childopts("nimbus")
     exec_storm_class(
         "com.alibaba.jstorm.daemon.nimbus.NimbusServer", 
         jvmtype="-server", 
@@ -322,7 +339,7 @@ def supervisor():
     (https://github.com/alibaba/jstorm/wiki/JStorm-Chinese-Documentation)
     """
     cppaths = [JSTORM_CONF_DIR]
-    childopts = confvalue("supervisor.childopts", cppaths) + get_server_childopts("supervisor.log")
+    childopts = confvalue("supervisor.childopts", cppaths) + get_server_childopts("supervisor")
     exec_storm_class(
         "com.alibaba.jstorm.daemon.supervisor.Supervisor", 
         jvmtype="-server", 
@@ -339,7 +356,7 @@ def drpc():
     (https://github.com/alibaba/jstorm/wiki/JStorm-Chinese-Documentation)
     """
     cppaths = [JSTORM_CONF_DIR]
-    childopts = confvalue("drpc.childopts", cppaths) + get_server_childopts("drpc.log")
+    childopts = confvalue("drpc.childopts", cppaths) + get_server_childopts("drpc")
     exec_storm_class(
         "com.alibaba.jstorm.drpc.Drpc", 
         jvmtype="-server", 

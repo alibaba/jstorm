@@ -72,6 +72,8 @@ public class Common {
     public static final String LS_WORKER_HEARTBEAT = "worker-heartbeat";
     public static final String LS_ID = "supervisor-id";
     public static final String LS_LOCAL_ASSIGNMENTS = "local-assignments";
+    public static final String LS_LOCAl_ZK_ASSIGNMENTS = "local-zk-assignments";
+    public static final String LS_LOCAL_ZK_ASSIGNMENT_VERSION = "lcoal-zk-assignment-version";
     public static final String LS_APPROVED_WORKERS = "approved-workers";
     public static final String LS_TASK_CLEANUP_TIMEOUT = "task-cleanup-timeout";
 

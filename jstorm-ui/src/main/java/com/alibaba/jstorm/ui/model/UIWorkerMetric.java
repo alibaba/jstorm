@@ -20,6 +20,7 @@ package com.alibaba.jstorm.ui.model;
 import backtype.storm.generated.MetricSnapshot;
 import com.alibaba.jstorm.metric.MetricDef;
 import com.alibaba.jstorm.ui.utils.UIMetricUtils;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  * @author Jark (wuchong.wc@alibaba-inc.com)
@@ -27,10 +28,12 @@ import com.alibaba.jstorm.ui.utils.UIMetricUtils;
 public class UIWorkerMetric extends UIBasicMetric {
     private String host;
     private String port;
-    private String topology;
+    private String topology;    //topology id
 
     public static final String[] HEAD = {MetricDef.CPU_USED_RATIO, MetricDef.DISK_USAGE, MetricDef.MEMORY_USED,
-            MetricDef.NETTY_CLI_SEND_SPEED, MetricDef.NETTY_SRV_RECV_SPEED, MetricDef.NETWORK_MSG_DECODE_TIME};
+            MetricDef.NETTY_CLI_SEND_SPEED, MetricDef.NETTY_SRV_RECV_SPEED, MetricDef.NETWORK_MSG_DECODE_TIME,
+            MetricDef.NETTY_SRV_MSG_TRANS_TIME, MetricDef.NETTY_CLI_BATCH_SIZE, MetricDef.RECV_CTRL_QUEUE,
+            MetricDef.SEND_QUEUE};
 
     public UIWorkerMetric(String _host, String _port) {
         host = _host;
@@ -63,6 +66,7 @@ public class UIWorkerMetric extends UIBasicMetric {
         return port;
     }
 
+    @JsonIgnore
     public String getTopology() {
         return topology;
     }

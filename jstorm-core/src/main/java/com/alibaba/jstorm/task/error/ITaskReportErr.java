@@ -27,4 +27,6 @@ public interface ITaskReportErr {
     public void report(Throwable error);
 
     public void report(String error);
+
+    public void report(String error, String errorLevel, int errorCode, int duration);
 }

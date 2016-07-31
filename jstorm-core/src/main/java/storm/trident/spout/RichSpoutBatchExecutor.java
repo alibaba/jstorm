@@ -61,7 +61,7 @@ public class RichSpoutBatchExecutor implements ITridentSpout {
         return new RichSpoutEmitter(conf, context);
     }
 
-    class RichSpoutEmitter implements Emitter<Object> {
+    class RichSpoutEmitter implements ITridentSpout.Emitter<Object> {
         int _maxBatchSize;
         boolean prepared = false;
         CaptureCollector _collector;
@@ -146,7 +146,7 @@ public class RichSpoutBatchExecutor implements ITridentSpout {
 
     }
 
-    class RichSpoutCoordinator implements BatchCoordinator {
+    class RichSpoutCoordinator implements ITridentSpout.BatchCoordinator {
         @Override
         public Object initializeTransaction(long txid, Object prevMetadata, Object currMetadata) {
             return null;

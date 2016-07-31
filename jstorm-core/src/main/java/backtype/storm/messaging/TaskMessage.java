@@ -20,12 +20,23 @@ package backtype.storm.messaging;
 import java.nio.ByteBuffer;
 
 public class TaskMessage {
+    private final short _type; //0 means taskmessage , 1 means task controlmessage
     private int _task;
     private byte[] _message;
 
     public TaskMessage(int task, byte[] message) {
+        _type = 0;
         _task = task;
         _message = message;
+    }
+    public TaskMessage(short type, int task, byte[] message) {
+        _type = type;
+        _task = task;
+        _message = message;
+    }
+
+    public short get_type() {
+        return _type;
     }
 
     public int task() {
@@ -48,9 +59,10 @@ public class TaskMessage {
         return false;
     }
 
-    @Deprecated
+/*    @Deprecated
     public ByteBuffer serialize() {
-        ByteBuffer bb = ByteBuffer.allocate(_message.length + 2);
+        ByteBuffer bb = ByteBuffer.allocate(_message.length + 4);
+        bb.putShort((short) _type);
         bb.putShort((short) _task);
         bb.put(_message);
         return bb;
@@ -60,9 +72,10 @@ public class TaskMessage {
     public void deserialize(ByteBuffer packet) {
         if (packet == null)
             return;
+        _type = packet.getShort();
         _task = packet.getShort();
-        _message = new byte[packet.limit() - 2];
+        _message = new byte[packet.limit() - 4];
         packet.get(_message);
-    }
+    }*/
 
 }

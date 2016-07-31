@@ -7,4 +7,11 @@ target/*
 */target/*
 /bin
 .idea
+<<<<<<< HEAD
 *.iml
+=======
+*.iml
+docs/jstorm-doc/_site
+docs/jstorm-doc/.sass-cache
+docs/jstorm-doc/target
+>>>>>>> e8b4ac859fd5c7cef27517bc0ff950748d810f4b

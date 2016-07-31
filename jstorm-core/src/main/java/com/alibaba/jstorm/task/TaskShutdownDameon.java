@@ -17,8 +17,10 @@
  */
 package com.alibaba.jstorm.task;
 
+import backtype.storm.hooks.ITaskHook;
 import backtype.storm.spout.ISpout;
 import backtype.storm.task.IBolt;
+import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.IDynamicComponent;
 import backtype.storm.utils.WorkerClassLoader;
 import com.alibaba.jstorm.callback.AsyncLoopThread;
@@ -95,6 +97,10 @@ public class TaskShutdownDameon implements ShutdownableDameon {
             LOG.info("Successfully shutdown " + thr.getThread().getName());
         }
 
+        TopologyContext userContext = task.getUserContext();
+        for (ITaskHook iTaskHook : userContext.getHooks())
+            iTaskHook.cleanup();
+        
         closeComponent(task_obj);
 
         try {
@@ -139,6 +145,8 @@ public class TaskShutdownDameon implements ShutdownableDameon {
             } finally {
                 WorkerClassLoader.restoreThreadContext();
             }
+        }else {
+            taskStatus.setStatus(TaskStatus.PAUSE);
         }
 
     }
@@ -152,6 +160,8 @@ public class TaskShutdownDameon implements ShutdownableDameon {
             } finally {
                 WorkerClassLoader.restoreThreadContext();
             }
+        }else {
+            taskStatus.setStatus(TaskStatus.RUN);
         }
     }
 

@@ -143,6 +143,77 @@ public class ShutdownWork extends RunnableCallback {
     }
 
     /**
+     * shutdown all workers used by supervisor health checker thread
+     *
+     * @param conf
+     * @param supervisorId
+     * @param removed
+     * @param block
+     *
+     * @return the topologys whose workers are shutdown successfully
+     */
+    public static void shutWorker(Map conf,
+                                  String supervisorId,
+                                  Map<String, String> removed,
+                                  boolean block) {
+
+        Map<String, List<String>> workerId2Pids = new HashMap<String, List<String>>();
+
+        int maxWaitTime = 0;
+
+        maxWaitTime = Math.max(maxWaitTime, ConfigExtension.getTaskCleanupTimeoutSec(conf));
+
+        Map<String,Integer> killingWorkers = new HashMap<String, Integer>();
+
+        for (Entry<String, String> entry : removed.entrySet()) {
+            String workerId = entry.getKey();
+            String topologyId = entry.getValue();
+
+            List<String> pids = null;
+            try {
+                pids = getPid(conf, workerId);
+            } catch (IOException e1) {
+                LOG.error("Failed to get pid for " + workerId + " of " + topologyId);
+            }
+            workerId2Pids.put(workerId, pids);
+
+            if (killingWorkers.get(workerId) == null) {
+                killingWorkers.put(workerId, TimeUtils.current_time_secs());
+                LOG.info("Begin to shut down " + topologyId + ":" + workerId);
+                try {
+                    for (String pid : pids) {
+                        JStormUtils.process_killed(Integer.parseInt(pid));
+                    }
+                } catch (Exception e) {
+                    LOG.info("Failed to shutdown ", e);
+                }
+            }
+        }
+
+        if (block) {
+            JStormUtils.sleepMs(maxWaitTime*1000);
+        }
+
+        for (Entry<String, String> entry : removed.entrySet()) {
+            String workerId = entry.getKey();
+            List<String> pids = workerId2Pids.get(workerId);
+
+            int cleanupTimeout = ConfigExtension.getTaskCleanupTimeoutSec(conf);
+
+            int initCleanUpTime = killingWorkers.get(workerId);
+            if (TimeUtils.current_time_secs() - initCleanUpTime > cleanupTimeout) {
+                for (String pid : pids) {
+                    JStormUtils.ensure_process_killed(Integer.parseInt(pid));
+                }
+                tryCleanupWorkerDir(conf, workerId);
+                LOG.info("Successfully shut down " + workerId);
+                killingWorkers.remove(workerId);
+            }
+        }
+    }
+
+
+    /**
      * clean the directory , subdirectories of STORM-LOCAL-DIR/workers/workerId
      * 
      * 
@@ -150,7 +221,7 @@ public class ShutdownWork extends RunnableCallback {
      * @param workerId
      * @throws IOException
      */
-    public void tryCleanupWorkerDir(Map conf, String workerId) {
+    public static void tryCleanupWorkerDir(Map conf, String workerId) {
         try {
             // delete heartbeat dir LOCAL_DIR/workers/workid/heartbeats
             PathUtils.rmr(StormConfig.worker_heartbeats_root(conf, workerId));
@@ -171,7 +242,7 @@ public class ShutdownWork extends RunnableCallback {
      * @return
      * @throws IOException
      */
-    public List<String> getPid(Map conf, String workerId) throws IOException {
+    public static List<String> getPid(Map conf, String workerId) throws IOException {
         String workerPidPath = StormConfig.worker_pids_root(conf, workerId);
 
         List<String> pids = PathUtils.read_dir_contents(workerPidPath);

@@ -44,21 +44,21 @@ public abstract class DisruptorRunable extends RunnableCallback implements Event
 
     protected DisruptorQueue queue;
     protected String idStr;
-    protected AsmHistogram timer;
+/*    protected AsmHistogram timer;*/
     protected AtomicBoolean shutdown = AsyncLoopRunnable.getShutdown();
 
     public DisruptorRunable(DisruptorQueue queue, String idStr) {
         this.queue = queue;
         this.idStr = idStr;
 
-        this.timer =
+/*        this.timer =
                 (AsmHistogram) JStormMetrics.registerWorkerMetric(MetricUtils.workerMetricName(idStr + MetricDef.TIME_TYPE, MetricType.HISTOGRAM),
-                        new AsmHistogram());
+                        new AsmHistogram());*/
 
-        QueueGauge queueGauge = new QueueGauge(queue, idStr, MetricDef.QUEUE_TYPE);
+/*        QueueGauge queueGauge = new QueueGauge(queue, idStr, MetricDef.QUEUE_TYPE);
         JStormMetrics.registerWorkerMetric(MetricUtils.workerMetricName(idStr + MetricDef.QUEUE_TYPE, MetricType.GAUGE), new AsmGauge(queueGauge));
 
-        JStormHealthCheck.registerWorkerHealthCheck(idStr, queueGauge);
+        JStormHealthCheck.registerWorkerHealthCheck(idStr, queueGauge);*/
     }
 
     public abstract void handleEvent(Object event, boolean endOfBatch) throws Exception;
@@ -66,7 +66,7 @@ public abstract class DisruptorRunable extends RunnableCallback implements Event
     /**
      * This function need to be implements
      * 
-     * @see EventHandler#onEvent(Object, long, boolean)
+     * @see com.lmax.disruptor.EventHandler#onEvent(java.lang.Object, long, boolean)
      */
     @Override
     public void onEvent(Object event, long sequence, boolean endOfBatch) throws Exception {
@@ -74,19 +74,20 @@ public abstract class DisruptorRunable extends RunnableCallback implements Event
             return;
         }
 
-        long start = System.nanoTime();
+        handleEvent(event, endOfBatch);
+
+/*        long start = timer.getTime();
         try {
             handleEvent(event, endOfBatch);
         } finally {
-            long end = System.nanoTime();
-            timer.update((end - start) / TimeUtils.NS_PER_US);
-        }
+            timer.updateTime(start);
+        }*/
     }
 
     @Override
     public void run() {
         LOG.info("Successfully start thread " + idStr);
-        queue.consumerStarted();
+        //queue.consumerStarted();
 
         while (!shutdown.get()) {
             queue.consumeBatchWhenAvailable(this);
@@ -96,8 +97,8 @@ public abstract class DisruptorRunable extends RunnableCallback implements Event
 
     @Override
     public void shutdown() {
-        JStormMetrics.unregisterWorkerMetric(MetricUtils.workerMetricName(idStr + MetricDef.QUEUE_TYPE, MetricType.GAUGE));
-        JStormHealthCheck.unregisterWorkerHealthCheck(idStr);
+/*        JStormMetrics.unregisterWorkerMetric(MetricUtils.workerMetricName(idStr + MetricDef.QUEUE_TYPE, MetricType.GAUGE));
+        JStormHealthCheck.unregisterWorkerHealthCheck(idStr);*/
     }
 
 }

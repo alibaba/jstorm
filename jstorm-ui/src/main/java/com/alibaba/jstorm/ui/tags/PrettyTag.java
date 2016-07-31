@@ -53,7 +53,7 @@ public class PrettyTag extends SimpleTagSupport {
             switch (type) {
                 case "uptime":
                     int uptime = JStormUtils.parseInt(input, 0);
-                    output = StatBuckets.prettyUptime(uptime);
+                    output = UIUtils.prettyUptime(uptime);
                     break;
                 case "datetime":
                     output = UIUtils.prettyDateTime(input);

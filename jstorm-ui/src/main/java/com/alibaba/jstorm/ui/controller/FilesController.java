@@ -22,6 +22,7 @@ import com.alibaba.jstorm.ui.model.Response;
 import com.alibaba.jstorm.ui.utils.UIUtils;
 import com.alibaba.jstorm.utils.FileAttribute;
 import com.alibaba.jstorm.utils.JStormUtils;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +59,7 @@ public class FilesController {
                        @RequestParam(value = "port", required = false) String port,
                        @RequestParam(value = "dir", required = false) String dir,
                        ModelMap model) {
+        cluster_name = StringEscapeUtils.escapeHtml(cluster_name);
         dirs.clear();
         files.clear();
         Map conf = UIUtils.readUiConfig();

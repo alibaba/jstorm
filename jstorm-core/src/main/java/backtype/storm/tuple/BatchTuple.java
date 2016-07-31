@@ -20,6 +20,9 @@ package backtype.storm.tuple;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+
 public class BatchTuple implements ITupleExt{
     private int targetTaskId;
 
@@ -82,4 +85,9 @@ public class BatchTuple implements ITupleExt{
 		// TODO Auto-generated method stub
 		
 	}
+	
+	@Override
+    public String toString() {
+        return ToStringBuilder.reflectionToString(this, ToStringStyle.SHORT_PREFIX_STYLE);
+    }
 }

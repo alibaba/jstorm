@@ -71,8 +71,8 @@ public class StormClientHandler extends SimpleChannelUpstreamHandler {
 
     /**
      * 
-     * @see SimpleChannelUpstreamHandler#exceptionCaught(ChannelHandlerContext,
-     *      ExceptionEvent)
+     * @see org.jboss.netty.channel.SimpleChannelUpstreamHandler#exceptionCaught(org.jboss.netty.channel.ChannelHandlerContext,
+     *      org.jboss.netty.channel.ExceptionEvent)
      */
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent event) {
@@ -90,8 +90,8 @@ public class StormClientHandler extends SimpleChannelUpstreamHandler {
     /**
      * Attention please,
      * 
-     * @see SimpleChannelUpstreamHandler#channelDisconnected(ChannelHandlerContext,
-     *      ChannelStateEvent)
+     * @see org.jboss.netty.channel.SimpleChannelUpstreamHandler#channelDisconnected(org.jboss.netty.channel.ChannelHandlerContext,
+     *      org.jboss.netty.channel.ChannelStateEvent)
      */
     @Override
     public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {

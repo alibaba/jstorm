@@ -18,10 +18,12 @@
 package com.alibaba.jstorm.message.netty;
 
 import backtype.storm.Config;
+import backtype.storm.messaging.ControlMessage;
 import backtype.storm.messaging.IConnection;
 import backtype.storm.messaging.TaskMessage;
 import backtype.storm.utils.DisruptorQueue;
 import backtype.storm.utils.Utils;
+
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.common.metric.*;
 import com.alibaba.jstorm.metric.*;
@@ -29,6 +31,7 @@ import com.alibaba.jstorm.utils.JStormServerUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.NetWorkUtils;
 import com.codahale.metrics.health.HealthCheck;
+
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFactory;
@@ -79,10 +82,11 @@ class NettyClient implements IConnection {
     protected String address;
     // doesn't use timer, due to competition
     protected AsmHistogram sendTimer;
-    protected AsmHistogram batchSizeHistogram;
     protected AsmMeter sendSpeed;
-    protected static AsmMeter totalSendSpeed = (AsmMeter) JStormMetrics.registerWorkerMetric(MetricUtils.workerMetricName(
-            MetricDef.NETTY_CLI_SEND_SPEED, MetricType.METER), new AsmMeter());
+    protected static AsmMeter totalSendSpeed = (AsmMeter) JStormMetrics.registerWorkerMetric(
+            MetricUtils.workerMetricName(MetricDef.NETTY_CLI_SEND_SPEED, MetricType.METER), new AsmMeter());
+    protected AsmHistogram batchSizeWorkerHistogram = (AsmHistogram) JStormMetrics.registerWorkerMetric(
+            MetricUtils.workerMetricName(MetricDef.NETTY_CLI_BATCH_SIZE, MetricType.HISTOGRAM), new AsmHistogram());
 
     protected ReconnectRunnable reconnector;
     protected ChannelFactory clientChannelFactory;
@@ -97,7 +101,7 @@ class NettyClient implements IConnection {
 
     protected boolean connectMyself;
 
-    protected Object channelClosing = new Object();
+    protected final Object channelClosing = new Object();
 
     protected boolean enableNettyMetrics;
 
@@ -137,7 +141,7 @@ class NettyClient implements IConnection {
         address = JStormServerUtils.getName(host, port);
 
         this.enableNettyMetrics = MetricUtils.isEnableNettyMetrics(storm_conf);
-        LOG.info("** enable netty metrics: {}", this.enableNettyMetrics);
+        LOG.info("* enable netty metrics: {}", this.enableNettyMetrics);
         if (!connectMyself) {
             registerMetrics();
         }
@@ -148,10 +152,6 @@ class NettyClient implements IConnection {
         if (this.enableNettyMetrics) {
             sendTimer = (AsmHistogram) JStormMetrics.registerNettyMetric(
                     MetricUtils.nettyMetricName(AsmMetric.mkName(MetricDef.NETTY_CLI_SEND_TIME, nettyConnection),
-                            MetricType.HISTOGRAM),
-                    new AsmHistogram());
-            batchSizeHistogram = (AsmHistogram) JStormMetrics.registerNettyMetric(
-                    MetricUtils.nettyMetricName(AsmMetric.mkName(MetricDef.NETTY_CLI_BATCH_SIZE, nettyConnection),
                             MetricType.HISTOGRAM),
                     new AsmHistogram());
             sendSpeed = (AsmMeter) JStormMetrics.registerNettyMetric(MetricUtils.nettyMetricName(
@@ -178,8 +178,8 @@ class NettyClient implements IConnection {
 
         JStormHealthCheck.registerWorkerHealthCheck(MetricDef.NETTY_CLI_CONNECTION + ":" + nettyConnection.toString(),
                 new HealthCheck() {
-                    Result healthy = Result.healthy();
-                    Result unhealthy = Result
+                    HealthCheck.Result healthy = HealthCheck.Result.healthy();
+                    HealthCheck.Result unhealthy = HealthCheck.Result
                             .unhealthy("NettyConnection " + nettyConnection.toString() + " is broken.");
 
                     @Override
@@ -311,23 +311,45 @@ class NettyClient implements IConnection {
         return channel;
     }
 
+    protected synchronized void flushRequest(Channel channel, final ControlMessage request) {
+        if (request == null) {
+            return;
+        }
+
+        ChannelFuture future = channel.write(request);
+        future.addListener(new ChannelFutureListener() {
+            public void operationComplete(ChannelFuture future) throws Exception {
+                if (!future.isSuccess()) {
+                    Channel channel = future.getChannel();
+                    if (isClosed() == false) {
+                        LOG.info("Failed to send request to " + name + ": " + channel.toString() + ":", future.getCause());
+                    }
+
+                    if (null != channel) {
+                        exceptionChannel(channel);
+                    }
+                } else {
+                    //LOG.debug("Control message was sent successfully. " + request.toString());
+                }
+            }
+        });
+    }
+
     protected synchronized void flushRequest(Channel channel, final MessageBatch requests) {
         if (requests == null || requests.isEmpty())
             return;
 
         Long batchSize = (long) requests.getEncoded_length();
-        if (batchSizeHistogram != null) {
-            batchSizeHistogram.update(batchSize);
-        }
         pendings.incrementAndGet();
-        if (sendSpeed != null) {
+        if (this.enableNettyMetrics && sendSpeed != null) {
             sendSpeed.update(batchSize);
         }
         totalSendSpeed.update(batchSize);
+        batchSizeWorkerHistogram.update(batchSize);
+
         ChannelFuture future = channel.write(requests);
         future.addListener(new ChannelFutureListener() {
             public void operationComplete(ChannelFuture future) throws Exception {
-
                 pendings.decrementAndGet();
                 if (!future.isSuccess()) {
                     Channel channel = future.getChannel();
@@ -336,7 +358,6 @@ class NettyClient implements IConnection {
                     }
 
                     if (null != channel) {
-
                         exceptionChannel(channel);
                     }
                 } else {
@@ -351,16 +372,15 @@ class NettyClient implements IConnection {
             JStormMetrics.unregisterNettyMetric(MetricUtils.nettyMetricName(
                     AsmMetric.mkName(MetricDef.NETTY_CLI_SEND_TIME, nettyConnection), MetricType.HISTOGRAM));
             JStormMetrics.unregisterNettyMetric(MetricUtils.nettyMetricName(
-                    AsmMetric.mkName(MetricDef.NETTY_CLI_BATCH_SIZE, nettyConnection), MetricType.HISTOGRAM));
-            JStormMetrics.unregisterNettyMetric(MetricUtils.nettyMetricName(
                     AsmMetric.mkName(MetricDef.NETTY_CLI_SEND_PENDING, nettyConnection), MetricType.GAUGE));
             JStormMetrics.unregisterNettyMetric(MetricUtils
                     .nettyMetricName(AsmMetric.mkName(MetricDef.NETTY_CLI_CACHE_SIZE, nettyConnection), MetricType.GAUGE));
             JStormMetrics.unregisterNettyMetric(MetricUtils
                     .nettyMetricName(AsmMetric.mkName(MetricDef.NETTY_CLI_SEND_SPEED, nettyConnection), MetricType.METER));
         }
+        JStormMetrics.unregisterWorkerMetric(MetricUtils.workerMetricName(MetricDef.NETTY_CLI_SEND_SPEED, MetricType.METER));
+        JStormMetrics.unregisterWorkerMetric(MetricUtils.workerMetricName(MetricDef.NETTY_CLI_BATCH_SIZE, MetricType.HISTOGRAM));
         JStormHealthCheck.unregisterWorkerHealthCheck(MetricDef.NETTY_CLI_CACHE_SIZE + ":" + nettyConnection.toString());
-
         JStormHealthCheck.unregisterWorkerHealthCheck(MetricDef.NETTY_CLI_CONNECTION + ":" + nettyConnection.toString());
     }
 
@@ -371,7 +391,7 @@ class NettyClient implements IConnection {
      */
     public void close() {
         LOG.info("Close netty connection to {}", name());
-        if (being_closed.compareAndSet(false, true) == false) {
+        if (!being_closed.compareAndSet(false, true)) {
             LOG.info("Netty client has been closed.");
             return;
         }
@@ -552,7 +572,7 @@ class NettyClient implements IConnection {
         public CacheGaugeHealthCheck(AtomicReference<MessageBatch> messageBatchRef, String name) {
             this.messageBatchRef = messageBatchRef;
             this.name = name;
-            this.healthy = Result.healthy();
+            this.healthy = HealthCheck.Result.healthy();
         }
 
         @Override
@@ -570,7 +590,7 @@ class NettyClient implements IConnection {
         protected Result check() throws Exception {
             Double size = getValue();
             if (size > 8 * JStormUtils.SIZE_1_M) {
-                return Result.unhealthy(name + QueueGauge.QUEUE_IS_FULL);
+                return HealthCheck.Result.unhealthy(name + QueueGauge.QUEUE_IS_FULL);
             } else {
                 return healthy;
             }

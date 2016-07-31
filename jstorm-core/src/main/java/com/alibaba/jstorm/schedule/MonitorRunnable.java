@@ -26,6 +26,7 @@ import com.alibaba.jstorm.daemon.nimbus.NimbusData;
 import com.alibaba.jstorm.daemon.nimbus.NimbusUtils;
 import com.alibaba.jstorm.daemon.nimbus.StatusType;
 import com.alibaba.jstorm.schedule.default_assign.ResourceWorkerSlot;
+import com.alibaba.jstorm.task.error.ErrorConstants;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.TimeFormat;
 import org.slf4j.Logger;
@@ -130,7 +131,8 @@ public class MonitorRunnable implements Runnable {
                                 String nowStr = TimeFormat.getSecond(now);
                                 String errorInfo = "Task-" + task + " is dead on " + resource.getHostname() + ":" + resource.getPort() + ", " + nowStr;
                                 LOG.info(errorInfo);
-                                clusterState.report_task_error(topologyid, task, errorInfo, null);
+                                clusterState.report_task_error(topologyid, task, errorInfo, ErrorConstants.ERROR,
+                                        ErrorConstants.CODE_TASK_DEAD, ErrorConstants.DURATION_SECS_TASK_DEAD);
                             }
                         }
 

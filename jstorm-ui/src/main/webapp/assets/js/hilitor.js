@@ -34,13 +34,17 @@ function Hilitor(id, tag)
         }
     };
 
-    this.setRegex = function(input)
+    this.setRegex = function(input, case_ignore)
     {
         input = input.replace(/^[^\w]+|[^\w]+$/g, "").replace(/[^\w'-]+/g, "|");
         var re = "(" + input + ")";
         if(!this.openLeft) re = "\\b" + re;
         if(!this.openRight) re = re + "\\b";
         matchRegex = new RegExp(re, "i");
+        if (!case_ignore){
+            //debugger
+            matchRegex = new RegExp(re)
+        }
     };
 
     this.getRegex = function()
@@ -63,6 +67,7 @@ function Hilitor(id, tag)
                 this.hiliteWords(node.childNodes[i]);
         }
         if(node.nodeType == 3) { // NODE_TEXT
+            //debugger
             if((nv = node.nodeValue) && (regs = matchRegex.exec(nv))) {
                 if(!wordColor[regs[0].toLowerCase()]) {
                     wordColor[regs[0].toLowerCase()] = colors[colorIdx++ % colors.length];
@@ -78,7 +83,7 @@ function Hilitor(id, tag)
                 after.nodeValue = after.nodeValue.substring(regs[0].length);
                 node.parentNode.insertBefore(match, after);
             }
-        };
+        }
     };
 
     // remove highlighting
@@ -93,11 +98,16 @@ function Hilitor(id, tag)
     };
 
     // start highlighting at target node
-    this.apply = function(input)
+    this.apply = function(input, _word_only, _case_ignore)
     {
         this.remove();
+        var word_only = _word_only || false;
+        var case_ignore = _case_ignore || true;
+        if (word_only) {
+            this.setMatchType("open");
+        }
         if(input === undefined || !input) return;
-        this.setRegex(input);
+        this.setRegex(input, case_ignore);
         this.hiliteWords(targetNode);
     };
 

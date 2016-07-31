@@ -1,11 +1,12 @@
 package com.alibaba.jstorm.daemon.worker.timer;
 
-import org.apache.log4j.Logger;
 
 import com.alibaba.jstorm.task.TaskBatchTransfer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TaskBatchCheckTrigger extends TimerTrigger {
-    private static final Logger LOG = Logger.getLogger(TickTupleTrigger.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TickTupleTrigger.class);
 
     private TaskBatchTransfer batchTransfer;
 
@@ -22,7 +23,7 @@ public class TaskBatchCheckTrigger extends TimerTrigger {
     @Override
     public void run() {
         try {
-            batchTransfer.startCheck();
+            //batchTransfer.startCheck();
         } catch (Exception e) {
             LOG.warn("Failed to public timer event to " + name, e);
             return;

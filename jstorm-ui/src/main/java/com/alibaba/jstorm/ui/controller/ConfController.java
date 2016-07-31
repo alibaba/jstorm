@@ -18,6 +18,7 @@
 package com.alibaba.jstorm.ui.controller;
 
 import com.alibaba.jstorm.ui.utils.UIUtils;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,8 +40,10 @@ public class ConfController {
                        @RequestParam(value = "type", required = false) String type,
                        @RequestParam(value = "topology", required = false) String topologyId,
                        @RequestParam(value = "host", required = false) String host, ModelMap model) {
+        name = StringEscapeUtils.escapeHtml(name);
+        topologyId = StringEscapeUtils.escapeHtml(topologyId);
         String title = null;
-        String uri = String.format("api/v1/cluster/%s", name);
+        String uri = String.format("api/v2/cluster/%s", name);
         if (!StringUtils.isBlank(type)){
             if (type.equals("supervisor")) {
                 uri += String.format("/supervisor/%s/configuration", host);

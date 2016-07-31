@@ -39,7 +39,7 @@ public class FeederCommitterBatchSpout implements ICommitterTridentSpout, IFeede
         _spout.setWaitToEmit(trueIfWait);
     }
     
-    static class CommitterEmitter implements Emitter {
+    static class CommitterEmitter implements ICommitterTridentSpout.Emitter {
         ITridentSpout.Emitter _emitter;
         
         

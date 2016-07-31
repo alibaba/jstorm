@@ -129,7 +129,7 @@ public class TopologyBuilder {
     /**
      * Define a new bolt in this topology. This defines a basic bolt, which is a simpler to use but more restricted kind of bolt. Basic bolts are intended for
      * non-aggregation processing and automate the anchoring/acking process to achieve proper reliability in the topology.
-     * 
+     *
      * @param id the id of this component. This id is referenced by other components that want to consume this bolt's outputs.
      * @param bolt the basic bolt
      * @return use the returned object to declare the inputs to this component
@@ -141,7 +141,7 @@ public class TopologyBuilder {
     /**
      * Define a new bolt in this topology. This defines a basic bolt, which is a simpler to use but more restricted kind of bolt. Basic bolts are intended for
      * non-aggregation processing and automate the anchoring/acking process to achieve proper reliability in the topology.
-     * 
+     *
      * @param id the id of this component. This id is referenced by other components that want to consume this bolt's outputs.
      * @param bolt the basic bolt
      * @param parallelism_hint the number of tasks that should be assigned to execute this bolt. Each task will run on a thread in a process somwehere around
@@ -177,6 +177,36 @@ public class TopologyBuilder {
         _spouts.put(id, spout);
         return new SpoutGetter(id);
     }
+
+    /**
+     * Define a new bolt in this topology. This defines a control spout, which is a simpler to use but more restricted kind of bolt. Control spouts are intended for
+     * making sending control message more simply
+     *
+     * @param id the id of this component.
+     * @param spout the control spout
+     */
+    public SpoutDeclarer setSpout(String id, IControlSpout spout) {
+        return setSpout(id, spout, null);
+    }
+    public SpoutDeclarer setSpout(String id, IControlSpout spout, Number parallelism_hint) {
+        return setSpout(id, new ControlSpoutExecutor(spout), parallelism_hint);
+    }
+    /**
+     * Define a new bolt in this topology. This defines a control bolt, which is a simpler to use but more restricted kind of bolt. Control bolts are intended for
+     * making sending control message more simply
+     * @param id the id of this component. This id is referenced by other components that want to consume this bolt's outputs.
+     * @param bolt the control bolt
+     * @param parallelism_hint the number of tasks that should be assigned to execute this bolt. Each task will run on a thread in a process somwehere around
+     *            the cluster.
+     * @return use the returned object to declare the inputs to this component
+     */
+    public BoltDeclarer setBolt(String id, IControlBolt bolt, Number parallelism_hint) {
+        return setBolt(id, new ControlBoltExecutor(bolt), parallelism_hint);
+    }
+    public BoltDeclarer setBolt(String id, IControlBolt bolt) {
+        return setBolt(id, bolt, null);
+    }
+
 
     public void setStateSpout(String id, IRichStateSpout stateSpout) {
         setStateSpout(id, stateSpout, null);

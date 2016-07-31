@@ -34,13 +34,13 @@
         |
         <span class="window">
             Window:
-            <a href="task?cluster=${clusterName}&topology=${topologyId}&component=${compName}&id=${task.task_id}&win=60"
+            <a href="task?cluster=${clusterName}&topology=${topologyId}&component=${compName}&id=${task.id}&win=60"
                class="label ${cls_60}">1 min</a>
-            <a href="task?cluster=${clusterName}&topology=${topologyId}&component=${compName}&id=${task.task_id}&win=600"
+            <a href="task?cluster=${clusterName}&topology=${topologyId}&component=${compName}&id=${task.id}&win=600"
                class="label ${cls_600}">10 min</a>
-            <a href="task?cluster=${clusterName}&topology=${topologyId}&component=${compName}&id=${task.task_id}&win=7200"
+            <a href="task?cluster=${clusterName}&topology=${topologyId}&component=${compName}&id=${task.id}&win=7200"
                class="label ${cls_7200}">2 hours</a>
-            <a href="task?cluster=${clusterName}&topology=${topologyId}&component=${compName}&id=${task.task_id}&win=86400"
+            <a href="task?cluster=${clusterName}&topology=${topologyId}&component=${compName}&id=${task.id}&win=86400"
                class="label ${cls_86400}">1 day</a>
         </span>
     </h2>
@@ -57,11 +57,11 @@
         <tbody>
         <c:if test="${task != null}">
             <tr>
-                <td>${task.task_id}</td>
+                <td>${task.id}</td>
                 <td><a href="component?cluster=${clusterName}&topology=${topologyId}&component=${task.component}">
                         ${task.component}</a></td>
                 <td>${task.host}:${task.port}</td>
-                <td><ct:pretty type="uptime" input="${task.uptime}"/></td>
+                <td>${task.uptime}</td>
                 <td><ct:status status="${task.status}"/></td>
             </tr>
         </c:if>

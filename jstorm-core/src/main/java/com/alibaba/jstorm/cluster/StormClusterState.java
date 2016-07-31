@@ -46,6 +46,8 @@ public interface StormClusterState {
 
     public Assignment assignment_info(String topology_id, RunnableCallback callback) throws Exception;
 
+    public Integer assignment_version(String topology_id, RunnableCallback callback) throws Exception;
+
     public void set_assignment(String topology_id, Assignment info) throws Exception;
 
     public AssignmentBak assignment_bak(String topologyName) throws Exception;
@@ -92,7 +94,13 @@ public interface StormClusterState {
 
     public void report_task_error(String topology_id, int task_id, Throwable error) throws Exception;
 
-    public void report_task_error(String topology_id, int task_id, String error, String tag) throws Exception;
+    public void report_task_error(String topology_id, int task_id, String error) throws Exception;
+
+    public void report_task_error(String topology_id, int task_id, String error, String error_level, int error_code) throws Exception;
+
+    public void report_task_error(String topology_id, int task_id, String error, String error_level, int error_code, int duration) throws Exception;
+
+    public void report_task_error(String topology_id, int task_id, String error, String error_level, int error_code, int duration, String tag) throws Exception;
 
     public Map<Integer, String> topo_lastErr_time(String topologyId) throws Exception;
 
@@ -104,7 +112,7 @@ public interface StormClusterState {
 
     public List<String> task_error_time(String topologyId, int taskId) throws Exception;
 
-    public String task_error_info(String topologyId, int taskId, long timeStamp) throws Exception;
+    public TaskError task_error_info(String topologyId, int taskId, long timeStamp) throws Exception;
 
     public void teardown_task_errors(String topology_id) throws Exception;
 

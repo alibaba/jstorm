@@ -63,6 +63,7 @@ public class ReturnResults extends BaseRichBolt {
             Map retMap = (Map) JSONValue.parse(returnInfo);
             final String host = (String) retMap.get("host");
             final int port = Utils.getInt(retMap.get("port"));
+            String hostPort = host + ":" + port;
             String id = (String) retMap.get("id");
             DistributedRPCInvocations.Iface client;
             if (local) {
@@ -89,7 +90,7 @@ public class ReturnResults extends BaseRichBolt {
                 client.result(id, result);
                 _collector.ack(input);
             } catch (AuthorizationException aze) {
-                LOG.error("Not authorized to return results to DRPC server", aze);
+                LOG.error("Not authorized to return results to DRPC server " + hostPort, aze);
                 _collector.fail(input);
                 if (client instanceof DRPCInvocationsClient) {
                     try {
@@ -100,7 +101,7 @@ public class ReturnResults extends BaseRichBolt {
                     }
                 }
             } catch (TException e) {
-                LOG.error("Failed to return results to DRPC server", e);
+                LOG.error("Failed to return results to DRPC server "  + hostPort, e);
                 _collector.fail(input);
                 if (client instanceof DRPCInvocationsClient) {
                     try {

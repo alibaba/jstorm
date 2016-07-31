@@ -41,6 +41,11 @@ public class AsmGauge extends AsmMetric<Gauge> {
     }
 
     @Override
+    public void updateTime(long obj) {
+        throw new RuntimeException("please use update method!");
+    }
+
+    @Override
     public AsmMetric clone() {
         AsmMetric metric = new AsmGauge(this.gauge);
         metric.setMetricName(this.getMetricName());

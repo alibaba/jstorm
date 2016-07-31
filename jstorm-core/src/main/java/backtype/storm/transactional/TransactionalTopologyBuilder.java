@@ -49,6 +49,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.alibaba.jstorm.client.ConfigExtension;
+
 /**
  * Trident subsumes the functionality provided by transactional topologies, so this class is deprecated.
  * 
@@ -129,6 +131,10 @@ public class TransactionalTopologyBuilder {
     }
 
     public TopologyBuilder buildTopologyBuilder() {
+        // Transaction is not compatible with jstorm batch mode(task.batch.tuple)
+        // so we close batch mode via system property
+        System.setProperty(ConfigExtension.TASK_BATCH_TUPLE, "false");
+        
         String coordinator = _spoutId + "/coordinator";
         TopologyBuilder builder = new TopologyBuilder();
         SpoutDeclarer declarer = builder.setSpout(coordinator, new TransactionalSpoutCoordinator(_spout));

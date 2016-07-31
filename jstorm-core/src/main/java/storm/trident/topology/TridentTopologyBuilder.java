@@ -150,7 +150,7 @@ public class TridentTopologyBuilder {
                     scd.addConfigurations(m);
                 }
                 
-                Map<String, CoordSpec> specs = new HashMap();
+                Map<String, TridentBoltExecutor.CoordSpec> specs = new HashMap();
                 specs.put(c.batchGroupId, new CoordSpec());
                 BoltDeclarer bd = builder.setBolt(id,
                         new TridentBoltExecutor(

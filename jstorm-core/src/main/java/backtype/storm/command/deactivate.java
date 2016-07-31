@@ -25,17 +25,12 @@ import backtype.storm.utils.Utils;
 
 /**
  * Deactivate topology
- * 
+ *
  * @author longda
- * 
  */
 public class deactivate {
 
-    /**
-     * @param args
-     */
     public static void main(String[] args) {
-        // TODO Auto-generated method stub
         if (args == null || args.length == 0) {
             throw new InvalidParameterException("Should input topology name");
         }

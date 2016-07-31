@@ -19,17 +19,15 @@ package com.alibaba.jstorm.task;
 
 import java.util.Map;
 
+import com.alibaba.jstorm.daemon.worker.JStormDebugger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.alibaba.jstorm.callback.AsyncLoopThread;
-import com.alibaba.jstorm.task.TaskReceiver.DeserializeRunnable;
 import com.alibaba.jstorm.utils.JStormUtils;
-import com.alibaba.jstorm.utils.TimeUtils;
 
 import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.BatchTuple;
-import backtype.storm.tuple.Tuple;
 import backtype.storm.utils.DisruptorQueue;
 
 public class TaskBatchReceiver extends TaskReceiver {
@@ -52,7 +50,7 @@ public class TaskBatchReceiver extends TaskReceiver {
 
         @Override
         protected Object deserialize(byte[] ser_msg) {
-            long start = System.nanoTime();
+            long start = deserializeTimer.getTime();
             try {
                 if (ser_msg == null) {
                     return null;
@@ -70,18 +68,17 @@ public class TaskBatchReceiver extends TaskReceiver {
 
                 // ser_msg.length > 1
                 BatchTuple tuple = deserializer.deserializeBatch(ser_msg);
-                if (isDebugRecv) {
+                if (JStormDebugger.isDebugRecv(tuple.getTuples())) {
                     LOG.info(idStr + " receive " + tuple.toString());
                 }
 
                 return tuple;
             } catch (Throwable e) {
-                if (taskStatus.isShutdown() == false) {
+                if (!taskStatus.isShutdown()) {
                     LOG.error(idStr + " recv thread error " + JStormUtils.toPrintableString(ser_msg) + "\n", e);
                 }
             } finally {
-                long end = System.nanoTime();
-                deserializeTimer.update((end - start) / TimeUtils.NS_PER_US);
+                deserializeTimer.updateTime(start);
             }
 
             return null;

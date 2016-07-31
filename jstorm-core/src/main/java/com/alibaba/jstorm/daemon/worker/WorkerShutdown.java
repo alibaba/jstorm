@@ -17,11 +17,18 @@
  */
 package com.alibaba.jstorm.daemon.worker;
 
+import java.io.*;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.alibaba.jstorm.client.ConfigExtension;
+import com.alibaba.jstorm.utils.PathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,6 +63,7 @@ public class WorkerShutdown implements ShutdownableDameon {
     private ClusterState cluster_state;
     private ScheduledExecutorService threadPool;
     private IConnection recvConnection;
+    private Map conf;
 
     // active nodeportSocket context zkCluster zkClusterstate
     public WorkerShutdown(WorkerData workerData, List<AsyncLoopThread> _threads) {
@@ -70,6 +78,7 @@ public class WorkerShutdown implements ShutdownableDameon {
         this.cluster_state = workerData.getZkClusterstate();
         this.threadPool = workerData.getThreadPool();
         this.recvConnection = workerData.getRecvConnection();
+        this.conf = workerData.getStormConf();
 
         Runtime.getRuntime().addShutdownHook(new Thread(this));
 
@@ -93,6 +102,10 @@ public class WorkerShutdown implements ShutdownableDameon {
 
         AsyncLoopRunnable.getShutdown().set(true);
         threadPool.shutdown();
+
+        //dump worker jstack,jmap info to specific file
+        if (ConfigExtension.isOutworkerDump(conf))
+            workerDumpInfoOutput();
 
         // shutdown tasks
         for (ShutdownableDameon task : shutdowntasks) {
@@ -181,5 +194,49 @@ public class WorkerShutdown implements ShutdownableDameon {
     // }
     //
     // }
+
+    public void workerDumpInfoOutput() {
+        RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
+        String pid = runtimeMXBean.getName().split("@")[0];
+        LOG.debug("worker's pid is " + pid);
+
+        String dumpOutFile = JStormUtils.getLogFileName();
+        if (dumpOutFile == null) {
+            return;
+        } else {
+            dumpOutFile += ".dump";
+        }
+        try {
+            File file = new File(dumpOutFile);
+            if (file.exists() == false) {
+                PathUtils.touch(dumpOutFile);
+            }
+        } catch (Exception e) {
+            LOG.warn("Failed to touch " + dumpOutFile, e);
+            return;
+        }
+        try {
+            PrintWriter outFile = new PrintWriter(new FileWriter(dumpOutFile, true));
+            StringBuilder jstackCommand = new StringBuilder();
+            jstackCommand.append("jstack ");
+            jstackCommand.append(pid);
+            LOG.debug("Begin to execute " + jstackCommand.toString());
+            String jstackOutput = JStormUtils.launchProcess(jstackCommand.toString(),
+                    new HashMap<String, String>(), false);
+            outFile.println(jstackOutput);
+            
+            
+            StringBuilder jmapCommand = new StringBuilder();
+            jmapCommand.append("jmap -heap ");
+            jmapCommand.append(pid);
+            LOG.debug("Begin to execute " + jmapCommand.toString());
+            String jmapOutput = JStormUtils.launchProcess(jmapCommand.toString(),
+                    new HashMap<String, String>(), false);
+            outFile.println(jmapOutput);
+        } catch (Exception e) {
+            LOG.error("can't excute jstack and jmap about " + pid);
+            LOG.error(String.valueOf(e));
+        }
+    }
 
 }

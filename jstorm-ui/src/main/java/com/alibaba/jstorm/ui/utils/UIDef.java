@@ -27,7 +27,7 @@ import java.util.Map;
  * @author Jark (wuchong.wc@alibaba-inc.com)
  */
 public class UIDef {
-    public static final String API_V1 = "/api/v1";
+    public static final String API_V2 = "/api/v2";
     public static final String APP_NAME = "JStorm";
     public static final String DEFAULT_CLUSTER_NAME = "default";
     public static final int PAGE_MAX = 15;
@@ -54,6 +54,9 @@ public class UIDef {
         put(MetricDef.EXECUTE_QUEUE, "ExeQueue(%)");
         put(MetricDef.DESERIALIZE_QUEUE, "DeserQueue(%)");
         put(MetricDef.SERIALIZE_QUEUE, "SerQueue(%)");
-        put(MetricDef.NETWORK_MSG_DECODE_TIME, "Network Msg Decode Time(us)");
+        put(MetricDef.CONTROL_QUEUE, "CtrlQueue(%)");
+        put(MetricDef.SEND_QUEUE, "SendCtrlQueue(%)");
+        put(MetricDef.RECV_CTRL_QUEUE, "RevCtrlQueue(%)");
+        put(MetricDef.NETWORK_MSG_DECODE_TIME, "NettyMsgDecodeTime(us)");
     }};
 }

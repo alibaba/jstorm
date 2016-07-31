@@ -18,19 +18,21 @@
 package com.alibaba.jstorm.message.netty;
 
 import backtype.storm.Config;
+import backtype.storm.messaging.ControlMessage;
 import backtype.storm.messaging.TaskMessage;
 import backtype.storm.utils.DisruptorQueue;
 import backtype.storm.utils.Utils;
+
 import com.alibaba.jstorm.common.metric.AsmGauge;
 import com.alibaba.jstorm.common.metric.QueueGauge;
 import com.alibaba.jstorm.metric.*;
 import com.alibaba.jstorm.utils.JStormServerUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
-import com.alibaba.jstorm.utils.TimeUtils;
 import com.codahale.metrics.Gauge;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.jboss.netty.channel.Channel;
@@ -63,9 +65,9 @@ class NettyClientSync extends NettyClient implements EventHandler {
         WaitStrategy waitStrategy = (WaitStrategy) Utils.newInstance((String) storm_conf.get(Config.TOPOLOGY_DISRUPTOR_WAIT_STRATEGY));
 
         disruptorQueue = DisruptorQueue.mkInstance(name, ProducerType.MULTI, MAX_SEND_PENDING * 8, waitStrategy);
-        disruptorQueue.consumerStarted();
+        //disruptorQueue.consumerStarted();
 
-        if (connectMyself == false) {
+        if (!connectMyself) {
             registerSyncMetrics();
         }
 
@@ -134,7 +136,7 @@ class NettyClientSync extends NettyClient implements EventHandler {
         if (batch == null) {
             LOG.warn("Handle no data to {}, this shouldn't occur", name);
 
-        } else if (channel == null || channel.isWritable() == false) {
+        } else if (channel == null || !channel.isWritable()) {
             LOG.warn("Channel occur exception, during batch messages {}", name);
             batchQueue.offer(batch);
         } else {
@@ -147,7 +149,7 @@ class NettyClientSync extends NettyClient implements EventHandler {
      * Don't take care of competition
      */
     public void sendData() {
-        long start = System.nanoTime();
+        long start = enableNettyMetrics ? sendTimer.getTime() : 0;
         try {
             MessageBatch batch = batchQueue.poll();
             if (batch == null) {
@@ -164,15 +166,14 @@ class NettyClientSync extends NettyClient implements EventHandler {
             String err = name + " nettyclient occur unknow exception";
             JStormUtils.halt_process(-1, err);
         } finally {
-            long end = System.nanoTime();
-            if (sendTimer != null) {
-                sendTimer.update((end - start) / TimeUtils.NS_PER_US);
+            if (sendTimer != null && enableNettyMetrics) {
+                sendTimer.updateTime(start);
             }
         }
     }
 
     public void sendAllData() {
-        long start = System.nanoTime();
+        long start = enableNettyMetrics ? sendTimer.getTime() : 0L;
         try {
             disruptorQueue.consumeBatch(this);
             MessageBatch batch = batchQueue.poll();
@@ -181,7 +182,7 @@ class NettyClientSync extends NettyClient implements EventHandler {
                 if (channel == null) {
                     LOG.info("No channel {} to flush all data", name);
                     return;
-                } else if (channel.isWritable() == false) {
+                } else if (!channel.isWritable()) {
                     LOG.info("Channel {} is no writable", name);
                     return;
                 }
@@ -193,9 +194,8 @@ class NettyClientSync extends NettyClient implements EventHandler {
             String err = name + " nettyclient occur unknow exception";
             JStormUtils.halt_process(-1, err);
         } finally {
-            long end = System.nanoTime();
-            if (sendTimer != null) {
-                sendTimer.update((end - start) / TimeUtils.NS_PER_US);
+            if (sendTimer != null && enableNettyMetrics) {
+                sendTimer.updateTime(start);
             }
         }
     }
@@ -212,18 +212,16 @@ class NettyClientSync extends NettyClient implements EventHandler {
             return;
         }
 
-        TaskMessage message = (TaskMessage) event;
-
         MessageBatch messageBatch = messageBatchRef.getAndSet(null);
         if (null == messageBatch) {
             messageBatch = new MessageBatch(messageBatchSize);
         }
 
-        messageBatch.add(message);
+        messageBatch.add(event);
 
         if (messageBatch.isFull()) {
             batchQueue.offer(messageBatch);
-        } else if (endOfBatch == true) {
+        } else if (endOfBatch) {
             batchQueue.offer(messageBatch);
         } else {
             messageBatchRef.set(messageBatch);
@@ -234,7 +232,7 @@ class NettyClientSync extends NettyClient implements EventHandler {
      * Handle lost message case
      */
     void trigger() {
-        if (isClosed() == true) {
+        if (isClosed()) {
             return;
         }
 
@@ -290,7 +288,7 @@ class NettyClientSync extends NettyClient implements EventHandler {
         LOG.info("Begin to close connection to {} and flush all data, batchQueue {}, disruptor {}", name, batchQueue.size(), disruptorQueue.population());
         sendAllData();
         disruptorQueue.haltWithInterrupt();
-        if (connectMyself == false) {
+        if (!connectMyself) {
             unregisterSyncMetrics();
         }
 

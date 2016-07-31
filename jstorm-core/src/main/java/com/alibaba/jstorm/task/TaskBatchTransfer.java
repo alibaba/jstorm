@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
+import com.lmax.disruptor.InsufficientCapacityException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +38,7 @@ import backtype.storm.serialization.KryoTupleSerializer;
 import backtype.storm.tuple.BatchTuple;
 import backtype.storm.tuple.ITupleExt;
 import backtype.storm.tuple.TupleExt;
+import backtype.storm.utils.DisruptorQueue;
 
 /**
  * Batch Tuples, then send out
@@ -63,67 +65,116 @@ public class TaskBatchTransfer extends TaskTransfer {
 
         batchMap = new HashMap<Integer, BatchTuple>();
         maxBatchSize = ConfigExtension.getTaskMsgBatchSize(workerData.getStormConf());
-        
-        
-        TaskBatchFlushTrigger batchFlushTrigger = new TaskBatchFlushTrigger(BATCH_FLUSH_INTERVAL_MS, taskName, this);
+/*
+        Integer flushTime = ConfigExtension.getTaskMsgFlushInervalMs(workerData.getConf());
+
+        TaskBatchFlushTrigger batchFlushTrigger = new TaskBatchFlushTrigger(flushTime, taskName, this);
         batchFlushTrigger.register(TimeUnit.MILLISECONDS);
-        
+
         TaskBatchCheckTrigger batchCheckTrigger = new TaskBatchCheckTrigger(BATCH_CHECK_INTERVAL_S, taskName, this);
         batchCheckTrigger.register();
-        
-        startCheck();
+
+        startCheck();*/
     }
-    
+/*
     public void setBatchSize(int batchSize) {
-		this.batchSize = batchSize;
-		LOG.info(taskName + " set batch size as " + batchSize);
-	}
+        this.batchSize = batchSize;
+        LOG.info(taskName + " set batch size as " + batchSize);
+    }*/
 
     @Override
     protected AsyncLoopThread setupSerializeThread() {
         return new AsyncLoopThread(new TransferBatchRunnable());
     }
-    
+/*
     public void startCheck() {
-    	eventSampler = new EventSampler(BATCH_EVENT_SAMPLER_INTERVAL_S);
-    	setBatchSize(maxBatchSize);
-    	LOG.info("Start check batch size, task of  " + taskName);
+        eventSampler = new EventSampler(BATCH_EVENT_SAMPLER_INTERVAL_S);
+        setBatchSize(maxBatchSize);
+        LOG.info("Start check batch size, task of  " + taskName);
     }
-    
+
     public void stopCheck() {
-    	eventSampler = null;
-    	LOG.info("Stop check batch size, task of  " + taskName);
+        eventSampler = null;
+        LOG.info("Stop check batch size, task of  " + taskName);
+    }
+*/
+    public void transfer(BatchTuple batch) {
+
+        int taskId = batch.getTargetTaskId();
+
+        DisruptorQueue exeQueue = innerTaskTransfer.get(taskId);
+        if (exeQueue != null) {
+            exeQueue.publish(batch);
+        } else {
+            serializeQueue.publish(batch);
+        }
+
+        if (backpressureController.isBackpressureMode()) {
+            backpressureController.flowControl();
+        }
     }
 
-	@Override
-	public void push(int taskId, TupleExt tuple) {
-		synchronized (lock) {
-			BatchTuple batch = getBatchTuple(taskId);
+    public void transferControl(BatchTuple tuple) {
 
-			batch.addToBatch(tuple);
-			if (batch.isBatchFull()) {
-				serializeQueue.publish(batch);
-				batchMap.put(taskId, new BatchTuple(taskId, batchSize));
-			}
-		}
+        int taskId = tuple.getTargetTaskId();
 
-	}
-
-    public void flush() {
-    	Map<Integer, BatchTuple> oldBatchMap = null;
-        synchronized (lock) {
-            oldBatchMap = batchMap;
-            batchMap = new HashMap<Integer, BatchTuple>();
+        DisruptorQueue controlQueue = controlQueues.get(taskId);
+        if (controlQueue != null) {
+            controlQueue.publish(tuple);
+        } else {
+            transferControlQueue.publish(tuple);
         }
-        
-        for (Entry<Integer, BatchTuple> entry : oldBatchMap.entrySet()) {
-            BatchTuple batch = entry.getValue();
-            if (batch != null && batch.currBatchSize() > 0) {
-            	serializeQueue.publish(batch);
+    }
+/*
+    @Override
+    public void push(int taskId, TupleExt tuple) {
+        synchronized (lock) {
+            BatchTuple batch = getBatchTuple(taskId);
+
+            batch.addToBatch(tuple);
+            if (batch.isBatchFull()) {
+                serializeQueue.publish(batch);
+                batchMap.put(taskId, new BatchTuple(taskId, batchSize));
+            }
+        }
+
+    }
+
+    @Override
+    public void directPush(int taskId, DisruptorQueue execQueue, TupleExt tuple) {
+
+        synchronized (lock) {
+            BatchTuple batch = getBatchTuple(taskId);
+
+            batch.addToBatch(tuple);
+            if (batch.isBatchFull()) {
+                execQueue.publish(batch);
+                batchMap.put(taskId, new BatchTuple(taskId, batchSize));
             }
         }
     }
 
+    public void flush() {
+        Map<Integer, BatchTuple> oldBatchMap = null;
+        synchronized (lock) {
+            oldBatchMap = batchMap;
+            batchMap = new HashMap<Integer, BatchTuple>();
+        }
+
+        for (Entry<Integer, BatchTuple> entry : oldBatchMap.entrySet()) {
+            BatchTuple batch = entry.getValue();
+
+            int taskId = batch.getTargetTaskId();
+            if (batch != null && batch.currBatchSize() > 0) {
+                DisruptorQueue exeQueue = innerTaskTransfer.get(taskId);
+                if (exeQueue != null) {
+                    exeQueue.publish(batch);
+                } else {
+                    serializeQueue.publish(batch);
+                }
+            }
+        }
+    }
 
     private BatchTuple getBatchTuple(int targetTaskId) {
         BatchTuple ret = batchMap.get(targetTaskId);
@@ -133,28 +184,26 @@ public class TaskBatchTransfer extends TaskTransfer {
         }
         return ret;
     }
-
-
+*/
     protected class TransferBatchRunnable extends TransferRunnable {
-
         public byte[] serialize(ITupleExt tuple) {
-    		BatchTuple batchTuple = (BatchTuple)tuple;
-    		if (eventSampler != null) {
-    			Pair<Integer, Double> result = eventSampler.avgCheck(batchTuple.currBatchSize());
-    			if (result != null) {
-    				Double avgBatchSize = result.getSecond();
-    				LOG.info(taskName + " batch average size is " + avgBatchSize);
-    				if (avgBatchSize < BATCH_SIZE_THRESHOLD) {
-    					LOG.info("Due to average size is small, so directly reset batch size as 1");
-    					// set the batch size as 1
-    					// transfer can directly send tuple, don't need wait flush interval
-    					setBatchSize(1);
-    				}
-    				stopCheck();
-    			}
-    			
-    		}
-        	return serializer.serializeBatch(batchTuple);
+            BatchTuple batchTuple = (BatchTuple) tuple;
+/*            if (eventSampler != null) {
+                Pair<Integer, Double> result = eventSampler.avgCheck(batchTuple.currBatchSize());
+                if (result != null) {
+                    Double avgBatchSize = result.getSecond();
+                    LOG.info(taskName + " batch average size is " + avgBatchSize);
+                    if (avgBatchSize < BATCH_SIZE_THRESHOLD) {
+                        LOG.info("Due to average size is small, so directly reset batch size as 1");
+                        // set the batch size as 1
+                        // transfer can directly send tuple, don't need wait flush interval
+                        setBatchSize(1);
+                    }
+                    stopCheck();
+                }
+
+            }*/
+            return serializer.serializeBatch(batchTuple);
         }
     }
 }

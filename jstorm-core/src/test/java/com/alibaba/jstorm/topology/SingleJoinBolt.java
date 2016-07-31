@@ -17,6 +17,13 @@
  */
 package com.alibaba.jstorm.topology;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import backtype.storm.Config;
 import backtype.storm.generated.GlobalStreamId;
 import backtype.storm.task.OutputCollector;
@@ -26,8 +33,6 @@ import backtype.storm.topology.base.BaseRichBolt;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.utils.TimeCacheMap;
-
-import java.util.*;
 
 public class SingleJoinBolt extends BaseRichBolt {
     OutputCollector _collector;
@@ -95,6 +100,8 @@ public class SingleJoinBolt extends BaseRichBolt {
             for (Tuple part : parts.values()) {
                 _collector.ack(part);
             }
+            
+            SingleJoinTest.receiveCounter.incrementAndGet();
         }
     }
 

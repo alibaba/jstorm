@@ -55,15 +55,6 @@ public class MetricClient {
         return (AsmMeter) JStormMetrics.registerTaskMetric(userMetricName, new AsmMeter());
     }
 
-    public AsmTimer registerTimer(String name) {
-        return registerTimer(name, GROUP_UDF);
-    }
-
-    public AsmTimer registerTimer(String name, String group) {
-        String userMetricName = getMetricName(name, group, MetricType.TIMER);
-        return (AsmTimer) JStormMetrics.registerTaskMetric(userMetricName, new AsmTimer());
-    }
-
     public AsmHistogram registerHistogram(String name) {
         return registerHistogram(name, GROUP_UDF);
     }
