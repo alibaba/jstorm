@@ -1,0 +1,3 @@
+#!/bin/bash
+ps aux | grep Monitor | grep -v grep | awk '{print $2}' | xargs kill -9
+java -cp performance-test-flink-1.0.jar com.alibaba.flink.utils.MetricsMonitor 10.183.199.151 8081 $1 > ~/data/$2 &
