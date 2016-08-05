@@ -27,7 +27,7 @@ JStorm的acker机制，能够保证消息至少被处理一次（at least once�
 spout emit了一条消息，发送至bolt。bolt作为最后一个处理者，没有再向下游emit消息。
 
 <center>
-  <img src="http://aligitlab.oss-cn-hangzhou-zmf.aliyuncs.com/uploads/aloha/jstorm-guide/8588c5c413/acker_1.png" width="900px">
+  <img src="{{site.baseurl}}/img/programguide/AdvancedUsage/acker_1.png" width="900px">
 </center>
 
 从上图可以看到，所有的ack消息都会发送到acker，acker会根据算法计算从特定spout发射出来的tuple tree是否被完全处理。如果成功处理，则发送\__acker_ack消息给spout，否则发送\__acker_fail消息给spout。然后spout中可以做相应的逻辑如重发消息等。
@@ -67,7 +67,7 @@ Map<Long, Long> _anchorsToIds;
 即spout同时向bolt1和bolt2发送消息，它们处理完后，都向bolt3发送消息。bolt3没有后续处理节点。
 
 <center>
-  <img src="http://aligitlab.oss-cn-hangzhou-zmf.aliyuncs.com/uploads/aloha/jstorm-guide/f0047397d1/acker_2.png" width="900px">
+  <img src="{{site.baseurl}}/img/programguide/AdvancedUsage/acker_2.png" width="900px">
 </center>
 
 1). spout发射一条消息，生成root_id，由于这个值不变，我们就用root_id来标识。
