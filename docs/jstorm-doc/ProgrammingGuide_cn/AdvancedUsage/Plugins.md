@@ -11,3 +11,6 @@ sub-nav-title: Plugins
 
 * This will be replaced by the TOC
 {:toc}
+
+- Flux 插件
+- HDFS 插件
