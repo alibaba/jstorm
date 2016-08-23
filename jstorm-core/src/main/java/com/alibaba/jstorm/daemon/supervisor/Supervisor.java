@@ -119,7 +119,7 @@ public class Supervisor {
 
         // Step 5 create HeartBeat
         // every supervisor.heartbeat.frequency.secs, write SupervisorInfo to ZK
-        // sync hearbeat to nimbus
+        // sync heartbeat to nimbus
         Heartbeat hb = new Heartbeat(conf, stormClusterState, supervisorId, localState, checkStatus);
         hb.update();
         AsyncLoopThread heartbeat = new AsyncLoopThread(hb, false, null, Thread.MIN_PRIORITY, true);
