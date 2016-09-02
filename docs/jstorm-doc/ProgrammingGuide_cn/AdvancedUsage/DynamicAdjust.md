@@ -11,3 +11,7 @@ layout: plain_cn
 
 * This will be replaced by the TOC
 {:toc}
+
+- 动态更新配置
+- 动态调整Metrics
+- 动态调整并发

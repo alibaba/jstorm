@@ -124,8 +124,12 @@ public class PartitionConsumer {
         ByteBufferMessageSet msgs;
         try {
             long start = System.currentTimeMillis();
-            msgs = consumer.fetchMessages(partition, emittingOffset + 1);
-            
+            if(config.fromBeginning){
+                msgs = consumer.fetchMessages(partition, emittingOffset);
+            }else {
+                msgs = consumer.fetchMessages(partition, emittingOffset + 1);
+            }
+
             if (msgs == null) {
             	short fetchResponseCode = consumer.getAndResetFetchResponseCode();
             	if (fetchResponseCode == ErrorMapping.OffsetOutOfRangeCode()) {

@@ -11,3 +11,5 @@ sub-nav-title: Theory
 
 * This will be replaced by the TOC
 {:toc}
+
+- Acker原理
