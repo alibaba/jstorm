@@ -75,7 +75,7 @@ public class SyncContainerHb extends RunnableCallback {
         }
     }
 
-    public void handlReadDir() {
+    public void handleReadDir() {
         if (StringUtils.isBlank(readDir) == true) {
             return;
         }
@@ -180,7 +180,7 @@ public class SyncContainerHb extends RunnableCallback {
 
         handleWriteDir();
 
-        handlReadDir();
+        handleReadDir();
 
     }
 
