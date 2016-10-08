@@ -9,26 +9,20 @@ top-nav-title: Compile JStorm
 * This will be replaced by the TOC
 {:toc}
 
+#TO BE DONE 
+#need "PATCH TO THE COMMUNITY"
 
-# Build JStorm
-jstorm is easy to compile and package.
-```
-mvn clean
-mvn package assembly:assembly -Dmaven.test.skip=true
-```
-If you get into any compile err, feel free to create an issue or pull request.
-# Submit PATCH to the JStorm community
 
- - fork jstorm to your own branch
- - create a new branch in your branch
+
+Build JStorm
 
 ```
-$ git checkout master
-$ git fetch origin
-$ git merge origin/master
-$ git checkout -b <local_test_branch>  # e.g. git checkout -b STORM-1234
+git clone https://github.com/alibaba/jstorm.git
+mvn clean package install
 ```
 
- - modify the code
- - commit the code to your branch
- - create a pull request, click "Pull Request" button on your github page
+Build install tar 
+
+```
+mvn package assembly:assembly
+```
