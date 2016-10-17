@@ -20,7 +20,7 @@ layout: plain_cn
 安装JStorm 分为2个步骤，
 
 * 安装JStorm 引擎
-  * Standalone,  jstorm 单独部署，不意外外部系统，比如yarn或docker swarm
+  * Standalone,  jstorm 单独部署，不依赖外部系统，比如yarn或docker swarm
   * Yarn, 将jstorm 运行在yarn上， 会在yarn提交一个app， 这个app就是一个jstorm 逻辑集群
   * Docker, 在集群中创建一批docker， 这批docker 组成一个jstorm 的逻辑集群。
 * 安装JStorm UI
