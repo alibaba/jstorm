@@ -195,7 +195,7 @@ zmq.linger.millis: 5000
 zmq.hwm: 0
 
 # Netty thread num: 0 means no limit
-storm.messaging.netty.server_worker_threads: 1
+storm.messaging.netty.server_worker_threads: 5
 storm.messaging.netty.client_worker_threads: 1
 storm.messaging.netty.buffer_size: 5242880 #5MB buffer
 storm.messaging.netty.max_retries: 30
@@ -267,7 +267,7 @@ topology.buffer.size.limited: true #topology queue capacity is unlimited
 topology.tick.tuple.freq.secs: null
 topology.worker.shared.thread.pool.size: 4
 topology.disruptor.wait.strategy: "com.lmax.disruptor.TimeoutBlockingWaitStrategy"
-topology.disruptor.wait.timeout: 10 # ms
+topology.disruptor.wait.timeout: 5 # ms
 topology.spout.wait.strategy: "backtype.storm.spout.SleepSpoutWaitStrategy"
 topology.sleep.spout.wait.strategy.time.ms: 1
 topology.error.throttle.interval.secs: 10
@@ -292,9 +292,12 @@ topology.testing.always.try.serialize: false
 topology.classpath: null
 topology.environment: null
 topology.bolts.outgoing.overflow.buffer.enable: false
-topology.max.worker.num.for.netty.metrics: 100
+topology.enable.stream.metrics: false
+topology.max.worker.num.for.netty.metrics: 0
 topology.metric.sample.rate: 0.05
 topology.timer.update.interval: 10
+# disable some worker metrics and time realted task/comp metrics by default
+topology.disabled.metric.names: "DeserializeTime,EmitTime,SerializeTime,MsgDecodeTime,NettyCliSendBatchSize,NettySrvTransmitTime,MemoryUsed,NettySrvRecvSpeed,NettyCliSendSpeed"
 
 topology.backpressure.enable: true
 topology.backpressure.water.mark.high: 0.8
