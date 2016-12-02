@@ -1,0 +1,35 @@
+topology.name: SequenceTest
+topology.workers: 3
+#topology.max.spout.pending: 1000
+topology.acker.executors: 1
+topology.debug: true
+topology.debug.recv.tuple: true
+
+
+spout.parallel: 1
+bolt.parallel: 2
+#send.sleep.second: 100
+#slow.bolt.speed: true
+#check.sequence: true
+kryo.enable: true
+fall.back.on.java.serialization: true
+
+enable.split: true
+storm.cluster.mode: "local"
+#storm.cluster.mode: "distributed"
+
+
+#topology.performance.metrics: true
+
+#topology.debug: true
+#topology.debug.recv.tuple: true
+#spout.single.thread: true
+
+#topology.enable.classloader: true
+#worker.stop.without.supervisor: false
+
+#storm.messaging.netty.transfer.async.batch: true
+
+#spout.max.sending.num: 20000000
+#topology.executor.receive.buffer.size: 131072
+#topology.executor.send.buffer.size: 131072

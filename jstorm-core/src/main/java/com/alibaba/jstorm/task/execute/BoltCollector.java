@@ -111,8 +111,7 @@ public class BoltCollector extends OutputCollectorCb {
         this.emitTimer.setEnabled(false);
         //this.emitTimer.setTimeUnit(TimeUnit.NANOSECONDS);
 
-        random = new Random();
-        random.setSeed(System.currentTimeMillis());
+        random = new Random(Utils.secureRandomLong());
     }
 
     @Override

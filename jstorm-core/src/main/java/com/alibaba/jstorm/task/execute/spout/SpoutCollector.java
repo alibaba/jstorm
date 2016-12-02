@@ -97,8 +97,7 @@ public class SpoutCollector extends SpoutOutputCollectorCb {
 
         ackerNum = JStormUtils.parseInt(storm_conf.get(Config.TOPOLOGY_ACKER_EXECUTORS));
 
-        random = new Random();
-        random.setSeed(System.currentTimeMillis());
+        random = new Random(Utils.secureRandomLong());
 
         String componentId = topology_context.getThisComponentId();
         emitTotalTimer = (AsmHistogram) JStormMetrics.registerTaskMetric(MetricUtils.taskMetricName(

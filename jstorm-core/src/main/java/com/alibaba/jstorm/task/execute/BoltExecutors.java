@@ -134,8 +134,9 @@ public class BoltExecutors extends BaseExecutors implements EventHandler {
             try {
                 //if (backpressureTrigger != null)
                 //    backpressureTrigger.checkAndTrigger();
+                controlQueue.consumeBatch(this);
                 exeQueue.consumeBatchWhenAvailable(this);
-                processControlEvent();
+/*                processControlEvent();*/
             } catch (Throwable e) {
                 if (!taskStatus.isShutdown()) {
                     LOG.error(idStr + " bolt exeutor  error", e);
@@ -153,11 +154,11 @@ public class BoltExecutors extends BaseExecutors implements EventHandler {
         long start = System.currentTimeMillis();
         try {
             if (event instanceof Tuple) {
-                processControlEvent();
+/*                processControlEvent();*/
                 processTupleEvent((Tuple) event);
             } else if (event instanceof BatchTuple) {
                 for (Tuple tuple : ((BatchTuple) event).getTuples()) {
-                    processControlEvent();
+/*                    processControlEvent();*/
                     processTupleEvent((Tuple) tuple);
                 }
             } else if (event instanceof TimerTrigger.TimerEvent) {
@@ -174,7 +175,10 @@ public class BoltExecutors extends BaseExecutors implements EventHandler {
 
     private void processTupleEvent(Tuple tuple) {
         task_stats.recv_tuple(tuple.getSourceComponent(), tuple.getSourceStreamId());
-        tuple_start_times.put(tuple, System.currentTimeMillis());
+
+        if(ackerNum > 0 && tuple.getMessageId().isAnchored()) {
+            tuple_start_times.put(tuple, System.currentTimeMillis());
+        }
 
         try {
             if (!isSystemBolt && tuple.getSourceStreamId().equals(Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID)) {

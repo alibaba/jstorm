@@ -207,11 +207,11 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
             }
             Runnable runnable = null;
             if (event instanceof Tuple) {
-                processControlEvent();
+    /*            processControlEvent();*/
                 runnable = processTupleEvent((Tuple) event);
             } else if (event instanceof BatchTuple) {
                 for (Tuple tuple : ((BatchTuple) event).getTuples()) {
-                    processControlEvent();
+/*                    processControlEvent();*/
                     runnable = processTupleEvent(tuple);
                     if (runnable != null) {
                         runnable.run();
