@@ -68,7 +68,7 @@ Contain the Apache Storm API,  application is easy to migrate from Apache Storm 
 Download the **latest stable release** and run JStorm on your machine, cluster, or cloud:
 
 <div class="text-center download-button">
-  <a href="downloads.html" class="btn btn-primary" markdown="1">**Download** Alibaba JStorm {{ site.stable }}</a>
+  <a href="Downloads.html" class="btn btn-primary" markdown="1">**Download** Alibaba JStorm {{ site.stable }}</a>
   <a href="https://github.com/alibaba/jstorm" class="btn btn-info" markdown="1">Alibaba JStorm on **GitHub**</a>
 </div>
 
