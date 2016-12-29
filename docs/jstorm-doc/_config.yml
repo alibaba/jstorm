@@ -13,7 +13,7 @@ description: > # this means to ignore newlines until "baseurl:"
   JStorm -- Enterprise Java Storm, faster, more stable and more powerful.
   provide whole stream process ecosystem. ) and in your feed.xml site description.
 baseurl: "" # the subpath of your site, e.g. /blog
-url: "http://yourdomain.com" # the base hostname & protocol for your site
+url: "http://jstorm.io" # the base hostname & protocol for your site
 twitter_username: longda
 github_username:  longda
 
@@ -47,3 +47,6 @@ kramdown:
 # News Posts
 paginate: 10
 paginate_path: "blog/page:num"
+
+# Gems
+gems: [jekyll-paginate]
