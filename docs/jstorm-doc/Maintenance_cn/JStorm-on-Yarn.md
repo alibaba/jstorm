@@ -1,5 +1,5 @@
 ---
-title:  "How to create/remove/enlarge/reduce one JStorm logic cluster?"
+title:  "How to create/remove/enlarge/reduce one JStorm logic cluster on yarn?"
 layout: plain_cn
 
 # Top-level navigation

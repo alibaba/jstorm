@@ -1,5 +1,5 @@
 ---
-title:  "How to create/remove/enlarge/reduce one JStorm logic cluster?"
+title:  "How to create/remove/enlarge/reduce one JStorm logic cluster on yarn?"
 # Top-level navigation
 top-nav-group: Maintenance
 top-nav-pos: 5
