@@ -17,10 +17,23 @@
  */
 package com.alibaba.jstorm.utils;
 
-import java.io.*;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
+import java.lang.reflect.Field;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -34,36 +47,50 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import javax.management.ObjectName;
 
+import com.alibaba.jstorm.cluster.StormBase;
+import com.alibaba.jstorm.daemon.nimbus.StatusType;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.ExecuteException;
 import org.apache.commons.exec.ExecuteResultHandler;
 import org.apache.commons.exec.PumpStreamHandler;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.thrift.TBase;
+import org.apache.thrift.TDeserializer;
+import org.apache.thrift.TException;
 import org.apache.thrift.TFieldIdEnum;
+import org.apache.thrift.TSerializer;
+import org.json.simple.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import backtype.storm.Config;
-import backtype.storm.utils.Utils;
 
 import com.alibaba.jstorm.callback.AsyncLoopDefaultKill;
 import com.alibaba.jstorm.callback.RunnableCallback;
 import com.alibaba.jstorm.client.ConfigExtension;
+import com.alibaba.jstorm.cluster.StormClusterState;
+import com.alibaba.jstorm.metric.AsmWindow;
+import com.alibaba.jstorm.metric.MetaType;
+import com.alibaba.jstorm.metric.MetricType;
+
+import backtype.storm.Config;
+import backtype.storm.generated.MetricInfo;
+import backtype.storm.generated.MetricSnapshot;
+import backtype.storm.generated.Nimbus.Iface;
+import backtype.storm.task.TopologyContext;
+import backtype.storm.utils.NimbusClientWrapper;
+import backtype.storm.utils.Utils;
 
 /**
  * JStorm utility
  *
  * @author yannian/Longda/Xin.Zhou/Xin.Li
  */
+@SuppressWarnings("unused")
 public class JStormUtils {
     private static final Logger LOG = LoggerFactory.getLogger(JStormUtils.class);
 
@@ -74,9 +101,15 @@ public class JStormUtils {
     public static long SIZE_1_P = SIZE_1_T * 1024;
 
     public static final int MIN_1 = 60;
-    public static final int MIN_30 = MIN_1 * 30;
-    public static final int HOUR_1 = MIN_30 * 2;
+    public static final int MIN_10 = MIN_1 * 10;
+    public static final int HOUR_1 = MIN_10 * 6;
     public static final int DAY_1 = HOUR_1 * 24;
+
+    public static final String DEFAULT_BLOB_VERSION_SUFFIX = ".version";
+    public static final String CURRENT_BLOB_SUFFIX_ID = "current";
+    public static final String DEFAULT_CURRENT_BLOB_SUFFIX = "." + CURRENT_BLOB_SUFFIX_ID;
+    private static ThreadLocal<TSerializer> threadSer = new ThreadLocal<TSerializer>();
+    private static ThreadLocal<TDeserializer> threadDes = new ThreadLocal<TDeserializer>();
 
     public static String getErrorInfo(String baseInfo, Exception e) {
         try {
@@ -102,10 +135,6 @@ public class JStormUtils {
 
     /**
      * filter the map
-     *
-     * @param filter
-     * @param all
-     * @return
      */
     public static <K, V> Map<K, V> select_keys_pred(Set<K> filter, Map<K, V> all) {
         Map<K, V> filterMap = new HashMap<K, V>();
@@ -161,13 +190,9 @@ public class JStormUtils {
     }
 
     /**
-     * LocalMode variable isn't clean, it make the JStormUtils ugly
+     * this variable isn't clean, it makes JStormUtils ugly
      */
     public static boolean localMode = false;
-
-    public static boolean isLocalMode() {
-        return localMode;
-    }
 
     public static void setLocalMode(boolean localMode) {
         JStormUtils.localMode = localMode;
@@ -179,10 +204,7 @@ public class JStormUtils {
 
     public static void halt_process(int val, String msg) {
         LOG.info("Halting process: " + msg);
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-        }
+        JStormUtils.sleepMs(1000);
         if (localMode && val == 0) {
             // throw new RuntimeException(msg);
         } else {
@@ -192,9 +214,6 @@ public class JStormUtils {
 
     /**
      * "{:a 1 :b 1 :c 2} -> {1 [:a :b] 2 :c}"
-     *
-     * @param map
-     * @return
      */
     public static <K, V> HashMap<V, List<K>> reverse_map(Map<K, V> map) {
         HashMap<V, List<K>> rtn = new HashMap<V, List<K>>();
@@ -206,7 +225,7 @@ public class JStormUtils {
             V val = entry.getValue();
             List<K> list = rtn.get(val);
             if (list == null) {
-                list = new ArrayList<K>();
+                list = new ArrayList<>();
                 rtn.put(entry.getValue(), list);
             }
             list.add(key);
@@ -217,9 +236,7 @@ public class JStormUtils {
     }
 
     /**
-     * Gets the pid of this JVM, because Java doesn't provide a real way to do this.
-     *
-     * @return
+     * Gets the pid of current JVM, because Java doesn't provide a real way to do this.
      */
     public static String process_pid() {
         String name = ManagementFactory.getRuntimeMXBean().getName();
@@ -232,9 +249,9 @@ public class JStormUtils {
     }
 
     /**
-     * All exe command will go launchProcess
+     * use launchProcess to execute a command
      *
-     * @param command
+     * @param command command to be executed
      * @throws ExecuteException
      * @throws IOException
      */
@@ -244,11 +261,11 @@ public class JStormUtils {
 
 
     /**
-     * Extra dir from the jar to destdir
+     * Extract dir from the jar to dest dir
      *
-     * @param jarpath
-     * @param dir
-     * @param destdir
+     * @param jarpath path to jar
+     * @param dir     dir to be extracted
+     * @param destdir destination dir
      */
     public static void extractDirFromJar(String jarpath, String dir, String destdir) {
         ZipFile zipFile = null;
@@ -297,8 +314,8 @@ public class JStormUtils {
     }
 
     public static void ensure_process_killed(Integer pid) {
-        // in this function, just kill the process 5 times
-        // make sure the process be killed definitely
+        // just kill the process 5 times
+        // to make sure the process is killed ultimately
         for (int i = 0; i < 5; i++) {
             try {
                 exec_command("kill -9 " + pid);
@@ -326,7 +343,7 @@ public class JStormUtils {
     public static void kill(Integer pid) {
         process_killed(pid);
 
-        sleepMs(5 * 1000);
+        sleepMs(2 * 1000);
 
         ensure_process_killed(pid);
     }
@@ -345,19 +362,16 @@ public class JStormUtils {
 
     /**
      * This function is only for linux
-     *
-     * @param pid
-     * @return
      */
     public static boolean isProcDead(String pid) {
-        if (OSInfo.isLinux() == false) {
+        if (!OSInfo.isLinux()) {
             return false;
         }
 
         String path = "/proc/" + pid;
         File file = new File(path);
 
-        if (file.exists() == false) {
+        if (!file.exists()) {
             LOG.info("Process " + pid + " is dead");
             return true;
         }
@@ -396,76 +410,116 @@ public class JStormUtils {
         return value;
     }
 
-    public static double getTotalCpuUsage() {
+    public static Double getFullGC() {
+        Double value = 0.0;
+        long timeOut = 3000;
         if (!OSInfo.isLinux()) {
-            return 0.0;
+            return value;
         }
-        return LinuxResource.getCpuUsage();
-    }
 
-    public static Double getDiskUsage() {
-        if (!OSInfo.isLinux() && !OSInfo.isMac()) {
-            return 0.0;
-        }
+        String output = null;
         try {
-           // String output = JStormUtils.launchProcess("df -h /home", new HashMap<String, String>(), false);
-            String output = SystemOperation.exec("df -h /home");
+            String targetPid = JStormUtils.process_pid();
+            String command = String.format("jstat -gc %s", targetPid);
+
+            List<String> commands = new ArrayList<String>();
+            commands.add("/bin/bash");
+            commands.add("-c");
+            commands.add(command);
+
+
+            Process process = null;
+
+            try {
+                process = launchProcess(commands, new HashMap<String, String>());
+
+                StringBuilder sb = new StringBuilder();
+                output = JStormUtils.getOutput(process.getInputStream());
+                String errorOutput = JStormUtils.getOutput(process.getErrorStream());
+                sb.append(output);
+                sb.append("\n");
+                sb.append(errorOutput);
+                long start = System.currentTimeMillis();
+
+                while (isAlive(process)){
+                    Utils.sleep(100);
+                    if (System.currentTimeMillis() - start > timeOut){
+                        process.destroy();
+                    }
+                }
+                Utils.sleep(100);
+                int ret = process.exitValue();
+                if (ret != 0) {
+                    LOG.warn(command + " is terminated abnormally. ret={}, str={}", ret, sb.toString());
+                }
+
+            } catch (Throwable e) {
+                LOG.error("Failed to run " + command + ", " + e.getCause(), e);
+            }
+
+
             if (output != null) {
                 String[] lines = output.split("[\\r\\n]+");
                 if (lines.length >= 2) {
-                    String[] parts = lines[1].split("\\s+");
-                    if (parts.length >= 5) {
-                        String pct = parts[4];
-                        if (pct.endsWith("%")) {
-                            return Integer.valueOf(pct.substring(0, pct.length() - 1)) / 100.0;
+                    String[] headStrArray = lines[0].split("\\s+");
+                    String[] valueStrArray = lines[1].split("\\s+");
+                    List<String> filterHeads = new ArrayList<>();
+                    List<String> filterValues = new ArrayList<>();
+
+                    for (String string : headStrArray){
+                        if (string.trim().length() == 0) {
+                            continue;
+                        }
+                        filterHeads.add(string);
+                    }
+                    for (String string : valueStrArray){
+                        if (string.trim().length() == 0) {
+                            continue;
+                        }
+                        filterValues.add(string);
+                    }
+                    for (int i = 0; i < filterHeads.size(); i++){
+                        String info = filterHeads.get(i);
+                        LOG.debug("jstat gc {} {}", filterHeads.get(i), filterValues.get(i));
+                        if (info.trim().length() != 0 && info.equals("FGC")) {
+                            value = Double.parseDouble(filterValues.get(i));
+                            break;
                         }
                     }
                 }
             }
         } catch (Exception e) {
-            LOG.warn("failed to get disk usage.");
+            LOG.warn("Failed to get full gc.");
+            if (output != null)
+                LOG.warn("Output string is \"" + output + "\"");
         }
-        return 0.0;
+        return value;
+    }
+
+    public static double getTotalCpuUsage() {
+        if (!OSInfo.isLinux()) {
+            return 0.0;
+        }
+        return LinuxResource.getTotalCpuUsage();
+    }
+
+    public static Double getDiskUsage() {
+        return LinuxResource.getDiskUsage();
     }
 
     public static double getTotalMemUsage() {
         if (!OSInfo.isLinux()) {
             return 0.0;
         }
-
-        try {
-            List<String> lines = IOUtils.readLines(new FileInputStream("/proc/meminfo"));
-            String total = lines.get(0).split("\\s+")[1];
-            String free = lines.get(1).split("\\s+")[1];
-            return 1 - Double.valueOf(free) / Double.valueOf(total);
-        } catch (Exception ignored) {
-            LOG.warn("failed to get total memory usage.");
-        }
-        return 0.0;
+        return LinuxResource.getTotalMemUsage();
     }
 
     public static Long getFreePhysicalMem() {
-        if (!OSInfo.isLinux()) {
-            return 0L;
-        }
-        try {
-            List<String> lines = IOUtils.readLines(new FileInputStream("/proc/meminfo"));
-            String free = lines.get(1).split("\\s+")[1];
-            return Long.valueOf(free);
-        } catch (Exception ignored) {
-            LOG.warn("failed to get total free memory.");
-        }
-        return 0L;
+        return LinuxResource.getFreePhysicalMem();
     }
 
-    public static int getNumProcessors(){
-        int sysCpuNum = 0;
-        try {
-            sysCpuNum = Runtime.getRuntime().availableProcessors();
-        } catch (Exception e) {
-            LOG.info("Failed to get CPU cores .");
-        }
-        return sysCpuNum;
+    public static int getNumProcessors() {
+        return LinuxResource.getProcessNum();
     }
 
     public static Double getMemUsage() {
@@ -502,11 +556,9 @@ public class JStormUtils {
                     }
                     if (m == 8) {
                         // cpu usage
-
                     }
                     if (m == 9) {
                         // memory ratio
-
                     }
                     m++;
                 }
@@ -530,8 +582,7 @@ public class JStormUtils {
     }
 
     /**
-     * Attention
-     * Hook signal in JVM is too dangerous to
+     * NOTE: DO NOT use Hook signal in JVM, it may cause JVM to exit
      */
     public static void registerJStormSignalHandler() {
         if (!OSInfo.isLinux()) {
@@ -540,9 +591,6 @@ public class JStormUtils {
         }
 
         JStormSignalHandler instance = JStormSignalHandler.getInstance();
-        /**
-         * These signal will lead to JVM exit
-         */
         int[] signals = {
                 1, //SIGHUP
                 2, //SIGINT
@@ -567,26 +615,28 @@ public class JStormUtils {
     }
 
     /**
-     * If it is backend, please set resultHandler, such as DefaultExecuteResultHandler If it is frontend, ByteArrayOutputStream.toString get the result
+     * If it is backend, please set resultHandler, such as DefaultExecuteResultHandler
+     * If it is frontend, ByteArrayOutputStream.toString will return the calling result
      * <p/>
-     * This function don't care whether the command is successfully or not
+     * This function will ignore whether the command is successfully executed or not
      *
-     * @param command
-     * @param environment
-     * @param workDir
-     * @param resultHandler
-     * @return
+     * @param command       command to be executed
+     * @param environment   env vars
+     * @param workDir       working directory
+     * @param resultHandler exec result handler
+     * @return output stream
      * @throws IOException
      */
     @Deprecated
-    public static ByteArrayOutputStream launchProcess(String command, final Map environment, final String workDir, ExecuteResultHandler resultHandler)
-            throws IOException {
+    public static ByteArrayOutputStream launchProcess(
+            String command, final Map environment, final String workDir,
+            ExecuteResultHandler resultHandler) throws IOException {
 
         String[] cmdlist = command.split(" ");
 
         CommandLine cmd = new CommandLine(cmdlist[0]);
         for (String cmdItem : cmdlist) {
-            if (StringUtils.isBlank(cmdItem) == false) {
+            if (!StringUtils.isBlank(cmdItem)) {
                 cmd.addArgument(cmdItem);
             }
         }
@@ -594,16 +644,14 @@ public class JStormUtils {
         DefaultExecutor executor = new DefaultExecutor();
 
         executor.setExitValue(0);
-        if (StringUtils.isBlank(workDir) == false) {
+        if (!StringUtils.isBlank(workDir)) {
             executor.setWorkingDirectory(new File(workDir));
         }
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         PumpStreamHandler streamHandler = new PumpStreamHandler(out, out);
-        if (streamHandler != null) {
-            executor.setStreamHandler(streamHandler);
-        }
+        executor.setStreamHandler(streamHandler);
 
         try {
             if (resultHandler == null) {
@@ -611,10 +659,7 @@ public class JStormUtils {
             } else {
                 executor.execute(cmd, environment, resultHandler);
             }
-        } catch (ExecuteException e) {
-
-            // @@@@
-            // failed to run command
+        } catch (ExecuteException ignored) {
         }
 
         return out;
@@ -678,6 +723,7 @@ public class JStormUtils {
             try {
                 Process process = launchProcess(cmdlist, environment);
 
+
                 StringBuilder sb = new StringBuilder();
                 String output = JStormUtils.getOutput(process.getInputStream());
                 String errorOutput = JStormUtils.getOutput(process.getErrorStream());
@@ -699,24 +745,21 @@ public class JStormUtils {
     }
 
     /**
-     * Attention
-     *
-     * All launchProcess should go this function
-     *
      * it should use DefaultExecutor to start a process,
      * but some little problem have been found,
      * such as exitCode/output string so still use the old method to start process
      *
-     * @param command
-     * @param environment
-     * @param backend
+     * @param command     command to be executed
+     * @param environment env vars
+     * @param backend     whether the command is executed at backend
      * @return outputString
      * @throws IOException
      */
-    public static String launchProcess(final String command, final Map<String, String> environment, boolean backend) throws IOException {
+    public static String launchProcess(final String command,
+                                       final Map<String, String> environment, boolean backend) throws IOException {
         String[] cmds = command.split(" ");
 
-        ArrayList<String> cmdList = new ArrayList<String>();
+        ArrayList<String> cmdList = new ArrayList<>();
         for (String tok : cmds) {
             if (!StringUtils.isBlank(tok)) {
                 cmdList.add(tok);
@@ -729,13 +772,6 @@ public class JStormUtils {
     public static String current_classpath() {
         return System.getProperty("java.class.path");
     }
-
-    // public static String add_to_classpath(String classpath, String[] paths) {
-    // for (String path : paths) {
-    // classpath += ":" + path;
-    // }
-    // return classpath;
-    // }
 
     public static String to_json(Map m) {
         return Utils.to_json(m);
@@ -758,12 +794,10 @@ public class JStormUtils {
     }
 
     /**
-     * if the list exist repeat string, return the repeated string
-     * <p/>
-     * this function will be used to check wheter bolt or spout exist same id
+     * if the list contains repeated string, return the repeated string
+     * this function is used to check whether bolt/spout has a duplicate id
      */
     public static List<String> getRepeat(List<String> list) {
-
         List<String> rtn = new ArrayList<String>();
         Set<String> idSet = new HashSet<String>();
 
@@ -780,10 +814,6 @@ public class JStormUtils {
 
     /**
      * balance all T
-     *
-     * @param <T>
-     * @param splitup
-     * @return
      */
     public static <T> List<T> interleave_all(List<List<T>> splitup) {
         ArrayList<T> rtn = new ArrayList<T>();
@@ -943,7 +973,7 @@ public class JStormUtils {
             return Long.valueOf(String.valueOf(o));
         } else if (o instanceof Integer) {
             Integer value = (Integer) o;
-            return Long.valueOf((Integer) value);
+            return Long.valueOf(value);
         } else if (o instanceof Long) {
             return (Long) o;
         } else {
@@ -955,14 +985,12 @@ public class JStormUtils {
         if (o == null) {
             return null;
         }
-
-        if (o instanceof String) {
-            return Integer.parseInt(String.valueOf(o));
-        } else if (o instanceof Long) {
-            long value = (Long) o;
-            return (int) value;
-        } else if (o instanceof Integer) {
+        if (o instanceof Integer) {
             return (Integer) o;
+        } else if (o instanceof Number) {
+            return ((Number) o).intValue();
+        } else if (o instanceof String) {
+            return Integer.parseInt(String.valueOf(o));
         } else {
             throw new RuntimeException("Invalid value " + o.getClass().getName() + " " + o);
         }
@@ -972,14 +1000,12 @@ public class JStormUtils {
         if (o == null) {
             return defaultValue;
         }
-
-        if (o instanceof String) {
-            return Integer.parseInt(String.valueOf(o));
-        } else if (o instanceof Long) {
-            long value = (Long) o;
-            return (int) value;
-        } else if (o instanceof Integer) {
+        if (o instanceof Integer) {
             return (Integer) o;
+        } else if (o instanceof Number) {
+            return ((Number) o).intValue();
+        } else if (o instanceof String) {
+            return Integer.parseInt(String.valueOf(o));
         } else {
             return defaultValue;
         }
@@ -1024,15 +1050,10 @@ public class JStormUtils {
     }
 
     /**
-     * Check whether the zipfile contain the resources
-     *
-     * @param zipfile
-     * @param resources
-     * @return
+     * Check whether the zipfile contains the resources
      */
     public static boolean zipContainsDir(String zipfile, String resources) {
-
-        Enumeration<? extends ZipEntry> entries = null;
+        Enumeration<? extends ZipEntry> entries;
         try {
             entries = (new ZipFile(zipfile)).entries();
             while (entries != null && entries.hasMoreElements()) {
@@ -1043,9 +1064,7 @@ public class JStormUtils {
                 }
             }
         } catch (IOException e) {
-            // TODO Auto-generated catch block
-            // e.printStackTrace();
-            LOG.error(e + "zipContainsDir error");
+            LOG.error("zipContainsDir error", e);
         }
 
         return false;
@@ -1107,12 +1126,9 @@ public class JStormUtils {
         List<Object> retList = new ArrayList<Object>();
 
         for (Object object : input) {
-            if (retList.contains(object)) {
-                continue;
-            } else {
+            if (!retList.contains(object)) {
                 retList.add(object);
             }
-
         }
 
         return retList;
@@ -1197,7 +1213,7 @@ public class JStormUtils {
         }
 
         if (value instanceof Long) {
-            return String.valueOf((Long) value);
+            return String.valueOf(value);
         } else if (value instanceof Double) {
             return formatSimpleDouble((Double) value);
         } else {
@@ -1208,16 +1224,7 @@ public class JStormUtils {
     public static void sleepMs(long ms) {
         try {
             Thread.sleep(ms);
-        } catch (InterruptedException e) {
-
-        }
-    }
-
-    public static void sleepNs(int ns) {
-        try {
-            Thread.sleep(0, ns);
-        } catch (InterruptedException e) {
-
+        } catch (InterruptedException ignored) {
         }
     }
 
@@ -1239,16 +1246,11 @@ public class JStormUtils {
             sb.append(HEXES.charAt((b & 0xF0) >> 4));
             sb.append(HEXES.charAt((b & 0x0F)));
             sb.append(" ");
-
         }
 
         return sb.toString();
     }
 
-    /**
-     * @return
-     * @@@ Todo
-     */
     public static Long getPhysicMemorySize() {
         Object object;
         try {
@@ -1259,9 +1261,7 @@ public class JStormUtils {
             return null;
         }
 
-        Long ret = (Long) object;
-
-        return ret;
+        return (Long) object;
     }
 
     public static String genLogName(String topology, Integer port) {
@@ -1294,8 +1294,8 @@ public class JStormUtils {
             if (rootLogger instanceof ch.qos.logback.classic.Logger) {
                 ch.qos.logback.classic.Logger logbackLogger = (ch.qos.logback.classic.Logger) rootLogger;
                 // Logger framework is Logback
-                for (Iterator<ch.qos.logback.core.Appender<ch.qos.logback.classic.spi.ILoggingEvent>> index = logbackLogger.iteratorForAppenders(); index
-                        .hasNext(); ) {
+                for (Iterator<ch.qos.logback.core.Appender<ch.qos.logback.classic.spi.ILoggingEvent>> index =
+                     logbackLogger.iteratorForAppenders(); index.hasNext(); ) {
                     ch.qos.logback.core.Appender<ch.qos.logback.classic.spi.ILoggingEvent> appender = index.next();
                     if (appender instanceof ch.qos.logback.core.FileAppender) {
                         ch.qos.logback.core.FileAppender fileAppender = (ch.qos.logback.core.FileAppender) appender;
@@ -1348,8 +1348,7 @@ public class JStormUtils {
     }
 
     public static void redirectOutput(String file) throws Exception {
-
-        System.out.println("Redirect output to " + file);
+        System.out.println("Redirecting output to " + file);
 
         FileOutputStream workerOut = new FileOutputStream(new File(file));
 
@@ -1362,7 +1361,6 @@ public class JStormUtils {
     }
 
     public static RunnableCallback getDefaultKillfn() {
-
         return new AsyncLoopDefaultKill();
     }
 
@@ -1401,7 +1399,7 @@ public class JStormUtils {
         if (physicalMemSize == null) {
             LOG.info("Failed to get memory size");
         } else {
-            LOG.info("Get system memory size :" + physicalMemSize);
+            LOG.debug("Get system memory size: " + physicalMemSize);
 
             long workerMemSize = ConfigExtension.getMemSizePerWorker(conf);
 
@@ -1423,23 +1421,22 @@ public class JStormUtils {
         List<Integer> portList = (List<Integer>) conf.get(Config.SUPERVISOR_SLOTS_PORTS);
 
         if (portList != null && portList.size() > 0) {
-            return new ArrayList<Integer>(portList);
+            return new ArrayList<>(portList);
         }
 
         int sysCpuNum = 4;
-
         try {
             sysCpuNum = Runtime.getRuntime().availableProcessors();
         } catch (Exception e) {
-            LOG.info("Failed to get CPU cores, set cpu cores as 4");
+            LOG.info("Failed to get CPU core num, set to 4");
         }
 
         Long physicalMemSize = JStormUtils.getPhysicMemorySize();
 
-        if (physicalMemSize > 8589934592L) {
+        if (physicalMemSize != null && physicalMemSize > 8589934592L) {
             long reserveMemory = ConfigExtension.getStormMachineReserveMem(conf);
             if (physicalMemSize < reserveMemory) {
-                throw new RuntimeException("ReserveMemory configured too larger ,because PhysicalMemSize is only :" + physicalMemSize);
+                throw new RuntimeException("ReserveMemory is too large , PhysicalMemSize is:" + physicalMemSize);
             }
             physicalMemSize -= reserveMemory;
         }
@@ -1448,7 +1445,7 @@ public class JStormUtils {
 
         int portBase = ConfigExtension.getSupervisorSlotsPortsBase(conf);
 
-        portList = new ArrayList<Integer>();
+        portList = new ArrayList<>();
         for (int i = 0; i < portNum; i++) {
             portList.add(portBase + i);
         }
@@ -1469,21 +1466,8 @@ public class JStormUtils {
         return buffer.getLong();
     }
 
-    public static Object createDisruptorWaitStrategy(Map conf) {
-        String waitStrategy = (String) conf.get(Config.TOPOLOGY_DISRUPTOR_WAIT_STRATEGY);
-        Object ret;
-        if (waitStrategy.contains("TimeoutBlockingWaitStrategy")) {
-            long timeout = parseLong(conf.get(Config.TOPOLOGY_DISRUPTOR_WAIT_TIMEOUT), 10);
-            ret = Utils.newInstance(waitStrategy, timeout, TimeUnit.MILLISECONDS);
-        } else {
-            ret = Utils.newInstance(waitStrategy);
-        }
-
-        return ret;
-    }
-
     public static Object thriftToObject(Object obj) {
-        Object ret = null;
+        Object ret;
         if (obj instanceof org.apache.thrift.TBase) {
             ret = thriftToMap((org.apache.thrift.TBase) obj);
         } else if (obj instanceof List) {
@@ -1533,12 +1517,186 @@ public class JStormUtils {
         return ret;
     }
 
+    private static TDeserializer getDes() {
+        TDeserializer des = threadDes.get();
+        if (des == null) {
+            des = new TDeserializer();
+            threadDes.set(des);
+        }
+        return des;
+    }
 
-    public static long halfValueOfSum(long v1, long v2, boolean increment) {
-        long ret = (v1 + v2) / 2;
-        if (increment) {
-            ret += (v1 + v2) % 2;
+    private static TSerializer getSer() {
+        TSerializer ser = threadSer.get();
+        if (ser == null) {
+            ser = new TSerializer();
+            threadSer.set(ser);
+        }
+        return ser;
+    }
+
+    public static byte[] thriftSerialize(TBase t) {
+        try {
+            TSerializer ser = getSer();
+            return ser.serialize(t);
+        } catch (TException e) {
+            LOG.error("Failed to serialize to thrift: ", e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static <T> T thriftDeserialize(Class c, byte[] b) {
+        try {
+            return thriftDeserialize(c, b, 0, b.length);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static <T> T thriftDeserialize(Class c, byte[] b, int offset, int length) {
+        try {
+            T ret = (T) c.newInstance();
+            TDeserializer des = getDes();
+            des.deserialize((TBase) ret, b, offset, length);
+            return ret;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static Map parseJson(String json) {
+        if (json == null)
+            return new HashMap();
+        else
+            return (Map) JSONValue.parse(json);
+    }
+
+    public static String mergeIntoJson(Map into, Map newMap) {
+        Map res = new HashMap(into);
+        if (newMap != null)
+            res.putAll(newMap);
+        return JSONValue.toJSONString(res);
+    }
+
+    /**
+     * Get Topology Metrics
+     *
+     * @param topologyName topology name
+     * @param metricType,  please refer to MetaType, default to MetaType.TASK.getT()
+     * @param window,      please refer to AsmWindow, default to AsmWindow.M1_WINDOW
+     * @return
+     */
+    public static Map<String, Double> getMetrics(Map conf, String topologyName, MetaType metricType, Integer window) {
+        NimbusClientWrapper nimbusClient = null;
+        Iface client = null;
+        Map<String, Double> summary = new HashMap<>();
+
+        try {
+            nimbusClient = new NimbusClientWrapper();
+            nimbusClient.init(conf);
+
+            client = nimbusClient.getClient();
+
+            String topologyId = client.getTopologyId(topologyName);
+
+            if (metricType == null) {
+                metricType = MetaType.TASK;
+            }
+
+            List<MetricInfo> allTaskMetrics = client.getMetrics(topologyId, metricType.getT());
+            if (allTaskMetrics == null) {
+                throw new RuntimeException("Failed to get metrics");
+            }
+
+            if (window == null || !AsmWindow.TIME_WINDOWS.contains(window)) {
+                window = AsmWindow.M1_WINDOW;
+            }
+
+            for (MetricInfo taskMetrics : allTaskMetrics) {
+
+                Map<String, Map<Integer, MetricSnapshot>> metrics = taskMetrics.get_metrics();
+                if (metrics == null) {
+                    System.out.println("Failed to get task metrics");
+                    continue;
+                }
+                for (Entry<String, Map<Integer, MetricSnapshot>> entry : metrics.entrySet()) {
+                    String key = entry.getKey();
+
+                    MetricSnapshot metric = entry.getValue().get(window);
+                    if (metric == null) {
+                        throw new RuntimeException("Failed to get one minute metrics of " + key);
+                    }
+
+                    if (metric.get_metricType() == MetricType.COUNTER.getT()) {
+                        summary.put(key, (double) metric.get_longValue());
+                    } else if (metric.get_metricType() == MetricType.GAUGE.getT()) {
+                        summary.put(key, metric.get_doubleValue());
+                    } else {
+                        summary.put(key, metric.get_mean());
+                    }
+                }
+            }
+
+            return summary;
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            if (client != null) {
+                nimbusClient.cleanup();
+            }
+        }
+    }
+
+    public static void reportError(TopologyContext topologyContext, String errorMessge) {
+        StormClusterState zkCluster = topologyContext.getZkCluster();
+        String topologyId = topologyContext.getTopologyId();
+        int taskId = topologyContext.getThisTaskId();
+
+        try {
+            zkCluster.report_task_error(topologyId, taskId, errorMessge);
+        } catch (Exception e) {
+            LOG.warn("Failed to report Error");
+        }
+    }
+
+    public static boolean isKilledStatus(TopologyContext topologyContext) {
+        boolean ret = false;
+        StormClusterState zkCluster = topologyContext.getZkCluster();
+        String topologyId = topologyContext.getTopologyId();
+        try {
+            StormBase stormBase = zkCluster.storm_base(topologyId, null);
+            boolean isKilledStatus = stormBase != null && stormBase.getStatus().getStatusType().equals(StatusType.killed);
+            ret = (stormBase == null || isKilledStatus);
+        } catch (Exception e) {
+            LOG.warn("Failed to get stormBase", e);
         }
         return ret;
+    }
+
+    public static String trimEnd(String s) {
+        if (s == null) {
+            return null;
+        }
+
+        int len = s.length();
+        StringBuilder sb = new StringBuilder(len);
+        int i = len - 1;
+        for (; i >= 0; i--) {
+            char ch = s.charAt(i);
+            if (ch != ' ' && ch != '\r' && ch != '\n' && ch != '\t') {
+                break;
+            }
+        }
+        return sb.append(s.substring(0, i + 1)).toString();
+    }
+
+    public static boolean isAlive(Process process) {
+        try {
+            process.exitValue();
+            return false;
+        } catch (IllegalThreadStateException e) {
+            return true;
+        }
     }
 }

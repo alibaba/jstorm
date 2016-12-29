@@ -33,8 +33,8 @@ import com.alibaba.jstorm.utils.JStormUtils;
 public class MkFieldsGrouper {
     private Fields out_fields;
     private Fields group_fields;
+    private List<Integer> groupFieldIndex;
     private List<Integer> out_tasks;
-    private Map<Integer, List<Integer>> hash_targetTasks;
 
     public MkFieldsGrouper(Fields _out_fields, Fields _group_fields, List<Integer> _out_tasks) {
 
@@ -47,41 +47,41 @@ public class MkFieldsGrouper {
 
         this.out_fields = _out_fields;
         this.group_fields = _group_fields;
+        this.groupFieldIndex = new ArrayList<Integer>();
+        for (String fieldStr : group_fields.toList()) {
+            groupFieldIndex.add(out_fields.fieldIndex(fieldStr));
+        }
         this.out_tasks = _out_tasks;
-        this.hash_targetTasks = new HashMap<Integer, List<Integer>>();
-
     }
 
     public List<Integer> grouper(List<Object> values) {
-        int hashcode = this.out_fields.select(this.group_fields, values).hashCode();
+        int hashcode = getHashCode(values);
         int group = Math.abs(hashcode % this.out_tasks.size());
         return JStormUtils.mk_list(out_tasks.get(group));
     }
 
-    public void batchGrouper(List<MsgInfo> batch, Map<List<Integer>, List<MsgInfo>> ret){
-        // field grouping for performance
-        Map<Integer, List<MsgInfo>> hashMsgs = new HashMap<Integer, List<MsgInfo>>();
+    public void batchGrouper(List<MsgInfo> batch, Map<Object, List<MsgInfo>> ret){
+    	for (MsgInfo msg : batch) {
+    		int hashcode = getHashCode(msg.values);
+            int target = out_tasks.get(Math.abs(hashcode % this.out_tasks.size()));
+    		List<MsgInfo> targetBatch = ret.get(target);
+    		if (targetBatch == null) {
+    			targetBatch = new ArrayList<MsgInfo>();
+    			ret.put(target, targetBatch);
+    		}
+    		targetBatch.add(msg);
+    	}
+    }
 
-        for (int i = 0; i < batch.size(); i++ ) {
-            MsgInfo msg = batch.get(i);
-            int hashcode = this.out_fields.select(this.group_fields, msg.values).hashCode();
-            int group = Math.abs(hashcode % this.out_tasks.size());
-
-            List<MsgInfo> fieldBatch = hashMsgs.get(group);
-            if (fieldBatch == null) {
-                fieldBatch = JStormUtils.mk_list();
-                hashMsgs.put(group, fieldBatch);
+    private int getHashCode(List<Object> tuple) {
+        if (groupFieldIndex.size() == 1) {
+            return tuple.get(groupFieldIndex.get(0)).hashCode();
+        } else {
+            List<Object> groupFieldValues = new ArrayList<Object>(group_fields.size());
+            for (Integer index : groupFieldIndex) {
+                groupFieldValues.add(tuple.get(index));
             }
-            fieldBatch.add(msg);
-        }
-
-        for (Map.Entry<Integer, List<MsgInfo>> entry : hashMsgs.entrySet()){
-            List<Integer> tasks = hash_targetTasks.get(entry.getKey());
-            if (tasks == null){
-                tasks = JStormUtils.mk_list(out_tasks.get(entry.getKey()));
-                hash_targetTasks.put(entry.getKey(), tasks);
-            }
-            ret.put(tasks, entry.getValue());
+            return groupFieldValues.hashCode();
         }
     }
 }

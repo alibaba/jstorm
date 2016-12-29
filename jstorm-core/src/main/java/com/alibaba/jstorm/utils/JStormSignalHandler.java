@@ -246,7 +246,7 @@ public class JStormSignalHandler implements SignalHandler {
        
     public static void main(final String[] args) {  
            
-    	JStormSignalHandler instance = JStormSignalHandler.getInstance();
+    	JStormSignalHandler handler = JStormSignalHandler.getInstance();
         
     	registerJStormSignalHandler();
     	

@@ -24,9 +24,7 @@ import backtype.storm.messaging.ControlMessage;
 import backtype.storm.messaging.TaskMessage;
 import backtype.storm.serialization.KryoTupleDeserializer;
 import backtype.storm.tuple.Tuple;
-import backtype.storm.tuple.TupleImplExt;
-import com.alibaba.jstorm.common.metric.AsmHistogram;
-import com.alibaba.jstorm.task.TaskStatus;
+import backtype.storm.utils.Utils;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.esotericsoftware.kryo.KryoException;
 import org.slf4j.Logger;
@@ -35,10 +33,7 @@ import org.slf4j.LoggerFactory;
 import backtype.storm.messaging.IConnection;
 import backtype.storm.utils.DisruptorQueue;
 
-import com.alibaba.jstorm.metric.MetricDef;
 import com.alibaba.jstorm.utils.DisruptorRunable;
-
-//import com.alibaba.jstorm.message.zeroMq.ISendConnection;
 
 /**
  * control Message dispatcher
@@ -51,7 +46,6 @@ public class VirtualPortCtrlDispatch extends DisruptorRunable {
 
     protected ConcurrentHashMap<Integer, DisruptorQueue> controlQueues;
     protected IConnection recvConnection;
-    protected volatile TaskStatus taskStatus;
     protected AtomicReference<KryoTupleDeserializer> atomKryoDeserializer;
 
     public VirtualPortCtrlDispatch(WorkerData workerData, IConnection recvConnection, DisruptorQueue recvQueue, String idStr) {
@@ -100,10 +94,7 @@ public class VirtualPortCtrlDispatch extends DisruptorRunable {
             if (ser_msg.length == 0) {
                 return null;
             } else if (ser_msg.length == 1) {
-                byte newStatus = ser_msg[0];
-                LOG.info("Change task status as " + newStatus);
-                taskStatus.setStatus(newStatus);
-
+                //ignore
                 return null;
             }
             Tuple tuple = null;
@@ -113,12 +104,10 @@ public class VirtualPortCtrlDispatch extends DisruptorRunable {
                 tuple = kryo.deserialize(ser_msg);
 
             return tuple;
-        } catch (KryoException e) {
-            throw new RuntimeException(e);
-        } catch (Throwable e) {
-            if (!taskStatus.isShutdown()) {
-                LOG.error(idStr + " recv thread error " + JStormUtils.toPrintableString(ser_msg) + "\n", e);
-            }
+        }  catch (Throwable e) {
+            if (Utils.exceptionCauseIsInstanceOf(KryoException.class, e))
+                throw new RuntimeException(e);
+            LOG.error(idStr + " recv thread error " + JStormUtils.toPrintableString(ser_msg) + "\n", e);
         }
         return null;
     }
@@ -134,12 +123,14 @@ public class VirtualPortCtrlDispatch extends DisruptorRunable {
             //it maybe happened errors when update_topology
             tuple = deserialize(message.message(), task);
         }catch (Throwable e){
-            LOG.warn("serialize happened errors!!!",e);
+            if (Utils.exceptionCauseIsInstanceOf(KryoException.class, e))
+                throw new RuntimeException(e);
+            LOG.warn("serialize happened errors!!! {}", e);
         }
 
         DisruptorQueue queue = controlQueues.get(task);
         if (queue == null) {
-            LOG.warn("Received invalid control message directed at port " + task + ". Dropping...");
+            LOG.warn("Received invalid control message form task-{}, Dropping...{} ", task, tuple);
             return;
         }
         if (tuple != null) {

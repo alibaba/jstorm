@@ -17,13 +17,14 @@
  */
 package storm.trident;
 
+import backtype.storm.topology.ResourceDeclarer;
 import storm.trident.planner.Node;
 
 
-public class TridentState {
+public class TridentState implements ResourceDeclarer<TridentState> {
     TridentTopology _topology;
     Node _node;
-    
+
     protected TridentState(TridentTopology topology, Node node) {
         _topology = topology;
         _node = node;
@@ -32,9 +33,27 @@ public class TridentState {
     public Stream newValuesStream() {
         return new Stream(_topology, _node.name, _node);
     }
-    
+
     public TridentState parallelismHint(int parallelism) {
         _node.parallelismHint = parallelism;
+        return this;
+    }
+
+    @Override
+    public TridentState setCPULoad(Number load) {
+        _node.setCPULoad(load);
+        return this;
+    }
+
+    @Override
+    public TridentState setMemoryLoad(Number onHeap) {
+        _node.setMemoryLoad(onHeap);
+        return this;
+    }
+
+    @Override
+    public TridentState setMemoryLoad(Number onHeap, Number offHeap) {
+        _node.setMemoryLoad(onHeap, offHeap);
         return this;
     }
 }

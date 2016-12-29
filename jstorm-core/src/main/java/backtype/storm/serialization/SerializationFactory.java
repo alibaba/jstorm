@@ -23,17 +23,21 @@ import backtype.storm.generated.StormTopology;
 import backtype.storm.serialization.types.ArrayListSerializer;
 import backtype.storm.serialization.types.HashMapSerializer;
 import backtype.storm.serialization.types.HashSetSerializer;
-import backtype.storm.transactional.TransactionAttempt;
 import backtype.storm.tuple.Values;
 import backtype.storm.utils.ListDelegate;
 import backtype.storm.utils.Utils;
 import backtype.storm.utils.WorkerClassLoader;
-import carbonite.JavaBridge;
+
+import com.alibaba.jstorm.transactional.BatchGroupId;
+import com.alibaba.jstorm.transactional.BatchGroupIdSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Serializer;
 import com.esotericsoftware.kryo.serializers.DefaultSerializers.BigIntegerSerializer;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import storm.trident.topology.TransactionAttempt;
 import storm.trident.tuple.ConsList;
 
 import java.math.BigInteger;
@@ -68,12 +72,7 @@ public class SerializationFactory {
         k.register(backtype.storm.metric.api.IMetricsConsumer.DataPoint.class);
         k.register(backtype.storm.metric.api.IMetricsConsumer.TaskInfo.class);
         k.register(ConsList.class);
-        try {
-            JavaBridge.registerPrimitives(k);
-            JavaBridge.registerCollections(k);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        k.register(BatchGroupId.class, new BatchGroupIdSerializer());
 
         Map<String, String> registrations = normalizeKryoRegister(conf);
 
@@ -163,6 +162,11 @@ public class SerializationFactory {
                 i++;
             }
             return ret;
+        }
+
+        @Override
+        public String toString() {
+            return "streamNametoId=" + streamNametoId + ", streamIdToName=" + streamIdToName;
         }
     }
 

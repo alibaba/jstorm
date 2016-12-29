@@ -43,9 +43,9 @@ import java.util.Random;
 
 /**
  * Grouper, get which task should be send to for one tuple
- * 
+ *
  * @author yannian
- * 
+ *
  */
 public class MkGrouper {
     private static final Logger LOG = LoggerFactory.getLogger(MkGrouper.class);
@@ -59,6 +59,7 @@ public class MkGrouper {
     private List<Integer> out_tasks;
     private List<Integer> local_tasks;
     private String streamId;
+    private String targetComponent;
 
     // grouping method
     private RandomRange randomrange;
@@ -66,18 +67,18 @@ public class MkGrouper {
     private MkShuffer shuffer;
     private MkCustomGrouper custom_grouper;
     private MkFieldsGrouper fields_grouper;
-    private MkLocalShuffer local_shuffer_grouper;
-    private MkLocalFirst localFirst;
 
-    public MkGrouper(TopologyContext _topology_context, Fields _out_fields, Grouping _thrift_grouping, List<Integer> _outTasks, String streamId,
-            WorkerData workerData) {
+    public MkGrouper(TopologyContext _topology_context, Fields _out_fields, Grouping _thrift_grouping, String targetComponent, String streamId,
+                     WorkerData workerData) {
         this.topology_context = _topology_context;
         this.out_fields = _out_fields;
         this.thrift_grouping = _thrift_grouping;
         this.streamId = streamId;
+        this.targetComponent = targetComponent;
 
+        List<Integer> outTasks = topology_context.getComponentTasks(targetComponent);
         this.out_tasks = new ArrayList<Integer>();
-        this.out_tasks.addAll(_outTasks);
+        this.out_tasks.addAll(outTasks);
         Collections.sort(this.out_tasks);
 
         this.local_tasks = _topology_context.getThisWorkerTasks();
@@ -119,7 +120,7 @@ public class MkGrouper {
             grouperType = GrouperType.all;
         } else if (Grouping._Fields.SHUFFLE.equals(fields)) {
             grouperType = GrouperType.shuffle;
-            shuffer = new MkShuffer(out_tasks, workerData);
+            shuffer = new MkShuffer(topology_context.getThisComponentId(), targetComponent, workerData);
         } else if (Grouping._Fields.NONE.equals(fields)) {
             // random send one task
             this.random = new Random();
@@ -146,11 +147,11 @@ public class MkGrouper {
             // directly send to a special task
             grouperType = GrouperType.direct;
         } else if (Grouping._Fields.LOCAL_OR_SHUFFLE.equals(fields)) {
-            grouperType = GrouperType.local_or_shuffle;
-            local_shuffer_grouper = new MkLocalShuffer(local_tasks, out_tasks, workerData);
+            grouperType = GrouperType.shuffle;
+            shuffer = new MkShuffer(topology_context.getThisComponentId(), targetComponent, workerData);
         } else if (Grouping._Fields.LOCAL_FIRST.equals(fields)) {
-            grouperType = GrouperType.localFirst;
-            localFirst = new MkLocalFirst(local_tasks, out_tasks, workerData);
+            grouperType = GrouperType.shuffle;
+            shuffer = new MkShuffer(topology_context.getThisComponentId(), targetComponent, workerData);
         }
 
         return grouperType;
@@ -158,7 +159,7 @@ public class MkGrouper {
 
     /**
      * get which task should tuple be sent to
-     * 
+     *
      * @param values
      * @return
      */
@@ -182,22 +183,19 @@ public class MkGrouper {
             return custom_grouper.grouper(values);
         } else if (GrouperType.custom_serialized.equals(grouptype)) {
             return custom_grouper.grouper(values);
-        } else if (GrouperType.local_or_shuffle.equals(grouptype)) {
-            return local_shuffer_grouper.grouper(values);
-        } else if (GrouperType.localFirst.equals(grouptype)) {
-            return localFirst.grouper(values);
-        } else {
+        }  else {
             LOG.warn("Unsupportted group type");
         }
 
         return new ArrayList<Integer>();
     }
-    
-    public Map<List<Integer>, List<MsgInfo>> grouperBatch(List<MsgInfo> batch) {
-        Map<List<Integer>, List<MsgInfo>> ret = new HashMap<List<Integer>, List<MsgInfo>>();
+
+    public Map<Object, List<MsgInfo>> grouperBatch(List<MsgInfo> batch) {
+        Map<Object, List<MsgInfo>> ret = new HashMap<Object, List<MsgInfo>>();
         //optimize fieldGrouping & customGrouping
-        if (GrouperType.local_or_shuffle.equals(grouptype)) {
-           ret.put(local_shuffer_grouper.grouper(null), batch);
+        if (GrouperType.shuffle.equals(grouptype)) {
+            // random, but the random is different from none
+            ret.put(shuffer.grouper(null), batch);
         }  else if (GrouperType.global.equals(grouptype)) {
             // send to task which taskId is 0
             ret.put(JStormUtils.mk_list(out_tasks.get(0)), batch);
@@ -206,9 +204,6 @@ public class MkGrouper {
         } else if (GrouperType.all.equals(grouptype)) {
             // send to every task
             ret.put(out_tasks, batch);
-        } else if (GrouperType.shuffle.equals(grouptype)) {
-            // random, but the random is different from none
-            ret.put(shuffer.grouper(null), batch);
         } else if (GrouperType.none.equals(grouptype)) {
             int rnd = Math.abs(random.nextInt() % out_tasks.size());
             ret.put(JStormUtils.mk_list(out_tasks.get(rnd)), batch);
@@ -223,8 +218,6 @@ public class MkGrouper {
                 }
                 customBatch.add(msg);
             }
-        } else if (GrouperType.localFirst.equals(grouptype)) {
-            ret.put(localFirst.grouper(null), batch);
         } else {
             LOG.warn("Unsupportted group type");
         }

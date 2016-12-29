@@ -71,26 +71,15 @@ public class KafkaSpout implements IRichSpout {
 	@Override
 	public void nextTuple() {
 		Collection<PartitionConsumer> partitionConsumers = coordinator.getPartitionConsumers();
-		boolean isAllSleeping = true;
 		for(PartitionConsumer consumer: partitionConsumers) {
-			if(!consumer.isSleepingConsumer() ){
-				isAllSleeping = false;
-				EmitState state = consumer.emit(collector);
-				LOG.debug("====== partition "+ consumer.getPartition() + " emit message state is "+state);
-			}
+			EmitState state = consumer.emit(collector);
+			LOG.debug("====== partition "+ consumer.getPartition() + " emit message state is "+state);
 //			if(state != EmitState.EMIT_MORE) {
 //				currentPartitionIndex  = (currentPartitionIndex+1) % consumerSize;
 //			}
 //			if(state != EmitState.EMIT_NONE) {
 //				break;
 //			}
-		}
-		if(isAllSleeping){
-			try {
-				Thread.sleep(100);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
 		}
 		long now = System.currentTimeMillis();
         if((now - lastUpdateMs) > config.offsetUpdateIntervalMs) {

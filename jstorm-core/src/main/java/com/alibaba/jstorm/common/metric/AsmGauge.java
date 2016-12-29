@@ -28,7 +28,7 @@ import java.util.Map;
  */
 public class AsmGauge extends AsmMetric<Gauge> {
 
-    private Gauge gauge;
+    protected Gauge gauge;
 
     public AsmGauge(Gauge<Double> gauge) {
         this.aggregate = false;

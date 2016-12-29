@@ -17,9 +17,19 @@
  */
 package com.alipay.dw.jstorm.transcation;
 
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.alibaba.starter.utils.Assert;
+import com.alibaba.starter.utils.JStormHelper;
+
 import backtype.storm.Config;
-import backtype.storm.LocalCluster;
-import backtype.storm.StormSubmitter;
 import backtype.storm.coordination.BatchOutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.testing.MemoryTransactionalSpout;
@@ -32,109 +42,111 @@ import backtype.storm.transactional.TransactionalTopologyBuilder;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
-import com.alibaba.jstorm.utils.LoadConf;
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 
 /**
- * This is a basic example of a transactional topology. It keeps a count of the number of tuples seen so far in a
- * database. The source of data and the databases are mocked out as in memory maps for demonstration purposes. This
- * class is defined in depth on the wiki at https://github.com/nathanmarz/storm/wiki/Transactional-topologies
+ * This is a basic example of a transactional topology. It keeps a count of the
+ * number of tuples seen so far in a database. The source of data and the
+ * databases are mocked out as in memory maps for demonstration purposes. This
+ * class is defined in depth on the wiki at
+ * https://github.com/nathanmarz/storm/wiki/Transactional-topologies
  */
 public class TransactionalGlobalCount {
     private static final Logger LOG = LoggerFactory.getLogger(TransactionalGlobalCount.class);
-
-    public static final int PARTITION_TAKE_PER_BATCH = 3;
-    public static final Map<Integer, List<List<Object>>> DATA = new HashMap<Integer, List<List<Object>>>() {{
-        put(0, new ArrayList<List<Object>>() {{
-            add(new Values("cat"));
-            add(new Values("dog"));
-            add(new Values("chicken"));
-            add(new Values("cat"));
-            add(new Values("dog"));
-            add(new Values("apple"));
-        }});
-        put(1, new ArrayList<List<Object>>() {{
-            add(new Values("cat"));
-            add(new Values("dog"));
-            add(new Values("apple"));
-            add(new Values("banana"));
-        }});
-        put(2, new ArrayList<List<Object>>() {{
-            add(new Values("cat"));
-            add(new Values("cat"));
-            add(new Values("cat"));
-            add(new Values("cat"));
-            add(new Values("cat"));
-            add(new Values("dog"));
-            add(new Values("dog"));
-            add(new Values("dog"));
-            add(new Values("dog"));
-        }});
-    }};
-
+    
+    public static final int                              PARTITION_TAKE_PER_BATCH = 3;
+    public static final Map<Integer, List<List<Object>>> DATA                     = new HashMap<Integer, List<List<Object>>>() {
+        {
+            put(0, new ArrayList<List<Object>>() {
+                {
+                    add(new Values("cat"));
+                    add(new Values("dog"));
+                    add(new Values("chicken"));
+                    add(new Values("cat"));
+                    add(new Values("dog"));
+                    add(new Values("apple"));
+                }
+            });
+            put(1, new ArrayList<List<Object>>() {
+                {
+                    add(new Values("cat"));
+                    add(new Values("dog"));
+                    add(new Values("apple"));
+                    add(new Values("banana"));
+                }
+            });
+            put(2, new ArrayList<List<Object>>() {
+                {
+                    add(new Values("cat"));
+                    add(new Values("cat"));
+                    add(new Values("cat"));
+                    add(new Values("cat"));
+                    add(new Values("cat"));
+                    add(new Values("dog"));
+                    add(new Values("dog"));
+                    add(new Values("dog"));
+                    add(new Values("dog"));
+                }
+            });
+        }
+    };
+    
     public static class Value {
-        int count = 0;
+        int        count = 0;
         BigInteger txid;
     }
-
-    public static Map<String, Value> DATABASE = new HashMap<String, Value>();
-    public static final String GLOBAL_COUNT_KEY = "GLOBAL-COUNT";
-
+    
+    public static Map<String, Value> DATABASE         = new HashMap<String, Value>();
+    public static final String       GLOBAL_COUNT_KEY = "GLOBAL-COUNT";
+    
     public static class BatchCount extends BaseBatchBolt {
-        Object _id;
+        Object               _id;
         BatchOutputCollector _collector;
-
+        
         int _count = 0;
-
+        
         @Override
         public void prepare(Map conf, TopologyContext context, BatchOutputCollector collector, Object id) {
             _collector = collector;
             _id = id;
         }
-
+        
         @Override
         public void execute(Tuple tuple) {
             _count++;
             LOG.info("---BatchCount.execute(), _count=" + _count);
         }
-
+        
         @Override
         public void finishBatch() {
             _collector.emit(new Values(_id, _count));
             LOG.info("---BatchCount.finishBatch(), _id=" + _id + ", _count=" + _count);
         }
-
+        
         @Override
         public void declareOutputFields(OutputFieldsDeclarer declarer) {
             declarer.declare(new Fields("id", "count"));
         }
     }
-
+    
     public static class UpdateGlobalCount extends BaseTransactionalBolt implements ICommitter {
-        TransactionAttempt _attempt;
+        TransactionAttempt   _attempt;
         BatchOutputCollector _collector;
-
+        
         int _sum = 0;
-
+        
         @Override
-        public void prepare(Map conf, TopologyContext context, BatchOutputCollector collector, TransactionAttempt attempt) {
+        public void prepare(Map conf, TopologyContext context, BatchOutputCollector collector,
+                TransactionAttempt attempt) {
             _collector = collector;
             _attempt = attempt;
         }
-
+        
         @Override
         public void execute(Tuple tuple) {
             _sum += tuple.getInteger(1);
             LOG.info("---UpdateGlobalCount.execute(), _sum=" + _sum);
         }
-
+        
         @Override
         public void finishBatch() {
             Value val = DATABASE.get(GLOBAL_COUNT_KEY);
@@ -152,46 +164,44 @@ public class TransactionalGlobalCount {
                 newval = val;
             }
             _collector.emit(new Values(_attempt, newval.count));
-            LOG.info("---UpdateGlobalCount.finishBatch(), _attempt=" + _attempt
-                    + ", newval=(" + newval.txid + "," + newval.count + ")");
+            LOG.info("---UpdateGlobalCount.finishBatch(), _attempt=" + _attempt + ", newval=(" + newval.txid + ","
+                    + newval.count + ")");
         }
-
+        
         @Override
         public void declareOutputFields(OutputFieldsDeclarer declarer) {
             declarer.declare(new Fields("id", "sum"));
         }
     }
-
-    public static void main(String[] args) throws Exception {
-        MemoryTransactionalSpout spout = new MemoryTransactionalSpout(DATA, new Fields("word"), PARTITION_TAKE_PER_BATCH);
+    
+    static boolean isLocal = true;
+    static Config  conf    = JStormHelper.getConfig(null);
+    
+    public static void test() {
+        MemoryTransactionalSpout spout = new MemoryTransactionalSpout(DATA, new Fields("word"),
+                PARTITION_TAKE_PER_BATCH);
         TransactionalTopologyBuilder builder = new TransactionalTopologyBuilder("global-count", "spout", spout, 1);
         builder.setBolt("partial-count", new BatchCount(), 2).noneGrouping("spout");
         builder.setBolt("sum", new UpdateGlobalCount(), 1).globalGrouping("partial-count");
-
-        Config config = new Config();
-        config.setDebug(true);
-        config.setMaxSpoutPending(3);
-
-        if (args.length == 0) {
-            LocalCluster cluster = new LocalCluster();
-
-            cluster.submitTopology("global-count-topology", config, builder.buildTopology());
-
-            Thread.sleep(100000);
-            cluster.shutdown();
-        } else {
-
-            config.setNumWorkers(3);
-            try {
-                Map yamlConf = LoadConf.LoadYaml(args[0]);
-                if (yamlConf != null) {
-                    config.putAll(yamlConf);
-                }
-            } catch (Exception e) {
-                System.out.println("Input " + args[0] + " isn't one yaml ");
-            }
-
-            StormSubmitter.submitTopology("global", config, builder.buildTopology());
+        
+        conf.setDebug(true);
+        conf.setMaxSpoutPending(3);
+        
+        String[] className = Thread.currentThread().getStackTrace()[1].getClassName().split("\\.");
+        String topologyName = className[className.length - 1];
+        try {
+            JStormHelper.runTopology(builder.buildTopology(), topologyName, conf, 60,
+                    new JStormHelper.CheckAckedFail(conf), isLocal);
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            Assert.fail("Failed");
         }
+    }
+    
+    public static void main(String[] args) throws Exception {
+        isLocal = false;
+        conf = JStormHelper.getConfig(args);
+        test();
     }
 }

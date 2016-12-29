@@ -172,6 +172,11 @@ public class DistributedClusterState implements ClusterState {
     }
 
     @Override
+    public void sync_path(String path) throws Exception {
+        zkobj.syncPath(zk, path);
+    }
+
+    @Override
     public void mkdirs(String path) throws Exception {
         zkobj.mkdirs(zk, path);
 

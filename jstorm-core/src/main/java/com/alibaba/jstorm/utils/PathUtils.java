@@ -121,6 +121,9 @@ public class PathUtils {
         ArrayList<String> rtn = new ArrayList<String>();
         if (exists_file(dir)) {
             File[] list = (new File(dir)).listFiles();
+            if (list == null) {
+            	return rtn;
+            }
             for (File f : list) {
                 rtn.add(f.getName());
             }

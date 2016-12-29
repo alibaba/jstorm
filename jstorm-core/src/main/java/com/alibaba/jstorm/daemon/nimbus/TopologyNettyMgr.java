@@ -2,6 +2,9 @@ package com.alibaba.jstorm.daemon.nimbus;
 
 import backtype.storm.Config;
 import backtype.storm.generated.InvalidTopologyException;
+import backtype.storm.nimbus.NimbusInfo;
+import com.alibaba.jstorm.blobstore.BlobStore;
+import com.alibaba.jstorm.blobstore.BlobStoreUtils;
 import com.alibaba.jstorm.cluster.Common;
 import com.alibaba.jstorm.cluster.StormConfig;
 import com.alibaba.jstorm.metric.MetricUtils;
@@ -26,6 +29,7 @@ public class TopologyNettyMgr {
     }
 
     public boolean getTopology(String topologyId) {
+        BlobStore blobStore = null;
         try {
             String topologyName = Common.topologyIdToName(topologyId);
 
@@ -34,7 +38,8 @@ public class TopologyNettyMgr {
                 return isEnable;
             }
 
-            Map topologyConf = StormConfig.read_nimbus_topology_conf(nimbusConf, topologyId);
+            blobStore = BlobStoreUtils.getNimbusBlobStore(nimbusConf, NimbusInfo.fromConf(nimbusConf));
+            Map topologyConf = StormConfig.read_nimbus_topology_conf(topologyId, blobStore);
 
             isEnable = getTopology(topologyConf);
             setting.put(topologyName, isEnable);
@@ -44,6 +49,12 @@ public class TopologyNettyMgr {
         } catch (Exception e) {
             LOG.info("Failed to get {} netty metrics setting ", topologyId);
             return true;
+        }finally {
+            if (blobStore != null){
+                blobStore.shutdown();
+                blobStore = null;
+            }
+
         }
 
     }

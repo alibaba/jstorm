@@ -51,6 +51,10 @@ public class Fields implements Iterable<String>, Serializable {
         return ret;
     }
 
+    public Object select(String selector, List<Object> tuple) {
+    	return tuple.get(_index.get(selector));
+    }
+
     public List<String> toList() {
         return new ArrayList<String>(_fields);
     }

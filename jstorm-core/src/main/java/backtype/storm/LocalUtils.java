@@ -111,10 +111,7 @@ public class LocalUtils {
         ConfigExtension.setSpoutDelayRunSeconds(conf, 0);
         ConfigExtension.setTaskCleanupTimeoutSec(conf, 0);
         
-        ConfigExtension.setTopologyDebugRecvTuple(conf, true);
-        conf.put(Config.TOPOLOGY_DEBUG, true);
         
-        conf.put(ConfigExtension.TOPOLOGY_BACKPRESSURE_ENABLE, false);
         return conf;
     }
 
@@ -127,6 +124,11 @@ public class LocalUtils {
         
         conf.put(Config.STORM_ZOOKEEPER_SERVERS, zkServers);
         conf.put(Config.STORM_ZOOKEEPER_PORT, port);
+        
+        ConfigExtension.setTopologyDebugRecvTuple(conf, true);
+        conf.put(Config.TOPOLOGY_DEBUG, true);
+        
+        conf.put(ConfigExtension.TOPOLOGY_BACKPRESSURE_ENABLE, false);
         
         return conf;
     }

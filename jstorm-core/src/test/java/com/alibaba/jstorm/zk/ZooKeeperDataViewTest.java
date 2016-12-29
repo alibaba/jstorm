@@ -27,14 +27,14 @@ import backtype.storm.utils.Utils;
  * Created by dingjun on 15-12-17.
  */
 public class ZooKeeperDataViewTest {
-    
+
     private static Zookeeper zkobj;
     static CuratorFramework  zk;
     static Gson              gson;
-    
+
     public static final String CONFIG_FILE = "/.jstorm/storm.yaml";
     public static boolean      SKIP        = false;
-    
+
     @BeforeClass
     public static void init() {
         String CONFIG_PATH = System.getProperty("user.home") + CONFIG_FILE;
@@ -43,7 +43,7 @@ public class ZooKeeperDataViewTest {
             SKIP = true;
             return;
         }
-        
+
         try {
             zkobj = new Zookeeper();
             System.getProperties().setProperty("storm.conf.file", CONFIG_PATH);
@@ -58,7 +58,7 @@ public class ZooKeeperDataViewTest {
             SKIP = true;
         }
     }
-    
+
     @Test
     public void viewAssignments() throws Exception {
         if (SKIP == true) {
@@ -73,7 +73,7 @@ public class ZooKeeperDataViewTest {
             System.out.println(gson.toJson(assignment));
         }
     }
-    
+
     @Test
     public void viewTaskbeats() throws Exception {
         if (SKIP == true) {
@@ -88,9 +88,9 @@ public class ZooKeeperDataViewTest {
                     .maybe_deserialize(data);
             System.out.println(gson.toJson(taskHbInfo));
         }
-        
+
     }
-    
+
     @Test
     public void viewTopology() throws Exception {
         if (SKIP == true) {
@@ -104,13 +104,13 @@ public class ZooKeeperDataViewTest {
             System.out.println(gson.toJson(stormBase));
         }
     }
-    
+
     @Test
     public void viewMetrics() throws Exception {
         if (SKIP == true) {
             return;
         }
-		
+
         List<String> assignments = zkobj.getChildren(zk, Cluster.METRIC_SUBTREE,
                 false);
         for (String child : assignments) {
@@ -119,13 +119,13 @@ public class ZooKeeperDataViewTest {
             System.out.println(size.toString());
         }
     }
-    
+
     @Test
     public void viewTasks() throws Exception {
         if (SKIP == true) {
             return;
         }
-        
+
         List<String> assignments = zkobj.getChildren(zk, Cluster.TASKS_SUBTREE,
                 false);
         for (String child : assignments) {
@@ -136,13 +136,13 @@ public class ZooKeeperDataViewTest {
             System.out.println(gson.toJson(taskInfoMap));
         }
     }
-    
+
     @Test
     public void viewSupervisors() throws Exception {
         if (SKIP == true) {
             return;
         }
-        
+
         List<String> assignments = zkobj.getChildren(zk,
                 Cluster.SUPERVISORS_SUBTREE, false);
         for (String child : assignments) {
@@ -153,9 +153,9 @@ public class ZooKeeperDataViewTest {
             System.out.println(gson.toJson(supervisorInfo));
         }
     }
-    
+
     private void viewNode(Node parent) throws Exception {
-        
+
         List<String> elements = zkobj.getChildren(zk, parent.getPath(), false);
         for (String element : elements) {
             Node node = new Node(
@@ -170,66 +170,66 @@ public class ZooKeeperDataViewTest {
             viewNode(node);
         }
     }
-    
+
     @Test
     public void viewAll() throws Exception {
         if (SKIP == true) {
             return;
         }
-        
+
         Node root = new Node(Cluster.ZK_SEPERATOR);
         viewNode(root);
-        
+
         System.out.println(gson.toJson(root));
     }
-    
+
     public class Node {
         private String     path;
         private Object     data;
         private List<Node> children = new ArrayList<Node>();
-        
+
         public Node() {
-        
+
         }
-        
+
         public Node(String path) {
             this.path = path;
         }
-        
+
         public Node(String path, Object data) {
             this.path = path;
             this.data = data;
         }
-        
+
         public String getPath() {
             return path;
         }
-        
+
         public void setPath(String path) {
             this.path = path;
         }
-        
+
         public Object getData() {
             return data;
         }
-        
+
         public void setData(Object data) {
             this.data = data;
         }
-        
+
         public List<Node> getChildren() {
             return children;
         }
-        
+
         public void setChildren(List<Node> children) {
             this.children = children;
         }
-        
+
         public void addNode(Node node) {
             this.children.add(node);
         }
     }
-    
+
     @AfterClass
     public static void close() {
         if (zk != null) {
@@ -240,5 +240,5 @@ public class ZooKeeperDataViewTest {
             }
         }
     }
-    
+
 }

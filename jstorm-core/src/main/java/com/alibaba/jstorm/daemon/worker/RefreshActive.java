@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.alibaba.jstorm.task.TaskStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,22 +35,21 @@ import com.alibaba.jstorm.task.TaskShutdownDameon;
 import com.alibaba.jstorm.utils.JStormUtils;
 
 /**
- * Timely check whether topology is active or not and whether the metrics monitor is enable or disable from ZK
- * 
+ * Periodically check whether a topology is active or not
+ * and whether the metrics monitor is enabled or disabled from ZK
+ *
  * @author yannian/Longda
- * 
  */
 public class RefreshActive extends RunnableCallback {
     private static Logger LOG = LoggerFactory.getLogger(RefreshActive.class);
 
     private WorkerData workerData;
 
-    private AtomicBoolean shutdown;
     private AtomicBoolean monitorEnable;
     private Map<Object, Object> conf;
     private StormClusterState zkCluster;
     private String topologyId;
-    private Integer frequence;
+    private Integer frequency;
 
     // private Object lock = new Object();
 
@@ -57,27 +57,27 @@ public class RefreshActive extends RunnableCallback {
     public RefreshActive(WorkerData workerData) {
         this.workerData = workerData;
 
-        this.shutdown = workerData.getShutdown();
         this.monitorEnable = workerData.getMonitorEnable();
         this.conf = workerData.getStormConf();
         this.zkCluster = workerData.getZkCluster();
         this.topologyId = workerData.getTopologyId();
-        this.frequence = JStormUtils.parseInt(conf.get(Config.TASK_REFRESH_POLL_SECS), 10);
+        this.frequency = JStormUtils.parseInt(conf.get(Config.TASK_REFRESH_POLL_SECS), 10);
+        LOG.info("init RefreshActive finished.");
+        //call run() firstly to make task be active as soon as
+        run();
     }
 
     @Override
     public void run() {
-
         try {
-            StatusType newTopologyStatus = StatusType.activate;
+            StatusType newTopologyStatus;
             // /ZK-DIR/topology
             StormBase base = zkCluster.storm_base(topologyId, this);
             if (base == null) {
-                // @@@ normally the topology has been removed
-                LOG.warn("Failed to get StromBase from ZK of " + topologyId);
+                // normally the topology has been removed
+                LOG.warn("Failed to get StormBase from ZK of " + topologyId);
                 newTopologyStatus = StatusType.killed;
             } else {
-
                 newTopologyStatus = base.getStatus().getStatusType();
             }
 
@@ -86,47 +86,56 @@ public class RefreshActive extends RunnableCallback {
 
             List<TaskShutdownDameon> tasks = workerData.getShutdownTasks();
             if (tasks == null) {
-                LOG.info("Tasks aren't ready or begin to shutdown");
+                LOG.info("Tasks aren't ready or are beginning to shutdown");
                 return;
             }
-            boolean workerNewStatus = newTopologyStatus.equals(StatusType.active) && workerData.getWorkeInitConnectionStatus().get();
-            boolean workerOldStatus = workerData.getWorkerOldStatus().get();
-            if (workerNewStatus != workerOldStatus){
-                if (workerNewStatus) {
+
+            // If initialization is on-going, check connection status first. 
+            // If all connections were done, start to update topology status. Otherwise, just return.
+            if (oldTopologyStatus == null) {
+                if (!workerData.getWorkeInitConnectionStatus().get()) {
+                    return;
+                }
+            }
+
+            if (oldTopologyStatus == null || !newTopologyStatus.equals(oldTopologyStatus)) {
+                LOG.info("Old TopologyStatus:" + oldTopologyStatus + ", new TopologyStatus:" + newTopologyStatus);
+                if (newTopologyStatus.equals(StatusType.active)) {
                     for (TaskShutdownDameon task : tasks) {
-                        task.active();
+                        if (task.getTask().getTaskStatus().isInit()) {
+                            task.getTask().getTaskStatus().setStatus(TaskStatus.RUN);
+                        } else {
+                            task.active();
+                        }
                     }
-                } else {
+                } else if (oldTopologyStatus == null || !oldTopologyStatus.equals(StatusType.inactive)) {
                     for (TaskShutdownDameon task : tasks) {
-                        task.deactive();
+                        if (task.getTask().getTaskStatus().isInit()) {
+                            task.getTask().getTaskStatus().setStatus(TaskStatus.PAUSE);
+                        } else {
+                            task.deactive();
+                        }
                     }
                 }
-                workerData.getWorkerOldStatus().set(workerNewStatus);
-            }
+                workerData.setTopologyStatus(newTopologyStatus);
 
-            if (newTopologyStatus.equals(oldTopologyStatus)) {
-                return;
-            }
-
-            LOG.info("Old TopologyStatus:" + oldTopologyStatus + ", new TopologyStatus:" + newTopologyStatus);
-
-            workerData.setTopologyStatus(newTopologyStatus);
-
-            boolean newMonitorEnable = base.isEnableMonitor();
-            boolean oldMonitorEnable = monitorEnable.get();
-            if (newMonitorEnable != oldMonitorEnable) {
-                LOG.info("Change MonitorEnable from " + oldMonitorEnable + " to " + newMonitorEnable);
-                monitorEnable.set(newMonitorEnable);
+                if (base != null) {
+                    boolean newMonitorEnable = base.isEnableMonitor();
+                    boolean oldMonitorEnable = monitorEnable.get();
+                    if (newMonitorEnable != oldMonitorEnable) {
+                        LOG.info("Change MonitorEnable from " + oldMonitorEnable + " to " + newMonitorEnable);
+                        monitorEnable.set(newMonitorEnable);
+                    }
+                }
             }
         } catch (Exception e) {
-            // TODO Auto-generated catch block
             LOG.error("Failed to get topology from ZK ", e);
-            return;
         }
 
     }
+
     @Override
     public Object getResult() {
-        return frequence;
+        return frequency;
     }
 }

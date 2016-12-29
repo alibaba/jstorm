@@ -24,8 +24,10 @@ public class TaskStatus {
     public static final byte PAUSE = 1;
     // task is shutdown
     public static final byte SHUTDOWN = 2;
+    // task is init
+    public static final byte INIT = 3;
 
-    private volatile byte status = TaskStatus.PAUSE;
+    private volatile byte status = TaskStatus.INIT;
 
     public byte getStatus() {
         return status;
@@ -45,6 +47,13 @@ public class TaskStatus {
 
     public boolean isPause() {
         return status == TaskStatus.PAUSE;
+    }
+
+    public boolean isInit(){return status == TaskStatus.INIT;}
+
+    @Override
+    public String toString() {
+        return String.valueOf(status);
     }
 
     /**

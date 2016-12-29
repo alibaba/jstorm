@@ -194,6 +194,11 @@ public class Zookeeper {
         return existsNode(zk, path, watch);
     }
 
+    public void syncPath(CuratorFramework zk, String path) throws Exception{
+        zk.sync().forPath(Utils.normalize_path(path));
+    }
+
+
     public void deletereRcursive(CuratorFramework zk, String path) throws Exception {
 
         String npath = PathUtils.normalize_path(path);

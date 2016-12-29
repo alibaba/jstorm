@@ -29,7 +29,7 @@ public class MetaConsumerFactory {
     	String topic = config.getTopic();
     	String groupId = config.getConsumerGroup();
     	
-    	String key = topic + "@" + groupId;
+    	String key = groupId;
     	
     	MetaPushConsumer consumer = consumers.get(key);
     	if (consumer != null) {
@@ -47,7 +47,7 @@ public class MetaConsumerFactory {
         
         LOG.info(sb.toString());
         
-        consumer = new MetaPushConsumer(config.getConsumerGroup());
+        consumer = new MetaPushConsumer(groupId);
         
         String nameServer = config.getNameServer();
         if ( nameServer != null) {
@@ -67,7 +67,7 @@ public class MetaConsumerFactory {
 		}
         
         String instanceName = groupId +"@" +	JStormUtils.process_pid();
-		consumer.setInstanceName(instanceName);
+		//consumer.setInstanceName(instanceName);
 		consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_LAST_OFFSET);
 		consumer.subscribe(config.getTopic(), config.getSubExpress());
 		consumer.registerMessageListener(listener);

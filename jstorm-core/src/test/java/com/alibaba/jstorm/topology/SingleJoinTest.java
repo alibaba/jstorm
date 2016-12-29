@@ -37,50 +37,50 @@ import backtype.storm.tuple.Values;
 import com.alibaba.jstorm.utils.JStormUtils;
 
 public class SingleJoinTest {
-    private static Logger LOG = LoggerFactory.getLogger(SingleJoinTest.class);
-    
-    public static AtomicInteger receiveCounter = new AtomicInteger(0);
+	private static Logger LOG = LoggerFactory.getLogger(SingleJoinTest.class);
 
-    @Test
-    public void test_single_join() {
-	receiveCounter.set(0);
-        try {
-            FeederSpout genderSpout = new FeederSpout(new Fields("id", "gender"));
-            FeederSpout ageSpout = new FeederSpout(new Fields("id", "age"));
+	public static AtomicInteger receiveCounter = new AtomicInteger(0);
 
-            TopologyBuilder builder = new TopologyBuilder();
-            builder.setSpout("gender", genderSpout);
-            builder.setSpout("age", ageSpout);
-            builder.setBolt("join", new SingleJoinBolt(new Fields("gender", "age"))).fieldsGrouping("gender", new Fields("id"))
-                    .fieldsGrouping("age", new Fields("id"));
+	@Test
+	public void test_single_join() {
+		receiveCounter.set(0);
+		try {
+			FeederSpout genderSpout = new FeederSpout(new Fields("id", "gender"));
+			FeederSpout ageSpout = new FeederSpout(new Fields("id", "age"));
 
-            Config conf = new Config();
-            conf.setDebug(true);
+			TopologyBuilder builder = new TopologyBuilder();
+			builder.setSpout("gender", genderSpout);
+			builder.setSpout("age", ageSpout);
+			builder.setBolt("join", new SingleJoinBolt(new Fields("gender", "age")))
+					.fieldsGrouping("gender", new Fields("id")).fieldsGrouping("age", new Fields("id"));
 
-            LocalCluster cluster = new LocalCluster();
-            cluster.submitTopology("join-example", conf, builder.createTopology());
+			Config conf = new Config();
+			conf.setDebug(true);
 
-            for (int i = 0; i < 10; i++) {
-                String gender;
-                if (i % 2 == 0) {
-                    gender = "male";
-                } else {
-                    gender = "female";
-                }
-                genderSpout.feed(new Values(i, gender));
-            }
+			LocalCluster cluster = new LocalCluster();
+			cluster.submitTopology("join-example", conf, builder.createTopology());
 
-            for (int i = 9; i >= 0; i--) {
-                ageSpout.feed(new Values(i, i + 20));
-            }
+			for (int i = 0; i < 10; i++) {
+				String gender;
+				if (i % 2 == 0) {
+					gender = "male";
+				} else {
+					gender = "female";
+				}
+				genderSpout.feed(new Values(i, gender));
+			}
 
-            JStormUtils.sleepMs(60 * 1000);
-            
-            assertNotSame(0, receiveCounter.get());
-            
-            cluster.shutdown();
-        } catch (Exception e) {
-            Assert.fail("Failed to run SingleJoinExample");
-        }
-    }
+			for (int i = 9; i >= 0; i--) {
+				ageSpout.feed(new Values(i, i + 20));
+			}
+
+			JStormUtils.sleepMs(60 * 1000);
+
+			assertNotSame(0, receiveCounter.get());
+
+			cluster.shutdown();
+		} catch (Exception e) {
+			Assert.fail("Failed to run SingleJoinExample");
+		}
+	}
 }

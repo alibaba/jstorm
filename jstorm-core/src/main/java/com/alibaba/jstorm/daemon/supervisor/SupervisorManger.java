@@ -22,6 +22,8 @@ import com.alibaba.jstorm.metric.JStormMetrics;
 import com.alibaba.jstorm.metric.JStormMetricsReporter;
 import com.alibaba.jstorm.metric.MetricDef;
 import com.alibaba.jstorm.metric.MetricType;
+import com.alibaba.jstorm.utils.LinuxResource;
+import com.alibaba.jstorm.utils.Pair;
 import com.codahale.metrics.Gauge;
 import java.io.IOException;
 import java.util.HashMap;
@@ -62,7 +64,6 @@ public class SupervisorManger extends ShutdownWork implements SupervisorDaemon, 
 
     private final Vector<AsyncLoopThread> threads;
 
-
     private final EventManager eventManager;
 
     private final Httpserver httpserver;
@@ -89,6 +90,12 @@ public class SupervisorManger extends ShutdownWork implements SupervisorDaemon, 
         this.metricsReporter = new JStormMetricsReporter(this);
         this.metricsReporter.init();
 
+        registerSupervisorMetrics();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(this));
+    }
+
+    private void registerSupervisorMetrics() {
         JStormMetrics.registerWorkerMetric(
                 JStormMetrics.workerMetricName(MetricDef.CPU_USED_RATIO, MetricType.GAUGE),
                 new AsmGauge(new Gauge<Double>() {
@@ -116,7 +123,49 @@ public class SupervisorManger extends ShutdownWork implements SupervisorDaemon, 
                     }
                 }));
 
-        Runtime.getRuntime().addShutdownHook(new Thread(this));
+        JStormMetrics.registerWorkerMetric(
+                JStormMetrics.workerMetricName(MetricDef.NETRECVSPEED, MetricType.GAUGE),
+                new AsmGauge(new Gauge<Double>() {
+                    Long lastRecvCount = LinuxResource.getNetRevSendCount().getFirst();
+                    Long lastCalTime = System.currentTimeMillis();
+
+                    @Override
+                    public Double getValue() {
+                        Long nowRecvCount = LinuxResource.getNetRevSendCount().getFirst();
+                        Long nowCalTime = System.currentTimeMillis();
+                        long deltaValue = nowRecvCount - lastRecvCount;
+                        long deltaTime = nowCalTime - lastCalTime;
+                        lastRecvCount = nowRecvCount;
+                        lastCalTime = nowCalTime;
+                        double ret = 0.0;
+                        if (deltaTime > 0) {
+                            ret = deltaValue / (double) deltaTime * 1000d;
+                        }
+                        return ret;
+                    }
+                }));
+
+        JStormMetrics.registerWorkerMetric(
+                JStormMetrics.workerMetricName(MetricDef.NETSENDSPEED, MetricType.GAUGE),
+                new AsmGauge(new Gauge<Double>() {
+                    Long lastSendCount = LinuxResource.getNetRevSendCount().getSecond();
+                    Long lastCalTime = System.currentTimeMillis();
+
+                    @Override
+                    public Double getValue() {
+                        Long nowSendCount = LinuxResource.getNetRevSendCount().getSecond();
+                        Long nowCalTime = System.currentTimeMillis();
+                        long deltaValue = nowSendCount - lastSendCount;
+                        long deltaTime = nowCalTime - lastCalTime;
+                        lastSendCount = nowSendCount;
+                        lastCalTime = nowCalTime;
+                        double ret = 0.0;
+                        if (deltaTime > 0) {
+                            ret = deltaValue / (double) deltaTime * 1000d;
+                        }
+                        return ret;
+                    }
+                }));
     }
 
     @Override

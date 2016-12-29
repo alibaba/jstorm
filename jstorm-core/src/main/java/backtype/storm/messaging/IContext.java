@@ -17,7 +17,9 @@
  */
 package backtype.storm.messaging;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import backtype.storm.utils.DisruptorQueue;
@@ -52,7 +54,7 @@ public interface IContext {
      * @return server side connection
      */
     public IConnection bind(String topology_id, int port, ConcurrentHashMap<Integer, DisruptorQueue> deserializedQueue, 
-            DisruptorQueue recvControlQueue);
+            DisruptorQueue recvControlQueue, boolean bstartRec, Set<Integer> workerTasks);
 
     /**
      * This method establish a client side connection to a remote server

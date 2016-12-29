@@ -24,6 +24,7 @@ import java.util.Random;
 
 import backtype.storm.spout.SpoutOutputCollectorCb;
 import backtype.storm.task.ICollectorCallback;
+
 import backtype.storm.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +50,9 @@ import backtype.storm.spout.ISpout;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.MessageId;
 import backtype.storm.tuple.TupleImplExt;
+import backtype.storm.tuple.Values;
 import backtype.storm.utils.DisruptorQueue;
+
 
 /**
  * spout collector, sending tuple through this Object
@@ -98,6 +101,7 @@ public class SpoutCollector extends SpoutOutputCollectorCb {
         ackerNum = JStormUtils.parseInt(storm_conf.get(Config.TOPOLOGY_ACKER_EXECUTORS));
 
         random = new Random(Utils.secureRandomLong());
+/*        random.setSeed(System.currentTimeMillis());*/
 
         String componentId = topology_context.getThisComponentId();
         emitTotalTimer = (AsmHistogram) JStormMetrics.registerTaskMetric(MetricUtils.taskMetricName(
@@ -178,20 +182,16 @@ public class SpoutCollector extends SpoutOutputCollectorCb {
         try {
             boolean needAck = (message_id != null) && (ackerNum > 0);
             Long root_id = getRootId(message_id);
-            java.util.List<Integer> out_tasks;
+            List<Integer> outTasks = null;
 
             if (out_task_id != null) {
-                out_tasks = sendTargets.get(out_task_id, out_stream_id, values, null, root_id);
+                outTasks = sendTargets.get(out_task_id, out_stream_id, values, null, root_id);
             } else {
-                out_tasks = sendTargets.get(out_stream_id, values, null, root_id);
-            }
-            if (out_tasks.size() == 0) {
-                // don't need send tuple to other task
-                return out_tasks;
+                outTasks = sendTargets.get(out_stream_id, values, null, root_id);
             }
 
             List<Long> ackSeq = new ArrayList<Long>();
-            for (Integer t : out_tasks) {
+            for (Integer t : outTasks) {
                 MessageId msgid;
                 if (needAck) {
                     // Long as = MessageId.generateId();
@@ -199,7 +199,7 @@ public class SpoutCollector extends SpoutOutputCollectorCb {
                     msgid = MessageId.makeRootId(root_id, as);
                     ackSeq.add(as);
                 } else {
-                    msgid = MessageId.makeUnanchored();
+                    msgid = null;
                 }
 
                 TupleImplExt tp = new TupleImplExt(topology_context, values, task_id, out_stream_id, msgid);
@@ -208,8 +208,8 @@ public class SpoutCollector extends SpoutOutputCollectorCb {
             }
             sendMsgToAck(out_stream_id, values,  message_id,  root_id, ackSeq, needAck);
             if (callback != null)
-                callback.execute(out_tasks);
-            return out_tasks;
+                callback.execute(out_stream_id, outTasks, values);
+            return outTasks;
         } finally {
             emitTotalTimer.updateTime(startTime);
         }
@@ -220,16 +220,12 @@ public class SpoutCollector extends SpoutOutputCollectorCb {
         try {
             boolean needAck = (message_id != null) && (ackerNum > 0);
             Long root_id = getRootId(message_id);
-            java.util.List<Integer> out_tasks;
+            java.util.List<Integer> out_tasks = null;
 
             if (out_task_id != null) {
                 out_tasks = sendTargets.get(out_task_id, out_stream_id, values, null, root_id);
             } else {
                 out_tasks = sendTargets.get(out_stream_id, values, null, root_id);
-            }
-            if (out_tasks.size() == 0) {
-                // don't need send tuple to other task
-                return out_tasks;
             }
 
             List<Long> ackSeq = new ArrayList<Long>();
@@ -241,7 +237,7 @@ public class SpoutCollector extends SpoutOutputCollectorCb {
                     msgid = MessageId.makeRootId(root_id, as);
                     ackSeq.add(as);
                 } else {
-                    msgid = MessageId.makeUnanchored();
+                    msgid = null;
                 }
 
                 TupleImplExt tp = new TupleImplExt(topology_context, values, task_id, out_stream_id, msgid);
@@ -270,9 +266,9 @@ public class SpoutCollector extends SpoutOutputCollectorCb {
         Long rootId = null;
         if (needAck) {
             rootId = MessageId.generateId(random);
-            while (pending.containsKey(rootId)) {
+/*            while (pending.containsKey(rootId)) {
                 rootId = MessageId.generateId(random);
-            }
+            }*/
         }
         return rootId;
     }

@@ -71,40 +71,4 @@ public class StormZkClusterStateTest {
         err_time = stormClusterState.task_error_time(topology_id, task_id);
         assertEquals(0, err_time.size());
     }
-
-    @Test
-    public void testReport_task_error_backpressure() throws Exception {
-        String topology_id = "topology_id_1";
-        int task_id = 101;
-        TaskError expected = new TaskError("Backpressure has been opened", ErrorConstants.WARN, ErrorConstants.CODE_BP, TimeUtils.current_time_secs());
-        stormClusterState.report_task_error(topology_id, task_id, expected.getError(), ErrorConstants.WARN,
-                ErrorConstants.CODE_BP, ErrorConstants.DURATION_SECS_DEFAULT, "Backpressure has been ");
-        String path = Cluster.taskerror_path(topology_id, task_id);
-        List<String> err_time = stormClusterState.task_error_time(topology_id, task_id);
-        for (String time : err_time) {
-            String errPath = path + Cluster.ZK_SEPERATOR + time;
-            Object obj = stormClusterState.getObject(errPath, false);
-            assertEquals(expected, obj);
-        }
-
-        expected = new TaskError("Backpressure has been opened", ErrorConstants.WARN, ErrorConstants.CODE_BP, TimeUtils.current_time_secs());
-        stormClusterState.report_task_error(topology_id, task_id, expected.getError(), ErrorConstants.WARN,
-                ErrorConstants.CODE_BP, ErrorConstants.DURATION_SECS_DEFAULT, "Backpressure has been ");
-        err_time = stormClusterState.task_error_time(topology_id, task_id);
-        for (String time : err_time) {
-            String errPath = path + Cluster.ZK_SEPERATOR + time;
-            Object obj = stormClusterState.getObject(errPath, false);
-            assertEquals(expected, obj);
-        }
-
-        expected = new TaskError("Backpressure has been closed", ErrorConstants.WARN, ErrorConstants.CODE_BP, TimeUtils.current_time_secs());
-        stormClusterState.report_task_error(topology_id, task_id, expected.getError(), ErrorConstants.WARN,
-                ErrorConstants.CODE_BP, ErrorConstants.DURATION_SECS_DEFAULT, "Backpressure has been ");
-        err_time = stormClusterState.task_error_time(topology_id, task_id);
-        for (String time : err_time) {
-            String errPath = path + Cluster.ZK_SEPERATOR + time;
-            Object obj = stormClusterState.getObject(errPath, false);
-            assertEquals(expected, obj);
-        }
-    }
 }

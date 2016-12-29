@@ -23,6 +23,12 @@ import java.util.ArrayList;
  * A convenience class for making tuple values using new Values("field1", 2, 3) syntax.
  */
 public class Values extends ArrayList<Object> {
+    public static final int OBJECT = 0;
+    public static final int STRING = 1;
+    public static final int INTEGER = 2;
+
+    public int type;
+
     public Values() {
 
     }
@@ -32,5 +38,33 @@ public class Values extends ArrayList<Object> {
         for (Object o : vals) {
             add(o);
         }
+        type = OBJECT;
+    }
+
+    public Values(String... strs) {
+    	super(strs.length);
+        for (String s : strs) {
+            add(s);
+        }
+        type = STRING;
+    }
+
+    public Values(Integer... ints) {
+    	super(ints.length);
+        for (Integer i : ints) {
+            add(i);
+        }
+        type = INTEGER;
+    }
+
+    @Override
+    public boolean add(Object obj) {
+        Object val = obj;
+        if (type == STRING && !(obj instanceof String)) {
+            type = OBJECT;
+        } else if (type == INTEGER && !(obj instanceof Integer)) {
+            type = OBJECT;
+        }
+        return super.add(val);
     }
 }

@@ -49,7 +49,7 @@
                                                 </c:when>
                                                 <c:otherwise>
                                                     <li>
-                                                        <a href="component?name=${clusterName}&topology=${topologyId}&component=${compName}">
+                                                        <a href="component?cluster=${clusterName}&topology=${topologyId}&component=${compName}">
                                                             Component</a></li>
                                                     <li class="active"><a href="#" onclick="location.reload()">Task</a></li>
                                                 </c:otherwise>

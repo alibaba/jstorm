@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.alibaba.jstorm.client.ConfigExtension;
+import com.alibaba.jstorm.utils.JStormUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -157,6 +159,18 @@ public class DefaultTopologyScheduler implements IToplogyScheduler {
         List<ResourceWorkerSlot> availableWorkers = WorkerScheduler.getInstance().getAvailableWorkers(defaultContext, needAssignTasks, allocWorkerNum);
         TaskScheduler taskScheduler = new TaskScheduler(defaultContext, needAssignTasks, availableWorkers);
         Set<ResourceWorkerSlot> assignment = new HashSet<ResourceWorkerSlot>(taskScheduler.assign());
+
+        //setting worker's memory for TM
+        int topologyMasterId = defaultContext.getTopologyMasterTaskId();
+        Long tmWorkerMem = ConfigExtension.getMemSizePerTopologyMasterWorker(defaultContext.getStormConf());
+        if (tmWorkerMem != null){
+            for (ResourceWorkerSlot resourceWorkerSlot : assignment){
+                if (resourceWorkerSlot.getTasks().contains(topologyMasterId)){
+                    resourceWorkerSlot.setMemSize(tmWorkerMem);
+                }
+            }
+        }
+
         ret.addAll(assignment);
 
         LOG.info("Keep Alive slots:" + keepAssigns);

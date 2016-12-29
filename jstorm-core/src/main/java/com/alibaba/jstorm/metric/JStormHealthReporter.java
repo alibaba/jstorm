@@ -13,6 +13,7 @@ import java.util.Map;
 
 /**
  * used for reporting queue full error to zk
+ *
  * @author Jark Wu (wuchong.wc@alibaba-inc.com)
  */
 public class JStormHealthReporter extends RunnableCallback {
@@ -47,7 +48,10 @@ public class JStormHealthReporter extends RunnableCallback {
                 }
             }
         }
-        LOG.info("Successfully updated {} health data to ZK for topology:{}", cnt, topologyId);
+
+        if (cnt > 0) {
+            LOG.info("Successfully updated {} health data to ZK for topology:{}", cnt, topologyId);
+        }
     }
 
     @Override

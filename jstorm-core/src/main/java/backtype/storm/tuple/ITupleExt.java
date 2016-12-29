@@ -22,4 +22,8 @@ public interface ITupleExt {
      * set ms
      */
     void setCreationTimeStamp(long timeStamp);
+
+    boolean isBatchTuple();
+    
+    void setBatchTuple(boolean isBatchTuple);
 }
