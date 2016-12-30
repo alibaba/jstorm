@@ -39,9 +39,15 @@ if sys.platform == "cygwin":
     normclasspath = cygpath
 else:
     normclasspath = identity
-
+if sys.platform == "win32":
+    jarsp = ";"
+else:
+    jarsp= ":"
+#pdb.set_trace()
 CLIENT_CONF_FILE = ""
 JSTORM_DIR = "/".join(os.path.realpath( __file__ ).split("/")[:-2])
+if JSTORM_DIR == "":
+    JSTORM_DIR = "."
 JSTORM_CONF_DIR = os.getenv("JSTORM_CONF_DIR", JSTORM_DIR + "/conf" )
 LOGBACK_CONF = JSTORM_CONF_DIR + "/jstorm.logback.xml"
 CONFIG_OPTS = []
@@ -51,7 +57,10 @@ STATUS = 0
 
 
 def check_java():
-    check_java_cmd = 'which java'
+    if sys.platform == "win32":
+	    check_java_cmd = 'for %i in (java.exe) do @echo.   %~$PATH:i'
+    else:
+        check_java_cmd = 'which java'
     ret = os.system(check_java_cmd)
     if ret != 0:
         print("Failed to find java, please add java to PATH")
@@ -120,7 +129,7 @@ def get_classpath(extrajars):
     ret.extend(get_jars_full(JSTORM_DIR))
     ret.extend(get_jars_full(JSTORM_DIR + "/lib"))
     ret.extend(INCLUDE_JARS)
-    return normclasspath(":".join(ret))
+    return normclasspath(jarsp.join(ret))
     
 
 def confvalue(name, extrapaths):
@@ -178,7 +187,7 @@ def exec_storm_class(klass, jvmtype="-server", childopts="", extrajars=[], args=
     print args_str
     if "NimbusServer" in klass:
         # fix cmd > 4096, use dir in cp, only for nimbus server
-        command = "java " + jvmtype + " -Djstorm.home=" + JSTORM_DIR + " " + get_config_opts() + " -Djava.library.path=" + nativepath + " " + childopts + " -cp " + get_classpath(extrajars) + ":" + JSTORM_DIR + "/lib/ext/* " + klass + " " + args_str
+        command = "java " + jvmtype + " -Djstorm.home=" + JSTORM_DIR + " " + get_config_opts() + " -Djava.library.path=" + nativepath + " " + childopts + " -cp " + get_classpath(extrajars) + jarsp + JSTORM_DIR + "/lib/ext/* " + klass + " " + args_str
     else:
         command = "java " + jvmtype + " -Djstorm.home=" + JSTORM_DIR + " " + get_config_opts() + " -Djava.library.path=" + nativepath + " " + childopts + " -cp " + get_classpath(extrajars) + " " + klass + " " + args_str
     print "Running: " + command

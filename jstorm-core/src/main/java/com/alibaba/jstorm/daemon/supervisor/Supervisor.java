@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import com.alibaba.jstorm.daemon.worker.WorkerReportError;
 import com.alibaba.jstorm.utils.DefaultUncaughtExceptionHandler;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.SystemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -199,8 +200,10 @@ public class Supervisor {
             createPid(conf);
 
             supervisorManager = mkSupervisor(conf, null);
-
-            JStormUtils.redirectOutput("/dev/null");
+            
+            if(SystemUtils.IS_OS_LINUX){
+                JStormUtils.redirectOutput("/dev/null");
+            }
 
             initShutdownHook(supervisorManager);
 
