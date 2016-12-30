@@ -26,6 +26,7 @@ import backtype.storm.multilang.SpoutMsg;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.utils.ShellProcess;
 import clojure.lang.RT;
+import com.alibaba.jstorm.utils.JStormServerUtils;
 import com.google.common.util.concurrent.MoreExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +48,13 @@ public class ShellSpout implements ISpout {
 
     private TopologyContext _context;
 
-    private SpoutMsg _spoutMsg;
+    private SpoutMsg _ackSpoutMsg;
+
+    private SpoutMsg _nextSpoutMsg;
+
+    private SpoutMsg _failSpoutMsg;
+
+    private boolean isSingleSpoutThread;
 
     private int workerTimeoutMills;
     private ScheduledExecutorService heartBeatExecutorService;
@@ -65,9 +72,13 @@ public class ShellSpout implements ISpout {
         _collector = collector;
         _context = context;
 
+        initSpoutMsg();
+
         workerTimeoutMills = 1000 * RT.intCast(stormConf.get(Config.SUPERVISOR_WORKER_TIMEOUT_SECS));
 
         _process = new ShellProcess(_command);
+
+        isSingleSpoutThread = JStormServerUtils.isSingleThread(stormConf);
 
         Number subpid = _process.launch(stormConf, context);
         LOG.info("Launched subprocess with pid " + subpid);
@@ -81,30 +92,17 @@ public class ShellSpout implements ISpout {
     }
 
     public void nextTuple() {
-        if (_spoutMsg == null) {
-            _spoutMsg = new SpoutMsg();
-        }
-        _spoutMsg.setCommand("next");
-        _spoutMsg.setId("");
-        querySubprocess();
+        syncQuerySubprocess(_nextSpoutMsg);
     }
 
     public void ack(Object msgId) {
-        if (_spoutMsg == null) {
-            _spoutMsg = new SpoutMsg();
-        }
-        _spoutMsg.setCommand("ack");
-        _spoutMsg.setId(msgId);
-        querySubprocess();
+        _ackSpoutMsg.setId(msgId);
+        syncQuerySubprocess(_ackSpoutMsg);
     }
 
     public void fail(Object msgId) {
-        if (_spoutMsg == null) {
-            _spoutMsg = new SpoutMsg();
-        }
-        _spoutMsg.setCommand("fail");
-        _spoutMsg.setId(msgId);
-        querySubprocess();
+        _failSpoutMsg.setId(msgId);
+        syncQuerySubprocess(_failSpoutMsg);
     }
 
     private void handleMetrics(ShellMsg shellMsg) {
@@ -135,9 +133,19 @@ public class ShellSpout implements ISpout {
         }
     }
 
-    private void querySubprocess() {
+    private void syncQuerySubprocess(SpoutMsg spoutMsg) {
+        if (isSingleSpoutThread) {
+            querySubprocess(spoutMsg);
+        } else {
+            synchronized (this) {
+                querySubprocess(spoutMsg);
+            }
+        }
+    }
+
+    private void querySubprocess(SpoutMsg spoutMsg) {
         try {
-            _process.writeSpoutMsg(_spoutMsg);
+            _process.writeSpoutMsg(spoutMsg);
 
             while (true) {
                 ShellMsg shellMsg = _process.readShellMsg();
@@ -210,6 +218,18 @@ public class ShellSpout implements ISpout {
         _collector.reportError(new Exception("Shell Process Exception: " + msg));
     }
 
+    private void initSpoutMsg() {
+        _ackSpoutMsg = new SpoutMsg();
+        _ackSpoutMsg.setCommand("ack");
+
+        _failSpoutMsg = new SpoutMsg();
+        _failSpoutMsg.setCommand("fail");
+
+        _nextSpoutMsg = new SpoutMsg();
+        _nextSpoutMsg.setCommand("next");
+        _nextSpoutMsg.setId("");
+    }
+
     @Override
     public void activate() {
         LOG.info("Start checking heartbeat...");
@@ -259,5 +279,4 @@ public class ShellSpout implements ISpout {
             }
         }
     }
-
 }

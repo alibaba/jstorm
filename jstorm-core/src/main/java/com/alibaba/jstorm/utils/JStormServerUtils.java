@@ -141,4 +141,8 @@ public class JStormServerUtils {
         return hostName;
     }
 
+    public static boolean isSingleThread(Map conf) {
+        boolean isOnePending = JStormServerUtils.isOnePending(conf);
+        return isOnePending || ConfigExtension.isSpoutSingleThread(conf);
+    }
 };

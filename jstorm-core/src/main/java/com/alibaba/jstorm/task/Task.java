@@ -172,21 +172,13 @@ public class Task implements Runnable{
         return sendTargets;
     }
 
-    public boolean isSingleThread(Map conf) {
-        boolean isOnePending = JStormServerUtils.isOnePending(conf);
-        if (isOnePending == true) {
-            return true;
-        }
-        return ConfigExtension.isSpoutSingleThread(conf);
-    }
-
     public BaseExecutors mkExecutor() {
     	BaseExecutors baseExecutor = null;
 
         if (taskObj instanceof IBolt) {
         	baseExecutor = new BoltExecutors(this);
         } else if (taskObj instanceof ISpout) {
-            if (isSingleThread(stormConf) == true) {
+            if (JStormServerUtils.isSingleThread(stormConf)) {
             	baseExecutor = new SingleThreadSpoutExecutors(this);
             } else {
                 baseExecutor = new MultipleThreadSpoutExecutors(this);
