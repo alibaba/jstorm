@@ -21,6 +21,7 @@ This page helps readers to quickly implement a JStorm example.
 The simplest JStorm example is divided into four steps:
 
 ## **Generate Topology**
+
 ```
 Map conf = new HashMap();
 //all custom configurations of topology are placed in the Map
@@ -65,6 +66,7 @@ StormSubmitter.submitTopology(streamName, conf, builder.createTopology());
 ## **IRichSpout**
 
 IRichSpout is the easiest Spout Interface
+
 ```
  IRichSpout{
 
@@ -104,7 +106,6 @@ IRichSpout is the easiest Spout Interface
     public Map<String, Object> getComponentConfiguration() {
         return null;
     }
-
 ```
 
 Note:
@@ -121,6 +122,7 @@ Note:
 * getComponentConfiguration is the interface of component configuration for spout, spout can own himself configuration with the interface.
 
 ## **Bolt**
+
 ```
 IRichBolt {
 
@@ -147,6 +149,7 @@ IRichBolt {
 
 }
 ```
+
 Note:
 * Bolt object must implement Serializable interface, requiring all the fields within the bolt must be serializable, if there are some fileds which are not Serialable, please add "transient" attribute.
 * Bolt can have a constructor function, but the constructor will be called only once when the topology is being submitted; At this time the bolt object has been created; Therefore, some initialization can be done here before task is assigned to a worker, once constructor has finished, the contents of the initialization will be brought to each task (because when you submit a topology, bolt object will be serialized into a file, then the file will be delivered to supervisors, at last bolt object will be deserialized from the file when worker starts).
@@ -159,6 +162,7 @@ Note:
 ## **Compile**
 
 Configuration in Maven pom.xml
+
 ```
     <dependency>
         <groupId>com.alibaba.jstorm</groupId>
@@ -177,6 +181,7 @@ Configuration in Maven pom.xml
 If you can not find jstorm-client and jstorm-client-extension package, you can download the source code of JStorm to compile, please refer to the [Build-JStorm](https://github.com/alibaba/jstorm/wiki/Build-JStorm)
 
 When compile, you need package all dependent jars to one package.
+
 ```
 <build>
         <plugins>

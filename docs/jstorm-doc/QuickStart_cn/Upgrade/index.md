@@ -18,5 +18,6 @@ layout: plain_cn
 
 [集群升级]({{site.baseurl}}/QuickStart_cn/Upgrade/UpgradeCluster.html)
 
+[应用升级：0.9.x升级到2.1.1]({{site.baseurl}}/QuickStart_cn/Upgrade/UpgradeApplication.html)
 
-[应用升级]({{site.baseurl}}/QuickStart_cn/Upgrade/UpgradeApplication.html)
+[应用升级：2.1.1升级到2.2.1]({{site.baseurl}}/QuickStart_cn/Upgrade/UpgradeToJStorm221.html)

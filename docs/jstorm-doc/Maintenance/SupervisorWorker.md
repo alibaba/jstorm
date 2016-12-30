@@ -6,7 +6,7 @@ layout: plain
 top-nav-group: Maintenance
 top-nav-id: CalculateWorkerNum
 top-nav-pos: 8
-top-nav-title: Generate Worker list
+top-nav-title: Supervisor-Generate-Workers
 ---
 
 * This will be replaced by the TOC
@@ -20,6 +20,7 @@ Please refer to  https://github.com/alibaba/jstorm/blob/master/jstorm-core/src/m
 
 ## Algorithm
 
+```
  Define the amount of workers that can be run on this machine. Each worker is assigned a port to use for communication
 
  if supervisor.slots.ports is null, 
@@ -28,3 +29,4 @@ Please refer to  https://github.com/alibaba/jstorm/blob/master/jstorm-core/src/m
  there are cpu_num = system_physical_cpu_num/supervisor.slots.port.cpu.weight
  there are mem_num = system_physical_memory_size/(worker.memory.size * supervisor.slots.port.mem.weight) 
  The final port number is min(cpu_num, mem_num)   
+```

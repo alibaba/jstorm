@@ -75,7 +75,7 @@ Download the **latest stable release** and run JStorm on your machine, cluster, 
 
 The documentation contains a [setup guide]({{ site.baseurl }}/QuickStart_cn/Deploy) for all deployment options.
 
-The [programming guide]({{ site.baseurl }}/QuickStart_cn/Example.html) contains all information to get you started with writing and testing your Flink programs.
+The [programming guide]({{ site.baseurl }}/QuickStart_cn/Example.html) contains all information to get you started with writing and testing your JStorm programs.
 
 
 </div>

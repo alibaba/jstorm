@@ -20,6 +20,7 @@ top-nav-title: 生成worker列表算法
 
 ## 算法逻辑
 
+```
  Define the amount of workers that can be run on this machine. Each worker is assigned a port to use for communication
 
  if supervisor.slots.ports is null, 
@@ -28,3 +29,4 @@ top-nav-title: 生成worker列表算法
  there are cpu_num = system_physical_cpu_num/supervisor.slots.port.cpu.weight
  there are mem_num = system_physical_memory_size/(worker.memory.size * supervisor.slots.port.mem.weight) 
  The final port number is min(cpu_num, mem_num)   
+```
