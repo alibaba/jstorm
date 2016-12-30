@@ -1,5 +1,5 @@
 ---
-title:  "How to do exactly-once or transaction?"
+title:  "How to do exactly-once or transaction"
 # Top-level navigation
 top-nav-group: ProgrammingGuide_cn
 top-nav-pos: 3
@@ -38,7 +38,6 @@ sub-nav-title: 新事务(性能好)
   - * Barrier和stream  align让每个节点在做checkpoint时，保证batch的顺序性和一致性，而topology  master维护了全局状态。如果失败topology  master会通知所有状态节点  **回滚到最后一次全局成功的checkpoint**，然后数据源开始从最后一次全局成功的位置开始重新拉取消息。
   - * JStorm里回滚以数据源的种类为最小单位。比如说我们现在有两个spout  component，TT  spout和metaq  spout。如果metaq  spout的下游节点挂了，我们只会回滚，metaq  spout这个流的数据。
 
-<br  />
 
 ##  **接口介绍**
 
@@ -48,35 +47,37 @@ sub-nav-title: 新事务(性能好)
 
 应用的消息处理接口和JStorm的基础API一致，如果用户从原有的JStorm任务迁移过来，消息的处理逻辑不用改变。只需要在spout和状态bolt节点实现以下状态处理相关的接口。
 
-```
+
+```java
         /**
-          *  
+          *  Init state from user checkpoint
+          *  @param userState user checkpoint state 
           */
         public  void  initState(Object  userState);
 
         /**
-          *  Called  when  current  batch  is  finished
-          *  @return  user  state  to  be  committed
+          *  Called when current batch is finished
+          *  @return user state to be committed
           */
-        public  Object  finishBatch();
+        public Object finishBatch();
 
         /**
-          *  
-          *  @param  The  user  state  Data
-          *  @return  snapshot  state  which  is  used  to  retrieve  the  persistent  user  state
+          *  Commit a batch  
+          *  @param The user state data
+          *  @return snapshot state which is used to retrieve the persistent user state
           */
-        public  Object  commit(BatchGroupId  id,  Object  state);
+        public Object commit(BatchGroupId id, Object state);
 
         /**
-          *  
-          *  @param  user  state  for  rollback
+          *  Rollback from last success checkpoint state  
+          *  @param user state for rollback
           */
-        public  void  rollBack(Object  userState);
+        public void rollBack(Object userState);
 
         /**
-          *  Called  when  the  whole  topology  finishes  committing
+          *  Called when the whole topology finishes committing
           */
-        public  void  ackCommit(BatchGroupId  id);
+        public void ackCommit(BatchGroupId id);
 ```
 
 *  initState和rollback:  是在任务起来和回滚时，用于让当前节点回到最后一次成功batch的checkpoint。
@@ -84,27 +85,23 @@ sub-nav-title: 新事务(性能好)
 *  commit:  在用户返回对应的checkpoint后，我们会在一个异步线程里调用commit接口，对这个checkpoint进行提交操作，以不阻塞task  execute处理线程。如果checkpoint不大，可以直接在这个接口中返回checkpoint，JStorm最终会在topology  master里统一做持久化。如果checkpoint比较大。用户可以在这个接口中，把对应的checkpoint缓存一份到相应外部存储里，然后返回对应的key。在回滚时，JStorm会把该key值返回给用户，用于找回对应的checkpoint。
 *  ackCommit:  当topology任务在所有节点成功后，该接口会被回调。如果之前有checkpoint的缓存，用户在这个接口里可以去完成一些清理工作。比如batch-10完成了，那我们可以删除batch-9和之前的所有checkpoint缓存。
 
-参考例子 -- to be open source:  <u>http://gitlab.alibaba-inc.com/aloha/aloha/blob/branch_2_2_0/example/sequence-split-merge/src/main/java/com/alipay/dw/jstorm/transcation/TransactionTestTopology.java</u>
+参考例子: sequence-split-merge模块中TransactionTestTopology.java类。
         
-<br  />
 
 ##  **架构优势**
 相对于Trident和Acker机制。这套架构的最大优势在于:
         1.  每个节点只关心自己节点的提交状态。不用等待所有节点都成功后，再开始下一个batch的提交和计算。
         2.  不需要再依赖acker节点，减少额外系统计算和带宽消耗。原有的acker模型下，每条用户消息都会产生一条对应的系统消息到acker，同时有额外的计算消耗，并且acker消息会消耗大量的网络带宽。
         
-<br  />
 
 ##  **相关配置**
-
 ```
-        true:  只处理一次;  false:  至少处理一次
-        transaction.exactly.once.mode:  true
+    # true:  只处理一次;  false:  至少处理一次
+    transaction.exactly.once.mode:  true
 ```
 
-<br  />
 
-#  **测试结果:**  ####
+##  **测试结果**  
 
 下图是最多处理一次(关闭所有的消息保证机制)，新的至少处理一次框架和原有的Acker机制的性能对比结果。新的至少处理一次方案性能为原有Acker方案的4~7倍
 
