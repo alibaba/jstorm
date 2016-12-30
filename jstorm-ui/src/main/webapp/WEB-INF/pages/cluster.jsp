@@ -141,7 +141,12 @@
     <!-- ========================================================== -->
     <!------------------------- topology summary --------------------->
     <!-- ========================================================== -->
-    <h2>Topology Summary</h2>
+    <h2>
+        Topology Summary
+        <button id="jar-btn" type="button" class="btn btn-warning" style="float:right;" data-title="ADD TOPOLOGY" data-container="body" data-placement="left"
+                data-toggle="popover">New Topology
+        </button>
+    </h2>
     <table class="table table-bordered table-hover table-striped sortable center"
            data-table="${topologies.size() > PAGE_MAX ? "full" : "sort"}">
         <thead>
@@ -154,6 +159,7 @@
             <th>Num tasks</th>
             <th>Conf</th>
             <th>Error</th>
+            <th>Operation</th>
         </tr>
         </thead>
         <tbody>
@@ -181,6 +187,16 @@
                             <!-- nothing -->
                         </c:otherwise>
                     </c:choose>
+                </td>
+                <td>
+                    <button id="restart-btn-${topo.name}" type="button" class="btn btn-warning" data-title="${topo.name}" data-container="body"
+                            data-placement="left" data-toggle="popover" data-type="restartBtn">
+                        Restart
+                    </button>
+                    <button id="more-btn-${topo.name}" type="button" class="btn btn-warning" data-title="${topo.name}" data-container="body" data-placement="left"
+                            data-toggle="popover" data-type="moreBtn">
+                        More
+                    </button>
                 </td>
             </tr>
         </c:forEach>
@@ -254,6 +270,7 @@
         </tbody>
     </table>
 </div>
+<input type="hidden" value="" id="currentCheckedTopologyName" />
 
 <jsp:include page="layout/_footer.jsp"/>
 <script src="assets/js/echarts/echarts.js"></script>
@@ -276,6 +293,109 @@
             $("#chart-tr").toggleClass("hidden");
         });
     });
+
+    $(function () {
+        $('#jar-btn').popover({
+            html: true,
+            content: function () {
+                var content =
+                        '<div class="modal-body hide" style="height: 150px;" id="jar-modal-div">' +
+                        '<div class="form-group">' +
+                        '<label for="jarFile">Upload New Topology Jar File</label>' +
+                        '<input type="file" id="jarFile" class="form-control"/>' +
+                        '</div>' +
+                        '<div class="form-group">' +
+                        '<label for="classPath">New topology main class path</label>' +
+                        '<input type="text" id="classPath" class="form-control" placeholder="com.ndpmedia.test.topology.TestTopology"/>' +
+                        '</div>' +
+                        '<a class="btn btn-info col-xs-offset-3" style="float:right;margin-bottom: 10px" href="javascript:;" onclick="operate(20)">New and Start</a>' +
+                        '</div>';
+                return $(content).html();
+            }
+        });
+        $('[data-type="restartBtn"]').each(function () {
+            $(this).popover({
+                html: true,
+                content: function () {
+                    var content =
+                            '<div class="modal-body hide" style="height: 150px;" id="restart-modal-div">' +
+                            '<div class="form-group">' +
+                            '<label for="restartFile">if config file is null then restart without argument<br>otherwise restart with uploaded config file</label>' +
+                            '<input type="file" id="restartFile" class="form-control"/>' +
+                            '</div>' +
+                            '<a class="btn btn-info col-xs-offset-3" style="float:right;margin-bottom: 10px" href="javascript:;" onclick="operate(10)">Restart</a>' +
+                            '</div>';
+                    return $(content).html();
+                }
+            });
+        });
+
+        $('[data-type="moreBtn"]').each(function () {
+            $(this).popover({
+                html: true,
+                content: function () {
+                    var content =
+                            '<div class="modal-body hide" style="height: 230px;" id="more-modal-div">' +
+                            '<div class="form-group"><a class="btn btn-info" class="form-control" href="javascript:;" onclick="operate(0)">Activate</a></div>' +
+                            '<div class="form-group"><a class="btn btn-info" class="form-control" href="javascript:;" onclick="operate(1)">Deactivate</a></div>' +
+                            '<div class="form-group"><a class="btn btn-info" class="form-control" href="javascript:;" onclick="operate(2)">Kill</a></div>' +
+                            '<div class="form-group"><a class="btn btn-info" class="form-control" href="javascript:;" onclick="operate(3)">Rebalance</a></div>' +
+                            '</div>'
+                    return $(content).html();
+                }
+            });
+        });
+
+        $("[data-toggle='popover']").on("shown.bs.popover", function () {
+            $('#currentCheckedTopologyName').val(this.getAttribute('data-title'));
+        })
+    });
+
+    $('body').on('click', function (e) {
+        $('[data-toggle="popover"]').each(function () {
+            if (!$(this).is(e.target) && $(this).has(e.target).length === 0 && $('.popover').has(e.target).length === 0) {
+                $(this).popover('hide');
+            }
+        });
+    });
+
+    function operate(action) {
+        var formData = new FormData();
+        var topologyName = $('#currentCheckedTopologyName').val();
+        formData.append('topologyName', topologyName)
+        formData.append('action', action)
+        if (action == 10) {
+            if($('#restartFile')[0].files.length == 1) {
+                formData.append('file', $('#restartFile')[0].files[0]);
+            }
+            postForm('/operate/restart', formData);
+        } else if (action == 20) {//jarFile
+            formData.append('file', $('#jarFile')[0].files[0]);
+            formData.append('classPath', $('#classPath').val());
+            postForm('/operate/jar', formData);
+        } else {
+            postForm('/operate/more', formData);
+        }
+
+    }
+
+    function postForm(url, formData) {
+        $('[data-toggle="popover"]').each(function () {
+            $(this).popover('hide');
+        });
+        alert("task has been submitted, please wait...");
+        $.ajax(url, {
+            enctype: 'multipart/form-data',
+            data: formData,
+            processData: false,
+            contentType: false,
+            type: 'POST',
+        }).done(function (data) {
+            var w = window.open();
+            $(w.document.body).html(data.msg.replace(/\\n/g,"<br>"));
+            window.location.reload();
+        });
+    }
 </script>
 </body>
 </html>
