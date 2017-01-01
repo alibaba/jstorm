@@ -10,7 +10,8 @@ import com.alibaba.jstorm.elasticsearch.mapper.EsIndexMapper;
 
 public class EsIndexBolt extends EsAbstractBolt {
 
-  private static final long serialVersionUID = 1L;
+  private static final long serialVersionUID = 8177473361305606986L;
+
   private EsIndexMapper mapper;
 
   public EsIndexBolt(EsConfig esConfig, EsIndexMapper mapper) {

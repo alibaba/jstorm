@@ -13,8 +13,8 @@ import com.google.common.base.Preconditions;
 
 public class EsQueryBolt extends EsAbstractBolt {
 
-  private static final long serialVersionUID = 1L;
-
+  private static final long serialVersionUID = -6500107598987890882L;
+  
   private EsOutputDeclarer esOutputDeclarer;
   private EsQueryMapper mapper;
 

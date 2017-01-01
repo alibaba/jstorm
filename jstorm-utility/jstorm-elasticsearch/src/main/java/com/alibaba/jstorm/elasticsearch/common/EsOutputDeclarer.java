@@ -7,7 +7,7 @@ import java.util.Map;
 
 public class EsOutputDeclarer implements Serializable {
 
-  private static final long serialVersionUID = 1L;
+  private static final long serialVersionUID = 8273553454942900376L;
   
   private List<String> fields = new ArrayList<String>();
 

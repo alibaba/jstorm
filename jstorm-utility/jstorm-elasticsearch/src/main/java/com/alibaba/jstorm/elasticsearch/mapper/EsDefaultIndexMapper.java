@@ -6,6 +6,8 @@ import backtype.storm.tuple.ITuple;
 
 public class EsDefaultIndexMapper implements EsIndexMapper {
 
+  private static final long serialVersionUID = 3777594656114668825L;
+
   @Override
   public OpType getOpType() {
     return OpType.INDEX;

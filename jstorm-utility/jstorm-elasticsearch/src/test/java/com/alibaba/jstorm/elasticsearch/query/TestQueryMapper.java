@@ -6,6 +6,8 @@ import com.alibaba.jstorm.elasticsearch.mapper.EsQueryMapper;
 
 public class TestQueryMapper implements EsQueryMapper {
 
+  private static final long serialVersionUID = 9002508055282433046L;
+
   public String getIndex(ITuple tuple) {
     return "test";
   }

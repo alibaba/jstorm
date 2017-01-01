@@ -13,6 +13,8 @@ import backtype.storm.tuple.Tuple;
 
 public class TestQueryBolt extends BaseRichBolt {
 
+  private static final long serialVersionUID = -4561790175801815097L;
+  
   protected OutputCollector collector;
   FileOutputStream fos;
 

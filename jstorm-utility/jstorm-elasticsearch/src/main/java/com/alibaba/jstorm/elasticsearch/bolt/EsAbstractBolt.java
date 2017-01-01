@@ -2,7 +2,6 @@ package com.alibaba.jstorm.elasticsearch.bolt;
 
 import java.util.Map;
 
-import org.apache.log4j.Logger;
 import org.elasticsearch.client.Client;
 
 import backtype.storm.task.OutputCollector;
@@ -14,14 +13,9 @@ import com.alibaba.jstorm.elasticsearch.common.EsConfig;
 import com.alibaba.jstorm.elasticsearch.common.StormEsClient;
 import com.google.common.base.Preconditions;
 
-/*
- * Author(s): Ray on 2016/12/29
- */
 public abstract class EsAbstractBolt extends BaseRichBolt {
 
-  private static final long serialVersionUID = 1L;
-
-  private static final Logger logger = Logger.getLogger(EsAbstractBolt.class);
+  private static final long serialVersionUID = 6213594268206022374L;
 
   protected static Client client;
 
@@ -44,7 +38,7 @@ public abstract class EsAbstractBolt extends BaseRichBolt {
         }
       }
     } catch (Exception e) {
-      logger.warn("unable to initialize ESBolt ", e);
+      throw new RuntimeException("unable to initialize EsBolt ", e);
     }
   }
 

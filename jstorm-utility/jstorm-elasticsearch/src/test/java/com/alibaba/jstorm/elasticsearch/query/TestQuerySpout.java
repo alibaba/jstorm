@@ -14,11 +14,9 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Values;
 
 public class TestQuerySpout extends BaseRichSpout {
-
-  /**
-   * 
-   */
-  private static final long serialVersionUID = 1L;
+  
+  private static final long serialVersionUID = 5612868387548545552L;
+  
   private BufferedReader br = null;
   SpoutOutputCollector collector = null;
 

@@ -11,6 +11,8 @@ import com.google.gson.JsonObject;
 
 public class TestIndexBolt extends EsAbstractBolt {
 
+  private static final long serialVersionUID = 8129061227572924508L;
+
   public TestIndexBolt(EsConfig esConfig) {
     super(esConfig);
   }

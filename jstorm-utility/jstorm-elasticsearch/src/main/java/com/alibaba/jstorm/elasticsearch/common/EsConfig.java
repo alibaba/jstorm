@@ -16,7 +16,9 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
 public class EsConfig implements Serializable {
-
+  
+  private static final long serialVersionUID = 946576929049344226L;
+  
   private static final String SEPARATER = ",";
   private static final String DELIMITER = ":";
 

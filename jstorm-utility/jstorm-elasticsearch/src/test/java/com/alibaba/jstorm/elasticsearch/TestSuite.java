@@ -31,7 +31,6 @@ public class TestSuite {
   public static void init() {
     cluster = new LocalCluster();
     conf = new Config();
-    // 建议加上这行，使得每个bolt/spout的并发度都为1
     conf.put(Config.TOPOLOGY_MAX_TASK_PARALLELISM, 1);
     esConfig = new EsConfig("test", "127.0.0.1:9300");
   }
@@ -43,7 +42,6 @@ public class TestSuite {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    // 结束拓扑
     cluster.killTopology(now);
   }
 
@@ -54,7 +52,6 @@ public class TestSuite {
 
   @Test
   public void testIndex() {
-    // 提交拓扑
     TopologyBuilder builder = new TopologyBuilder();
     builder.setSpout("index-spout", new TestIndexSpout());
     EsIndexBolt esIndexBolt = new EsIndexBolt(esConfig,
@@ -65,7 +62,6 @@ public class TestSuite {
 
   @Test
   public void testQuery() {
-    // 提交拓扑
     TopologyBuilder builder = new TopologyBuilder();
     builder.setSpout("query-spout", new TestQuerySpout());
     EsOutputDeclarer esOutputDeclarer = new EsOutputDeclarer().addField("date");
@@ -79,7 +75,6 @@ public class TestSuite {
 
   @Test
   public void testUserDefine() {
-    // 提交拓扑
     TopologyBuilder builder = new TopologyBuilder();
     builder.setSpout("user-define-spout", new TestIndexSpout());
     TestIndexBolt esIndexBolt = new TestIndexBolt(esConfig);
