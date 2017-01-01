@@ -21,7 +21,7 @@ public class health {
 
     private static Logger LOG = LoggerFactory.getLogger(health.class);
 
-    private static final String NOT_PASSED_PATTERN = "check don't passed";
+    private static final String NO_RESOURCES = "no_resource";
 
     public static MachineCheckStatus check() {
         MachineCheckStatus status = new MachineCheckStatus();
@@ -64,9 +64,10 @@ public class health {
                         return;
                     }
                 }
+                status.updateInfo();
             } else {
                 status.updateInfo();
-                LOG.warn("jstorm machine resource " + status.getType() + "'s check scripts is non-existent");
+                LOG.debug("jstorm machine resource " + status.getType() + "'s check scripts is non-existent");
             }
         } catch (Exception e) {
             LOG.error("Failed to run machine resource check scripts: " + e.getCause(), e);
@@ -76,7 +77,7 @@ public class health {
 
     private static List<String> getEvalScriptAbsolutePath(String scriptDir) {
         if (scriptDir == null) {
-            LOG.warn("jstorm machine resource check script directory is not configured, please check .");
+            LOG.debug("jstorm machine resource check script directory is not configured, please check .");
             return null;
         }
         File parentFile = new File(scriptDir);
@@ -87,6 +88,9 @@ public class health {
         List<String> ret = new ArrayList<String>();
         if (parentFile.exists()) {
             File[] list = parentFile.listFiles();
+            if (list == null) {
+            	return ret;
+            }
             for (File file : list) {
                 if (!file.isDirectory() && file.canExecute())
                     ret.add(file.getAbsolutePath());
@@ -132,10 +136,8 @@ public class health {
             } finally {
                 if (exitStatus == ExitStatus.SUCCESS && notPassed(shexec.getOutput())) {
                     exitStatus = ExitStatus.FAILED;
-                } else {
-                    status.updateInfo();
+                    LOG.info("Script execute output: " + shexec.getOutput());
                 }
-                LOG.debug("Script execute output: " + shexec.getOutput());
             }
             return exitStatus;
         }
@@ -143,7 +145,7 @@ public class health {
         private boolean notPassed(String output) {
             String[] splits = output.split("\n");
             for (String split : splits) {
-                if (split.startsWith(NOT_PASSED_PATTERN)) {
+                if (split.startsWith(NO_RESOURCES)) {
                     return true;
                 }
             }

@@ -26,15 +26,6 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import backtype.storm.Config;
-import backtype.storm.spout.SpoutOutputCollector;
-import backtype.storm.task.ICollectorCallback;
-import backtype.storm.task.TopologyContext;
-import backtype.storm.topology.IRichSpout;
-import backtype.storm.topology.OutputFieldsDeclarer;
-import backtype.storm.tuple.Fields;
-import backtype.storm.tuple.Values;
-
 import com.alibaba.jstorm.batch.BatchId;
 import com.alibaba.jstorm.batch.util.BatchCommon;
 import com.alibaba.jstorm.batch.util.BatchDef;
@@ -43,6 +34,15 @@ import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.cluster.ClusterState;
 import com.alibaba.jstorm.utils.IntervalCheck;
 import com.alibaba.jstorm.utils.JStormUtils;
+
+import backtype.storm.Config;
+import backtype.storm.spout.SpoutOutputCollector;
+import backtype.storm.task.ICollectorCallback;
+import backtype.storm.task.TopologyContext;
+import backtype.storm.topology.IRichSpout;
+import backtype.storm.topology.OutputFieldsDeclarer;
+import backtype.storm.tuple.Fields;
+import backtype.storm.tuple.Values;
 
 /**
  * Strong Sequence
@@ -324,13 +324,14 @@ public class BatchSpoutTrigger implements IRichSpout {
         public EmitCb(BatchSpoutMsgId msgId) {
             this.msgId = msgId;
         }
-        @Override
-        public void execute(List<Integer> outTasks) {
-            // TODO Auto-generated method stub
-            if (outTasks.isEmpty()) {
+       
+		@Override
+		public void execute(String stream, List<Integer> outTasks, List values) {
+			// TODO Auto-generated method stub
+			if (outTasks.isEmpty()) {
                 forward(msgId);
             }
-        }
+		}
         
     }
 }

@@ -14,7 +14,7 @@ public class DefaultUncaughtExceptionHandler implements Thread.UncaughtException
         try {
             Utils.handleUncaughtException(e);
         }catch (Error error){
-            LOG.info("Received error in main thread.. terminating server...");
+            LOG.info("Received error in main thread.. terminating server...", error);
             Runtime.getRuntime().exit(-2);
         }
     }

@@ -41,7 +41,7 @@ public class RichSpoutBatchExecutor implements ITridentSpout {
     }
 
     @Override
-    public Map getComponentConfiguration() {
+    public Map<String, Object> getComponentConfiguration() {
         return _spout.getComponentConfiguration();
     }
 
@@ -75,14 +75,13 @@ public class RichSpoutBatchExecutor implements ITridentSpout {
             _conf = conf;
             _context = context;
             Number batchSize = (Number) conf.get(MAX_BATCH_SIZE_CONF);
-            if (batchSize == null)
-                batchSize = 1000;
+            if(batchSize==null) batchSize = 1000;
             _maxBatchSize = batchSize.intValue();
             _collector = new CaptureCollector();
-            idsMap = new RotatingMap(3);
-            rotateTime = 1000L * ((Number) conf.get(Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS)).intValue();
+            idsMap = new RotatingMap<>(3);
+            rotateTime = 1000L * ((Number)conf.get(Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS)).intValue();
         }
-
+        
         @Override
         public void emitBatch(TransactionAttempt tx, Object coordinatorMeta, TridentCollector collector) {
             long txid = tx.getTransactionId();
@@ -108,11 +107,12 @@ public class RichSpoutBatchExecutor implements ITridentSpout {
             }
             for (int i = 0; i < _maxBatchSize; i++) {
                 _spout.nextTuple();
-                if (_collector.numEmitted < i) {
+                if(_collector.numEmitted < i) {
                     break;
                 }
             }
             idsMap.put(txid, _collector.ids);
+            _collector.pendingCount = idsMap.size();
 
         }
 
@@ -143,10 +143,10 @@ public class RichSpoutBatchExecutor implements ITridentSpout {
         public void close() {
             _spout.close();
         }
-
+        
     }
-
-    class RichSpoutCoordinator implements ITridentSpout.BatchCoordinator {
+    
+    private static class RichSpoutCoordinator implements ITridentSpout.BatchCoordinator {
         @Override
         public Object initializeTransaction(long txid, Object prevMetadata, Object currMetadata) {
             return null;
@@ -165,18 +165,18 @@ public class RichSpoutBatchExecutor implements ITridentSpout {
         public void close() {
         }
     }
-
+    
     static class CaptureCollector implements ISpoutOutputCollector {
 
         TridentCollector _collector;
         public List<Object> ids;
         public int numEmitted;
-
+        public long pendingCount;
         public void reset(TridentCollector c) {
             _collector = c;
-            ids = new ArrayList<Object>();
+            ids = new ArrayList<>();
         }
-
+        
         @Override
         public void reportError(Throwable t) {
             _collector.reportError(t);
@@ -184,9 +184,8 @@ public class RichSpoutBatchExecutor implements ITridentSpout {
 
         @Override
         public List<Integer> emit(String stream, List<Object> values, Object id) {
-            if (id != null)
-                ids.add(id);
-            numEmitted++;
+            if(id!=null) ids.add(id);
+            numEmitted++;            
             _collector.emit(values);
             return null;
         }
@@ -195,7 +194,11 @@ public class RichSpoutBatchExecutor implements ITridentSpout {
         public void emitDirect(int task, String stream, List<Object> values, Object id) {
             throw new UnsupportedOperationException("Trident does not support direct streams");
         }
-
+        
+      
+        public long getPendingCount() {
+            return pendingCount;
+        }
     }
 
 }

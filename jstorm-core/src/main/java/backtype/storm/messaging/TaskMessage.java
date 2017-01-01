@@ -17,15 +17,19 @@
  */
 package backtype.storm.messaging;
 
-import java.nio.ByteBuffer;
-
-public class TaskMessage {
+import org.jboss.netty.buffer.ChannelBuffer;
+import org.jboss.netty.buffer.ChannelBufferOutputStream;
+import org.jboss.netty.buffer.ChannelBuffers;
+public class TaskMessage implements NettyMessage{
+    public final static short NORMAL_MESSAGE = 0;
+    public final static short CONTROL_MESSAGE = 1;
+    public final static short BACK_PRESSURE_REQUEST = 2;
     private final short _type; //0 means taskmessage , 1 means task controlmessage
     private int _task;
     private byte[] _message;
 
     public TaskMessage(int task, byte[] message) {
-        _type = 0;
+        _type = NORMAL_MESSAGE;
         _task = task;
         _message = message;
     }
@@ -46,36 +50,52 @@ public class TaskMessage {
     public byte[] message() {
         return _message;
     }
+    
 
-    public static boolean isEmpty(TaskMessage message) {
-        if (message == null) {
-            return true;
-        } else if (message.message() == null) {
-            return true;
-        } else if (message.message().length == 0) {
+    @Override
+    public boolean isEmpty() {
+        // TODO Auto-generated method stub
+        if (_message == null || _message.length == 0) {
             return true;
         }
-
         return false;
     }
-
-/*    @Deprecated
-    public ByteBuffer serialize() {
-        ByteBuffer bb = ByteBuffer.allocate(_message.length + 4);
-        bb.putShort((short) _type);
-        bb.putShort((short) _task);
-        bb.put(_message);
-        return bb;
+    
+    @Override
+    public int getEncodedLength() {
+        // TODO Auto-generated method stub
+        if (_message == null) {
+            return 0;
+        }
+        
+        return _message.length;
     }
 
-    @Deprecated
-    public void deserialize(ByteBuffer packet) {
-        if (packet == null)
-            return;
-        _type = packet.getShort();
-        _task = packet.getShort();
-        _message = new byte[packet.limit() - 4];
-        packet.get(_message);
-    }*/
+    /**
+     * create a buffer containing the encoding of this batch
+     */
+    @Override
+    public ChannelBuffer buffer() throws Exception {
+        int payloadLen = 0;
+        if (_message != null)
+            payloadLen = _message.length;
 
+        int totalLen = 8 + payloadLen;
+        ChannelBufferOutputStream bout = new ChannelBufferOutputStream(ChannelBuffers.directBuffer(totalLen));
+
+        bout.writeShort(_type);
+
+        if (_task > Short.MAX_VALUE)
+            throw new RuntimeException("Task ID should not exceed " + Short.MAX_VALUE);
+
+        bout.writeShort((short) _task);
+        bout.writeInt(payloadLen);
+        if (payloadLen > 0)
+            bout.write(_message);
+        
+        bout.close();
+        return bout.buffer();
+    }
+    
+    
 }

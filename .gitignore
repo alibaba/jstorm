@@ -3,11 +3,9 @@
 *.classpath
 *.prefs
 *.bat
-target/*
-*/target/*
+target
 /bin
 .idea
 *.iml
-docs/jstorm-doc/_site
-docs/jstorm-doc/.sass-cache
-docs/jstorm-doc/target
+jstorm-local/
+dependency-reduced-pom.xml

@@ -17,6 +17,7 @@
  */
 package backtype.storm.serialization;
 
+import backtype.storm.tuple.Values;
 import backtype.storm.utils.ListDelegate;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
@@ -35,6 +36,20 @@ public class KryoValuesDeserializer {
     }
 
     public List<Object> deserializeFrom(Input input) {
+        int type = input.readInt(true);
+        switch (type) {
+            case Values.OBJECT:
+        	    return deserialize(input);
+            case Values.STRING:
+         	    return deserializeStrings(input);
+            case Values.INTEGER:
+         	    return deserializeIntegers(input);
+            default:
+            	return deserialize(input);
+        }
+    }
+
+    public List<Object> deserialize(Input input) {
         ListDelegate delegate = (ListDelegate) _kryo.readObject(input, ListDelegate.class);
         return delegate.getDelegate();
     }
@@ -47,5 +62,23 @@ public class KryoValuesDeserializer {
     public Object deserializeObject(byte[] ser) throws IOException {
         _kryoInput.setBuffer(ser);
         return _kryo.readClassAndObject(_kryoInput);
+    }
+
+    public List<Object> deserializeStrings(Input input) {
+    	List<Object> values = new ArrayList<Object>();
+        int size = input.readInt(true);
+        for (int i = 0; i < size; i++) {
+        	values.add(input.readString());
+        }
+        return values;
+    }
+
+    public List<Object> deserializeIntegers(Input input) {
+    	List<Object> values = new ArrayList<Object>();
+        int size = input.readInt(true);
+        for (int i = 0; i < size; i++) {
+        	values.add(input.readInt(true));
+        }
+        return values;
     }
 }

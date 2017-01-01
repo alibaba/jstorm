@@ -30,9 +30,7 @@ public class CombinerValueUpdater implements ValueUpdater<Object> {
 
     @Override
     public Object update(Object stored) {
-        if (stored == null)
-            return arg;
-        else
-            return agg.combine(stored, arg);
+        if(stored==null) return arg;
+        else return agg.combine(stored, arg);
     }
 }

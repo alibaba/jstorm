@@ -15,4 +15,5 @@ sub-nav-title: Upgrade
 {:toc}
 
 [UpgradeCluster]({{site.baseurl}}/QuickStart/Upgrade/UpgradeCluster.html)
-[UpgradeApplication]({{site.baseurl}}/QuickStart/Upgrade/UpgradeApplication.html)
+[UpgradeApplication: Upgrade from 0.9.x to 2.1.1]({{site.baseurl}}/QuickStart/Upgrade/UpgradeApplication.html)
+[UpgradeApplication: Upgrade from 2.1.1 to 2.2.1]({{site.baseurl}}/QuickStart/Upgrade/UpgradeToJStorm221.html)

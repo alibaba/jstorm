@@ -29,6 +29,7 @@ import storm.trident.state.StateFactory;
 import storm.trident.state.ValueUpdater;
 import storm.trident.state.map.*;
 import storm.trident.state.snapshot.Snapshottable;
+import storm.trident.util.LRUMap;
 
 public class MemoryMapState<T> implements Snapshottable<T>, ITupleCollection, MapState<T>, RemovableMapState<T> {
 
@@ -119,10 +120,15 @@ public class MemoryMapState<T> implements Snapshottable<T>, ITupleCollection, Ma
         Long currTx;
 
         public MemoryMapStateBacking(String id) {
-            if (!_dbs.containsKey(id)) {
-                _dbs.put(id, new HashMap());
-            }
             this.db = (Map<List<Object>, T>) _dbs.get(id);
+        	if (db == null) {
+        		db = new HashMap<List<Object>, T>();
+        		Map<List<Object>, T> tmp = (Map<List<Object>, T>)
+        				_dbs.putIfAbsent(id, (Map<List<Object>, Object>)db);
+        		if (tmp != null) {
+        			db = tmp;
+        		}
+            }
         }
 
         public void multiRemove(List<List<Object>> keys) {

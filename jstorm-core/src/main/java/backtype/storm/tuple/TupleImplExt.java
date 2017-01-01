@@ -27,14 +27,26 @@ import backtype.storm.task.GeneralTopologyContext;
 public class TupleImplExt extends TupleImpl implements TupleExt {
 
     protected int targetTaskId;
-    protected long creationTimeStamp = System.currentTimeMillis();
+    protected long creationTimeStamp;
+    protected boolean isBatchTuple = false;
+
+    public TupleImplExt() {
+        
+    }
 
     public TupleImplExt(GeneralTopologyContext context, List<Object> values, int taskId, String streamId) {
-        super(context, values, taskId, streamId);
+        this(context, values, taskId, streamId, MessageId.makeUnanchored());
     }
 
     public TupleImplExt(GeneralTopologyContext context, List<Object> values, int taskId, String streamId, MessageId id) {
         super(context, values, taskId, streamId, id);
+        creationTimeStamp = System.currentTimeMillis();
+    }
+    
+    public TupleImplExt(GeneralTopologyContext context, List<Object> values, MessageId id, TupleImplExt tuple) {
+    	super(context, values, tuple.getSourceTask(), tuple.getSourceStreamId(), id);
+    	this.targetTaskId = tuple.getTargetTaskId();
+    	this.creationTimeStamp = tuple.getCreationTimeStamp();
     }
 
     @Override
@@ -56,7 +68,17 @@ public class TupleImplExt extends TupleImpl implements TupleExt {
 	public void setCreationTimeStamp(long timeStamp) {
 		this.creationTimeStamp = timeStamp;
 	}
-	
+
+	@Override
+	public boolean isBatchTuple() {
+		return isBatchTuple;
+	}
+
+	@Override
+	public void setBatchTuple(boolean isBatchTuple) {
+		this.isBatchTuple = isBatchTuple;
+	}
+
 	@Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this, ToStringStyle.SHORT_PREFIX_STYLE);

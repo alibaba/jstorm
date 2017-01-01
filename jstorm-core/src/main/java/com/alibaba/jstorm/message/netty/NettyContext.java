@@ -17,7 +17,9 @@
  */
 package com.alibaba.jstorm.message.netty;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -46,12 +48,7 @@ public class NettyContext implements IContext {
 
     private NioClientSocketChannelFactory clientChannelFactory;
 
-    private ScheduledExecutorService clientScheduleService;
-    private final int MAX_CLIENT_SCHEDULER_THREAD_POOL_SIZE = 5;
-
     private ReconnectRunnable reconnector;
-
-    private boolean isSyncMode = false;
 
     @SuppressWarnings("unused")
     public NettyContext() {
@@ -74,25 +71,19 @@ public class NettyContext implements IContext {
         } else {
             clientChannelFactory = new NioClientSocketChannelFactory(Executors.newCachedThreadPool(bossFactory), Executors.newCachedThreadPool(workerFactory));
         }
-        int otherWorkers = Utils.getInt(storm_conf.get(Config.TOPOLOGY_WORKERS), 1) - 1;
-        int poolSize = Math.min(Math.max(1, otherWorkers), MAX_CLIENT_SCHEDULER_THREAD_POOL_SIZE);
-        clientScheduleService = Executors.newScheduledThreadPool(poolSize, new NettyRenameThreadFactory("client-schedule-service"));
 
         reconnector = new ReconnectRunnable();
         new AsyncLoopThread(reconnector, true, Thread.MIN_PRIORITY, true);
-
-        isSyncMode = ConfigExtension.isNettySyncMode(storm_conf);
     }
 
     @Override
     public IConnection bind(String topology_id, int port, ConcurrentHashMap<Integer, DisruptorQueue> deserializedQueue,
-                            DisruptorQueue recvControlQueue) {
+                            DisruptorQueue recvControlQueue, boolean bstartRec, Set<Integer> workerTasks) {
         IConnection retConnection = null;
         try {
-
-            retConnection = new NettyServer(storm_conf, port, isSyncMode, deserializedQueue, recvControlQueue);
+            retConnection = new NettyServer(storm_conf, port, deserializedQueue, recvControlQueue, bstartRec, workerTasks);
         } catch (Throwable e) {
-            LOG.error("Failed to instance NettyServer", e.getCause());
+            LOG.error("Failed to instance NettyServer", e);
             JStormUtils.halt_process(-1, "Failed to bind " + port);
         }
 
@@ -101,27 +92,19 @@ public class NettyContext implements IContext {
 
     @Override
     public IConnection connect(String topology_id, String host, int port) {
-        if (isSyncMode == true) {
-            return new NettyClientSync(storm_conf, clientChannelFactory, clientScheduleService, host, port, reconnector);
-        } else {
-            return new NettyClientAsync(storm_conf, clientChannelFactory, clientScheduleService, host, port, reconnector);
+            return new NettyClientAsync(storm_conf, clientChannelFactory, host, port, reconnector);
         }
-    }
 
     /**
      * terminate this context
      */
     public void term() {
-        clientScheduleService.shutdown();
-        // for (IConnection conn : connections) {
-        // conn.close();
-        // }
+/*        clientScheduleService.shutdown();
         try {
             clientScheduleService.awaitTermination(10, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             LOG.error("Error when shutting down client scheduler", e);
-        }
-        // connections = null;
+        }*/
 
         clientChannelFactory.releaseExternalResources();
 

@@ -1,302 +1,282 @@
 package com.alibaba.jstorm.utils;
 
 import backtype.storm.utils.ShellUtils;
+import backtype.storm.utils.Utils;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Iterables;
+import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.math.BigInteger;
-import java.nio.charset.Charset;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Created by dongbin on 2016/1/25.
+ * @author JohnFang (xiaojian.fxj@alibaba-inc.com).
  */
 public class LinuxResource {
+
     private static final Logger LOG = LoggerFactory.getLogger(LinuxResource.class);
 
-    public static final long JIFFY_LENGTH_IN_MILLIS;
+    private static final String PROCFS_STAT = "/proc/stat";
+    private static final Pattern CPU_TIME_FORMAT_ALL =
+            Pattern.compile("^cpu[ \t]+([0-9]+)[ \t]+([0-9]+)[ \t]+([0-9]+)[ \t]+([0-9]+)[ \t]+([0-9]+)[ \t]+([0-9]+)[ \t]+([0-9]+)");
+    private static final Pattern CPU_TIME_FORMAT = Pattern.compile("^cpu[ \t]+([0-9]+)[ \t]+([0-9]+)[ \t]+([0-9]+)");
 
+    private static final String PROCFS_MEMINFO = "/proc/meminfo";
+    public static final long JIFFY_LENGTH_IN_MILLIS;
     static {
+        long jiffiesPerSecond = getJiffies();
+        JIFFY_LENGTH_IN_MILLIS = jiffiesPerSecond != -1 ? Math.round(1000D / jiffiesPerSecond) : 100;
+    }
+
+    public static final int CPU_SAMPLING_TIMES = 10;
+
+    private static long  lastCpuTime = -1;
+    private static long  lastIdieTime = -1;
+    private static float lastcpuUsage = -1;
+
+    private static final String PROCFS_NETSTAT = "/proc/net/dev";
+
+    public interface ResouceCallback {
+        Object execute(List<String> lines) throws Exception;
+    }
+
+    static class ProcResourceParse {
+        private ResouceCallback callback;
+        private String file;
+
+        public ProcResourceParse(String file, ResouceCallback callback) {
+            this.callback = callback;
+            this.file = file;
+        }
+
+        public Object getResource() {
+            try {
+                List<String> lines = IOUtils.readLines(new FileInputStream(file));
+                return callback.execute(lines);
+            } catch (Exception e) {
+                LOG.warn("Error reading the stream ", e);
+            }
+            return null;
+        }
+    }
+
+    public static int getProcessNum() {
+        int sysCpuNum = 0;
+        try {
+            sysCpuNum = Runtime.getRuntime().availableProcessors();
+        } catch (Exception e) {
+            LOG.info("Failed to get CPU cores .");
+        }
+        return sysCpuNum;
+    }
+
+    public static long getJiffies() {
+        if (!OSInfo.isLinux()) {
+            return -1;
+        }
         long jiffiesPerSecond = -1;
         try {
-            ShellUtils.ShellCommandExecutor shellExecutorClk = new ShellUtils.ShellCommandExecutor(
-                    new String[]{"getconf", "CLK_TCK"});
+            ShellUtils.ShellCommandExecutor shellExecutorClk = new ShellUtils.ShellCommandExecutor(new String[] { "getconf", "CLK_TCK" });
             shellExecutorClk.execute();
             jiffiesPerSecond = Long.parseLong(shellExecutorClk.getOutput().replace("\n", ""));
-        } catch (IOException e) {
-            LOG.error(JStormUtils.getErrorInfo(e));
-        } finally {
-            JIFFY_LENGTH_IN_MILLIS = jiffiesPerSecond != -1 ?
-                    Math.round(1000D / jiffiesPerSecond) : -1;
+        } catch (Exception e) {
+            LOG.warn("get jiffies happened error!!!", e);
         }
+        return jiffiesPerSecond;
     }
 
-    private static final String PROCFS_MEMFILE = "/proc/meminfo";
-
-    private static final Pattern PROCFS_MEMFILE_FORMAT =
-            Pattern.compile("^([a-zA-Z]*):[ \t]*([0-9]*)[ \t]kB");
-
-    private static final String _MEMTOTAL = "MemTotal";
-    private static final String _SWAPTOTAL = "SwapTotal";
-    private static final String _MEMFREE = "MemFree";
-    private static final String _SWAPFREE = "SwapFree";
-    private static final String _INACTIVE = "Inactive";
-
-    private static final String PROCFS_CPUINFO = "/proc/cpuinfo";
-
-    private static final Pattern PROCESSOR_FORMAT =
-            Pattern.compile("^processor[ \t]:[ \t]*([0-9]*)");
-
-    private static final String PROCFS_STAT = "/proc/stat";
-
-    private static final Pattern CPU_TIME_FORMAT =
-            Pattern.compile("^cpu[ \t]*([0-9]*)" +
-                    "[ \t]*([0-9]*)[ \t]*([0-9]*)[ \t].*");
-
-    private static String procfsMemFile = PROCFS_MEMFILE;
-    private static String procfsCpuFile = PROCFS_CPUINFO;
-    private static String procfsStatFile = PROCFS_STAT;
-    private static long jiffyLengthInMillis = JIFFY_LENGTH_IN_MILLIS;
-    private static CpuUsageCalculator cpuUsageCalculator = new CpuUsageCalculator(jiffyLengthInMillis);
-    ;
-
-    private static long ramSize = 0;
-    private static long swapSize = 0;
-    private static long ramSizeFree = 0;  // free ram (kB)
-    private static long swapSizeFree = 0; // free swap(kB)
-    private static long inactiveSize = 0; // inactive cache memory (kB)
-    private static int numProcessors = 0;
-
-    static boolean readMemInfoFile = false;
-    static boolean readCpuInfoFile = false;
-
-    private static void readProcMemInfoFile(boolean readAgain) {
-        if (readMemInfoFile && !readAgain) {
-            return;
+    public static synchronized float getTotalCpuUsage() {
+        if (!OSInfo.isLinux()) {
+            return 0.0f;
         }
-        FileParse fileParse = new FileParse(procfsMemFile, new LineParse() {
+        ProcResourceParse procResourceParse = new ProcResourceParse(PROCFS_STAT, new ResouceCallback() {
             @Override
-            public void prepare() {
-            }
-
-            @Override
-            public boolean parseLine(String line) {
-                Matcher mat = PROCFS_MEMFILE_FORMAT.matcher(line);
-                if (mat.find()) {
-                    if (mat.group(1).equals(_MEMTOTAL)) {
-                        ramSize = Long.parseLong(mat.group(2));
-                    } else if (mat.group(1).equals(_SWAPTOTAL)) {
-                        swapSize = Long.parseLong(mat.group(2));
-                    } else if (mat.group(1).equals(_MEMFREE)) {
-                        ramSizeFree = Long.parseLong(mat.group(2));
-                    } else if (mat.group(1).equals(_SWAPFREE)) {
-                        swapSizeFree = Long.parseLong(mat.group(2));
-                    } else if (mat.group(1).equals(_INACTIVE)) {
-                        inactiveSize = Long.parseLong(mat.group(2));
+            public Object execute(List<String> lines) throws Exception {
+                Pair<Long, Long> totalCpu2idle = null;
+                for (String line : lines){
+                    long totalCpuTime = 0;
+                    long idleCpuTime = 0;
+                    int size = 0;
+                    Matcher matcher = CPU_TIME_FORMAT_ALL.matcher(line);
+                    if (matcher.find()) {
+                        size = 8;
+                    } else {
+                        matcher = CPU_TIME_FORMAT.matcher(line);
+                        if (matcher.find())
+                            size = 5;
                     }
-                }
-                return false;
-            }
-        });
-        fileParse.parse();
-        readMemInfoFile = true;
-    }
-
-    private static void readProcCpuInfoFile() {
-        // This directory needs to be read only once
-        if (readCpuInfoFile) {
-            return;
-        }
-        FileParse fileParse = new FileParse(procfsCpuFile, new LineParse() {
-            @Override
-            public void prepare() {
-                numProcessors = 0;
-            }
-
-            @Override
-            public boolean parseLine(String line) {
-                Matcher mat = PROCESSOR_FORMAT.matcher(line);
-                if (mat.find()) {
-                    numProcessors++;
-                }
-                return false;
-            }
-        });
-        fileParse.parse();
-        readCpuInfoFile = true;
-    }
-
-
-    private static void readProcStatFile() {
-        FileParse fileParse = new FileParse(procfsStatFile, new LineParse() {
-            @Override
-            public void prepare() {
-            }
-
-            @Override
-            public boolean parseLine(String line) {
-                Matcher mat = CPU_TIME_FORMAT.matcher(line);
-                if (mat.find()) {
-                    long uTime = Long.parseLong(mat.group(1));
-                    long nTime = Long.parseLong(mat.group(2));
-                    long sTime = Long.parseLong(mat.group(3));
-                    cpuUsageCalculator.updateElapsedJiffies(
-                            BigInteger.valueOf(uTime + nTime + sTime),
-                            getCurrentTime());
-                    return true;
-                }
-                return false;
-            }
-        });
-        fileParse.parse();
-    }
-
-    static long getCurrentTime() {
-        return System.currentTimeMillis();
-    }
-
-    private static void readProcMemInfoFile() {
-        readProcMemInfoFile(false);
-    }
-
-    public static long getPhysicalMemorySize() {
-        readProcMemInfoFile();
-        return ramSize * 1024;
-    }
-
-    public static long getVirtualMemorySize() {
-        readProcMemInfoFile();
-        return (ramSize + swapSize) * 1024;
-    }
-
-    public static long getFreePhysicalMemorySize() {
-        readProcMemInfoFile(true);
-        return (ramSizeFree + inactiveSize) * 1024;
-    }
-
-    public static long getFreeVirtualMemorySize() {
-        readProcMemInfoFile(true);
-        return (ramSizeFree + swapSizeFree + inactiveSize) * 1024;
-    }
-
-    public static int getNumProcessors() {
-        readProcCpuInfoFile();
-        return numProcessors;
-    }
-
-    public static float getCpuUsage() {
-        readProcStatFile();
-        float overallCpuUsage = cpuUsageCalculator.getCpuTrackerUsagePercent();
-        if (overallCpuUsage != -1) {
-            overallCpuUsage = overallCpuUsage / getNumProcessors();
-        }
-        return overallCpuUsage;
-    }
-
-    public abstract static class LineParse {
-        public abstract void prepare();
-
-        public abstract boolean parseLine(String line);
-    }
-
-    static class FileParse {
-        static LineParse parse;
-        static String file;
-
-        public FileParse(String file, LineParse parse) {
-            this.parse = parse;
-            this.file = file;
-            parse.prepare();
-        }
-
-        public static void parse() {
-            BufferedReader in = null;
-            InputStreamReader fReader = null;
-            try {
-                fReader = new InputStreamReader(
-                        new FileInputStream(file), Charset.forName("UTF-8"));
-                in = new BufferedReader(fReader);
-            } catch (FileNotFoundException f) {
-                return;
-            }
-            try {
-                String str = in.readLine();
-                while (str != null) {
-                    if (parse.parseLine(str))
+                    for (int i = 1; i < size; i++) {
+                        long value = JStormUtils.parseLong(matcher.group(i));
+                        totalCpuTime += value;
+                        if (i == 4)
+                            idleCpuTime = value;
+                    }
+                    if (size > 0) {
+                        totalCpu2idle = new Pair<>();
+                        totalCpu2idle.setFirst(totalCpuTime);
+                        totalCpu2idle.setSecond(idleCpuTime);
                         break;
-                    str = in.readLine();
-                }
-            } catch (IOException io) {
-                LOG.warn("Error reading the stream " + io);
-            } finally {
-                try {
-                    fReader.close();
-                    try {
-                        in.close();
-                    } catch (IOException i) {
-                        LOG.warn("Error closing the stream " + in);
                     }
-                } catch (IOException i) {
-                    LOG.warn("Error closing the stream " + fReader);
+                }
+                return totalCpu2idle;
+            }
+        });
+        Object result = procResourceParse.getResource();
+        if (result == null){
+            LOG.warn("getTotalCpuUsage failed");
+            return 0.0f;
+        }
+
+        Pair<Long, Long> totalCpu2idle = (Pair<Long, Long>)result;
+        if (lastCpuTime == -1 ||
+                lastCpuTime > totalCpu2idle.getFirst()) {
+            lastCpuTime = totalCpu2idle.getFirst();
+            lastIdieTime = totalCpu2idle.getSecond();
+            return lastcpuUsage;//return -1 first time
+        }
+
+        if (totalCpu2idle.getFirst() > lastCpuTime + 1) {
+            float deltaCpu = totalCpu2idle.getFirst() - lastCpuTime;
+            float deltaIdle = totalCpu2idle.getSecond() - lastIdieTime;
+            lastcpuUsage = (1 - deltaIdle / deltaCpu) * 100f;
+            lastCpuTime = totalCpu2idle.getFirst();
+            lastIdieTime = totalCpu2idle.getSecond();
+        }
+        return lastcpuUsage;
+    }
+
+    public static double getTotalMemUsage() {
+        if (!OSInfo.isLinux()) {
+            return 0.0;
+        }
+        try {
+            Map<String, String> memInfo = new HashMap<>();
+            List<String> lines = IOUtils.readLines(new FileInputStream(PROCFS_MEMINFO));
+            for (String line : lines) {
+                String key = line.split("\\s+")[0];
+                String value = line.split("\\s+")[1];
+                memInfo.put(key, value);
+            }
+            String total = memInfo.get("MemTotal:");
+            String free = memInfo.get("MemFree:");
+            String buffer = memInfo.get("Buffers:");
+            String cache = memInfo.get("Cached:");
+            return 1 - (Double.valueOf(free) + Double.valueOf(buffer) + Double.valueOf(cache)) / Double.valueOf(total);
+        } catch (Exception ignored) {
+            LOG.warn("failed to get total memory usage.", ignored);
+        }
+        return 0.0;
+    }
+
+    public static Long getFreePhysicalMem() {
+        if (!OSInfo.isLinux()) {
+            return 0L;
+        }
+        try {
+            List<String> lines = IOUtils.readLines(new FileInputStream(PROCFS_MEMINFO));
+            String free = lines.get(1).split("\\s+")[1];
+            return Long.valueOf(free);
+        } catch (Exception ignored) {
+            LOG.warn("failed to get total free memory.");
+        }
+        return 0L;
+    }
+
+    /**
+     * calcute the disk usage at current filesystem
+     * @return
+     */
+    public static Double getDiskUsage() {
+        if (!OSInfo.isLinux() && !OSInfo.isMac()) {
+            return 0.0;
+        }
+        try {
+            String output = SystemOperation.exec("df -h ./");
+            if (output != null) {
+                String[] lines = output.split("[\\r\\n]+");
+                if (lines.length >= 2) {
+                    String[] parts = lines[1].split("\\s+");
+                    if (parts.length >= 5) {
+                        String pct = parts[4];
+                        if (pct.endsWith("%")) {
+                            return Integer.valueOf(pct.substring(0, pct.length() - 1)) / 100.0;
+                        }
+                    }
                 }
             }
+        } catch (Exception e) {
+            LOG.warn("failed to get disk usage.");
         }
+        return 0.0;
     }
 
-    static class CpuUsageCalculator {
-
-        static BigInteger systemCpuTime = BigInteger.ZERO;
-
-        static BigInteger lastSystemCpuTime = BigInteger.ZERO;
-
-        static BigInteger jiffyLengthInMillis;
-
-        static long sampleTime;
-        static long lastSampleTime;
-        static float cpuUsage;
-
-        static long MINIMUM_UPDATE_INTERVAL;
-
-        public CpuUsageCalculator(long jiffyLengthInMillis) {
-            this.jiffyLengthInMillis = BigInteger.valueOf(jiffyLengthInMillis);
-            this.cpuUsage = -1;
-            this.sampleTime = -1;
-            this.lastSampleTime = -1;
-            this.MINIMUM_UPDATE_INTERVAL = 10 * jiffyLengthInMillis;
+    public static Pair<Long, Long> getNetRevSendCount() {
+        Pair<Long, Long> pair = new Pair<>(0l, 0l);
+        if (!OSInfo.isLinux()) {
+            return pair;
         }
+        ProcResourceParse procResourceParse = new ProcResourceParse(PROCFS_NETSTAT, new ResouceCallback() {
+            @Override
+            public Object execute(List<String> lines) throws Exception {
+                Pair<Long, Long> pair = new Pair<>(0l, 0l);
+                int receiveIndex = -1;
+                int sendIndex = -1;
+                for (String line : lines){
+                    String[] splitString = line.split("\\s+|\\||:");
+                    List<String> strings = new ArrayList<>();
+                    for (String str : splitString){
+                        if (str.trim().length() == 0) {
+                            continue;
+                        }else {
+                            strings.add(str);
+                        }
+                    }
+                    if (strings.size() > 0 && strings.get(0).equals("face")){
+                        for (int i = 0; i < strings.size(); i++){
+                            if(strings.get(i).equals("bytes")){
+                                if (receiveIndex == -1){
+                                    receiveIndex = i;
+                                }else {
+                                    sendIndex = i;
+                                }
+                            }
+                        }
+                        break;
+                    }
+                }
 
-        public float getCpuTrackerUsagePercent() {
-            if (lastSampleTime == -1 ||
-                    lastSampleTime > sampleTime) {
-
-                lastSampleTime = sampleTime;
-                lastSystemCpuTime = systemCpuTime;
-                return cpuUsage;//return -1 first time
+                if (receiveIndex != -1 && sendIndex != -1){
+                    for (String line : lines){
+                        String[] splitString = line.split("\\s+|\\||:");
+                        List<String> strings = new ArrayList<>();
+                        for (String str : splitString){
+                            if (str.trim().length() == 0) {
+                                continue;
+                            }else {
+                                strings.add(str);
+                            }
+                        }
+                        if (strings.size() > 0 && strings.get(0).startsWith("eth")){
+                            long rec = JStormUtils.parseLong(strings.get(receiveIndex));
+                            long send = JStormUtils.parseLong(strings.get(sendIndex));
+                            pair.setFirst(pair.getFirst() + rec);
+                            pair.setSecond(pair.getSecond() + send);
+                        }
+                    }
+                }else {
+                    LOG.warn("receiveIndex {}, sendIndex {}", receiveIndex, sendIndex);
+                }
+                return pair;
             }
-            if (sampleTime > lastSampleTime + MINIMUM_UPDATE_INTERVAL) {
-
-                cpuUsage =
-                        ((systemCpuTime.subtract(lastSystemCpuTime)).floatValue())
-                                * 100F / ((float) (sampleTime - lastSampleTime));
-                lastSampleTime = sampleTime;
-                lastSystemCpuTime = systemCpuTime;
-            }
-            return cpuUsage;
-        }
-
-        public void updateElapsedJiffies(BigInteger elapedJiffies, long sampleTime) {
-            this.systemCpuTime = elapedJiffies.multiply(jiffyLengthInMillis);
-            this.sampleTime = sampleTime;
-        }
+        });
+        Object result = procResourceParse.getResource();
+        if (result != null)
+            pair = (Pair<Long, Long>) result;
+        return pair;
     }
 
-    public static void main(String[] args) throws InterruptedException {
-        while (true) {
-            Thread.sleep(5000);
-            System.out.println(LinuxResource.getCpuUsage());
-            System.out.println(LinuxResource.getFreePhysicalMemorySize());
-        }
-    }
 }

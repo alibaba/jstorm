@@ -63,37 +63,37 @@ public class SyncContainerHb extends RunnableCallback {
             } catch (Exception e) {
                 LOG.error("Failed to delete " + filePath, e);
             }
-            LOG.info("Remove hearbeat file " + filePath);
+            LOG.info("Remove heartbeat file " + filePath);
         }
     }
 
     public void checkNoContainerHbTimes() {
         noContainerHbTimes++;
         if (noContainerHbTimes >= MAX_NO_CONTAINER_HB_TIMES) {
-            LOG.info("It's long time no container hearbeat");
-            throw new RuntimeException("It's long time no container hearbeat");
+            LOG.info("It's long time no container heartbeat");
+            throw new RuntimeException("It's long time no container heartbeat");
         }
     }
 
-    public void handleReadDir() {
-        if (StringUtils.isBlank(readDir) == true) {
+    public void handlReadDir() {
+        if (StringUtils.isBlank(readDir)) {
             return;
         }
 
         File file = new File(readDir);
-        if (file.exists() == false) {
+        if (!file.exists()) {
             LOG.info(readDir + " doesn't exist right now");
             checkNoContainerHbTimes();
             return;
-        } else if (file.isDirectory() == false) {
+        } else if (!file.isDirectory()) {
             String msg = readDir + " isn't dir";
             LOG.error(msg);
             throw new RuntimeException(msg);
         }
 
         String[] files = file.list();
-        if (files.length == 0) {
-            LOG.info(readDir + " doesn't contain hearbeat files right now");
+        if (files == null || files.length == 0) {
+            LOG.info(readDir + " doesn't contain heartbeat files right now");
             checkNoContainerHbTimes();
             return;
         }
@@ -124,28 +124,28 @@ public class SyncContainerHb extends RunnableCallback {
         }
 
         if (now - hb > timeoutSeconds) {
-            if (isFirstRead == true) {
+            if (isFirstRead) {
                 checkNoContainerHbTimes();
                 return;
             }
 
             StringBuilder sb = new StringBuilder();
 
-            sb.append("It's long time no container's hearbeat, ");
+            sb.append("It's long time no container's heartbeat, ");
             sb.append("ContainerDir:").append(readDir);
-            sb.append(",last hearbeat:").append(biggest);
+            sb.append(",last heartbeat:").append(biggest);
             LOG.error(sb.toString());
 
             throw new RuntimeException(sb.toString());
         } else {
             isFirstRead = false;
-            LOG.info("Receive container hearbeat " + biggest);
+            LOG.info("Receive container heartbeat " + biggest);
         }
 
     }
 
     public void handleWriteDir() {
-        if (StringUtils.isBlank(writeDir) == true) {
+        if (StringUtils.isBlank(writeDir)) {
             return;
         }
 
@@ -163,8 +163,8 @@ public class SyncContainerHb extends RunnableCallback {
 
         File file = new File(writeDir);
         String[] files = file.list();
-        if (files.length == 0) {
-            LOG.info(readDir + " doesn't contain hearbeat files right now");
+        if (files == null || files.length == 0) {
+            LOG.info(readDir + " doesn't contain heartbeat files right now");
             return;
         }
 
@@ -180,7 +180,7 @@ public class SyncContainerHb extends RunnableCallback {
 
         handleWriteDir();
 
-        handleReadDir();
+        handlReadDir();
 
     }
 
@@ -198,25 +198,28 @@ public class SyncContainerHb extends RunnableCallback {
         return readDir;
     }
 
-    public void resetReadHeatbeats() {
+    public void resetReadHeartbeats() {
         File file = new File(readDir);
 
-        if (file.exists() == false) {
-            LOG.info("Read hearbeat directory hasn't been created " + readDir);
+        if (!file.exists()) {
+            LOG.info("Read heartbeat directory hasn't been created " + readDir);
             return;
-        } else if (file.isDirectory() == false) {
+        } else if (!file.isDirectory()) {
             LOG.error(readDir + " isn't a directory ");
             throw new RuntimeException(readDir + " isn't a directory ");
         }
 
         String[] files = file.list();
+        if (files == null) {
+        	LOG.info("Failed to list " + readDir);
+        	files = new String[]{};
+        }
         for (String fileName : files) {
             String path = readDir + File.separator + fileName;
 
             try {
                 PathUtils.rmr(path);
             } catch (IOException e) {
-                // TODO Auto-generated catch block
                 LOG.error("Failed to remove " + path, e);
             }
         }
@@ -226,9 +229,8 @@ public class SyncContainerHb extends RunnableCallback {
 
     public void setReadDir(String readDir) {
         this.readDir = readDir;
-        if (StringUtils.isBlank(readDir) == true) {
+        if (StringUtils.isBlank(readDir)) {
             LOG.warn("ReadDir is empty");
-            return;
         } else {
             LOG.info("ReadDir is " + readDir);
         }
@@ -257,7 +259,7 @@ public class SyncContainerHb extends RunnableCallback {
 
     public void setWriteDir(String writeDir) {
         this.writeDir = writeDir;
-        if (StringUtils.isBlank(writeDir) == true) {
+        if (StringUtils.isBlank(writeDir)) {
             LOG.warn("writeDir is empty");
             return;
         } else {
@@ -266,16 +268,13 @@ public class SyncContainerHb extends RunnableCallback {
 
         File file = new File(writeDir);
 
-        if (file.exists() == false) {
+        if (!file.exists()) {
             file.mkdirs();
             LOG.info("Create Directory " + writeDir);
-            return;
-        } else if (file.isDirectory() == false) {
+        } else if (!file.isDirectory()) {
             LOG.error(writeDir + " isn't a directory ");
             throw new RuntimeException(writeDir + " isn't a directory ");
         }
-
-        return;
     }
 
     public int getReserverNum() {
@@ -302,14 +301,12 @@ public class SyncContainerHb extends RunnableCallback {
         sb.append(",frequence:").append(frequence);
         LOG.info(sb.toString());
 
-        AsyncLoopThread thread = new AsyncLoopThread(syncContainerHbThread, true, Thread.NORM_PRIORITY, true);
-
-        return thread;
+        return new AsyncLoopThread(syncContainerHbThread, true, Thread.NORM_PRIORITY, true);
     }
 
     public static AsyncLoopThread mkNimbusInstance(Map conf) throws IOException {
         boolean isEnable = ConfigExtension.isEnableContainerNimbus();
-        if (isEnable == false) {
+        if (!isEnable) {
             LOG.info("Run nimbus without Apsara/Yarn container");
             return null;
         }
@@ -352,7 +349,7 @@ public class SyncContainerHb extends RunnableCallback {
     public static AsyncLoopThread mkWorkerInstance(Map conf) throws IOException {
         boolean isEnableContainer = ConfigExtension.isEnableContainerSupervisor();
         boolean isWorkerAutomaticStop = ConfigExtension.isWorkerStopWithoutSupervisor(conf);
-        if (isEnableContainer == false && isWorkerAutomaticStop == false) {
+        if (!isEnableContainer && !isWorkerAutomaticStop) {
             LOG.info("Run worker without Apsara/Yarn container");
             return null;
         }

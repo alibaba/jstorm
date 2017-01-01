@@ -1,3 +1,17 @@
+---
+title: 从JStorm2.1.1升级到JStorm2.2.1
+is_beta: false
+
+sub-nav-group: Upgrade_cn
+sub-nav-id: UpgradeApplication_cn
+sub-nav-pos: 4
+layout: plain_cn
+---
+
+* This will be replaced by the TOC
+{:toc}
+
+
 本文主要讲述如何从2.1.1升级到2.2.1。
 
 ## 集群重新安装
@@ -30,7 +44,7 @@ supervisor.slots.ports: [6800,6801]
 最后**注意**：配置的自动更新，并不意味着会自动生效。目前来说，还是需要重启nimbus或supervisor才能让大部分的配置自动生效。
 
 
-### ext模块功能
+### ext模块
 2.2.1开始，nimbus和supervisor支持加载external library。举例来说，你写了一个metric uploader的实现，要作为插件plugin到nimbus中。那么：
 
 1. 首先，你写好代码，为这个插件打出一个单独的jar包（或者可能还有一堆第三方依赖包）。
@@ -94,10 +108,11 @@ Exception in thread "main" com.esotericsoftware.kryo.KryoException: Class cannot
 ```
 topology.fall.back.on.java.serialization: true
 ```
+这样就会使用java的默认序列化方式
 
 ### 自定义序列化器
 
-这样就会使用java的默认序列化方式，如果对性能要求比较高，你可能并不想这么做，那么就需要为你的类实现一个自定义的kryo序列化器。
+如果对性能要求比较高，你可能并不想这么做，那么就需要为你的类实现一个自定义的kryo序列化器。
 可以参考源码中sequence-split-merge代码中`PairSerializer`类。
 
 举例来说，ByteBuffer是没有无参构造函数的(包括HeapByteBuffer)，而且是个抽象类，我们自定义的ByteBufferSerializer代码如下：
@@ -126,9 +141,10 @@ Config.registerSerialization(stormConf, "java.nio.HeapByteBuffer", KryoByteBuffe
 ```
 
 ## 日志系统
+
 请参考0.9.x升级到2.x的文档
 
 ## 关于classloader
 
 上面已经提到，jstorm-core对容易冲突的依赖做了shade，因此基本上不再需要开启classloader来解决。
-
+如果你之前有应用开启过classloader，那么可以考虑在升级到2.2.1之后，关掉classloader。

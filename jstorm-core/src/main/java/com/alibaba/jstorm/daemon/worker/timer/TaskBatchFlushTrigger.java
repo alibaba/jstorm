@@ -17,30 +17,37 @@
  */
 package com.alibaba.jstorm.daemon.worker.timer;
 
+import com.alibaba.jstorm.daemon.worker.Flusher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import com.alibaba.jstorm.task.execute.BatchCollector;
 
-public class TaskBatchFlushTrigger extends TimerTrigger {
+import java.util.concurrent.atomic.AtomicBoolean;
+
+public class TaskBatchFlushTrigger extends Flusher {
     private static final Logger LOG = LoggerFactory.getLogger(TickTupleTrigger.class);
 
     private BatchCollector batchCollector;
+    private String name;
+    private AtomicBoolean _isFlushing = new AtomicBoolean(false);
 
     public TaskBatchFlushTrigger(int frequence, String name, BatchCollector batchCollector) {
         if (frequence <= 0) {
             LOG.warn(" The frequence of " + name + " is invalid");
             frequence = 1;
         }
-        this.firstTime = frequence;
-        this.frequence = frequence;
+        this.name = name;
+        this._flushIntervalMs = frequence;
         this.batchCollector = batchCollector;
     }
 
     @Override
     public void run() {
         try {
-            batchCollector.flush();
+            if (_isFlushing.compareAndSet(false, true)) {
+                batchCollector.flush();
+                _isFlushing.set(false);
+            }
         } catch (Exception e) {
             LOG.warn("Failed to public timer event to " + name, e);
             return;

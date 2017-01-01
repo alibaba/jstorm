@@ -42,9 +42,12 @@ public class MetricDef {
     public static final String PENDING_MAP = "PendingNum";
     public static final String COLLECTOR_EMIT_TIME = "EmitTime";
     public static final String TUPLE_LIEF_CYCLE = "TupleLifeCycle";
+    public static final String CAPACITY = "Capacity";
 
     public static final String CONTROL_THREAD = "Ctrl";
     public static final String CONTROL_QUEUE = CONTROL_THREAD + QUEUE_TYPE;
+
+    public static final String TASK_BATCH_INTERVAL_TIME = "BatchInterTime";
 
     public static final String RECV_CTRL_QUEUE = "RecvCtrl" + QUEUE_TYPE;
 
@@ -90,6 +93,10 @@ public class MetricDef {
     public static final String SEND_TPS = "SendTps";
     public static final String RECV_TPS = "RecvTps";
     public static final String PROCESS_LATENCY = "ProcessLatency";
+    public static final String FULL_GC = "FullGc";
+
+    public static final String NETSENDSPEED = "NetSendSpeed";
+    public static final String NETRECVSPEED = "NetRecvSpeed";
 
     public static final Set<String> MERGE_SUM_TAG = new HashSet<String>();
 

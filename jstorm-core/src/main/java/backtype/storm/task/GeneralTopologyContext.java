@@ -116,6 +116,17 @@ public class GeneralTopologyContext implements JSONAware {
             return new ArrayList<Integer>(ret);
     }
 
+    public List<Integer> getComponentsTasks(Set<String> componentIds) {
+        List<Integer> ret = new ArrayList<Integer>();
+        for (String componentId : componentIds) {
+            List<Integer> tasks = _componentToTasks.get(componentId);
+            if (tasks != null) {
+                ret.addAll(tasks);
+            }
+        }
+        return ret;
+    }
+
     /**
      * Gets the declared output fields for the specified component/stream.
      */

@@ -17,15 +17,30 @@
  */
 package com.alibaba.jstorm.daemon.nimbus;
 
-import backtype.storm.Config;
-import backtype.storm.generated.Nimbus;
-import backtype.storm.generated.Nimbus.Iface;
-import backtype.storm.scheduler.INimbus;
-import backtype.storm.utils.Utils;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.server.THsHaServer;
+import org.apache.thrift.transport.TNonblockingServerSocket;
+import org.apache.thrift.transport.TTransportException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.alibaba.jstorm.callback.AsyncLoopRunnable;
 import com.alibaba.jstorm.callback.AsyncLoopThread;
+import com.alibaba.jstorm.callback.Callback;
+import com.alibaba.jstorm.callback.RunnableCallback;
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.cluster.StormConfig;
+import com.alibaba.jstorm.config.RefreshableComponents;
+import com.alibaba.jstorm.daemon.nimbus.metric.ClusterMetricsRunnable;
 import com.alibaba.jstorm.daemon.supervisor.Httpserver;
 import com.alibaba.jstorm.daemon.worker.hearbeat.SyncContainerHb;
 import com.alibaba.jstorm.schedule.CleanRunnable;
@@ -34,31 +49,23 @@ import com.alibaba.jstorm.schedule.MonitorRunnable;
 import com.alibaba.jstorm.utils.DefaultUncaughtExceptionHandler;
 import com.alibaba.jstorm.utils.JStormServerUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.server.THsHaServer;
-import org.apache.thrift.transport.TNonblockingServerSocket;
-import org.apache.thrift.transport.TTransportException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import backtype.storm.Config;
+import backtype.storm.generated.Nimbus;
+import backtype.storm.generated.Nimbus.Iface;
+import backtype.storm.generated.TopologyMetric;
+import backtype.storm.scheduler.INimbus;
+import backtype.storm.utils.Utils;
 
 /**
- * 
  * NimbusServer work flow: 1. cleanup interrupted topology delete /storm-local-dir/nimbus/topologyid/stormdis delete /storm-zk-root/storms/topologyid
- * 
+ *
  * 2. set /storm-zk-root/storms/topology stats as run
- * 
+ *
  * 3. start one thread, every nimbus.monitor.reeq.secs set /storm-zk-root/storms/ all topology as monitor. when the topology's status is monitor, nimubs would
  * reassign workers 4. start one threa, every nimubs.cleanup.inbox.freq.secs cleanup useless jar
- * 
+ *
  * @author version 1: Nathan Marz version 2: Lixin/Chenjun version 3: Longda
- * 
  */
 public class NimbusServer {
 
@@ -126,20 +133,50 @@ public class NimbusServer {
 
             initContainerHBThread(conf);
 
-            while (!data.isLeader())
-                Utils.sleep(5000);
-
-            init(conf);
+            serviceHandler = new ServiceHandler(data);
+            initThrift(conf);
         } catch (Throwable e) {
             if (e instanceof OutOfMemoryError) {
-                    LOG.error("Halting due to Out Of Memory Error...");
-                }
+                LOG.error("Halting due to Out Of Memory Error...");
+            }
             LOG.error("Fail to run nimbus ", e);
         } finally {
             cleanup();
         }
 
         LOG.info("Quit nimbus");
+    }
+
+    /**
+     * handle manual conf changes, check every 15 sec
+     */
+    private void mkRefreshConfThread(final NimbusData nimbusData) {
+        nimbusData.getScheduExec().scheduleAtFixedRate(new RunnableCallback() {
+            @Override
+            public void run() {
+                LOG.debug("checking changes in storm.yaml...");
+
+                Map newConf = Utils.readStormConfig();
+                if (Utils.isConfigChanged(nimbusData.getConf(), newConf)) {
+                    LOG.warn("detected changes in storm.yaml, updating...");
+                    synchronized (nimbusData.getConf()) {
+                        nimbusData.getConf().clear();
+                        nimbusData.getConf().putAll(newConf);
+                    }
+
+                    RefreshableComponents.refresh(newConf);
+                } else {
+                    LOG.debug("no changes detected, stay put.");
+                }
+            }
+
+            @Override
+            public Object getResult() {
+                return 15;
+            }
+        }, 15, 15, TimeUnit.SECONDS);
+
+        LOG.info("Successfully init configuration refresh thread");
     }
 
     public ServiceHandler launcherLocalServer(final Map conf, INimbus inimbus) throws Exception {
@@ -153,6 +190,7 @@ public class NimbusServer {
 
         init(conf);
 
+        serviceHandler = new ServiceHandler(data);
         return serviceHandler;
     }
 
@@ -163,7 +201,14 @@ public class NimbusServer {
         }
     }
 
+    private void initMetricRunnable() {
+        AsyncLoopThread thread = new AsyncLoopThread(ClusterMetricsRunnable.getInstance());
+        smartThreads.add(thread);
+    }
+
     private void init(Map conf) throws Exception {
+
+        data.init();
 
         NimbusUtils.cleanupCorruptTopologies(data);
 
@@ -173,16 +218,11 @@ public class NimbusServer {
 
         initCleaner(conf);
 
-        serviceHandler = new ServiceHandler(data);
+        initMetricRunnable();
 
         if (!data.isLocalMode()) {
-        	
-        	//data.startMetricThreads();
-
             initMonitor(conf);
-
-            initThrift(conf);
-
+            //mkRefreshConfThread(data);
         }
     }
 
@@ -222,33 +262,43 @@ public class NimbusServer {
     private void initMonitor(Map conf) {
         final ScheduledExecutorService scheduExec = data.getScheduExec();
 
-        // Schedule Nimbus monitor
-        MonitorRunnable r1 = new MonitorRunnable(data);
+        if (!data.isLaunchedMonitor()) {
+            // Schedule Nimbus monitor
+            MonitorRunnable r1 = new MonitorRunnable(data);
 
-        int monitor_freq_secs = JStormUtils.parseInt(conf.get(Config.NIMBUS_MONITOR_FREQ_SECS), 10);
-        scheduExec.scheduleAtFixedRate(r1, 0, monitor_freq_secs, TimeUnit.SECONDS);
+            int monitor_freq_secs = JStormUtils.parseInt(conf.get(Config.NIMBUS_MONITOR_FREQ_SECS), 10);
+            scheduExec.scheduleAtFixedRate(r1, 0, monitor_freq_secs, TimeUnit.SECONDS);
 
-        LOG.info("Successfully init Monitor thread");
+            data.setLaunchedMonitor(true);
+            LOG.info("Successfully init Monitor thread");
+        } else {
+            LOG.info("We have launched Monitor thread before");
+        }
     }
 
     /**
      * Right now, every 600 seconds, nimbus will clean jar under /LOCAL-DIR/nimbus/inbox, which is the uploading topology directory
-     * 
+     *
      * @throws IOException
      */
     @SuppressWarnings("rawtypes")
     private void initCleaner(Map conf) throws IOException {
         final ScheduledExecutorService scheduExec = data.getScheduExec();
 
-        // Schedule Nimbus inbox cleaner/nimbus/inbox jar
-        String dir_location = StormConfig.masterInbox(conf);
-        int inbox_jar_expiration_secs = JStormUtils.parseInt(conf.get(Config.NIMBUS_INBOX_JAR_EXPIRATION_SECS), 3600);
-        CleanRunnable r2 = new CleanRunnable(dir_location, inbox_jar_expiration_secs);
+        if (!data.isLaunchedCleaner()) {
+            // Schedule Nimbus inbox cleaner/nimbus/inbox jar
+            String dir_location = StormConfig.masterInbox(conf);
+            int inbox_jar_expiration_secs = JStormUtils.parseInt(conf.get(Config.NIMBUS_INBOX_JAR_EXPIRATION_SECS), 3600);
+            CleanRunnable r2 = new CleanRunnable(dir_location, inbox_jar_expiration_secs);
 
-        int cleanup_inbox_freq_secs = JStormUtils.parseInt(conf.get(Config.NIMBUS_CLEANUP_INBOX_FREQ_SECS), 600);
+            int cleanup_inbox_freq_secs = JStormUtils.parseInt(conf.get(Config.NIMBUS_CLEANUP_INBOX_FREQ_SECS), 600);
 
-        scheduExec.scheduleAtFixedRate(r2, 0, cleanup_inbox_freq_secs, TimeUnit.SECONDS);
-        LOG.info("Successfully init " + dir_location + " cleaner");
+            scheduExec.scheduleAtFixedRate(r2, 0, cleanup_inbox_freq_secs, TimeUnit.SECONDS);
+            data.setLaunchedCleaner(true);
+            LOG.info("Successfully init " + dir_location + " cleaner");
+        } else {
+            LOG.info("We have launched Cleaner thread before");
+        }
     }
 
     @SuppressWarnings("rawtypes")
@@ -272,7 +322,19 @@ public class NimbusServer {
     }
 
     private void initFollowerThread(Map conf) {
-        follower = new FollowerRunnable(data, 5000);
+        // when this nimbus become leader, we will execute this callback, to init some necessary data/thread
+        Callback leaderCallback = new Callback() {
+            public <T> Object execute(T... args) {
+                try {
+                    init(data.getConf());
+                } catch (Exception e) {
+                    LOG.error("Nimbus init error after becoming a leader", e);
+                    throw new RuntimeException(e);
+                }
+                return null;
+            }
+        };
+        follower = new FollowerRunnable(data, 5000, leaderCallback);
         Thread thread = new Thread(follower);
         thread.setDaemon(true);
         thread.start();
@@ -286,12 +348,12 @@ public class NimbusServer {
             }
 
         });
-        
+
         //JStormUtils.registerJStormSignalHandler();
     }
 
     public void cleanup() {
-        if (data.getIsShutdown().getAndSet(true)) {
+        if (data == null || data.getIsShutdown().getAndSet(true)) {
             LOG.info("Notify to quit nimbus");
             return;
         }
@@ -349,4 +411,11 @@ public class NimbusServer {
 
     }
 
+    public void uploadMetrics(String topologyId, TopologyMetric topologyMetric) throws TException {
+        this.serviceHandler.uploadTopologyMetrics(topologyId, topologyMetric);
+    }
+
+    public Map<String, Long> registerMetrics(String topologyId, Set<String> names) throws TException {
+        return this.serviceHandler.registerMetrics(topologyId, names);
+    }
 }

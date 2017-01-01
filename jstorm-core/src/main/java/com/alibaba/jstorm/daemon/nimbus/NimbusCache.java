@@ -37,6 +37,8 @@ public class NimbusCache {
     public static final String TIMEOUT_MEM_CACHE_CLASS = TimeoutMemCache.class.getName();
     public static final String ROCKS_DB_CACHE_CLASS = RocksDBCache.class.getName();
 
+    public static final String SUPERVISORS_INFO = "__supervisors_info";
+
     protected JStormCache memCache;
     protected JStormCache dbCache;
     protected StormClusterState zkCluster;

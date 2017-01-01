@@ -21,6 +21,7 @@ import backtype.storm.generated.*;
 import backtype.storm.utils.BufferFileInputStream;
 import backtype.storm.utils.NimbusClient;
 import backtype.storm.utils.Utils;
+import com.alibaba.jstorm.client.ConfigExtension;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,8 +115,14 @@ public class StormSubmitter {
             } else {
                 NimbusClient client = NimbusClient.getConfiguredClient(conf);
                 try {
-                    if (topologyNameExists(client, conf, name)) {
-                        throw new RuntimeException("Topology with name `" + name + "` already exists on cluster");
+                    boolean enableDeploy = ConfigExtension.getTopologyHotDeplogyEnable(stormConf);
+
+                    if (topologyNameExists(client, conf, name) != enableDeploy) {
+                        if (enableDeploy){
+                            throw new RuntimeException("Topology with name `" + name + "` not exists on cluster");
+                        }else {
+                            throw new RuntimeException("Topology with name `" + name + "` already exists on cluster");
+                        }
                     }
 
                     submitJar(client, conf);

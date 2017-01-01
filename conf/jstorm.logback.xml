@@ -41,27 +41,38 @@
     <root level="INFO">
         <appender-ref ref="A1"/>
     </root>
-    <logger name="org.apache.zookeeper" level="ERROR" />
-    <logger name="org.apache.curator" level="ERROR" />
-    <logger name="com.netflix.curator" level="ERROR" />
+    <logger name="org.apache.zookeeper" level="ERROR"/>
+    <logger name="org.apache.curator" level="ERROR"/>
+    <logger name="com.netflix.curator" level="ERROR"/>
+    <logger name="backtype.storm.utils.StormBoundedExponentialBackoffRetry" level="ERROR"/>
+    <logger name="shade.storm.org.apache.zookeeper" level="ERROR"/>
+    <logger name="shade.storm.org.apache.curator" level="ERROR"/>
 
     <logger name="com.alibaba.jstorm" additivity="false">
         <level value="INFO"/>
         <appender-ref ref="A1"/>
+    </logger>
+    <logger name="com.alibaba.jstorm.daemon.worker.hearbeat" additivity="false">
+        <level value="WARN"/>
+        <appender-ref ref="A1"/>
+    </logger>
+    <logger name="com.alibaba.jstorm.task.heartbeat" additivity="false">
+        <level value="WARN"/>
+        <appender-ref ref="A1"/>
+    </logger>
+
+    <logger name="com.alibaba.jstorm.task.master.heartbeat" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="METRICS"/>
     </logger>
 
     <logger name="com.alibaba.jstorm.common.metric" additivity="false">
         <level value="INFO"/>
         <appender-ref ref="METRICS"/>
     </logger>
-
-    <logger name="com.alibaba.jstorm.task.heartbeat" additivity="false">
-        <level value="WARN"/>
-        <appender-ref ref="METRICS"/>
-    </logger>
-
-    <logger name="com.alibaba.jstorm.daemon.worker.hearbeat" additivity="false">
-        <level value="WARN"/>
+    
+	<logger name="com.alibaba.jstorm.task.master.metrics" additivity="false">
+        <level value="INFO"/>
         <appender-ref ref="METRICS"/>
     </logger>
 
@@ -71,6 +82,18 @@
     </logger>
 
     <logger name="com.alibaba.jstorm.metric" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="METRICS"/>
+    </logger>
+    <logger name="com.alibaba.jstorm.ots" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="METRICS"/>
+    </logger>
+    <logger name="com.alibaba.jstorm.hbase" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="METRICS"/>
+    </logger>
+    <logger name="com.alibaba.jstorm.task.master.heartbeat.TaskHeartbeatUpdater" additivity="false">
         <level value="INFO"/>
         <appender-ref ref="METRICS"/>
     </logger>

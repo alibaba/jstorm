@@ -23,6 +23,7 @@ import backtype.storm.metric.api.IMetric;
 import backtype.storm.metric.api.rpc.IShellMetric;
 import backtype.storm.multilang.ShellMsg;
 import backtype.storm.multilang.SpoutMsg;
+import backtype.storm.task.ICollectorCallback;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.utils.ShellProcess;
 import clojure.lang.RT;
@@ -30,9 +31,12 @@ import com.google.common.util.concurrent.MoreExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 import java.util.TimerTask;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -160,10 +164,8 @@ public class ShellSpout implements ISpout {
                     List<Object> tuple = shellMsg.getTuple();
                     Object messageId = shellMsg.getId();
                     if (task == 0) {
-                        List<Integer> outtasks = _collector.emit(stream, tuple, messageId);
-                        if (shellMsg.areTaskIdsNeeded()) {
-                            _process.writeTaskIds(outtasks);
-                        }
+                        _collector.emit(stream, tuple, messageId, new ShellEmitCb(shellMsg));
+     
                     } else {
                         _collector.emitDirect((int) task.longValue(), stream, tuple, messageId);
                     }
@@ -258,6 +260,28 @@ public class ShellSpout implements ISpout {
                 spout.die(new RuntimeException("subprocess heartbeat timeout"));
             }
         }
+    }
+    
+    public class ShellEmitCb implements ICollectorCallback {
+        
+        private ShellMsg shellMsg;
+        
+        public ShellEmitCb(ShellMsg shellMsg) {
+            this.shellMsg = shellMsg;
+        }
+
+        @Override
+        public void execute(String stream, List<Integer> outTasks, List values) {
+            if (shellMsg.areTaskIdsNeeded()) {
+                try {
+                    _process.writeTaskIds(outTasks);
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    LOG.warn("Skip write outTasks", e);
+                }
+            }
+        }
+        
     }
 
 }

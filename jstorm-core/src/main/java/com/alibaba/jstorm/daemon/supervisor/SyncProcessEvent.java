@@ -213,7 +213,7 @@ class SyncProcessEvent extends ShutdownWork {
             try {
                 long lastModifytime = StormConfig.get_supervisor_topology_Bianrymodify_time(conf, topologyId);
                 if ((currTime - lastModifytime) / 1000 < (JStormUtils.MIN_1 * 2)) {
-                    LOG.debug("less 2 miniute ,so removed " + topologyId);
+                    LOG.debug("less 2 minute ,so removed " + topologyId);
                     needRemoveTopologies.add(topologyId);
                 }
             } catch (Exception e) {
@@ -467,14 +467,14 @@ class SyncProcessEvent extends ShutdownWork {
                 filterJars.add("log4j");
             }
         }
-        
-        String excludeJars = (String)totalConf.get("exclude.jars");
-        if (StringUtils.isBlank(excludeJars) == false) {
-        	String[] jars = excludeJars.split(",");
-        	for (String jar: jars) {
-        		filterJars.add(jar);
-        	}
-        	
+
+        String excludeJars = (String) totalConf.get("exclude.jars");
+        if (!StringUtils.isBlank(excludeJars)) {
+            String[] jars = excludeJars.split(",");
+            for (String jar : jars) {
+                filterJars.add(jar);
+            }
+
         }
 
         LOG.info("Remove jars " + filterJars);
@@ -516,7 +516,8 @@ class SyncProcessEvent extends ShutdownWork {
             if (StringUtils.isBlank(classJar)) {
                 continue;
             }
-            classSet.add(classJar);
+            if (!classJar.contains("/lib/ext/"))
+                classSet.add(classJar);
         }
 
         if (stormHome != null) {
@@ -551,19 +552,35 @@ class SyncProcessEvent extends ShutdownWork {
     }
 
     public String getWorkerClassPath(String stormJar, Map totalConf, String stormRoot) {
-    	StringBuilder sb = new StringBuilder();
-    	
-    	if (StringUtils.isBlank((String)totalConf.get(Config.TOPOLOGY_CLASSPATH)) == false) {
-    		sb.append(totalConf.get(Config.TOPOLOGY_CLASSPATH)).append(":");
-    	}
+        StringBuilder sb = new StringBuilder();
+
+        if (!StringUtils.isBlank((String) totalConf.get(Config.TOPOLOGY_CLASSPATH))) {
+            sb.append(totalConf.get(Config.TOPOLOGY_CLASSPATH)).append(":");
+        }
         List<String> otherLibs = (List<String>) totalConf.get(GenericOptionsParser.TOPOLOGY_LIB_NAME);
-        
+
         if (otherLibs != null) {
             for (String libName : otherLibs) {
                 sb.append(StormConfig.stormlib_path(stormRoot, libName)).append(":");
             }
         }
         sb.append(stormJar);
+        return sb.toString();
+    }
+
+    private String getExternalClassPath(String stormHome, Map totalConf) {
+        StringBuilder sb = new StringBuilder();
+        String extCPs = (String) totalConf.get("worker.external");
+        if (!StringUtils.isBlank(extCPs)) {
+            String[] exts = extCPs.split(",");
+            int len = exts.length;
+            for (int i = 0; i < len; i++) {
+                sb.append(stormHome + "/lib/ext/" + exts[i] + "/*");
+                if (i < len - 1) {
+                    sb.append(":");
+                }
+            }
+        }
         return sb.toString();
     }
 
@@ -586,7 +603,7 @@ class SyncProcessEvent extends ShutdownWork {
 
         String logFileName = JStormUtils.genLogName(topologyName, port);
         // String logFileName = topologyId + "-worker-" + port + ".log";
-        
+
 
         StringBuilder commandSB = new StringBuilder();
         String logDir = System.getProperty("jstorm.log.dir");
@@ -644,22 +661,23 @@ class SyncProcessEvent extends ShutdownWork {
 
         StringBuilder gc = new StringBuilder(256);
         gc.append(" -Xloggc:").append(gcLogFile)
-        	.append(" -verbose:gc -XX:+PrintGCDateStamps -XX:+PrintGCDetails")
-            .append(" -XX:HeapDumpPath=").append(dumpFile).append(" ");
+                .append(" -verbose:gc -XX:+PrintGCDateStamps -XX:+PrintGCDetails")
+                .append(" -XX:HeapDumpPath=").append(dumpFile).append(" ");
 
         return gc.toString().replace("/./", "/");
     }
-    
+
     /**
      * Get worker's JVM memory setting
+     *
      * @param assignment
      * @return
      */
-    public String getWorkerMemParameter(LocalAssignment assignment, 
-    		Map totalConf,
-    		String topologyId, 
-    		Integer port) {
-    	long memSize = assignment.getMem();
+    public String getWorkerMemParameter(LocalAssignment assignment,
+                                        Map totalConf,
+                                        String topologyId,
+                                        Integer port) {
+        long memSize = assignment.getMem();
         long memMinSize = ConfigExtension.getMemMinSizePerWorker(totalConf);
         long memGsize = memSize / JStormUtils.SIZE_1_G;
         int gcThreadsNum = memGsize > 4 ? (int) (memGsize * 1.5) : 4;
@@ -668,9 +686,11 @@ class SyncProcessEvent extends ShutdownWork {
         childOpts += getGcDumpParam(topologyId, port, totalConf);
 
         StringBuilder commandSB = new StringBuilder();
-        
+
+        memMinSize = memMinSize < memSize ? memMinSize : memSize;
+
         commandSB.append(" -Xms").append(memMinSize).append(" -Xmx").append(memSize).append(" ");
-        if (memMinSize < (memSize / 2))
+        if (memMinSize <= (memSize / 2))
             commandSB.append(" -Xmn").append(memMinSize / 2).append(" ");
         else
             commandSB.append(" -Xmn").append(memSize / 2).append(" ");
@@ -683,34 +703,34 @@ class SyncProcessEvent extends ShutdownWork {
         commandSB.append(" -XX:ParallelGCThreads=").append(gcThreadsNum);
         commandSB.append(" ").append(childOpts);
         if (StringUtils.isBlank(assignment.getJvm()) == false) {
-        	commandSB.append(" ").append(assignment.getJvm());
+            commandSB.append(" ").append(assignment.getJvm());
         }
 
         return commandSB.toString();
     }
-    
-    public String getSandBoxParameter(String classpath, String workerClassPath, String workerId) 
-    		throws IOException {
-    	Map<String, String> policyReplaceMap = new HashMap<>();
+
+    public String getSandBoxParameter(String classpath, String workerClassPath, String workerId)
+            throws IOException {
+        Map<String, String> policyReplaceMap = new HashMap<>();
         String realClassPath = classpath + ":" + workerClassPath;
         policyReplaceMap.put(SandBoxMaker.CLASS_PATH_KEY, realClassPath);
         return sandBoxMaker.sandboxPolicy(workerId, policyReplaceMap);
     }
-    
+
     public String getWorkerParameter(LocalAssignment assignment,
-            Map totalConf,
-            String stormHome,
-    		String topologyId, 
-    		String supervisorId,
-    		String workerId,
-            Integer port) throws IOException {
-    	// STORM-LOCAL-DIR/supervisor/stormdist/topologyId
+                                     Map totalConf,
+                                     String stormHome,
+                                     String topologyId,
+                                     String supervisorId,
+                                     String workerId,
+                                     Integer port) throws IOException {
+        // STORM-LOCAL-DIR/supervisor/stormdist/topologyId
         String stormRoot = StormConfig.supervisor_stormdist_root(conf, topologyId);
 
         // STORM-LOCAL-DIR/supervisor/stormdist/topologyId/stormjar.jar
         String stormJar = StormConfig.stormjar_path(stormRoot);
-        
-    	StringBuilder commandSB = new StringBuilder();
+
+        StringBuilder commandSB = new StringBuilder();
 
         try {
             if (this.cgroupManager != null) {
@@ -723,11 +743,8 @@ class SyncProcessEvent extends ShutdownWork {
 
         // commandSB.append("java -server -Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n ");
         commandSB.append("java -server ");
-        commandSB.append(getWorkerMemParameter( assignment, 
-        		 totalConf,
-        		 topologyId, 
-        		 port));
-        
+        commandSB.append(getWorkerMemParameter(assignment, totalConf, topologyId, port));
+
         commandSB.append(" -Djava.library.path=").append((String) totalConf.get(Config.JAVA_LIBRARY_PATH));
         commandSB.append(" -Djstorm.home=").append(stormHome);
         commandSB.append(getLogParameter(totalConf, stormHome, assignment.getTopologyName(), port));
@@ -735,7 +752,8 @@ class SyncProcessEvent extends ShutdownWork {
         // get child process parameter
         String classpath = getClassPath(stormHome, totalConf);
         String workerClassPath = getWorkerClassPath(stormJar, totalConf, stormRoot);
-                
+        String externalClassPath = getExternalClassPath(stormHome, totalConf);
+
         commandSB.append(getSandBoxParameter(classpath, workerClassPath, workerId));
 
         commandSB.append(" -cp ");
@@ -743,6 +761,9 @@ class SyncProcessEvent extends ShutdownWork {
         commandSB.append(classpath);
         if (!ConfigExtension.isEnableTopologyClassLoader(totalConf))
             commandSB.append(":").append(workerClassPath);
+        if (!StringUtils.isBlank(externalClassPath)) {
+            commandSB.append(":").append(externalClassPath);
+        }
 
         commandSB.append(" com.alibaba.jstorm.daemon.worker.Worker ");
         commandSB.append(topologyId);
@@ -751,51 +772,51 @@ class SyncProcessEvent extends ShutdownWork {
         commandSB.append(" ").append(port);
         commandSB.append(" ").append(workerId);
         commandSB.append(" ").append(workerClassPath);
-        
+
         return commandSB.toString();
 
     }
-    
+
     public String getLauncherParameter(LocalAssignment assignment,
-    		Map totalConf, 
-    		String stormHome,
-    		String topologyId,
-    		int port) throws IOException {
-    	
-    	boolean isEnable = ConfigExtension.isProcessLauncherEnable(totalConf);
-    	if (isEnable == false) {
-    		return "";
-    	}
-    	
-    	// STORM-LOCAL-DIR/supervisor/stormdist/topologyId
+                                       Map totalConf,
+                                       String stormHome,
+                                       String topologyId,
+                                       int port) throws IOException {
+
+        boolean isEnable = ConfigExtension.isProcessLauncherEnable(totalConf);
+        if (isEnable == false) {
+            return "";
+        }
+
+        // STORM-LOCAL-DIR/supervisor/stormdist/topologyId
         String stormRoot = StormConfig.supervisor_stormdist_root(conf, topologyId);
 
         // STORM-LOCAL-DIR/supervisor/stormdist/topologyId/stormjar.jar
         String stormJar = StormConfig.stormjar_path(stormRoot);
-    	
-    	StringBuilder sb = new StringBuilder();
-    	
-    	sb.append(" java ");
-    	sb.append(ConfigExtension.getProcessLauncherChildOpts(totalConf));
-    	sb.append(getLogParameter(totalConf, stormHome, assignment.getTopologyName(), port));
-    	sb.append(" -cp ");
-    	sb.append(getClassPath(stormHome, totalConf));
-    	if (ConfigExtension.isEnableTopologyClassLoader(totalConf)) {
-    		// dont't append stormJar
-    	}else  {
-    		// Due to user defined log configuration is likely to be in the stormJar
-    		sb.append(":").append(stormJar);
-    	}
-    	sb.append(" ").append(ProcessLauncher.class.getName()).append(" ");
+
+        StringBuilder sb = new StringBuilder();
+
+        sb.append(" java ");
+        sb.append(ConfigExtension.getProcessLauncherChildOpts(totalConf));
+        sb.append(getLogParameter(totalConf, stormHome, assignment.getTopologyName(), port));
+        sb.append(" -cp ");
+        sb.append(getClassPath(stormHome, totalConf));
+        if (ConfigExtension.isEnableTopologyClassLoader(totalConf)) {
+            // dont't append stormJar
+        } else {
+            // Due to user defined log configuration is likely to be in the stormJar
+            sb.append(":").append(stormJar);
+        }
+        sb.append(" ").append(ProcessLauncher.class.getName()).append(" ");
 
         String launcherCmd = sb.toString();
-        if (ConfigExtension.getWorkerRedirectOutput(totalConf)){
+        if (ConfigExtension.getWorkerRedirectOutput(totalConf)) {
             String outFile = getWorkerRedirectOutput(totalConf, assignment, port);
             outFile = "-Dlogfile.name=" + outFile + " ";
             launcherCmd = launcherCmd.replaceAll("-Dlogfile\\.name=.*?\\s", outFile);
         }
-    	
-    	return launcherCmd;
+
+        return launcherCmd;
     }
 
     /**
@@ -806,23 +827,27 @@ class SyncProcessEvent extends ShutdownWork {
     public void launchWorker(Map conf, IContext sharedContext, String topologyId, String supervisorId,
                              Integer port, String workerId, LocalAssignment assignment) throws IOException {
 
-    	
-        
+
         // get supervisor conf
         Map stormConf = StormConfig.read_supervisor_topology_conf(conf, topologyId);
         String stormHome = System.getProperty("jstorm.home");
         if (StringUtils.isBlank(stormHome)) {
-        	stormHome = "./";
-        } 
+            stormHome = "./";
+        }
+
+        // get worker conf
+        String topologyRoot = StormConfig.supervisor_stormdist_root(conf, topologyId);
+        Map workerConf = StormConfig.read_topology_conf(topologyRoot, topologyId);
 
         Map totalConf = new HashMap();
         totalConf.putAll(conf);
         totalConf.putAll(stormConf);
-        
+        totalConf.putAll(workerConf);
+
         /**
          * Here doesn't use System.getenv
          * environment.putAll(System.getenv);
-         * 
+         *
          */
         Map<String, String> environment = new HashMap<String, String>();
         if (ConfigExtension.getWorkerRedirectOutput(totalConf)) {
@@ -834,16 +859,16 @@ class SyncProcessEvent extends ShutdownWork {
         environment.put("jstorm.home", stormHome);
         environment.put("jstorm.workerId", workerId);
 
-        
+
         String launcherCmd = getLauncherParameter(assignment, totalConf, stormHome, topologyId, port);
 
-        String workerCmd = getWorkerParameter( assignment,
-                 totalConf,
-                 stormHome,
-        		 topologyId, 
-        		 supervisorId,
-        		 workerId,
-                 port);
+        String workerCmd = getWorkerParameter(assignment,
+                totalConf,
+                stormHome,
+                topologyId,
+                supervisorId,
+                workerId,
+                port);
         String cmd = launcherCmd + " " + workerCmd;
         cmd = cmd.replace("%JSTORM_HOME%", stormHome);
 
@@ -921,9 +946,9 @@ class SyncProcessEvent extends ShutdownWork {
         return keepPorts;
     }
 
-    private String getWorkerRedirectOutput( Map totalConf, LocalAssignment assignment, int port){
+    private String getWorkerRedirectOutput(Map totalConf, LocalAssignment assignment, int port) {
 
-        String DEFAULT_OUT_TARGET_FILE =  JStormUtils.genLogName(assignment.getTopologyName(), port);
+        String DEFAULT_OUT_TARGET_FILE = JStormUtils.genLogName(assignment.getTopologyName(), port);
         if (DEFAULT_OUT_TARGET_FILE == null) {
             DEFAULT_OUT_TARGET_FILE = "/dev/null";
         } else {

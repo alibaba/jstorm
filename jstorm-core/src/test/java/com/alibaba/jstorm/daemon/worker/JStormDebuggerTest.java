@@ -99,7 +99,7 @@ public class JStormDebuggerTest {
                 lottery++;
             }
         }
-        assertEquals(expected, lottery, expected * 0.05);
+        assertEquals(expected, lottery, expected * 0.1);
 
     }
 

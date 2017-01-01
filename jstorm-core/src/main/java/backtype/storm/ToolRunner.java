@@ -52,7 +52,6 @@ public class ToolRunner {
         try {
             if (conf == null) {
                 conf = new Config();
-                conf.putAll(Utils.readStormConfig());
             }
 
             GenericOptionsParser parser = new GenericOptionsParser(conf, args);

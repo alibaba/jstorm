@@ -1,5 +1,5 @@
 ---
-title: 应用升级
+title: 从JStorm0.9.x升级到JStorm2.1.1
 is_beta: false
 
 sub-nav-group: Upgrade_cn
@@ -21,8 +21,6 @@ layout: plain_cn
 ## 2.x 简述
 JStorm 2.x系列是一个全新的版本，它拥有0.9.x的所有feature，同时相比0.9.x系列，还有以下独有的feature：
 
-
-
 1. 更好的性能：jstorm 2.1.1对jstorm内核以及metrics进行了大符的性能优化，在我们的性能测试中，2.1.1在最差情况下，性能比0.9.8要好5%~10%。
 
 2. 非常方便自定义监控， metrics底层完全重构，从新的web ui（koala）中我们可以监控所有metrics的历史曲线数据，而不像0.9.x系列版本，只有单点数据。同时非常方便地支持用户自定义metrics，使用基本上跟0.9.x一样的自定义metrics代码，即可在koala上面看到完整的metrics曲线。
@@ -30,9 +28,6 @@ JStorm 2.x系列是一个全新的版本，它拥有0.9.x的所有feature，同�
 3. 支持日志搜索：同时支持topology级别的日志搜索（会搜索一个topology下所有worker的日志）和单文件级别的日志搜索。
 
 4. jstorm 2.1.1支持jdk 1.8。
-
-
-
 
 
 

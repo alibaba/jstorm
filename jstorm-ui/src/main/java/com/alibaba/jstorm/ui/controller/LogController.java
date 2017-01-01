@@ -27,6 +27,7 @@ import com.alibaba.jstorm.ui.model.UIWorkerMetric;
 import com.alibaba.jstorm.ui.utils.NimbusClientManager;
 import com.alibaba.jstorm.ui.utils.UIMetricUtils;
 import com.alibaba.jstorm.ui.utils.UIUtils;
+import com.alibaba.jstorm.utils.JStormServerUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
@@ -217,7 +218,7 @@ public class LogController {
         boolean _caseIgnore = !StringUtils.isBlank(caseIgnore);
         int port = UIUtils.getSupervisorPort(clusterName);
         model.addAttribute("keyword", keyword);
-        List<Future<Void>> futures = new ArrayList<>();
+        List<Future<?>> futures = new ArrayList<>();
         ConcurrentLinkedQueue<Map> result = new ConcurrentLinkedQueue<>();
 
         if (filterKeyword(model, keyword)) {
@@ -236,7 +237,7 @@ public class LogController {
                     futures.add(_backround.submit(new SearchRequest(url, metric.getHost(), metric.getPort(), dir, logFile, result)));
                 }
 
-                checkFutures(futures);
+                JStormServerUtils.checkFutures(futures);
 
                 model.addAttribute("result", result);
 
@@ -256,22 +257,6 @@ public class LogController {
         UIUtils.addTitleAttribute(model, "DeepSearch");
 
         return "deepSearch";
-    }
-
-    private void checkFutures(List<Future<Void>> futures) {
-        Iterator<Future<Void>> i = futures.iterator();
-        while (i.hasNext()) {
-            Future<Void> f = i.next();
-            if (f.isDone()) {
-                i.remove();
-            }
-            try {
-                // wait for all task done
-                f.get();
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
     }
 
     private boolean filterKeyword(ModelMap model, String keyword) {

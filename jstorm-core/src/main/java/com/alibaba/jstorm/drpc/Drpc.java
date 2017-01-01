@@ -293,7 +293,10 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
         ConcurrentLinkedQueue<DRPCRequest> reqQueue = requestQueues.get(function);
         if (reqQueue == null) {
             reqQueue = new ConcurrentLinkedQueue<DRPCRequest>();
-            requestQueues.put(function, reqQueue);
+            ConcurrentLinkedQueue<DRPCRequest> tmp = requestQueues.putIfAbsent(function, reqQueue);
+            if (tmp != null) {
+            	reqQueue = tmp;
+            }
         }
         return reqQueue;
     }

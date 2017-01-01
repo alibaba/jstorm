@@ -38,6 +38,7 @@ import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.Thrift;
 import com.alibaba.jstorm.utils.TimeUtils;
 import com.google.common.collect.Maps;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,11 +49,10 @@ import java.util.Map.Entry;
 
 /**
  * Base utility function
- * 
+ *
  * 1. base topology validation 2. add streams/inputs
- * 
+ *
  * @author yannian/Longda
- * 
  */
 public class Common {
     private final static Logger LOG = LoggerFactory.getLogger(Common.class);
@@ -60,7 +60,9 @@ public class Common {
     public static final String TOPOLOGY_MASTER_COMPONENT_ID = "__topology_master";
     public static final String TOPOLOGY_MASTER_HB_STREAM_ID = "__master_task_heartbeat";
     public static final String TOPOLOGY_MASTER_METRICS_STREAM_ID = "__master_metrics";
+    public static final String TOPOLOGY_MASTER_REGISTER_METRICS_STREAM_ID = "__master_reg_metrics";
     public static final String TOPOLOGY_MASTER_CONTROL_STREAM_ID = "__master_control_stream";
+    public static final String TOPOLOGY_MASTER_REGISTER_METRICS_RESP_STREAM_ID = "__master_reg_metrics_resp";
 
     public static final String ACKER_COMPONENT_ID = Acker.ACKER_COMPONENT_ID;
     public static final String ACKER_INIT_STREAM_ID = Acker.ACKER_INIT_STREAM_ID;
@@ -130,9 +132,6 @@ public class Common {
 
     /**
      * Convert topologyId to topologyName. TopologyId = topoloygName-counter-timeStamp
-     * 
-     * @param topologyId
-     * @return
      */
     public static String topologyIdToName(String topologyId) throws InvalidTopologyException {
         String ret = null;
@@ -150,17 +149,17 @@ public class Common {
 
     /**
      * Validation of topology name chars. Only alpha char, number, '-', '_', '.' are valid.
-     * 
-     * @return
      */
     public static boolean charValidate(String name) {
-        return name.matches("[a-zA-Z0-9-_.]+");
+        if (name.matches("[0-9]+") || name.toLowerCase().equals("null")){
+            return false;
+        }else {
+            return name.matches("[a-zA-Z0-9-_.]+");
+        }
     }
 
     /**
      * Validation of topology component chars. Only alpha char, number, '-', '_', '.', '$' are valid.
-     * 
-     * @return
      */
     public static boolean charComponentValidate(String name) {
         return name.matches("[a-zA-Z0-9-_/.$]+");
@@ -168,8 +167,7 @@ public class Common {
 
     /**
      * Check Whether ID of Bolt or spout is system_id
-     * 
-     * @param topology
+     *
      * @throws InvalidTopologyException
      */
     @SuppressWarnings("unchecked")
@@ -228,8 +226,7 @@ public class Common {
 
     /**
      * Validate the topology 1. component id name is valid or not 2. check some spout's input is empty or not
-     * 
-     * @param topology
+     *
      * @throws InvalidTopologyException
      */
     public static void validate_basic(StormTopology topology, Map<Object, Object> totalStormConf, String topologyid) throws InvalidTopologyException {
@@ -262,16 +259,13 @@ public class Common {
 
     /**
      * Generate acker's input Map<GlobalStreamId, Grouping>
-     * 
+     *
      * for spout <GlobalStreamId(spoutId, ACKER_INIT_STREAM_ID), ...> for bolt <GlobalStreamId(boltId, ACKER_ACK_STREAM_ID), ...> <GlobalStreamId(boltId,
      * ACKER_FAIL_STREAM_ID), ...>
-     * 
-     * @param topology
-     * @return
      */
     public static Map<GlobalStreamId, Grouping> topoMasterInputs(StormTopology topology) {
-        GlobalStreamId stream = null;
-        Grouping group = null;
+        GlobalStreamId stream;
+        Grouping group;
 
         Map<GlobalStreamId, Grouping> spout_inputs = new HashMap<GlobalStreamId, Grouping>();
         Map<String, SpoutSpec> spout_ids = topology.get_spouts();
@@ -287,6 +281,14 @@ public class Common {
             spout_inputs.put(stream, group);
 
             stream = new GlobalStreamId(id, TOPOLOGY_MASTER_CONTROL_STREAM_ID);
+            group = Thrift.mkAllGrouping();
+            spout_inputs.put(stream, group);
+
+            stream = new GlobalStreamId(id, TOPOLOGY_MASTER_REGISTER_METRICS_STREAM_ID);
+            group = Thrift.mkAllGrouping();
+            spout_inputs.put(stream, group);
+
+            stream = new GlobalStreamId(id, TOPOLOGY_MASTER_REGISTER_METRICS_RESP_STREAM_ID);
             group = Thrift.mkAllGrouping();
             spout_inputs.put(stream, group);
         }
@@ -306,6 +308,14 @@ public class Common {
             stream = new GlobalStreamId(id, TOPOLOGY_MASTER_CONTROL_STREAM_ID);
             group = Thrift.mkAllGrouping();
             bolt_inputs.put(stream, group);
+
+            stream = new GlobalStreamId(id, TOPOLOGY_MASTER_REGISTER_METRICS_STREAM_ID);
+            group = Thrift.mkAllGrouping();
+            bolt_inputs.put(stream, group);
+
+            stream = new GlobalStreamId(id, TOPOLOGY_MASTER_REGISTER_METRICS_RESP_STREAM_ID);
+            group = Thrift.mkAllGrouping();
+            bolt_inputs.put(stream, group);
         }
 
         Map<GlobalStreamId, Grouping> himself_inputs = new HashMap<GlobalStreamId, Grouping>();
@@ -316,7 +326,15 @@ public class Common {
         stream = new GlobalStreamId(TOPOLOGY_MASTER_COMPONENT_ID, TOPOLOGY_MASTER_METRICS_STREAM_ID);
         group = Thrift.mkAllGrouping();
         himself_inputs.put(stream, group);
-        
+
+        stream = new GlobalStreamId(TOPOLOGY_MASTER_COMPONENT_ID, TOPOLOGY_MASTER_REGISTER_METRICS_STREAM_ID);
+        group = Thrift.mkAllGrouping();
+        himself_inputs.put(stream, group);
+
+        stream = new GlobalStreamId(TOPOLOGY_MASTER_COMPONENT_ID, TOPOLOGY_MASTER_REGISTER_METRICS_RESP_STREAM_ID);
+        group = Thrift.mkAllGrouping();
+        himself_inputs.put(stream, group);
+
         Map<GlobalStreamId, Grouping> allInputs = new HashMap<GlobalStreamId, Grouping>();
         allInputs.putAll(bolt_inputs);
         allInputs.putAll(spout_inputs);
@@ -337,6 +355,10 @@ public class Common {
         outputs.put(TOPOLOGY_MASTER_METRICS_STREAM_ID, Thrift.outputFields(list));
         list = JStormUtils.mk_list(TopologyMaster.FILED_HEARBEAT_EVENT);
         outputs.put(TOPOLOGY_MASTER_HB_STREAM_ID, Thrift.outputFields(list));
+        list = JStormUtils.mk_list(TopologyMaster.FIELD_REGISTER_METRICS);
+        outputs.put(TOPOLOGY_MASTER_REGISTER_METRICS_STREAM_ID, Thrift.outputFields(list));
+        list = JStormUtils.mk_list(TopologyMaster.FIELD_REGISTER_METRICS_RESP);
+        outputs.put(TOPOLOGY_MASTER_REGISTER_METRICS_RESP_STREAM_ID, Thrift.outputFields(list));
 
         IBolt topologyMaster = new TopologyMaster();
 
@@ -356,6 +378,10 @@ public class Common {
             common.put_to_streams(TOPOLOGY_MASTER_HB_STREAM_ID, Thrift.directOutputFields(fields));
             fields = JStormUtils.mk_list(TopologyMaster.FILED_CTRL_EVENT);
             common.put_to_streams(TOPOLOGY_MASTER_CONTROL_STREAM_ID, Thrift.directOutputFields(fields));
+            fields = JStormUtils.mk_list(TopologyMaster.FIELD_REGISTER_METRICS);
+            common.put_to_streams(TOPOLOGY_MASTER_REGISTER_METRICS_STREAM_ID, Thrift.directOutputFields(fields));
+            fields = JStormUtils.mk_list(TopologyMaster.FIELD_REGISTER_METRICS_RESP);
+            common.put_to_streams(TOPOLOGY_MASTER_REGISTER_METRICS_RESP_STREAM_ID, Thrift.directOutputFields(fields));
 
             GlobalStreamId stream = new GlobalStreamId(TOPOLOGY_MASTER_COMPONENT_ID, TOPOLOGY_MASTER_CONTROL_STREAM_ID);
             common.put_to_inputs(stream, Thrift.mkDirectGrouping());
@@ -371,6 +397,10 @@ public class Common {
             common.put_to_streams(TOPOLOGY_MASTER_HB_STREAM_ID, Thrift.directOutputFields(fields));
             fields = JStormUtils.mk_list(TopologyMaster.FILED_CTRL_EVENT);
             common.put_to_streams(TOPOLOGY_MASTER_CONTROL_STREAM_ID, Thrift.directOutputFields(fields));
+            fields = JStormUtils.mk_list(TopologyMaster.FIELD_REGISTER_METRICS);
+            common.put_to_streams(TOPOLOGY_MASTER_REGISTER_METRICS_STREAM_ID, Thrift.directOutputFields(fields));
+            fields = JStormUtils.mk_list(TopologyMaster.FIELD_REGISTER_METRICS_RESP);
+            common.put_to_streams(TOPOLOGY_MASTER_REGISTER_METRICS_RESP_STREAM_ID, Thrift.directOutputFields(fields));
 
             GlobalStreamId stream = new GlobalStreamId(TOPOLOGY_MASTER_COMPONENT_ID, TOPOLOGY_MASTER_CONTROL_STREAM_ID);
             common.put_to_inputs(stream, Thrift.mkDirectGrouping());
@@ -382,12 +412,9 @@ public class Common {
 
     /**
      * Generate acker's input Map<GlobalStreamId, Grouping>
-     * 
+     *
      * for spout <GlobalStreamId(spoutId, ACKER_INIT_STREAM_ID), ...> for bolt <GlobalStreamId(boltId, ACKER_ACK_STREAM_ID), ...> <GlobalStreamId(boltId,
      * ACKER_FAIL_STREAM_ID), ...>
-     * 
-     * @param topology
-     * @return
      */
     public static Map<GlobalStreamId, Grouping> acker_inputs(StormTopology topology) {
         Map<GlobalStreamId, Grouping> spout_inputs = new HashMap<GlobalStreamId, Grouping>();
@@ -425,9 +452,6 @@ public class Common {
 
     /**
      * Add acker bolt to topology
-     * 
-     * @param num_tasks
-     * @param ret
      */
     public static void add_acker(Map stormConf, StormTopology ret) {
         String key = Config.TOPOLOGY_ACKER_EXECUTORS;
@@ -526,8 +550,6 @@ public class Common {
 
     /**
      * Add every bolt or spout one output stream <SYSTEM_STREAM_ID, >
-     * 
-     * @param topology
      */
     public static void add_system_streams(StormTopology topology) {
         for (Object obj : all_components(topology)) {
@@ -541,7 +563,7 @@ public class Common {
 
         // generate outputs
         HashMap<String, StreamInfo> outputs = new HashMap<String, StreamInfo>();
-        ArrayList<String> fields = new ArrayList<String>();
+        //ArrayList<String> fields = new ArrayList<String>();
 
         outputs.put(Constants.SYSTEM_TICK_STREAM_ID, Thrift.outputFields(JStormUtils.mk_list("rate_secs")));
         outputs.put(Constants.METRICS_TICK_STREAM_ID, Thrift.outputFields(JStormUtils.mk_list("interval")));
@@ -597,8 +619,7 @@ public class Common {
 
         add_acker(storm_conf, ret);
 
-        if(StormConfig.local_mode(storm_conf) == false)
-            addTopologyMaster(storm_conf, ret);
+        addTopologyMaster(storm_conf, ret);
 
         add_metrics_component(ret);
 
@@ -609,11 +630,6 @@ public class Common {
 
     /**
      * get component configuration
-     * 
-     * @param storm_conf
-     * @param topology_context
-     * @param component_id
-     * @return
      */
     @SuppressWarnings("unchecked")
     public static Map component_conf(Map storm_conf, TopologyContext topology_context, String component_id) {
@@ -646,10 +662,6 @@ public class Common {
 
     /**
      * get object of component_id
-     * 
-     * @param topology
-     * @param component_id
-     * @return
      */
     public static Object get_task_object(StormTopology topology, String component_id, URLClassLoader loader) {
         Map<String, SpoutSpec> spouts = topology.get_spouts();
@@ -690,9 +702,6 @@ public class Common {
 
     /**
      * get current task's output <Stream_id, <componentId, MkGrouper>>
-     * 
-     * @param topology_context
-     * @return
      */
     public static Map<String, Map<String, MkGrouper>> outbound_components(TopologyContext topology_context, WorkerData workerData) {
         Map<String, Map<String, MkGrouper>> rr = new HashMap<String, Map<String, MkGrouper>>();
@@ -718,10 +727,10 @@ public class Common {
                 // ATTENTION: If topology set one component parallelism as 0
                 // so we don't need send tuple to it
                 if (outTasks.size() > 0) {
-                    MkGrouper grouper = new MkGrouper(topology_context, out_fields, tgrouping, outTasks, stream_id, workerData);
+                    MkGrouper grouper = new MkGrouper(topology_context, out_fields, tgrouping, component, stream_id, workerData);
                     componentGrouper.put(component, grouper);
                 }
-                LOG.info("outbound_components, outTasks=" + outTasks + " for task-" + topology_context.getThisTaskId());
+                LOG.info("outbound_components, {}-{} for task-{} on {}", component, outTasks, topology_context.getThisTaskId(), stream_id);
             }
             if (componentGrouper.size() > 0) {
                 rr.put(stream_id, componentGrouper);
@@ -732,9 +741,6 @@ public class Common {
 
     /**
      * get the component's configuration
-     * 
-     * @param topology_context
-     * @param task_id
      */
     public static Map getComponentMap(DefaultTopologyAssignContext context, Integer task) {
         String componentName = context.getTaskToComponent().get(task);
@@ -749,8 +755,7 @@ public class Common {
 
     /**
      * get all bolts' inputs and spouts' outputs <Bolt_name, <Input_name>> <Spout_name, <Output_name>>
-     * 
-     * @param topology_context
+     *
      * @return all bolts' inputs and spouts' outputs
      */
     public static Map<String, Set<String>> buildSpoutOutoputAndBoltInputMap(DefaultTopologyAssignContext context) {
@@ -804,7 +809,7 @@ public class Common {
         return ret;
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public static Integer mkTaskMaker(Map<Object, Object> stormConf, Map<String, ?> cidSpec, Map<Integer, TaskInfo> rtn, Integer cnt) {
         if (cidSpec == null) {
             LOG.warn("Component map is empty");
@@ -812,7 +817,7 @@ public class Common {
         }
 
         Set<?> entrySet = cidSpec.entrySet();
-        for (Iterator<?> it = entrySet.iterator(); it.hasNext();) {
+        for (Iterator<?> it = entrySet.iterator(); it.hasNext(); ) {
             Entry entry = (Entry) it.next();
             Object obj = entry.getValue();
 
@@ -871,5 +876,21 @@ public class Common {
             return true;
         }
         return false;
+    }
+
+    public static boolean confValidate(Map userConf, Map clusterConf) throws TException{
+        Set<String> validateConfig = new HashSet<>();
+        validateConfig.add(Config.STORM_LOCAL_DIR);
+
+        if (userConf != null && clusterConf != null){
+            for (String config : validateConfig) {
+                Object userObject = userConf.get(config);
+                Object clusterObject = clusterConf.get(config);
+                if (userObject != null && clusterObject != null && !userObject.equals(clusterObject)) {
+                    throw new TException("invalid userConf at " + config);
+                }
+            }
+        }
+        return true;
     }
 }

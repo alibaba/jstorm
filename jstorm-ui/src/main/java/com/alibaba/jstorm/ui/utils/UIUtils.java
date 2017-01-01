@@ -124,6 +124,8 @@ public class UIUtils {
             flushClusterConfig();
             //flush cluster cache
             flushClusterCache();
+        }else {
+            LOG.error("can not find UI configuration file: {}", confPath);
         }
         return uiConfig;
     }

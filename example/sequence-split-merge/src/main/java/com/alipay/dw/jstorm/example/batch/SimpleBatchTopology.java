@@ -17,66 +17,53 @@
  */
 package com.alipay.dw.jstorm.example.batch;
 
-import backtype.storm.LocalCluster;
-import backtype.storm.StormSubmitter;
-import backtype.storm.generated.AlreadyAliveException;
-import backtype.storm.generated.InvalidTopologyException;
-import backtype.storm.generated.TopologyAssignException;
+import com.alibaba.jstorm.batch.BatchTopologyBuilder;
+import com.alibaba.starter.utils.Assert;
+import com.alibaba.starter.utils.JStormHelper;
+import com.alibaba.jstorm.utils.JStormUtils;
+
+import backtype.storm.Config;
 import backtype.storm.topology.BoltDeclarer;
 import backtype.storm.topology.TopologyBuilder;
-import com.alibaba.jstorm.batch.BatchTopologyBuilder;
-import com.alibaba.jstorm.cluster.StormConfig;
-import com.alibaba.jstorm.utils.JStormUtils;
-import com.alibaba.jstorm.utils.LoadConf;
-import java.util.Map;
 
 public class SimpleBatchTopology {
-    private static String topologyName = "Batch";
-    private static Map conf;
-
+    
     public static TopologyBuilder SetBuilder() {
         BatchTopologyBuilder topologyBuilder = new BatchTopologyBuilder(topologyName);
-
+        
         int spoutParallel = JStormUtils.parseInt(conf.get("topology.spout.parallel"), 1);
-
-        BoltDeclarer boltDeclarer = topologyBuilder.setSpout("Spout",
-                new SimpleSpout(), spoutParallel);
-
+        
+        BoltDeclarer boltDeclarer = topologyBuilder.setSpout("Spout", new SimpleSpout(), spoutParallel);
+        
         int boltParallel = JStormUtils.parseInt(conf.get("topology.bolt.parallel"), 2);
         topologyBuilder.setBolt("Bolt", new SimpleBolt(), boltParallel).shuffleGrouping("Spout");
-
+        
         return topologyBuilder.getTopologyBuilder();
     }
-
-    public static void SetLocalTopology() throws Exception {
-        TopologyBuilder builder = SetBuilder();
-
-        LocalCluster cluster = new LocalCluster();
-        cluster.submitTopology(topologyName, conf, builder.createTopology());
-
-        Thread.sleep(60000);
-
-        cluster.shutdown();
+    
+    static boolean isLocal = true;
+    static Config  conf    = JStormHelper.getConfig(null);
+    static String  topologyName;
+    
+    public static void test() {
+        
+        String[] className = Thread.currentThread().getStackTrace()[1].getClassName().split("\\.");
+        topologyName = className[className.length - 1];
+        
+        try {
+            JStormHelper.runTopology(SetBuilder().createTopology(), topologyName, conf, 100,
+                    new JStormHelper.CheckAckedFail(conf), isLocal);
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            Assert.fail("Failed");
+        }
     }
-
-    public static void SetRemoteTopology() throws AlreadyAliveException,
-            InvalidTopologyException, TopologyAssignException {
-        TopologyBuilder builder = SetBuilder();
-        StormSubmitter.submitTopology(topologyName, conf, builder.createTopology());
-    }
-
+    
     public static void main(String[] args) throws Exception {
-        if (args.length < 1) {
-            System.err.println("Please input parameters topology.yaml");
-            System.exit(-1);
-        }
-
-        conf = LoadConf.LoadYaml(args[0]);
-        boolean isLocal = StormConfig.local_mode(conf);
-        if (isLocal) {
-            SetLocalTopology();
-        } else {
-            SetRemoteTopology();
-        }
+        
+        conf = JStormHelper.getConfig(args);
+        isLocal = false;
+        test();
     }
 }

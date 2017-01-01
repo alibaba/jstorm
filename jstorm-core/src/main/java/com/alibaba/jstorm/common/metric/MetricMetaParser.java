@@ -1,18 +1,19 @@
 package com.alibaba.jstorm.common.metric;
 
-import com.alibaba.jstorm.daemon.nimbus.TopologyMetricsRunnable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.alibaba.jstorm.daemon.nimbus.metric.ClusterMetricsContext;
 import com.alibaba.jstorm.metric.MetaType;
 import com.alibaba.jstorm.metric.MetricType;
 import com.alibaba.jstorm.metric.MetricUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author wange
  * @since 15/7/14
  */
 public class MetricMetaParser {
-    private static final Logger logger = LoggerFactory.getLogger(TopologyMetricsRunnable.class);
+    private static final Logger logger = LoggerFactory.getLogger(ClusterMetricsContext.class);
 
     public static MetricMeta fromMetricName(String name) {
         try {

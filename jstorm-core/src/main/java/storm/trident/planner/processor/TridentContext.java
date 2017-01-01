@@ -31,9 +31,10 @@ public class TridentContext {
     String outStreamId;
     int stateIndex;
     BatchOutputCollector collector;
-
-    public TridentContext(Fields selfFields, List<Factory> parentFactories, List<String> parentStreams, List<TupleReceiver> receivers, String outStreamId,
-            int stateIndex, BatchOutputCollector collector) {
+    
+    public TridentContext(Fields selfFields, List<Factory> parentFactories,
+            List<String> parentStreams, List<TupleReceiver> receivers, 
+            String outStreamId, int stateIndex, BatchOutputCollector collector) {
         this.selfFields = selfFields;
         this.parentFactories = parentFactories;
         this.parentStreams = parentStreams;

@@ -17,20 +17,16 @@
  */
 package com.alibaba.jstorm.message.netty;
 
-import backtype.storm.Config;
-import backtype.storm.messaging.ControlMessage;
-import backtype.storm.messaging.IConnection;
-import backtype.storm.messaging.TaskMessage;
-import backtype.storm.utils.DisruptorQueue;
-import backtype.storm.utils.Utils;
-
-import com.alibaba.jstorm.client.ConfigExtension;
-import com.alibaba.jstorm.common.metric.*;
-import com.alibaba.jstorm.metric.*;
-import com.alibaba.jstorm.utils.JStormServerUtils;
-import com.alibaba.jstorm.utils.JStormUtils;
-import com.alibaba.jstorm.utils.NetWorkUtils;
-import com.codahale.metrics.health.HealthCheck;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.Channel;
@@ -40,26 +36,37 @@ import org.jboss.netty.channel.ChannelFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
+import com.alibaba.jstorm.client.ConfigExtension;
+import com.alibaba.jstorm.common.metric.AsmGauge;
+import com.alibaba.jstorm.common.metric.AsmHistogram;
+import com.alibaba.jstorm.common.metric.AsmMeter;
+import com.alibaba.jstorm.common.metric.AsmMetric;
+import com.alibaba.jstorm.common.metric.QueueGauge;
+import com.alibaba.jstorm.metric.JStormHealthCheck;
+import com.alibaba.jstorm.metric.JStormMetrics;
+import com.alibaba.jstorm.metric.MetricDef;
+import com.alibaba.jstorm.metric.MetricType;
+import com.alibaba.jstorm.metric.MetricUtils;
+import com.alibaba.jstorm.utils.JStormServerUtils;
+import com.alibaba.jstorm.utils.JStormUtils;
+import com.alibaba.jstorm.utils.NetWorkUtils;
+import com.codahale.metrics.health.HealthCheck;
+
+import backtype.storm.Config;
+import backtype.storm.messaging.IConnection;
+import backtype.storm.messaging.NettyMessage;
+import backtype.storm.messaging.TaskMessage;
+import backtype.storm.utils.DisruptorQueue;
+import backtype.storm.utils.Utils;
 
 class NettyClient implements IConnection {
     private static final Logger LOG = LoggerFactory.getLogger(NettyClient.class);
 
     protected String name;
 
-    protected final int max_retries;
-    protected final int base_sleep_ms;
-    protected final int max_sleep_ms;
+    protected final int maxRetries;
+    protected final int baseSleepMs;
+    protected final int maxSleepMs;
     protected final long timeoutMs;
     protected final int MAX_SEND_PENDING;
 
@@ -67,26 +74,21 @@ class NettyClient implements IConnection {
 
     protected AtomicReference<Channel> channelRef;
     protected ClientBootstrap bootstrap;
-    protected final InetSocketAddress remote_addr;
+    protected final InetSocketAddress remoteAddr;
     protected final ChannelFactory factory;
 
-    protected final int buffer_size;
-    protected final AtomicBoolean being_closed;
+    protected final int bufferSize;
+    protected final AtomicBoolean beingClosed;
 
     protected AtomicLong pendings;
-    protected int messageBatchSize;
-    protected AtomicReference<MessageBatch> messageBatchRef;
-
-    protected ScheduledExecutorService scheduler;
+    protected int messageBatchSize; 
+    protected MessageBuffer messageBuffer;
+    protected Object writeLock;
 
     protected String address;
     // doesn't use timer, due to competition
     protected AsmHistogram sendTimer;
     protected AsmMeter sendSpeed;
-    protected static AsmMeter totalSendSpeed = (AsmMeter) JStormMetrics.registerWorkerMetric(
-            MetricUtils.workerMetricName(MetricDef.NETTY_CLI_SEND_SPEED, MetricType.METER), new AsmMeter());
-    protected AsmHistogram batchSizeWorkerHistogram = (AsmHistogram) JStormMetrics.registerWorkerMetric(
-            MetricUtils.workerMetricName(MetricDef.NETTY_CLI_BATCH_SIZE, MetricType.HISTOGRAM), new AsmHistogram());
 
     protected ReconnectRunnable reconnector;
     protected ChannelFactory clientChannelFactory;
@@ -105,16 +107,19 @@ class NettyClient implements IConnection {
 
     protected boolean enableNettyMetrics;
 
+    // when batch buffer size is more than BATCH_THREASHOLD_WARN
+    // it will block Drainer thread
+    protected long BATCH_THREASHOLD_WARN;
+
     @SuppressWarnings("rawtypes")
-    NettyClient(Map storm_conf, ChannelFactory factory, ScheduledExecutorService scheduler, String host, int port, ReconnectRunnable reconnector) {
+    NettyClient(Map storm_conf, ChannelFactory factory, String host, int port, ReconnectRunnable reconnector) {
         this.stormConf = storm_conf;
         this.factory = factory;
-        this.scheduler = scheduler;
         this.reconnector = reconnector;
 
         retries = new AtomicInteger(0);
         channelRef = new AtomicReference<Channel>(null);
-        being_closed = new AtomicBoolean(false);
+        beingClosed = new AtomicBoolean(false);
         pendings = new AtomicLong(0);
 
         nettyConnection = new NettyConnection();
@@ -122,30 +127,35 @@ class NettyClient implements IConnection {
         nettyConnection.setServerPort(host, port);
 
         // Configure
-        buffer_size = Utils.getInt(storm_conf.get(Config.STORM_MESSAGING_NETTY_BUFFER_SIZE));
-        max_retries = Math.min(30, Utils.getInt(storm_conf.get(Config.STORM_MESSAGING_NETTY_MAX_RETRIES)));
-        base_sleep_ms = Utils.getInt(storm_conf.get(Config.STORM_MESSAGING_NETTY_MIN_SLEEP_MS));
-        max_sleep_ms = Utils.getInt(storm_conf.get(Config.STORM_MESSAGING_NETTY_MAX_SLEEP_MS));
+        bufferSize = Utils.getInt(storm_conf.get(Config.STORM_MESSAGING_NETTY_BUFFER_SIZE));
+        maxRetries = Math.min(30, Utils.getInt(storm_conf.get(Config.STORM_MESSAGING_NETTY_MAX_RETRIES)));
+        baseSleepMs = Utils.getInt(storm_conf.get(Config.STORM_MESSAGING_NETTY_MIN_SLEEP_MS));
+        maxSleepMs = Utils.getInt(storm_conf.get(Config.STORM_MESSAGING_NETTY_MAX_SLEEP_MS));
 
         timeoutMs = ConfigExtension.getNettyPendingBufferTimeout(storm_conf);
         MAX_SEND_PENDING = (int) ConfigExtension.getNettyMaxSendPending(storm_conf);
 
         this.messageBatchSize = Utils.getInt(storm_conf.get(Config.STORM_NETTY_MESSAGE_BATCH_SIZE), 262144);
-        messageBatchRef = new AtomicReference<MessageBatch>();
+        this.messageBuffer = new MessageBuffer(messageBatchSize);
+
+        this.writeLock = new Object();
 
         // Start the connection attempt.
-        remote_addr = new InetSocketAddress(host, port);
-        name = remote_addr.toString();
+        remoteAddr = new InetSocketAddress(host, port);
+        name = remoteAddr.toString();
         connectMyself = isConnectMyself(stormConf, host, port);
 
         address = JStormServerUtils.getName(host, port);
 
         this.enableNettyMetrics = MetricUtils.isEnableNettyMetrics(storm_conf);
+        NettyMetricInstance.register();
         LOG.info("* enable netty metrics: {}", this.enableNettyMetrics);
         if (!connectMyself) {
             registerMetrics();
         }
         closingChannel = new HashSet<Channel>();
+
+        BATCH_THREASHOLD_WARN = ConfigExtension.getNettyBufferThresholdSize(stormConf);
     }
 
     public void registerMetrics() {
@@ -157,7 +167,7 @@ class NettyClient implements IConnection {
             sendSpeed = (AsmMeter) JStormMetrics.registerNettyMetric(MetricUtils.nettyMetricName(
                     AsmMetric.mkName(MetricDef.NETTY_CLI_SEND_SPEED, nettyConnection), MetricType.METER), new AsmMeter());
 
-            CacheGaugeHealthCheck cacheGauge = new CacheGaugeHealthCheck(messageBatchRef,
+            CacheGaugeHealthCheck cacheGauge = new CacheGaugeHealthCheck(messageBuffer,
                     MetricDef.NETTY_CLI_CACHE_SIZE + ":" + nettyConnection.toString());
             JStormMetrics.registerNettyMetric(MetricUtils
                             .nettyMetricName(AsmMetric.mkName(MetricDef.NETTY_CLI_CACHE_SIZE, nettyConnection), MetricType.GAUGE),
@@ -197,8 +207,8 @@ class NettyClient implements IConnection {
     public void start() {
         bootstrap = new ClientBootstrap(clientChannelFactory);
         bootstrap.setOption("tcpNoDelay", true);
-        bootstrap.setOption("reuserAddress", true);
-        bootstrap.setOption("sendBufferSize", buffer_size);
+        bootstrap.setOption("reuseAddress", true);
+        bootstrap.setOption("sendBufferSize", bufferSize);
         bootstrap.setOption("keepAlive", true);
 
         // Set up the pipeline factory.
@@ -219,9 +229,13 @@ class NettyClient implements IConnection {
     }
 
     public void notifyInterestChanged(Channel channel) {
-        if (channel.isWritable()) {
-            MessageBatch messageBatch = messageBatchRef.getAndSet(null);
-            flushRequest(channel, messageBatch);
+        synchronized (writeLock) {
+            if (channel.isWritable()) {
+                MessageBatch messageBatch = messageBuffer.drain();
+                if (messageBatch != null) {
+                    flushRequest(channel, messageBatch);
+                }
+            }
         }
     }
 
@@ -250,7 +264,7 @@ class NettyClient implements IConnection {
 
         long sleepMs = getSleepTimeMs();
         LOG.info("Reconnect ... [{}], {}, sleep {}ms", retries.get(), name, sleepMs);
-        ChannelFuture future = bootstrap.connect(remote_addr);
+        ChannelFuture future = bootstrap.connect(remoteAddr);
         future.addListener(new ChannelFutureListener() {
             public void operationComplete(ChannelFuture future) throws Exception {
                 isConnecting.set(false);
@@ -260,6 +274,17 @@ class NettyClient implements IConnection {
                     LOG.info("Connection established, channel = :{}", channel);
                     setChannel(channel);
                     // handleResponse();
+                    BATCH_THREASHOLD_WARN = ConfigExtension.getNettyBufferThresholdSize(stormConf);
+                    
+                    // Check if any pending message
+                    synchronized (writeLock) {
+                        if (channel != null && messageBuffer.size() > 0) {
+                            MessageBatch messageBatch = messageBuffer.drain();
+                            flushRequest(channel, messageBatch);
+                        } else {
+                            LOG.warn("Failed to flush pending message after reconnecting, channel={}, messageBuffer.size={}", channel, messageBuffer.size());
+                        }
+                    }
                 } else {
                     LOG.info("Failed to reconnect ... [{}], {}, channel = {}, cause = {}", retries.get(), name, channel, future.getCause());
                     reconnect();
@@ -277,7 +302,7 @@ class NettyClient implements IConnection {
      * # of milliseconds to wait per exponential back-off policy
      */
     private int getSleepTimeMs() {
-        int sleepMs = base_sleep_ms * retries.incrementAndGet();
+        int sleepMs = baseSleepMs * retries.incrementAndGet();
         if (sleepMs > 1000) {
             sleepMs = 1000;
         }
@@ -311,41 +336,20 @@ class NettyClient implements IConnection {
         return channel;
     }
 
-    protected synchronized void flushRequest(Channel channel, final ControlMessage request) {
-        if (request == null) {
-            return;
-        }
-
-        ChannelFuture future = channel.write(request);
-        future.addListener(new ChannelFutureListener() {
-            public void operationComplete(ChannelFuture future) throws Exception {
-                if (!future.isSuccess()) {
-                    Channel channel = future.getChannel();
-                    if (isClosed() == false) {
-                        LOG.info("Failed to send request to " + name + ": " + channel.toString() + ":", future.getCause());
-                    }
-
-                    if (null != channel) {
-                        exceptionChannel(channel);
-                    }
-                } else {
-                    //LOG.debug("Control message was sent successfully. " + request.toString());
-                }
-            }
-        });
-    }
-
-    protected synchronized void flushRequest(Channel channel, final MessageBatch requests) {
+    protected void flushRequest(Channel channel, final NettyMessage requests) {
         if (requests == null || requests.isEmpty())
             return;
 
-        Long batchSize = (long) requests.getEncoded_length();
+        Long batchSize = (long) requests.getEncodedLength();
         pendings.incrementAndGet();
         if (this.enableNettyMetrics && sendSpeed != null) {
             sendSpeed.update(batchSize);
         }
-        totalSendSpeed.update(batchSize);
-        batchSizeWorkerHistogram.update(batchSize);
+        NettyMetricInstance.totalSendSpeed.update(batchSize);
+        if (MetricUtils.metricAccurateCal) {
+            NettyMetricInstance.batchSizeWorkerHistogram.update(batchSize);
+        }
+
 
         ChannelFuture future = channel.write(requests);
         future.addListener(new ChannelFutureListener() {
@@ -361,7 +365,7 @@ class NettyClient implements IConnection {
                         exceptionChannel(channel);
                     }
                 } else {
-                    // LOG.debug("{} request(s) sent", requests.size());
+                    // LOG.debug("{} request(s) sent, size={}", requests.size(), requests.getEncodedLength());
                 }
             }
         });
@@ -391,7 +395,7 @@ class NettyClient implements IConnection {
      */
     public void close() {
         LOG.info("Close netty connection to {}", name());
-        if (!being_closed.compareAndSet(false, true)) {
+        if (!beingClosed.compareAndSet(false, true)) {
             LOG.info("Netty client has been closed.");
             return;
         }
@@ -404,11 +408,6 @@ class NettyClient implements IConnection {
         if (channel == null) {
             LOG.info("Channel {} has been closed before", name());
             return;
-        }
-
-        if (channel.isWritable()) {
-            MessageBatch toBeFlushed = messageBatchRef.getAndSet(null);
-            flushRequest(channel, toBeFlushed);
         }
 
         // wait for pendings to exit
@@ -472,6 +471,10 @@ class NettyClient implements IConnection {
         });
     }
 
+    void connectChannel(Channel channel) {
+    	
+    }
+
     void disconnectChannel(Channel channel) {
         if (isClosed()) {
             return;
@@ -510,41 +513,31 @@ class NettyClient implements IConnection {
 
             closeChannel(oldChannel);
             LOG.info("Successfully close old channel " + oldLocalAddres);
-            // scheduler.schedule(new Runnable() {
-            //
-            // @Override
-            // public void run() {
-            //
-            // }
-            // }, 10, TimeUnit.SECONDS);
-
-            // @@@ todo
-            // pendings.set(0);
         }
     }
 
     @Override
     public boolean isClosed() {
-        return being_closed.get();
+        return beingClosed.get();
     }
 
     public AtomicBoolean getBeing_closed() {
-        return being_closed;
+        return beingClosed;
     }
 
     public int getBuffer_size() {
-        return buffer_size;
+        return bufferSize;
     }
 
     public SocketAddress getRemoteAddr() {
-        return remote_addr;
+        return remoteAddr;
     }
 
     public String name() {
         return name;
     }
 
-    public void handleResponse() {
+    public void handleResponse(Channel channel , Object msg) {
         LOG.warn("Should be overload");
     }
 
@@ -559,31 +552,25 @@ class NettyClient implements IConnection {
     }
 
     @Override
-    public void enqueue(TaskMessage message) {
+    public void enqueue(TaskMessage message, Channel channel) {
         throw new UnsupportedOperationException("recvTask: Client connection should not receive any messages");
     }
 
     public static class CacheGaugeHealthCheck extends HealthCheck implements com.codahale.metrics.Gauge<Double> {
 
-        AtomicReference<MessageBatch> messageBatchRef;
+        MessageBuffer messageBuffer;
         String name;
         Result healthy;
 
-        public CacheGaugeHealthCheck(AtomicReference<MessageBatch> messageBatchRef, String name) {
-            this.messageBatchRef = messageBatchRef;
+        public CacheGaugeHealthCheck(MessageBuffer messageBuffer, String name) {
+            this.messageBuffer = messageBuffer;
             this.name = name;
             this.healthy = HealthCheck.Result.healthy();
         }
 
         @Override
         public Double getValue() {
-            MessageBatch messageBatch = messageBatchRef.get();
-            if (messageBatch == null) {
-                return 0.0;
-            } else {
-                return (double) messageBatch.getEncoded_length();
-            }
-
+            return (double) messageBuffer.size();
         }
 
         @Override
@@ -600,6 +587,6 @@ class NettyClient implements IConnection {
 
     @Override
     public boolean available() {
-        return (isChannelReady() != null);
+        return (isChannelReady() != null && pendings.get() < MAX_SEND_PENDING);
     }
 }

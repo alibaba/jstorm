@@ -15,7 +15,79 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package backtype.storm.utils;
+
+import com.google.common.collect.Lists;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintStream;
+import java.io.RandomAccessFile;
+import java.lang.reflect.Constructor;
+import java.net.URLClassLoader;
+import java.net.URLDecoder;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.WritableByteChannel;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Properties;
+import java.util.TreeMap;
+import java.util.UUID;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.io.input.ClassLoaderObjectInputStream;
+import org.apache.commons.lang.StringUtils;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.thrift.TBase;
+import org.apache.thrift.TDeserializer;
+import org.apache.thrift.TException;
+import org.apache.thrift.TSerializer;
+import org.apache.zookeeper.ZooDefs;
+import org.apache.zookeeper.data.ACL;
+import org.apache.zookeeper.data.Id;
+import org.json.simple.JSONValue;
+import org.json.simple.parser.ParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.yaml.snakeyaml.Yaml;
+
+import com.alibaba.jstorm.client.ConfigExtension;
+import com.alibaba.jstorm.utils.JStormUtils;
+import com.alibaba.jstorm.utils.LoadConf;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import backtype.storm.Config;
 import backtype.storm.generated.ComponentCommon;
@@ -25,41 +97,16 @@ import backtype.storm.serialization.DefaultSerializationDelegate;
 import backtype.storm.serialization.SerializationDelegate;
 import clojure.lang.IFn;
 import clojure.lang.RT;
-import com.alibaba.jstorm.client.ConfigExtension;
-import com.alibaba.jstorm.utils.JStormUtils;
-import com.alibaba.jstorm.utils.LoadConf;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import org.apache.commons.io.input.ClassLoaderObjectInputStream;
-import org.apache.commons.lang.StringUtils;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.CuratorFrameworkFactory;
-import org.apache.thrift.TException;
-import org.apache.zookeeper.ZooDefs;
-import org.apache.zookeeper.data.ACL;
-import org.apache.zookeeper.data.Id;
-import org.json.simple.JSONValue;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.Yaml;
 
-import java.io.*;
-import java.lang.reflect.Constructor;
-import java.net.URLClassLoader;
-import java.net.URLDecoder;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.WritableByteChannel;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
-
+@SuppressWarnings("unused,unchecked")
 public class Utils {
     private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
     public static final String DEFAULT_STREAM_ID = "default";
+    private static ThreadLocal<TSerializer> threadSer = new ThreadLocal<>();
+    private static ThreadLocal<TDeserializer> threadDes = new ThreadLocal<>();
 
     private static SerializationDelegate serializationDelegate;
+    private static ClassLoader cl = ClassLoader.getSystemClassLoader();
 
     static {
         Map conf = readStormConfig();
@@ -79,7 +126,6 @@ public class Utils {
         try {
             Class c = Class.forName(klass);
             Constructor[] constructors = c.getConstructors();
-            boolean found = false;
             Constructor con = null;
             for (Constructor cons : constructors) {
                 if (cons.getParameterTypes().length == params.length) {
@@ -89,7 +135,7 @@ public class Utils {
             }
 
             if (con == null) {
-                throw new RuntimeException("Cound not found the corresponding constructor, params=" + params.toString());
+                throw new RuntimeException("Cound not found the corresponding constructor, params=" + JStormUtils.mk_list(params));
             } else {
                 if (con.getParameterTypes().length == 0) {
                     return c.newInstance();
@@ -104,9 +150,6 @@ public class Utils {
 
     /**
      * Go thrift gzip serializer
-     * 
-     * @param obj
-     * @return
      */
     public static byte[] serialize(Object obj) {
         /**
@@ -118,8 +161,6 @@ public class Utils {
 
     /**
      * Go thrift gzip serializer
-     * 
-     * @return
      */
     public static <T> T deserialize(byte[] serialized, Class<T> clazz) {
         /**
@@ -127,6 +168,18 @@ public class Utils {
          */
         // return serializationDelegate.deserialize(serialized, clazz);
         return (T) javaDeserialize(serialized);
+    }
+
+
+    public static <T> T thriftDeserialize(Class c, byte[] b, int offset, int length) {
+        try {
+            T ret = (T) c.newInstance();
+            TDeserializer des = getDes();
+            des.deserialize((TBase) ret, b, offset, length);
+            return ret;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static byte[] javaSerialize(Object obj) {
@@ -144,6 +197,18 @@ public class Utils {
         }
     }
 
+    public static Object trySerialize(Object obj) {
+        if (obj == null) {
+            return null;
+        }
+        try {
+            return serialize(obj);
+        } catch (Exception e) {
+            LOG.info("Failed to serialize. cause={}", e.getCause());
+            return null;
+        }
+    }
+
     public static Object maybe_deserialize(byte[] data) {
         if (data == null || data.length == 0) {
             return null;
@@ -151,16 +216,13 @@ public class Utils {
         try {
             return javaDeserializeWithCL(data, null);
         } catch (Exception e) {
+            LOG.info("Failed to deserialize. cause={}", e.getCause());
             return null;
         }
     }
 
     /**
      * Deserialized with ClassLoader
-     * 
-     * @param serialized
-     * @param loader
-     * @return
      */
     public static Object javaDeserializeWithCL(byte[] serialized, URLClassLoader loader) {
         try {
@@ -176,10 +238,8 @@ public class Utils {
                 ois.close();
             }
             return ret;
-        } catch (IOException ioe) {
+        } catch (IOException | ClassNotFoundException ioe) {
             throw new RuntimeException(ioe);
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
         }
     }
 
@@ -207,9 +267,7 @@ public class Utils {
 
     public static String toPrettyJsonString(Object obj) {
         Gson gson2 = new GsonBuilder().setPrettyPrinting().create();
-        String ret = gson2.toJson(obj);
-
-        return ret;
+        return gson2.toJson(obj);
     }
 
     public static byte[] gzip(byte[] data) {
@@ -230,7 +288,7 @@ public class Utils {
             ByteArrayInputStream bis = new ByteArrayInputStream(data);
             GZIPInputStream in = new GZIPInputStream(bis);
             byte[] buffer = new byte[1024];
-            int len = 0;
+            int len;
             while ((len = in.read(buffer)) >= 0) {
                 bos.write(buffer, 0, len);
             }
@@ -242,16 +300,40 @@ public class Utils {
         }
     }
 
+    public static byte[] toCompressedJsonConf(Map<String, Object> stormConf) {
+        try {
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            OutputStreamWriter out = new OutputStreamWriter(new GZIPOutputStream(bos));
+            JSONValue.writeJSONString(stormConf, out);
+            out.close();
+            return bos.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static Map<String, Object> fromCompressedJsonConf(byte[] serialized) {
+        try {
+            ByteArrayInputStream bis = new ByteArrayInputStream(serialized);
+            InputStreamReader in = new InputStreamReader(new GZIPInputStream(bis));
+            Object ret = JSONValue.parseWithException(in);
+            in.close();
+            return (Map<String, Object>) ret;
+        } catch (IOException | ParseException ioe) {
+            throw new RuntimeException(ioe);
+        }
+    }
+
     public static <T> String join(Iterable<T> coll, String sep) {
         Iterator<T> it = coll.iterator();
-        String ret = "";
+        StringBuilder ret = new StringBuilder();
         while (it.hasNext()) {
-            ret = ret + it.next();
+            ret.append(it.next());
             if (it.hasNext()) {
-                ret = ret + sep;
+                ret.append(sep);
             }
         }
-        return ret;
+        return ret.toString();
     }
 
     public static void sleep(long millis) {
@@ -266,8 +348,15 @@ public class Utils {
         return LoadConf.findAndReadYaml(name, true, false);
     }
 
+    private static Map DEFAULT_CONF = null;
     public static Map readDefaultConfig() {
-        return LoadConf.findAndReadYaml("defaults.yaml", true, false);
+        synchronized(Utils.class) {
+            if (DEFAULT_CONF == null) {
+                DEFAULT_CONF = LoadConf.findAndReadYaml("defaults.yaml", true, false);
+            }
+        }
+        
+        return DEFAULT_CONF;
     }
 
     public static Map readCommandLineOpts() {
@@ -287,17 +376,26 @@ public class Utils {
                 }
             }
         }
-        
+
         String excludeJars = System.getProperty("exclude.jars");
         if (excludeJars != null) {
-        	ret.put("exclude.jars", excludeJars);
+            ret.put("exclude.jars", excludeJars);
         }
 
+        /*
+         * Trident and old transaction implementation do not work on batch mode. So, for the relative topology builder
+         */
         String batchOptions = System.getProperty(ConfigExtension.TASK_BATCH_TUPLE);
-        if (StringUtils.isBlank(batchOptions) == false) {
+        if (!StringUtils.isBlank(batchOptions)) {
             boolean isBatched = JStormUtils.parseBoolean(batchOptions, true);
             ConfigExtension.setTaskBatchTuple(ret, isBatched);
             System.out.println(ConfigExtension.TASK_BATCH_TUPLE + " is " + batchOptions);
+        }
+        String ackerOptions = System.getProperty(Config.TOPOLOGY_ACKER_EXECUTORS);
+        if (!StringUtils.isBlank(ackerOptions)) {
+            Integer ackerNum = JStormUtils.parseInt(ackerOptions, 0);
+            ret.put(Config.TOPOLOGY_ACKER_EXECUTORS, ackerNum);
+            System.out.println(Config.TOPOLOGY_ACKER_EXECUTORS + " is " + ackerNum);
         }
         return ret;
     }
@@ -306,19 +404,19 @@ public class Utils {
         String stormHome = System.getProperty("jstorm.home");
         boolean isEmpty = StringUtils.isBlank(stormHome);
 
-        Map<Object, Object> replaceMap = new HashMap<Object, Object>();
+        Map<Object, Object> replaceMap = new HashMap<>();
 
         for (Entry entry : conf.entrySet()) {
             Object key = entry.getKey();
             Object value = entry.getValue();
 
             if (value instanceof String) {
-                if (StringUtils.isBlank((String) value) == true) {
+                if (StringUtils.isBlank((String) value)) {
                     continue;
                 }
 
                 String str = (String) value;
-                if (isEmpty == true) {
+                if (isEmpty) {
                     // replace %JSTORM_HOME% as current directory
                     str = str.replace("%JSTORM_HOME%", ".");
                 } else {
@@ -334,7 +432,7 @@ public class Utils {
 
     public static Map loadDefinedConf(String confFile) {
         File file = new File(confFile);
-        if (file.exists() == false) {
+        if (!file.exists()) {
             return LoadConf.findAndReadYaml(confFile, true, false);
         }
 
@@ -355,7 +453,7 @@ public class Utils {
         Map ret = readDefaultConfig();
         String confFile = System.getProperty("storm.conf.file");
         Map storm;
-        if (StringUtils.isBlank(confFile) == true) {
+        if (StringUtils.isBlank(confFile)) {
             storm = LoadConf.findAndReadYaml("storm.yaml", false, false);
         } else {
             storm = loadDefinedConf(confFile);
@@ -365,6 +463,16 @@ public class Utils {
 
         replaceLocalDir(ret);
         return ret;
+    }
+
+    public static boolean isConfigChanged(Map oldConf, Map newConf) {
+        if (oldConf.size() != newConf.size()) {
+            return true;
+        }
+
+        TreeMap sortedOld = new TreeMap(oldConf);
+        TreeMap sortedNew = new TreeMap(newConf);
+        return !to_json(sortedOld).equals(to_json(sortedNew));
     }
 
     private static Object normalizeConf(Object conf) {
@@ -416,7 +524,7 @@ public class Utils {
     }
 
     public static List<Object> tuple(Object... values) {
-        List<Object> ret = new ArrayList<Object>();
+        List<Object> ret = new ArrayList<>();
         for (Object v : values) {
             ret.add(v);
         }
@@ -449,7 +557,7 @@ public class Utils {
     public static IFn loadClojureFn(String namespace, String name) {
         try {
             clojure.lang.Compiler.eval(RT.readString("(require '" + namespace + ")"));
-        } catch (Exception e) {
+        } catch (Exception ignored) {
             // if playing from the repl and defining functions, file won't exist
         }
         return (IFn) RT.var(namespace, name).deref();
@@ -460,9 +568,9 @@ public class Utils {
     }
 
     public static <K, V> Map<V, K> reverseMap(Map<K, V> map) {
-        Map<V, K> ret = new HashMap<V, K>();
-        for (K key : map.keySet()) {
-            ret.put(map.get(key), key);
+        Map<V, K> ret = new HashMap<>();
+        for (Map.Entry<K, V> entry : map.entrySet()) {
+            ret.put(entry.getValue(), entry.getKey());
         }
         return ret;
     }
@@ -480,6 +588,29 @@ public class Utils {
         throw new IllegalArgumentException("Could not find component with id " + id);
     }
 
+    public static List<String> getStrings(final Object o) {
+        if (o == null) {
+            return new ArrayList<>();
+        } else if (o instanceof String) {
+            return Lists.newArrayList((String) o);
+        } else if (o instanceof Collection) {
+            List<String> answer = new ArrayList<>();
+            for (Object v : (Collection) o) {
+                answer.add(v.toString());
+            }
+            return answer;
+        } else {
+            throw new IllegalArgumentException("Don't know how to convert to string list");
+        }
+    }
+
+    public static String getString(Object o) {
+        if (null == o) {
+            throw new IllegalArgumentException("Don't know how to convert null to String");
+        }
+        return o.toString();
+    }
+
     public static Integer getInt(Object o) {
         Integer result = getInt(o, null);
         if (null == result) {
@@ -488,17 +619,102 @@ public class Utils {
         return result;
     }
 
+    private static TDeserializer getDes() {
+        TDeserializer des = threadDes.get();
+        if (des == null) {
+            des = new TDeserializer();
+            threadDes.set(des);
+        }
+        return des;
+    }
+
+    public static byte[] thriftSerialize(TBase t) {
+        try {
+            TSerializer ser = threadSer.get();
+            if (ser == null) {
+                ser = new TSerializer();
+                threadSer.set(ser);
+            }
+            return ser.serialize(t);
+        } catch (TException e) {
+            LOG.error("Failed to serialize to thrift: ", e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static <T> T thriftDeserialize(Class c, byte[] b) {
+        try {
+            return Utils.thriftDeserialize(c, b, 0, b.length);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public static Integer getInt(Object o, Integer defaultValue) {
         if (null == o) {
             return defaultValue;
         }
 
-        if (o instanceof Number) {
+        if (o instanceof Integer ||
+                o instanceof Short ||
+                o instanceof Byte) {
             return ((Number) o).intValue();
+        } else if (o instanceof Long) {
+            final long l = (Long) o;
+            if (Integer.MIN_VALUE <= l && l <= Integer.MAX_VALUE) {
+                return (int) l;
+            }
+        } else if (o instanceof Double) {
+            final double d = (Double) o;
+            if (Integer.MIN_VALUE <= d && d <= Integer.MAX_VALUE) {
+                return (int) d;
+            }
         } else if (o instanceof String) {
-            return Integer.parseInt(((String) o));
+            return Integer.parseInt((String) o);
+        }
+
+        //
+        return defaultValue;
+    }
+
+    public static Double getDouble(Object o) {
+        Double result = getDouble(o, null);
+        if (null == result) {
+            throw new IllegalArgumentException("Don't know how to convert null to double");
+        }
+        return result;
+    }
+
+    public static Double getDouble(Object o, Double defaultValue) {
+        if (null == o) {
+            return defaultValue;
+        }
+        if (o instanceof Number) {
+            return ((Number) o).doubleValue();
         } else {
-            throw new IllegalArgumentException("Don't know how to convert " + o + " to int");
+            throw new IllegalArgumentException("Don't know how to convert " + o + " + to double");
+        }
+    }
+
+    public static boolean getBoolean(Object o, boolean defaultValue) {
+        if (null == o) {
+            return defaultValue;
+        }
+        if (o instanceof Boolean) {
+            return (Boolean) o;
+        } else {
+            throw new IllegalArgumentException("Don't know how to convert " + o + " + to boolean");
+        }
+    }
+
+    public static String getString(Object o, String defaultValue) {
+        if (null == o) {
+            return defaultValue;
+        }
+        if (o instanceof String) {
+            return (String) o;
+        } else {
+            throw new IllegalArgumentException("Don't know how to convert " + o + " + to String");
         }
     }
 
@@ -506,13 +722,237 @@ public class Utils {
         return UUID.randomUUID().getLeastSignificantBits();
     }
 
+    /*
+     * Unpack matching files from a jar. Entries inside the jar that do
+     * not match the given pattern will be skipped.
+     *
+     * @param jarFile the .jar file to unpack
+     * @param toDir the destination directory into which to unpack the jar
+     */
+    public static void unJar(File jarFile, File toDir)
+            throws IOException {
+        JarFile jar = new JarFile(jarFile);
+        try {
+            Enumeration<JarEntry> entries = jar.entries();
+            while (entries.hasMoreElements()) {
+                final JarEntry entry = entries.nextElement();
+                if (!entry.isDirectory()) {
+                    InputStream in = jar.getInputStream(entry);
+                    try {
+                        File file = new File(toDir, entry.getName());
+                        ensureDirectory(file.getParentFile());
+                        OutputStream out = new FileOutputStream(file);
+                        try {
+                            copyBytes(in, out, 8192);
+                        } finally {
+                            out.close();
+                        }
+                    } finally {
+                        in.close();
+                    }
+                }
+            }
+        } finally {
+            jar.close();
+        }
+    }
+
+    /**
+     * Copies from one stream to another.
+     *
+     * @param in       InputStream to read from
+     * @param out      OutputStream to write to
+     * @param buffSize the size of the buffer
+     */
+    public static void copyBytes(InputStream in, OutputStream out, int buffSize)
+            throws IOException {
+        PrintStream ps = out instanceof PrintStream ? (PrintStream) out : null;
+        byte buf[] = new byte[buffSize];
+        int bytesRead = in.read(buf);
+        while (bytesRead >= 0) {
+            out.write(buf, 0, bytesRead);
+            if ((ps != null) && ps.checkError()) {
+                throw new IOException("Unable to write to output stream.");
+            }
+            bytesRead = in.read(buf);
+        }
+    }
+
+    /**
+     * Ensure the existence of a given directory.
+     *
+     * @throws IOException if it cannot be created and does not already exist
+     */
+    private static void ensureDirectory(File dir) throws IOException {
+        if (!dir.mkdirs() && !dir.isDirectory()) {
+            throw new IOException("Mkdirs failed to create " +
+                    dir.toString());
+        }
+    }
+
+    /**
+     * Given a Tar File as input it will untar the file in a the untar directory
+     * passed as the second parameter
+     * <p/>
+     * This utility will untar ".tar" files and ".tar.gz","tgz" files.
+     *
+     * @param inFile   The tar file as input.
+     * @param targetDir The untar directory where to untar the tar file.
+     * @throws IOException
+     */
+    public static void unTar(File inFile, File targetDir) throws IOException {
+        if (!targetDir.mkdirs()) {
+            if (!targetDir.isDirectory()) {
+                throw new IOException("Mkdirs failed to create " + targetDir);
+            }
+        }
+
+        boolean gzipped = inFile.toString().endsWith("gz");
+        if (onWindows()) {
+            // Tar is not native to Windows. Use simple Java based implementation for
+            // tests and simple tar archives
+            unTarUsingJava(inFile, targetDir, gzipped);
+        } else {
+            // spawn tar utility to untar archive for full fledged unix behavior such
+            // as resolving symlinks in tar archives
+            unTarUsingTar(inFile, targetDir, gzipped);
+        }
+    }
+
+    private static void unTarUsingTar(File inFile, File targetDir,
+                                      boolean gzipped) throws IOException {
+        StringBuilder untarCommand = new StringBuilder();
+        if (gzipped) {
+            untarCommand.append(" gzip -dc '");
+            untarCommand.append(inFile.toString());
+            untarCommand.append("' | (");
+        }
+        untarCommand.append("cd '");
+        untarCommand.append(targetDir.toString());
+        untarCommand.append("' ; ");
+        untarCommand.append("tar -xf ");
+
+        if (gzipped) {
+            untarCommand.append(" -)");
+        } else {
+            untarCommand.append(inFile.toString());
+        }
+        String[] shellCmd = {"bash", "-c", untarCommand.toString()};
+        ShellUtils.ShellCommandExecutor shexec = new ShellUtils.ShellCommandExecutor(shellCmd);
+        shexec.execute();
+        int exitcode = shexec.getExitCode();
+        if (exitcode != 0) {
+            throw new IOException("Error untarring file " + inFile +
+                    ". Tar process exited with exit code " + exitcode);
+        }
+    }
+
+    private static void unTarUsingJava(File inFile, File targetDir,
+                                       boolean gzipped) throws IOException {
+        InputStream inputStream = null;
+        TarArchiveInputStream tis = null;
+        try {
+            if (gzipped) {
+                inputStream = new BufferedInputStream(new GZIPInputStream(
+                        new FileInputStream(inFile)));
+            } else {
+                inputStream = new BufferedInputStream(new FileInputStream(inFile));
+            }
+            tis = new TarArchiveInputStream(inputStream);
+            for (TarArchiveEntry entry = tis.getNextTarEntry(); entry != null; ) {
+                unpackEntries(tis, entry, targetDir);
+                entry = tis.getNextTarEntry();
+            }
+        } finally {
+            cleanup(tis, inputStream);
+        }
+    }
+
+    /**
+     * Close the Closeable objects and <b>ignore</b> any {@link IOException} or
+     * null pointers. Must only be used for cleanup in exception handlers.
+     *
+     * @param closeables the objects to close
+     */
+    private static void cleanup(java.io.Closeable... closeables) {
+        for (java.io.Closeable c : closeables) {
+            if (c != null) {
+                try {
+                    c.close();
+                } catch (IOException e) {
+                    LOG.debug("Exception in closing " + c, e);
+
+                }
+            }
+        }
+    }
+
+    private static void unpackEntries(TarArchiveInputStream tis,
+                                      TarArchiveEntry entry, File outputDir) throws IOException {
+        if (entry.isDirectory()) {
+            File subDir = new File(outputDir, entry.getName());
+            if (!subDir.mkdirs() && !subDir.isDirectory()) {
+                throw new IOException("Mkdirs failed to create tar internal dir "
+                        + outputDir);
+            }
+            for (TarArchiveEntry e : entry.getDirectoryEntries()) {
+                unpackEntries(tis, e, subDir);
+            }
+            return;
+        }
+        File outputFile = new File(outputDir, entry.getName());
+        if (!outputFile.getParentFile().exists()) {
+            if (!outputFile.getParentFile().mkdirs()) {
+                throw new IOException("Mkdirs failed to create tar internal dir "
+                        + outputDir);
+            }
+        }
+        int count;
+        byte data[] = new byte[2048];
+        BufferedOutputStream outputStream = new BufferedOutputStream(
+                new FileOutputStream(outputFile));
+
+        while ((count = tis.read(data)) != -1) {
+            outputStream.write(data, 0, count);
+        }
+        outputStream.flush();
+        outputStream.close();
+    }
+
+    public static boolean onWindows() {
+        return System.getenv("OS") != null && System.getenv("OS").equals("Windows_NT");
+    }
+
+    public static void unpack(File src, File dst) throws IOException {
+        String lowerDst = src.getName().toLowerCase();
+        if (lowerDst.endsWith(".jar")) {
+            unJar(src, dst);
+        } else if (lowerDst.endsWith(".zip")) {
+            unZip(src, dst);
+        } else if (lowerDst.endsWith(".tar.gz") ||
+                lowerDst.endsWith(".tgz") ||
+                lowerDst.endsWith(".tar")) {
+            unTar(src, dst);
+        } else {
+            LOG.warn("Cannot unpack " + src);
+            if (!src.renameTo(dst)) {
+                throw new IOException("Unable to rename file: [" + src
+                        + "] to [" + dst + "]");
+            }
+        }
+        if (src.isFile()) {
+            src.delete();
+        }
+    }
+
+
     public static CuratorFramework newCurator(Map conf, List<String> servers, Object port, String root) {
         return newCurator(conf, servers, port, root, null);
     }
 
     public static CuratorFramework newCurator(Map conf, List<String> servers, Object port, String root, ZookeeperAuthInfo auth) {
-        List<String> serverPorts = new ArrayList<String>();
-        for (String zkServer : (List<String>) servers) {
+        List<String> serverPorts = new ArrayList<>();
+        for (String zkServer : servers) {
             serverPorts.add(zkServer + ":" + Utils.getInt(port));
         }
         String zkStr = StringUtils.join(serverPorts, ",") + root;
@@ -553,20 +993,15 @@ public class Utils {
     }
 
     /**
-     * 
-     (defn integer-divided [sum num-pieces] (let [base (int (/ sum num-pieces)) num-inc (mod sum num-pieces) num-bases (- num-pieces num-inc)] (if (= num-inc
+     * (defn integer-divided [sum num-pieces] (let [base (int (/ sum num-pieces)) num-inc (mod sum num-pieces) num-bases (- num-pieces num-inc)] (if (= num-inc
      * 0) {base num-bases} {base num-bases (inc base) num-inc} )))
-     * 
-     * @param sum
-     * @param numPieces
-     * @return
      */
 
     public static TreeMap<Integer, Integer> integerDivided(int sum, int numPieces) {
         int base = sum / numPieces;
         int numInc = sum % numPieces;
         int numBases = numPieces - numInc;
-        TreeMap<Integer, Integer> ret = new TreeMap<Integer, Integer>();
+        TreeMap<Integer, Integer> ret = new TreeMap<>();
         ret.put(base, numBases);
         if (numInc != 0) {
             ret.put(base + 1, numInc);
@@ -583,7 +1018,7 @@ public class Utils {
     public static void readAndLogStream(String prefix, InputStream in) {
         try {
             BufferedReader r = new BufferedReader(new InputStreamReader(in));
-            String line = null;
+            String line;
             while ((line = r.readLine()) != null) {
                 LOG.info("{}:{}", prefix, line);
             }
@@ -605,29 +1040,30 @@ public class Utils {
 
     /**
      * Is the cluster configured to interact with ZooKeeper in a secure way? This only works when called from within Nimbus or a Supervisor process.
-     * 
+     *
      * @param conf the storm configuration, not the topology configuration
      * @return true if it is configured else false.
      */
     public static boolean isZkAuthenticationConfiguredStormServer(Map conf) {
         return null != System.getProperty("java.security.auth.login.config")
-                || (conf != null && conf.get(Config.STORM_ZOOKEEPER_AUTH_SCHEME) != null && !((String) conf.get(Config.STORM_ZOOKEEPER_AUTH_SCHEME)).isEmpty());
+                || (conf != null && conf.get(Config.STORM_ZOOKEEPER_AUTH_SCHEME) != null &&
+                !((String) conf.get(Config.STORM_ZOOKEEPER_AUTH_SCHEME)).isEmpty());
     }
 
     /**
      * Is the topology configured to have ZooKeeper authentication.
-     * 
+     *
      * @param conf the topology configuration
      * @return true if ZK is configured else false
      */
     public static boolean isZkAuthenticationConfiguredTopology(Map conf) {
-        return (conf != null && conf.get(Config.STORM_ZOOKEEPER_TOPOLOGY_AUTH_SCHEME) != null && !((String) conf
-                .get(Config.STORM_ZOOKEEPER_TOPOLOGY_AUTH_SCHEME)).isEmpty());
+        return (conf != null && conf.get(Config.STORM_ZOOKEEPER_TOPOLOGY_AUTH_SCHEME) != null &&
+                !((String) conf.get(Config.STORM_ZOOKEEPER_TOPOLOGY_AUTH_SCHEME)).isEmpty());
     }
 
     public static List<ACL> getWorkerACL(Map conf) {
-        // This is a work around to an issue with ZK where a sasl super user is not super unless there is an open SASL ACL so we are trying to give the correct
-        // perms
+        // This is a work around to an issue with ZK where a sasl super user is not super unless there is an open SASL ACL
+        // so we are trying to give the correct perms
         if (!isZkAuthenticationConfiguredTopology(conf)) {
             return null;
         }
@@ -637,9 +1073,10 @@ public class Utils {
         }
         String[] split = stormZKUser.split(":", 2);
         if (split.length != 2) {
-            throw new IllegalArgumentException(Config.STORM_ZOOKEEPER_SUPERACL + " does not appear to be in the form scheme:acl, i.e. sasl:storm-user");
+            throw new IllegalArgumentException(Config.STORM_ZOOKEEPER_SUPERACL +
+                    " does not appear to be in the form scheme:acl, i.e. sasl:storm-user");
         }
-        ArrayList<ACL> ret = new ArrayList<ACL>(ZooDefs.Ids.CREATOR_ALL_ACL);
+        ArrayList<ACL> ret = new ArrayList<>(ZooDefs.Ids.CREATOR_ALL_ACL);
         ret.add(new ACL(ZooDefs.Perms.ALL, new Id(split[0], split[1])));
         return ret;
     }
@@ -672,13 +1109,7 @@ public class Utils {
         try {
             Class delegateClass = Class.forName(delegateClassName);
             delegate = (SerializationDelegate) delegateClass.newInstance();
-        } catch (ClassNotFoundException e) {
-            LOG.error("Failed to construct serialization delegate, falling back to default", e);
-            delegate = new DefaultSerializationDelegate();
-        } catch (InstantiationException e) {
-            LOG.error("Failed to construct serialization delegate, falling back to default", e);
-            delegate = new DefaultSerializationDelegate();
-        } catch (IllegalAccessException e) {
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
             LOG.error("Failed to construct serialization delegate, falling back to default", e);
             delegate = new DefaultSerializationDelegate();
         }
@@ -703,9 +1134,9 @@ public class Utils {
     }
 
     public static List<String> tokenize_path(String path) {
-        String[] toks = path.split("/");
-        java.util.ArrayList<String> rtn = new ArrayList<String>();
-        for (String str : toks) {
+        String[] tokens = path.split("/");
+        java.util.ArrayList<String> rtn = new ArrayList<>();
+        for (String str : tokens) {
             if (!str.isEmpty()) {
                 rtn.add(str);
             }
@@ -713,12 +1144,12 @@ public class Utils {
         return rtn;
     }
 
-    public static String toks_to_path(List<String> toks) {
-        StringBuffer buff = new StringBuffer();
+    public static String toks_to_path(List<String> tokens) {
+        StringBuilder buff = new StringBuilder();
         buff.append("/");
-        int size = toks.size();
+        int size = tokens.size();
         for (int i = 0; i < size; i++) {
-            buff.append(toks.get(i));
+            buff.append(tokens.get(i));
             if (i < (size - 1)) {
                 buff.append("/");
             }
@@ -728,8 +1159,7 @@ public class Utils {
     }
 
     public static String normalize_path(String path) {
-        String rtn = toks_to_path(tokenize_path(path));
-        return rtn;
+        return toks_to_path(tokenize_path(path));
     }
 
     public static String printStack() {
@@ -744,7 +1174,7 @@ public class Utils {
     }
 
     private static Map loadProperty(String prop) {
-        Map ret = new HashMap<Object, Object>();
+        Map ret = new HashMap<>();
         Properties properties = new Properties();
 
         try {
@@ -768,13 +1198,13 @@ public class Utils {
     }
 
     private static Map loadYaml(String confPath) {
-        Map ret = new HashMap<Object, Object>();
+        Map ret = new HashMap<>();
         Yaml yaml = new Yaml();
         InputStream stream = null;
         try {
             stream = new FileInputStream(confPath);
             ret = (Map) yaml.load(stream);
-            if (ret == null || ret.isEmpty() == true) {
+            if (ret == null || ret.isEmpty()) {
                 System.out.println("WARN: Config file is empty");
                 return null;
             }
@@ -784,11 +1214,11 @@ public class Utils {
         } catch (Exception e1) {
             e1.printStackTrace();
             throw new RuntimeException("Failed to read config file");
-        }finally {
-            if (stream != null){
+        } finally {
+            if (stream != null) {
                 try {
                     stream.close();
-                }catch (Exception e){
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
@@ -798,7 +1228,7 @@ public class Utils {
     }
 
     public static Map loadConf(String arg) {
-        Map ret = null;
+        Map ret;
         if (arg.endsWith("yaml")) {
             ret = loadYaml(arg);
         } else {
@@ -811,10 +1241,14 @@ public class Utils {
         String ret = "";
         InputStream input = null;
         try {
-            input = Utils.class.getClassLoader().getResourceAsStream("version");
+            input = Thread.currentThread().getContextClassLoader().getResourceAsStream("version");
             BufferedReader in = new BufferedReader(new InputStreamReader(input));
             String s = in.readLine();
-            ret = s.trim();
+            if (s != null) {
+                ret = s.trim();
+            } else {
+                LOG.warn("Failed to get version");
+            }
 
         } catch (Exception e) {
             LOG.warn("Failed to get version", e);
@@ -824,6 +1258,33 @@ public class Utils {
                     input.close();
                 } catch (Exception e) {
                     LOG.error("Failed to close the reader of RELEASE", e);
+                }
+            }
+        }
+
+        return ret;
+    }
+
+    public static String getBuildTime() {
+        String ret = "";
+        InputStream input = null;
+        try {
+            input = Thread.currentThread().getContextClassLoader().getResourceAsStream("build");
+            BufferedReader in = new BufferedReader(new InputStreamReader(input));
+            String s = in.readLine();
+            if (s != null) {
+                ret = s.trim();
+            } else {
+                LOG.warn("Failed to get build time");
+            }
+
+        } catch (Exception e) {
+            LOG.warn("Failed to get build time", e);
+        } finally {
+            if (input != null) {
+                try {
+                    input.close();
+                } catch (Exception ignored) {
                 }
             }
         }
@@ -845,5 +1306,131 @@ public class Utils {
         ret = ret | ((bytes[offset++] << 16) & 0x00FF0000);
         ret = ret | ((bytes[offset] << 24) & 0xFF000000);
         return ret;
+    }
+
+    /*
+     * Given a File input it will unzip the file in a the unzip directory
+     * passed as the second parameter
+     * @param inFile The zip file as input
+     * @param unzipDir The unzip directory where to unzip the zip file.
+     * @throws IOException
+     */
+    public static void unZip(File inFile, File unzipDir) throws IOException {
+        Enumeration<? extends ZipEntry> entries;
+        ZipFile zipFile = new ZipFile(inFile);
+
+        try {
+            entries = zipFile.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                if (!entry.isDirectory()) {
+                    InputStream in = zipFile.getInputStream(entry);
+                    try {
+                        File file = new File(unzipDir, entry.getName());
+                        if (!file.getParentFile().mkdirs()) {
+                            if (!file.getParentFile().isDirectory()) {
+                                throw new IOException("Mkdirs failed to create " +
+                                        file.getParentFile().toString());
+                            }
+                        }
+                        OutputStream out = new FileOutputStream(file);
+                        try {
+                            byte[] buffer = new byte[8192];
+                            int i;
+                            while ((i = in.read(buffer)) != -1) {
+                                out.write(buffer, 0, i);
+                            }
+                        } finally {
+                            out.close();
+                        }
+                    } finally {
+                        in.close();
+                    }
+                }
+            }
+        } finally {
+            zipFile.close();
+        }
+    }
+
+    /**
+     * Given a zip File input it will return its size
+     * Only works for zip files whose uncompressed size is less than 4 GB,
+     * otherwise returns the size module 2^32, per gzip specifications
+     *
+     * @param myFile The zip file as input
+     * @return zip file size as a long
+     * @throws IOException
+     */
+    public static long zipFileSize(File myFile) throws IOException {
+        RandomAccessFile raf = new RandomAccessFile(myFile, "r");
+        raf.seek(raf.length() - 4);
+        long b4 = raf.read();
+        long b3 = raf.read();
+        long b2 = raf.read();
+        long b1 = raf.read();
+        long val = (b1 << 24) | (b2 << 16) + (b3 << 8) + b4;
+        raf.close();
+        return val;
+    }
+
+    public static double zeroIfNaNOrInf(double x) {
+        return (Double.isNaN(x) || Double.isInfinite(x)) ? 0.0 : x;
+    }
+
+    /**
+     * parses the arguments to extract jvm heap memory size in MB.
+     *
+     * @return the value of the JVM heap memory setting (in MB) in a java command.
+     */
+    public static Double parseJvmHeapMemByChildOpts(String input, Double defaultValue) {
+        if (input != null) {
+            Pattern optsPattern = Pattern.compile("Xmx[0-9]+[mkgMKG]");
+            Matcher m = optsPattern.matcher(input);
+            String memoryOpts = null;
+            while (m.find()) {
+                memoryOpts = m.group();
+            }
+            if (memoryOpts != null) {
+                int unit = 1;
+                if (memoryOpts.toLowerCase().endsWith("k")) {
+                    unit = 1024;
+                } else if (memoryOpts.toLowerCase().endsWith("m")) {
+                    unit = 1024 * 1024;
+                } else if (memoryOpts.toLowerCase().endsWith("g")) {
+                    unit = 1024 * 1024 * 1024;
+                }
+                memoryOpts = memoryOpts.replaceAll("[a-zA-Z]", "");
+                Double result = Double.parseDouble(memoryOpts) * unit / 1024.0 / 1024.0;
+                return (result < 1.0) ? 1.0 : result;
+            } else {
+                return defaultValue;
+            }
+        } else {
+            return defaultValue;
+        }
+    }
+
+    public static void setClassLoaderForJavaDeSerialize(ClassLoader cl) {
+        Utils.cl = cl;
+    }
+
+    public static void resetClassLoaderForJavaDeSerialize() {
+        Utils.cl = ClassLoader.getSystemClassLoader();
+    }
+
+    public static boolean flushToFile(String file, String data, boolean append) {
+        if (data == null) {
+            return true;
+        }
+        try {
+            FileOutputStream fs = new FileOutputStream(file, append);
+            fs.write(data.getBytes());
+            fs.flush();
+            fs.close();
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 }

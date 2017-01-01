@@ -33,7 +33,7 @@ import com.alibaba.jstorm.drpc.Drpc;
 import java.io.File;
 import java.util.Map;
 
-public class LocalDRPC implements ILocalDRPC {
+public final class LocalDRPC implements ILocalDRPC {
     private static final Logger LOG = LoggerFactory.getLogger(LocalDRPC.class);
 
     private Drpc handler = new Drpc();
@@ -74,6 +74,9 @@ public class LocalDRPC implements ILocalDRPC {
 
 
         String[] existPids = file.list();
+        if (existPids == null) {
+        	return ;
+        }
 
         for (String existPid : existPids) {
             try {

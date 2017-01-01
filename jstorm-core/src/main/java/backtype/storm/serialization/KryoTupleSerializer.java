@@ -17,27 +17,33 @@
  */
 package backtype.storm.serialization;
 
+import backtype.storm.Config;
+import backtype.storm.generated.StormTopology;
 import backtype.storm.task.GeneralTopologyContext;
-import backtype.storm.tuple.BatchTuple;
+import backtype.storm.tuple.MessageId;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.TupleExt;
-import backtype.storm.utils.Utils;
 
+import com.alibaba.jstorm.utils.JStormUtils;
+import com.alibaba.jstorm.utils.Pair;
 import com.esotericsoftware.kryo.io.Output;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Map;
 
 public class KryoTupleSerializer implements ITupleSerializer {
     KryoValuesSerializer _kryo;
     SerializationFactory.IdDictionary _ids;
     Output _kryoOut;
+    int _ackerNum;
 
-    public KryoTupleSerializer(final Map conf, final GeneralTopologyContext context) {
+    public KryoTupleSerializer(final Map conf, final StormTopology topology) {
         _kryo = new KryoValuesSerializer(conf);
         _kryoOut = new Output(2000, 2000000000);
-        _ids = new SerializationFactory.IdDictionary(context.getRawTopology());
+        _ackerNum = JStormUtils.parseInt(conf.get(Config.TOPOLOGY_ACKER_EXECUTORS), 0);
+        _ids = new SerializationFactory.IdDictionary(topology);
     }
 
     public byte[] serialize(Tuple tuple) {
@@ -51,48 +57,49 @@ public class KryoTupleSerializer implements ITupleSerializer {
      */
     private void serializeTuple(Output output, Tuple tuple) {
         try {
+        	boolean isBatchTuple = false;
             if (tuple instanceof TupleExt) {
                 output.writeInt(((TupleExt) tuple).getTargetTaskId());
                 output.writeLong(((TupleExt) tuple).getCreationTimeStamp());
+                output.writeBoolean(((TupleExt) tuple).isBatchTuple());
+                isBatchTuple = ((TupleExt) tuple).isBatchTuple();
             }
 
             output.writeInt(tuple.getSourceTask(), true);
-            output.writeInt(
-                    _ids.getStreamId(tuple.getSourceComponent(),
-                            tuple.getSourceStreamId()), true);
-            tuple.getMessageId().serialize(output);
-            _kryo.serializeInto(tuple.getValues(), output);
+            output.writeInt(_ids.getStreamId(tuple.getSourceComponent(), tuple.getSourceStreamId()), true);
+
+            if (isBatchTuple) {
+            	List<Object> values = tuple.getValues();
+                int len = values.size();
+                output.writeInt(len, true);
+                if (_ackerNum > 0){
+                    for (Object value : values) {
+                        Pair<MessageId, List<Object>> pairValue = (Pair<MessageId, List<Object>>) value;
+                        if (pairValue.getFirst() != null) {
+                            pairValue.getFirst().serialize(output);
+                        } else {
+                            output.writeInt(0, true);
+                        }
+                        _kryo.serializeInto(pairValue.getSecond(), output);
+                    }
+                } else {
+                    for (Object value : values) {
+                        Pair<MessageId, List<Object>> pairValue = (Pair<MessageId, List<Object>>) value;
+                        _kryo.serializeInto(pairValue.getSecond(), output);
+                    }
+                }
+            } else {
+                MessageId msgId = tuple.getMessageId();
+                if (msgId != null) {
+                    msgId.serialize(output);
+                } else {
+                    output.writeInt(0, true);
+                }
+                _kryo.serializeInto(tuple.getValues(), output);
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    public byte[] serializeBatch(BatchTuple batch) {
-        if (batch == null || batch.currBatchSize() == 0)
-            return null;
-
-        _kryoOut.clear();
-        for (Tuple tuple : batch.getTuples()) {
-            /* 
-             * byte structure: 
-             * 1st tuple: length + tuple bytes
-             * 2nd tuple: length + tuple bytes
-             * ......
-             */
-            int startPos = _kryoOut.position();
-            
-            // Set initial value of tuple length, which will be updated accordingly after serialization
-            _kryoOut.writeInt(0);
-            
-            serializeTuple(_kryoOut, tuple);
-            
-            // Update the tuple length
-            int endPos = _kryoOut.position();
-            _kryoOut.setPosition(startPos);
-            _kryoOut.writeInt(endPos - startPos - 4);
-            _kryoOut.setPosition(endPos);
-        }
-        return _kryoOut.toBytes();
     }
 
     public static byte[] serialize(int targetTask) {

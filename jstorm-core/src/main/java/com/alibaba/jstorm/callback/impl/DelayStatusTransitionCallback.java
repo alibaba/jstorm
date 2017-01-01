@@ -70,7 +70,7 @@ public class DelayStatusTransitionCallback extends BaseCallback {
             Map<?, ?> map = null;
             try {
 
-                map = StormConfig.read_nimbus_topology_conf(data.getConf(), topologyid);
+                map = StormConfig.read_nimbus_topology_conf(topologyid, data.getBlobStore());
                 delaySecs = JStormUtils.parseInt(map.get(Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS), DEFAULT_DELAY_SECONDS);
             } catch (Exception e) {
                 LOG.info("Failed to get topology configuration " + topologyid);

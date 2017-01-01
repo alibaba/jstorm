@@ -4,11 +4,10 @@ import backtype.storm.generated.MetricInfo;
 import backtype.storm.generated.MetricSnapshot;
 import backtype.storm.generated.TopologyMetric;
 import com.alibaba.jstorm.client.ConfigExtension;
+import com.alibaba.jstorm.common.metric.codahale.JAverageSnapshot;
 import com.alibaba.jstorm.schedule.default_assign.ResourceWorkerSlot;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Snapshot;
-import com.codahale.metrics.Timer;
-import org.apache.commons.lang.ArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +25,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @since 2.0.5
  */
 public class TopologyMetricContext {
-    private final Logger LOG = LoggerFactory.getLogger(getClass());
+    public static  final Logger LOG = LoggerFactory.getLogger(TopologyMetricContext.class);
 
     private final ReentrantLock lock = new ReentrantLock();
     private Set<ResourceWorkerSlot> workerSet;
@@ -99,6 +98,10 @@ public class TopologyMetricContext {
 
     public int getWorkerNum() {
         return workerSet.size();
+    }
+    
+    public Set<ResourceWorkerSlot> getWorkerSet() {
+        return workerSet;
     }
 
     public void setWorkerSet(Set<ResourceWorkerSlot> workerSet) {
@@ -200,7 +203,7 @@ public class TopologyMetricContext {
 
             LOG.info("merge topology metrics:{}, cost:{}", topologyId, System.currentTimeMillis() - start);
             // debug logs
-            //MetricUtils.printMetricWinSize(componentMetrics);
+            MetricUtils.printMetricInfo(tpMetric.get_topologyMetric());
 
             return tpMetric;
         } finally {
@@ -328,15 +331,37 @@ public class TopologyMetricContext {
                 } else {
                     if (snapshot.get_ts() >= old.get_ts()) {
                         old.set_ts(snapshot.get_ts());
-                        // update points
-                        MetricUtils.updateHistogramPoints(
-                                histograms.get(meta).get(win), snapshot.get_points(), snapshot.get_pointSize());
+                        Histogram histogram = histograms.get(meta).get(win);
+                        Snapshot updateSnapshot = histogram.getSnapshot();
+                        if (updateSnapshot instanceof JAverageSnapshot){
+                            averageMetricSnapshot(((JAverageSnapshot)updateSnapshot).getMetricSnapshot(), snapshot);
+                        }else {
+                            // update points
+                            MetricUtils.updateHistogramPoints(histogram, snapshot.get_points(), snapshot.get_pointSize());
+                        }
                     }
                 }
             }
         }
         updateMetricCounters(meta, metaCounters);
     }
+
+    /**
+     * average histograms 
+     */
+    public void averageMetricSnapshot(MetricSnapshot metricSnapshot, MetricSnapshot snapshot) {
+        metricSnapshot.set_min((metricSnapshot.get_min() + snapshot.get_min()) / 2);
+        metricSnapshot.set_max((metricSnapshot.get_max() + snapshot.get_max()) / 2);
+        metricSnapshot.set_p50((metricSnapshot.get_p50() + snapshot.get_p50()) / 2);
+        metricSnapshot.set_p75((metricSnapshot.get_p75() + snapshot.get_p75()) / 2);
+        metricSnapshot.set_p95((metricSnapshot.get_p95() + snapshot.get_p95()) / 2);
+        metricSnapshot.set_p98((metricSnapshot.get_p98() + snapshot.get_p98()) / 2);
+        metricSnapshot.set_p99((metricSnapshot.get_p99() + snapshot.get_p99()) / 2);
+        metricSnapshot.set_p999((metricSnapshot.get_p999() + snapshot.get_p999()) / 2);
+        metricSnapshot.set_mean((metricSnapshot.get_mean() + snapshot.get_mean()) / 2);
+        metricSnapshot.set_stddev((metricSnapshot.get_stddev() + snapshot.get_stddev()) / 2);
+    }
+
 
     /**
      * computes occurrences of specified metric name
@@ -392,11 +417,11 @@ public class TopologyMetricContext {
                         snapshot.set_min(snapshot1.getMin());
                         snapshot.set_max(snapshot1.getMax());
 
-                        if (metaType == MetaType.TOPOLOGY) {
+                        if (MetricUtils.metricAccurateCal && metaType == MetaType.TOPOLOGY) {
                             snapshot.set_points(MetricUtils.longs2bytes(snapshot1.getValues()));
                         }
                     }
-                    if (metaType != MetaType.TOPOLOGY) {
+                    if (metaType != MetaType.TOPOLOGY || !MetricUtils.metricAccurateCal) {
                         snapshot.set_points(new byte[0]);
                     }
                 }

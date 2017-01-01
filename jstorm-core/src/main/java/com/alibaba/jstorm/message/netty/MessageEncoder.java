@@ -22,6 +22,7 @@ import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.handler.codec.oneone.OneToOneEncoder;
 
 import backtype.storm.messaging.ControlMessage;
+import backtype.storm.messaging.TaskMessage;
 
 public class MessageEncoder extends OneToOneEncoder {
     @Override
@@ -32,6 +33,10 @@ public class MessageEncoder extends OneToOneEncoder {
 
         if (obj instanceof ControlMessage) {
             return ((ControlMessage) obj).buffer();
+        }
+
+        if (obj instanceof TaskMessage) {
+            return ((TaskMessage) obj).buffer();
         }
         
         throw new RuntimeException("Unsupported encoding of object of class " + obj.getClass().getName());
