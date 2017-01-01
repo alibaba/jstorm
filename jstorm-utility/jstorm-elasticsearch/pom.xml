@@ -16,7 +16,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <jstorm.version>2.1.1</jstorm.version>
+    <jstorm.version>2.2.1</jstorm.version>
     <kafka.version>0.8.1</kafka.version>
   </properties>
 
