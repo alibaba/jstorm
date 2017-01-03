@@ -2,7 +2,7 @@
 title: Upgrade Cluster
 is_beta: false
 
-sub-nav-group: Upgrade
+sub-nav-group: UpgradeApplication
 sub-nav-id: UpgradeApplication
 sub-nav-pos: 3
 ---
