@@ -16,14 +16,10 @@ top-nav-title: JStorm Metrics
 | --------   | :----- | :-------  | :--------  |
 |窗口 | 10m, 3h, 1d, all-time | 1m | 1m, 10m, 2h, 1d
 |采样率 | 5%, 所有metrics都会采样 | 同stats | 10%, counter不采样（精确计算）, meters/histograms采样
-|metric数据流 | executors/tasks发送至ZK | executor发送至metrics consumer 至外部系统 | worker -> topology master -> 
-nimbus -> 外部系统
-|metrics数据 | k-v键值对 | stream/executor metrics, topology metrics在调用时计算 | 预聚合的 
-metrics of stream/task/component/topology/cluster/worker/netty/nimbus metrics
-|metrics值 | 采样计算的counter, meters/histogram平均值 | 同stats | counter精确值， 
- meter值：m1/m5/m15/mean, histogram值：p50/p75/p90/p95/p98/p99/p999/min/max/mean
-|更新策略 | 按照时间分桶，如果窗口大的话更新间隔很长 | 每分钟 | 所有窗口每分钟 
-windows
+|metric数据流 | executors/tasks发送至ZK | executor发送至metrics consumer 至外部系统 | worker -> topology master -> nimbus -> 外部系统
+|metrics数据 | k-v键值对 | stream/executor metrics, topology metrics在调用时计算 | 预聚合的 metrics of stream/task/component/topology/cluster/worker/netty/nimbus metrics
+|metrics值 | 采样计算的counter, meters/histogram平均值 | 同stats | counter精确值，meter值：m1/m5/m15/mean, histogram值：p50/p75/p90/p95/p98/p99/p999/min/max/mean
+|更新策略 | 按照时间分桶，如果窗口大的话更新间隔很长 | 每分钟 | 所有窗口每分钟windows
 |zk依赖 | 数据写入zk | N/A | N/A
 
 
