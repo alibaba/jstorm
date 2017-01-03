@@ -11,6 +11,7 @@ top-nav-title: JStorm Metrics
 
 
 # JStorm Metrics与Storm Metrics的比较
+
 | --- | Storm/stats | Storm/built-in metrics | JStorm metrics
 | --------   | :----- | :-------  | :--------  |
 |窗口 | 10m, 3h, 1d, all-time | 1m | 1m, 10m, 2h, 1d
@@ -29,6 +30,7 @@ windows
 # JStorm Metrics 设计
 
 ## 设计目标
+
 1. 能看到从流级别到集群级别的所有metrics，至少1分钟更新一次
 2. 能看到metrics的历史值(曲线)
 3. 支持常见metric类型以及更准确的metric统计
@@ -39,6 +41,7 @@ windows
 8. 通过metrics简化问题排查
 
 ## 基础流程
+
 ```seq
 worker->worker: 创建JStormMetricsReporter
 worker->worker: JStormMetrics.registerMetrics注册至本地registry
@@ -216,6 +219,7 @@ metric uploader在实现时还需要考虑的一个问题是nimbus的GC。对于
 JStorm提供了`MetricClient`，因此用户可以很容易地使用自定义metrics。具体使用示例如下：
 
 1. 定义metric client对象
+
 ```
 private MetricClient metricClient;
 ```
