@@ -157,6 +157,7 @@
     <module>jstorm-utility/jstorm-kafka</module>
     <module>jstorm-utility/ons</module>
     <module>jstorm-utility/jstorm-flux</module>
+    <module>jstorm-on-yarn</module>
   </modules>
 
   <profiles>
