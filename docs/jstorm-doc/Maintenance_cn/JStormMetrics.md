@@ -12,15 +12,60 @@ top-nav-title: JStorm Metrics
 
 # JStorm Metrics与Storm Metrics的比较
 
-| --- | Storm/stats | Storm/built-in metrics | JStorm metrics
-| --------   | :----- | :-------  | :--------  |
-|窗口 | 10m, 3h, 1d, all-time | 1m | 1m, 10m, 2h, 1d
-|采样率 | 5%, 所有metrics都会采样 | 同stats | 10%, counter不采样（精确计算）, meters/histograms采样
-|metric数据流 | executors/tasks发送至ZK | executor发送至metrics consumer 至外部系统 | worker -> topology master -> nimbus -> 外部系统
-|metrics数据 | k-v键值对 | stream/executor metrics, topology metrics在调用时计算 | 预聚合的 metrics of stream/task/component/topology/cluster/worker/netty/nimbus metrics
-|metrics值 | 采样计算的counter, meters/histogram平均值 | 同stats | counter精确值，meter值：m1/m5/m15/mean, histogram值：p50/p75/p90/p95/p98/p99/p999/min/max/mean
-|更新策略 | 按照时间分桶，如果窗口大的话更新间隔很长 | 每分钟 | 所有窗口每分钟windows
-|zk依赖 | 数据写入zk | N/A | N/A
+<table>
+    <thead>
+        <tr>
+            <th>---</th>
+            <th>Storm/stats</th>
+            <th>Storm/built-in metrics</th>
+            <th>JStorm metrics</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>窗口</td>
+            <td>10m, 3h, 1d, all-time</td>
+            <td>1m</td>
+            <td>1m, 10m, 2h, 1d</td>
+        </tr>
+        <tr>
+            <td>采样率</td>
+            <td>5%, 所有metrics都会采样</td>
+            <td>同stats</td>
+            <td>10%, counter不采样（精确计算）, meters/histograms采样</td>
+        </tr>
+        <tr>
+            <td>metric数据流</td>
+            <td>executors/tasks发送至ZK</td>
+            <td>executor发送至metrics consumer 至外部系统</td>
+            <td>worker -> topology master -> nimbus -> 外部系统</td>
+        </tr>
+        <tr>
+            <td>metrics数据</td>
+            <td>k-v键值对</td>
+            <td>stream/executor metrics, topology metrics在调用时计算</td>
+            <td>预聚合的 metrics of stream/task/component/topology/cluster/worker/netty/nimbus metrics</td>
+        </tr>
+        <tr>
+            <td>metrics值</td>
+            <td>采样计算的counter, meters/histogram平均值</td>
+            <td>同stats</td>
+            <td>counter精确值，meter值：m1/m5/m15/mean, histogram值：p50/p75/p90/p95/p98/p99/p999/min/max/mean</td>
+        </tr>
+        <tr>
+            <td>更新策略</td>
+            <td>按照时间分桶，如果窗口大的话更新间隔很长</td>
+            <td>每分钟</td>
+            <td>所有窗口每分钟windows</td>
+        </tr>
+        <tr>
+            <td>zk依赖</td>
+            <td>数据写入zk</td>
+            <td>N/A</td>
+            <td>N/A</td>
+        </tr>
+    </tbody>
+</table>
 
 
 # JStorm Metrics 设计
@@ -54,7 +99,8 @@ nimbus->external systems: 发送metrics数据至外部MetricsUploader插件
 ```
 
 
-## 基础概念:
+## 基础概念
+
 ### metric类型
 目前支持的metric类型
 `counter/gauge/meter/histogram`
@@ -100,6 +146,7 @@ metric meta其实就是metric id到metric name的一个映射，而metric data�
 metric meta的机制的确引入了一些额外的复杂性，不过它能够节省大量空间。
 
 ## JStorm metrics中的重要模块（类）
+
 ### JStormMetrics
 一个静态类，提供了`registerMetrics` 方法, 与codahale metrics类似, 所有的metrics都会存在于worker进程中的一个单例registry中。
 这个类也负责自动的向上聚合注册。
@@ -128,6 +175,7 @@ metric meta的机制的确引入了一些额外的复杂性，不过它能够节
 
 
 ## 其他
+
 ### 用户自定义metrics
 我们提供了`MetricClient`来使用用户自定义metrics。
 类似于`JStormMetrics.registerMetrics...` 方法, 当用户调用了`metricClient.registerGauge/Counter/Histogram`之后，所有的事情都
@@ -149,10 +197,9 @@ topology/task事件会被发送至`MetricUploader`，因此用户可以通过这
 我们通过`MetricUploader`接口来实现写metrics来实现监控系统。有使用HBase和aliyun OTS的两种实现。
 
 
-## 使用JStorm metrics
- 
+## 使用JStorm metrics 
 
-## Metric配置
+### Metric配置
 以下为metric配置项以及对应的说明。
 
 #### topology.enable.metrics

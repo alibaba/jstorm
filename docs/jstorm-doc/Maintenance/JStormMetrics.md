@@ -11,20 +11,68 @@ top-nav-title: JStorm Metrics
 
 
 # An Overall Comparison between JStorm & Storm  metrics
-| --- | Storm/stats | Storm/built-in metrics | JStorm metrics
-| --------   | :----- | :-------  | :--------  |
-|windows | 10m, 3h, 1d, all-time | 1m | 1m, 10m, 2h, 1d
-|sampling | 5%, all metrics sampled | same as stats | 10%, counters not sampled, meters/histograms sampled
-|metric-stream | executors/tasks -> ZK | executor -> metrics consumer -> external systems | worker -> topology master -> nimbus -> external systems
-|metrics | key-ed metrics | stream/executor metrics, topology metrics are computed upon calling | pre-computed metrics of stream/task/component/topology/cluster/worker/netty/nimbus metrics
-|metrics data | sampled counters, mean value for meters/histograms | same as stats | counters not sampled, m1/m5/m15/mean for meters, p50/p75/p90/p95/p98/p99/p999/min/max/mean for histograms
-|update stragety | every time bucket (very long for 3h/1d windows) | every minute | every minute for all windows
-|zk dependency | write metrics to zk | N/A | N/A
+
+<table>
+    <thead>
+        <tr>
+            <th> --- </th>
+            <th>Storm/stats</th>
+            <th>Storm/built-in metrics</th>
+            <th>JStorm metrics</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>windows</td>
+            <td>10m, 3h, 1d, all-time</td>
+            <td>1m</td>
+            <td>1m, 10m, 2h, 1d</td>
+        </tr>
+        <tr>
+            <td>sampling</td>
+            <td>5%, all metrics sampled</td>
+            <td>same as stats</td>
+            <td>10%, counters not sampled, meters/histograms sampled</td>
+        </tr>
+        <tr>
+            <td>metric-stream</td>
+            <td>executors/tasks -> ZK</td>
+            <td>executor -> metrics consumer -> external systems</td>
+            <td>worker -> topology master -> nimbus -> external systems</td>
+        </tr>
+        <tr>
+            <td>metrics</td>
+            <td>key-ed metrics</td>
+            <td>stream/executor metrics, topology metrics are computed upon calling</td>
+            <td>pre-computed metrics of stream/task/component/topology/cluster/worker/netty/nimbus metrics</td>
+        </tr>
+        <tr>
+            <td>metrics data</td>
+            <td>sampled counters, mean value for meters/histograms</td>
+            <td>same as stats</td>
+            <td>counters not sampled, m1/m5/m15/mean for meters, p50/p75/p90/p95/p98/p99/p999/min/max/mean for 
+            histograms</td>
+        </tr>
+        <tr>
+            <td>update stragety</td>
+            <td>every time bucket (very long for 3h/1d windows)</td>
+            <td>every minute</td>
+            <td>every minute for all windows</td>
+        </tr>
+        <tr>
+            <td>zk dependency</td>
+            <td>write metrics to zk</td>
+            <td>N/A</td>
+            <td>N/A</td>
+        </tr>
+    </tbody>
+</table>
 
 
 # JStorm Metrics Design
 
 ## our goal
+
 by re-designing the metrics system, we want to:
 1. see all metrics from stream up to cluster level, updated at least every minute.
 2. see all-time metrics data from multiple windows, not just a static point (of latest metric values).
@@ -36,6 +84,7 @@ by re-designing the metrics system, we want to:
 8. simplify trouble-shooting through metrics.
 
 ## Basic work flow
+
 ```seq
 worker->worker: create JStormMetricsReporter
 worker->worker: JStormMetrics.registerMetrics to local metrics registry
@@ -52,7 +101,8 @@ nimbus->external systems: send metrics data if external MetricsUploader exists
 ```
 
 
-## Concepts:
+## Concepts
+
 ### metric types
 we currently support following metric types:
 `counter/gauge/meter/histogram/timer`
@@ -97,6 +147,7 @@ Because FQN metric names are too long to store in external systems, we separate 
 metric id mechanism does employ complexity, but it saves space, and it's not mandatory.
 
 ## Important modules of JStorm metrics
+
 ### JStormMetrics
 A static class which offers `registerMetrics` methods, like codahale metrics, all metrics are kept in the memory metric registry, which reside in the worker process.
 This class is responsible for automatic metrics registration.
@@ -123,6 +174,7 @@ Another reason to use rocksdb is that, if we keep all metrics data in nimbus mem
 
 
 ## Miscellaneous
+
 ### user-defined metrics
 we provide a `MetricClient`, which enables user-defined metrics.
 Like `JStormMetrics.registerMetrics...` methods, once user calls `metricClient.registerGauge/Counter/Histogram`, he can leave everything else to the metrics system. Component even topology metrics are automatically registered & summarized & computed.
@@ -142,10 +194,9 @@ We've built a monitor system upon the `MetricUploader` interface.
 Also we provide a MySQL MetricsUploader plugin, and plan to provide a HBase plugin.
 
 
-## JStorm metrics usage
- 
+## JStorm metrics usage 
 
-## Metric config
+### Metric config
 Following are the metric config options and corresponding explanation.
 
 #### topology.enable.metrics
@@ -215,13 +266,14 @@ enjoying the full features of JStorm metrics.
 It's quite easy to define a custom metric:
 
 1. define metric client instance.
-```
+
+```java
 private MetricClient metricClient;
 ```
 
 2. in your prepare method of your bolt (or open in spout):
 
-```
+```java
 metricClient = new MetricClient(context);
 
 Gauge<Double> gauge = new Gauge<Double>() {
