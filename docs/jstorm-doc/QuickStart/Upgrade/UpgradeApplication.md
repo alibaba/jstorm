@@ -1,5 +1,5 @@
 ---
-title: Upgrade Application
+title: Upgrade JStorm0.9.x To JStorm2.1.1
 is_beta: false
 
 sub-nav-group: Upgrade

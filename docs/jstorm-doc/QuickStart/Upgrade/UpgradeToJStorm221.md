@@ -1,3 +1,12 @@
+---
+title: Upgrade JStorm0.9.x To JStorm2.1.1
+is_beta: false
+
+sub-nav-group: Upgrade
+sub-nav-id: UpgradeApplication
+sub-nav-pos: 3
+---
+
 This article is a guide on how to upgrade from JStorm 2.1.1 to JStorm 2.2.1. 
 
 ## Upgrade Cluster         
