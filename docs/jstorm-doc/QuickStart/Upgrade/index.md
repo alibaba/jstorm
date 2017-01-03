@@ -5,7 +5,7 @@ top-nav-group: QuickStart
 top-nav-pos: 4
 top-nav-title: Upgrade
 
-sub-nav-group: UpgradeApplication
+sub-nav-group: Upgrade
 sub-nav-group-title: UpgradeApplication
 sub-nav-pos: 1
 sub-nav-title: Upgrade
