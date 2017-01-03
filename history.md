@@ -38,6 +38,7 @@
 * Add buildTs to supervisor info and heartbeats
 * Add ext module for nimbus and supervisor to support external plugins
 * Use maven-shade-plugin to shade dependencies like snakeyaml, curator-framework to avoid conflicts
+* Add jstorm-elasticsearch support, thanks to @elloray for your contribution
 
 
 ## Improvements

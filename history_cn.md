@@ -33,7 +33,8 @@
 * 支持集群的全局配置推送
 * supervisor info和心跳中增加了buildTs，便于区分出集群中是否存在不同版本的supervisor
 * nimbus和supervisor通过ext模块来支持外部插件
-* 通过maven-shade-plugin解决如snakeyaml, curator-framework等常见冲突 
+* 通过maven-shade-plugin解决如snakeyaml, curator-framework等常见冲突
+* 添加elastic search 5.11的支持, 感谢 @elloray 的PR
 
 ## Improvements
 * 重构nimbus metrics 框架，将原TopologyMetricsRunnable打散成事件驱动
