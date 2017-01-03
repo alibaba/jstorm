@@ -1,7 +1,7 @@
 ---
 title:  "JStorm Metrics"
 # Top-level navigation
-top-nav-group: Maintenance
+top-nav-group: Maintenance_cn
 top-nav-pos: 4
 top-nav-title: JStorm Metrics
 ---
