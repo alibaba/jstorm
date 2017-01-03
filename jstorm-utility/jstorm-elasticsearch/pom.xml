@@ -1,0 +1,59 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <artifactId>jstorm-elasticsearch</artifactId>
+  <version>1.0</version>
+  <name>jstorm-elasticsearch</name>
+
+  <parent>
+    <groupId>com.alibaba.jstorm</groupId>
+    <artifactId>jstorm-all</artifactId>
+    <version>2.2.1</version>
+    <relativePath>../..</relativePath>
+  </parent>
+
+  <developers>
+    <developer>
+      <id>Ray</id>
+      <name>Leihui</name>
+      <email>elliott.ray@qq.com</email>
+    </developer>
+  </developers>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <jstorm.version>2.2.1</jstorm.version>
+    <kafka.version>0.8.1</kafka.version>
+  </properties>
+
+  <dependencies>
+
+    <dependency>
+      <groupId>com.alibaba.jstorm</groupId>
+      <artifactId>jstorm-core</artifactId>
+      <version>${jstorm.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.elasticsearch.client</groupId>
+      <artifactId>transport</artifactId>
+      <version>5.1.1</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>16.0.1</version>
+    </dependency>
+
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.10</version>
+      <scope>test</scope>
+    </dependency>
+
+  </dependencies>
+</project>
