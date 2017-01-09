@@ -19,9 +19,14 @@ package com.alibaba.jstorm.utils;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Future;
 
+import backtype.storm.generated.KeyNotFoundException;
+import com.alibaba.jstorm.blobstore.BlobStoreUtils;
+import com.alibaba.jstorm.blobstore.ClientBlobStore;
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -44,6 +49,41 @@ import com.alibaba.jstorm.cluster.StormConfig;
 public class JStormServerUtils {
 
     private static final Logger LOG = LoggerFactory.getLogger(JStormServerUtils.class);
+
+    public static void downloadCodeFromBlobStore(Map conf, String localRoot, String topologyId)
+            throws IOException, KeyNotFoundException {
+        ClientBlobStore blobStore = BlobStoreUtils.getClientBlobStoreForSupervisor(conf);
+        FileUtils.forceMkdir(new File(localRoot));
+
+        String localStormJarPath = StormConfig.stormjar_path(localRoot);
+        String masterStormJarKey = StormConfig.master_stormjar_key(topologyId);
+        BlobStoreUtils.downloadResourcesAsSupervisor(masterStormJarKey, localStormJarPath, blobStore, conf);
+
+        String localStormCodePath = StormConfig.stormcode_path(localRoot);
+        String masterStormCodeKey = StormConfig.master_stormcode_key(topologyId);
+        BlobStoreUtils.downloadResourcesAsSupervisor(masterStormCodeKey, localStormCodePath, blobStore, conf);
+
+        String localStormConfPath = StormConfig.stormconf_path(localRoot);
+        String masterStormConfKey = StormConfig.master_stormconf_key(topologyId);
+        BlobStoreUtils.downloadResourcesAsSupervisor(masterStormConfKey, localStormConfPath, blobStore, conf);
+
+        Map stormConf = (Map) StormConfig.readLocalObject(topologyId, localStormConfPath);
+
+        if (stormConf == null)
+            throw new IOException("Get topology conf error: " + topologyId);
+
+        List<String> libs = (List<String>) stormConf.get(GenericOptionsParser.TOPOLOGY_LIB_NAME);
+        if (libs != null) {
+            for (String libName : libs) {
+                String localStormLibPath = StormConfig.stormlib_path(localRoot, libName);
+                String masterStormLibKey = StormConfig.master_stormlib_key(topologyId, libName);
+                //make sure the parent lib dir is exist
+                new File(localStormLibPath).getParentFile().mkdir();
+                BlobStoreUtils.downloadResourcesAsSupervisor(masterStormLibKey, localStormLibPath, blobStore, conf);
+            }
+        }
+        blobStore.shutdown();
+    }
 
     public static void downloadCodeFromMaster(Map conf, String localRoot, String masterCodeDir, String topologyId, boolean isSupervisor) throws IOException,
             TException {
@@ -87,6 +127,9 @@ public class JStormServerUtils {
         }
 
         String[] existPids = file.list();
+        if (existPids == null) {
+        	existPids = new String[]{};
+        }
 
         // touch pid before
         String pid = JStormUtils.process_pid();
@@ -141,4 +184,19 @@ public class JStormServerUtils {
         return hostName;
     }
 
+    public static void checkFutures(List<Future<?>> futures) {
+        Iterator<Future<?>> i = futures.iterator();
+        while (i.hasNext()) {
+            Future<?> f = i.next();
+            if (f.isDone()) {
+                i.remove();
+            }
+            try {
+                // wait for all task done
+                f.get();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
 };

@@ -20,6 +20,7 @@ package com.alibaba.jstorm.common.metric;
 
 import com.alibaba.jstorm.common.metric.snapshot.AsmCounterSnapshot;
 import com.alibaba.jstorm.common.metric.snapshot.AsmSnapshot;
+import com.alibaba.jstorm.metric.MetricUtils;
 import com.codahale.metrics.Counter;
 
 import java.util.Map;
@@ -32,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AsmCounter extends AsmMetric<Counter> {
 
     private final Map<Integer, Counter> counterMap = new ConcurrentHashMap<>();
-    private Counter unFlushed = new Counter();
+    private final Counter unFlushed = new Counter();
 
     public AsmCounter() {
         super();
@@ -59,12 +60,18 @@ public class AsmCounter extends AsmMetric<Counter> {
      * flush temp counter data to all windows & assoc metrics.
      */
     protected void doFlush() {
-        long v = unFlushed.getCount();
+        long v;
+        synchronized (unFlushed) {
+            v = unFlushed.getCount();
+        }
         for (Counter counter : counterMap.values()) {
             counter.inc(v);
         }
-        for (AsmMetric assocMetric : assocMetrics) {
-            assocMetric.updateDirectly(v);
+        if (MetricUtils.metricAccurateCal){
+            for (AsmMetric assocMetric : assocMetrics) {
+                assocMetric.updateDirectly(v);
+            }
+
         }
 
         this.unFlushed.dec(v);

@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +45,7 @@ public class CgroupManager {
     public static final Logger LOG = LoggerFactory.getLogger(CgroupManager.class);
 
     public static final String JSTORM_HIERARCHY_NAME = "jstorm_cpu";
+    public static final String JSTORM_HIERARCHY = "jstorm";
 
     public static final int ONE_CPU_SLOT = 1024;
 
@@ -53,21 +55,30 @@ public class CgroupManager {
 
     private CgroupCommon rootCgroup;
 
-    private static final String JSTORM_CPU_HIERARCHY_DIR = "/cgroup/cpu";
     private static String rootDir;
+    private static String cgroupBaseDir ;
 
     public CgroupManager(Map conf) {
         LOG.info("running on cgroup mode");
 
         // Cgconfig service is used to create the corresponding cpu hierarchy
         // "/cgroup/cpu"
+        
+        cgroupBaseDir = ConfigExtension.getCgroupBaseDir(conf);
         rootDir = ConfigExtension.getCgroupRootDir(conf);
-        if (rootDir == null)
-            throw new RuntimeException("Check configuration file. The supervisor.cgroup.rootdir is missing.");
-
-        File file = new File(JSTORM_CPU_HIERARCHY_DIR + "/" + rootDir);
+        if (StringUtils.isBlank(rootDir) || StringUtils.isBlank(cgroupBaseDir)) {
+        	StringBuilder sb = new StringBuilder();
+        	sb.append("Check configuration file. The setting of ");
+        	sb.append(ConfigExtension.CGROUP_BASE_DIR).append(" and ");
+        	sb.append(ConfigExtension.CGROUP_ROOT_DIR);
+        	sb.append(" are invalid.");
+            throw new RuntimeException(sb.toString());
+        }
+        
+        String realRootDir = cgroupBaseDir + "/" + rootDir;
+        File file = new File(realRootDir);
         if (!file.exists()) {
-            LOG.error(JSTORM_CPU_HIERARCHY_DIR + "/" + rootDir + " is not existing.");
+            LOG.error(realRootDir+ " is not existing.");
             throw new RuntimeException("Check if cgconfig service starts or /etc/cgconfig.conf is consistent with configuration file.");
         }
         center = CgroupCenter.getInstance();
@@ -143,7 +154,7 @@ public class CgroupManager {
         if (h == null) {
             Set<SubSystemType> types = new HashSet<SubSystemType>();
             types.add(SubSystemType.cpu);
-            h = new Hierarchy(JSTORM_HIERARCHY_NAME, types, JSTORM_CPU_HIERARCHY_DIR);
+            h = new Hierarchy(JSTORM_HIERARCHY_NAME, types, cgroupBaseDir);
         }
         rootCgroup = new CgroupCommon(rootDir, h, h.getRootCgroups());
     }

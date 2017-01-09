@@ -18,7 +18,7 @@
 
 source 'https://ruby.taobao.org'
 
-# Dependencies required to build the Flink docs
+# Dependencies required to build the JStorm docs
 gem 'jekyll', '2.5.3'
 gem 'kramdown', '1.10.0'
 gem 'pygments.rb', '0.6.3'

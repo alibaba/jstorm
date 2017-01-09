@@ -45,7 +45,6 @@ public class KafkaConsumer {
     private LinkedList<Host> brokerList;
     private int brokerIndex;
     private Broker leaderBroker;
-    private short fetchResponseCode = 0;
 
     public KafkaConsumer(KafkaSpoutConfig config) {
         this.config = config;
@@ -83,16 +82,14 @@ public class KafkaConsumer {
             }
         }
         if (fetchResponse.hasError()) {
-            fetchResponseCode = fetchResponse.errorCode(topic, partition);
-            if (fetchResponseCode == ErrorMapping.OffsetOutOfRangeCode()) {
+            short code = fetchResponse.errorCode(topic, partition);
+            if (code == ErrorMapping.OffsetOutOfRangeCode() && config.resetOffsetIfOutOfRange) {
+                long startOffset = getOffset(topic, partition, config.startOffsetTime);
+                offset = startOffset;
             }
-//            if (code == ErrorMapping.OffsetOutOfRangeCode() && config.resetOffsetIfOutOfRange) {
-//                long startOffset = getOffset(topic, partition, config.startOffsetTime);
-//                offset = startOffset;
-//            }
             if(leaderBroker != null) {
                 LOG.error("fetch data from kafka topic[" + config.topic + "] host[" + leaderBroker.host() + ":" + leaderBroker.port() + "] partition["
-                    + partition + "] error:" + fetchResponseCode);
+                    + partition + "] error:" + code);
             }else {
                 
             }
@@ -101,12 +98,6 @@ public class KafkaConsumer {
             ByteBufferMessageSet msgs = fetchResponse.messageSet(topic, partition);
             return msgs;
         }
-    }
-    
-    public short getAndResetFetchResponseCode(){
-    	short code = this.fetchResponseCode;
-    	this.fetchResponseCode = 0;
-    	return code;
     }
 
     private SimpleConsumer findLeaderConsumer(int partition) {

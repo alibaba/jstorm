@@ -1,20 +1,16 @@
 package com.alibaba.jstorm.task.execute;
 
 import backtype.storm.task.ICollectorCallback;
-import backtype.storm.task.TopologyContext;
-import backtype.storm.tuple.BatchTuple;
 import backtype.storm.tuple.MessageId;
 import backtype.storm.tuple.Tuple;
-import backtype.storm.tuple.TupleExt;
 import backtype.storm.tuple.TupleImplExt;
 
-import com.alibaba.jstorm.metric.JStormMetrics;
+import com.alibaba.jstorm.common.metric.AsmGauge;
+import com.alibaba.jstorm.metric.*;
 import com.alibaba.jstorm.task.Task;
-import com.alibaba.jstorm.task.TaskTransfer;
 import com.alibaba.jstorm.task.acker.Acker;
-import com.alibaba.jstorm.task.comm.TaskSendTargets;
-import com.alibaba.jstorm.task.comm.UnanchoredSend;
 import com.alibaba.jstorm.utils.JStormUtils;
+import com.alibaba.jstorm.utils.Pair;
 import com.alibaba.jstorm.utils.RotatingMap;
 
 import org.slf4j.Logger;
@@ -27,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author xiaojian.fxj
@@ -35,6 +32,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class BoltBatchCollector extends BoltCollector {
     private static Logger LOG = LoggerFactory.getLogger(BoltBatchCollector.class);
     private BatchCollector batchCollector;
+    private int batchSize;
+    private CallIntervalGauge timeIntervalGauge;
 
     private final RotatingMap<Tuple, Integer> pendingTuples = new RotatingMap<Tuple, Integer>(Acker.TIMEOUT_BUCKET_NUM, true);
     private final BlockingQueue<Tuple> pendingAcks = new LinkedBlockingQueue<Tuple>();
@@ -48,15 +47,21 @@ public class BoltBatchCollector extends BoltCollector {
         }
     }
 
+    private final Map<Integer, Map<String, List<Object>>> pendingSendMsgs = new HashMap<Integer, Map<String, List<Object>>>();
+
     public BoltBatchCollector(Task task, RotatingMap<Tuple, Long> tuple_start_times, int message_timeout_secs) {
         super(task, tuple_start_times, message_timeout_secs);
 
         String componentId = topologyContext.getThisComponentId();
 
+        timeIntervalGauge = new CallIntervalGauge();
+        JStormMetrics.registerTaskMetric(MetricUtils.taskMetricName(task.getTopologyId(), componentId, task.getTaskId(), MetricDef.TASK_BATCH_INTERVAL_TIME, MetricType.GAUGE),
+                new AsmGauge(timeIntervalGauge));
+
         batchCollector = new BatchCollector(task_id, componentId, storm_conf) {
-            public List<MsgInfo> push(String streamId, List<Object> tuple, Integer outTaskId, Collection<Tuple> anchors, Object messageId, Long rootId,
+            public void pushAndSend(String streamId, List<Object> tuple, Integer outTaskId, Collection<Tuple> anchors, Object messageId, Long rootId,
                                       ICollectorCallback callback) {
-                if (anchors != null) {
+                if (anchors != null && ackerNum > 0) {
                     synchronized (pendingTuples) {
                         for (Tuple a : anchors) {
                             Integer pendingCount = pendingTuples.get(a);
@@ -70,90 +75,119 @@ public class BoltBatchCollector extends BoltCollector {
 
                 if (outTaskId != null) {
                     synchronized (directBatches) {
-                        return addToBatches(outTaskId.toString() + "-" + streamId, directBatches, streamId, tuple, outTaskId, anchors, batchSize, callback);
+                        List<MsgInfo> batchTobeFlushed = addToBatches(outTaskId.toString() + "-" + streamId, 
+                                directBatches, streamId, tuple, outTaskId, anchors, batchSize, callback);
+                        if (batchTobeFlushed != null && batchTobeFlushed.size() > 0) {
+                            timeIntervalGauge.incrementAndGet();
+                            sendBatch(streamId, (outTaskId != null ? outTaskId.toString() : null), batchTobeFlushed, false);
+                        }
                     }
                 } else {
                     synchronized (streamToBatches) {
-                        return addToBatches(streamId, streamToBatches, streamId, tuple, outTaskId, anchors, batchSize, callback);
+                        List<MsgInfo> batchTobeFlushed = addToBatches(streamId, streamToBatches, streamId, tuple, outTaskId, anchors, batchSize, callback);
+                        if (batchTobeFlushed != null && batchTobeFlushed.size() > 0) {
+                            timeIntervalGauge.incrementAndGet();
+                            sendBatch(streamId, (outTaskId != null ? outTaskId.toString() : null), batchTobeFlushed, false);
+                        }
                     }
                 }
             }
 
-            public void flush() {
-                List<List<Object>> batches = new ArrayList<List<Object>>();
+            public synchronized void flush() {
                 synchronized (streamToBatches) {
                     for (Map.Entry<String, List<MsgInfo>> entry : streamToBatches.entrySet()) {
-                        if (entry.getValue() != null && entry.getValue().size() > 0) {
-                            batches.add(JStormUtils.mk_list(entry.getKey(), null, entry.getValue()));
-                            streamToBatches.put(entry.getKey(), null);
+                        List<MsgInfo> batch = streamToBatches.put(entry.getKey(), null);
+                        if (batch != null && batch.size() > 0) {
+                            sendBatch(entry.getKey(), null, batch, true);
                         }
                     }
                 }
 
                 synchronized (directBatches) {
                     for (Map.Entry<String, List<MsgInfo>> entry : directBatches.entrySet()) {
-                        if (entry.getValue() != null && entry.getValue().size() > 0) {
+                        List<MsgInfo> batch = directBatches.put(entry.getKey(), null);
+                        if (batch != null && batch.size() > 0) {
+                            // taskId-StreamId --> [taskId, streamId]
                             String[] strings = entry.getKey().split("-", 2);
-                            batches.add(JStormUtils.mk_list(strings[1], strings[0], entry.getValue()));
-                            directBatches.put(entry.getKey(), null);
+                            sendBatch(strings[1], strings[0], batch, true);
                         }
                     }
                 }
 
-                for (List<Object> batch : batches) {
-                    sendBatch((String) batch.get(0), (String) batch.get(1), (List<MsgInfo>) batch.get(2));
-                }
+                processPendingAcks();
+            }
 
+            private void processPendingAcks() {
                 int size = pendingAcks.size();
                 while (--size >= 0) {
                     Tuple ackTuple = pendingAcks.poll();
-                    if (ackTuple != null) {
-                        if (!sendAckTuple(ackTuple)) {
-                            try {
-                                pendingAcks.put(ackTuple);
-                            } catch (InterruptedException e) {
-                                LOG.warn("Failed to put ackTuple, tuple=" + ackTuple, e);
-                            }
+                    if (ackTuple != null && sendAckTuple(ackTuple) == false) {
+                        try {
+                           pendingAcks.put(ackTuple);
+                        } catch (InterruptedException e) {
+                           LOG.warn("Failed to put ackTuple, tuple=" + ackTuple, e);
                         }
                     }
                 }
             }
         };
+        
+        batchSize = batchCollector.getConfigBatchSize();
     }
 
     @Override
     protected List<Integer> sendBoltMsg(String outStreamId, Collection<Tuple> anchors, List<Object> values, Integer outTaskId, ICollectorCallback callback) {
-        java.util.List<Integer> outTasks = new ArrayList<Integer>();
-        // LOG.info("spout push message to " + out_stream_id);
-        List<MsgInfo> batchTobeFlushed = batchCollector.push(outStreamId, values, outTaskId, anchors, null, null, callback);
-        if (batchTobeFlushed != null && batchTobeFlushed.size() > 0) {
-            outTasks = sendBatch(outStreamId, (outTaskId != null ? outTaskId.toString() : null), batchTobeFlushed);
-        }
-        return outTasks;
+
+        batchCollector.pushAndSend(outStreamId, values, outTaskId, anchors, null, null, callback);
+        return null;
     }
 
     private List<MsgInfo> addToBatches(String key, Map<String, List<MsgInfo>> batches, String streamId, List<Object> tuple, Integer outTaskId,
                                        Collection<Tuple> anchors, int batchSize, ICollectorCallback callback) {
-        List<MsgInfo> batch;
-        batch = batches.get(key);
+        List<MsgInfo> batch = batches.get(key);
         if (batch == null) {
             batch = new ArrayList<MsgInfo>();
             batches.put(key, batch);
         }
         batch.add(new BoltMsgInfo(streamId, tuple, anchors, outTaskId, callback));
         if (batch.size() > batchSize) {
+            List<MsgInfo> ret = batch;
             batches.put(key, null);
-            return batch;
+            return ret;
         } else {
             return null;
         }
     }
 
-    public List<Integer> sendBatch(String outStreamId, String outTaskId, List<MsgInfo> batchTobeFlushed) {
+    /**
+     * @return if size of pending batch is bigger than the configured one, return the batch for sending, otherwise, return null
+     */
+    private List<Object> addToPendingSendBatch(int targetTask, String streamId, List<Object> values) {
+    	Map<String, List<Object>> streamToBatch = pendingSendMsgs.get(targetTask);
+    	if (streamToBatch == null) {
+    		streamToBatch = new HashMap<String, List<Object>>();
+    		pendingSendMsgs.put(targetTask, streamToBatch);
+    		
+    	}
+
+        List<Object> batch = streamToBatch.get(streamId);
+        if (batch == null) {
+        	batch = new ArrayList<Object>();
+        	streamToBatch.put(streamId, batch);
+        }
+
+        batch.addAll(values);
+        if (batch.size() >= batchSize) {
+        	return batch;
+        } else {
+        	return null;
+        }
+    }
+
+    public List<Integer> sendBatch(String outStreamId, String outTaskId, List<MsgInfo> batchTobeFlushed, boolean isFlush) {
         final long start = emitTimer.getTime();
         try {
-            List<Integer> ret = new ArrayList<Integer>();
-            Map<List<Integer>, List<MsgInfo>> outTasks;
+            Map<Object, List<MsgInfo>> outTasks = null;
 
             if (outTaskId != null) {
                 outTasks = sendTargets.getBatch(Integer.valueOf(outTaskId), outStreamId, batchTobeFlushed);
@@ -162,31 +196,32 @@ public class BoltBatchCollector extends BoltCollector {
             }
 
             if (outTasks == null || outTasks.size() == 0) {
-
+			
             } else {
-                for (Map.Entry<List<Integer>, List<MsgInfo>> entry : outTasks.entrySet()) {
-                    List<Integer> tasks = entry.getKey();
+                for (Map.Entry<Object, List<MsgInfo>> entry : outTasks.entrySet()) {
+                    Object target = entry.getKey();
+                    List<Integer> tasks = (target instanceof Integer) ? JStormUtils.mk_list((Integer) target) : ((List<Integer>) target);
                     List<MsgInfo> batch = entry.getValue();
 
                     for (Integer t : tasks) {
-                        BatchTuple batchTuple = new BatchTuple(t, batch.size());
-                        for (MsgInfo msg : batch) {
-                            Collection<Tuple> as = ((BoltMsgInfo) msg).anchors;
-                            MessageId msgId = getMessageId(as);
-                            TupleImplExt tp = new TupleImplExt(topologyContext, msg.values, task_id, msg.streamId, msgId);
-                            tp.setTargetTaskId(t);
-                            batchTuple.addToBatch(tp);
-                        }
+                    	List<Object> batchValues = new ArrayList<Object>();
+                    	for (MsgInfo msg : batch) {
+                    		BoltMsgInfo msgInfo = (BoltMsgInfo) msg;
+                    		Pair<MessageId, List<Object>> pair = new Pair<MessageId, List<Object>>(getMessageId(msgInfo.anchors), msgInfo.values);
+                    		batchValues.add(pair);
+                    	}
+
+                        TupleImplExt batchTuple = new TupleImplExt(topologyContext, batchValues, task_id, outStreamId, null);
+                        batchTuple.setTargetTaskId(t);
+                        batchTuple.setBatchTuple(true);
                         taskTransfer.transfer(batchTuple);
-                        //LOG.info("Send batch to task-" + t + ", batchTuple=" + batchTuple.toString());
                     }
 
                     for (MsgInfo msg : batch) {
                         if (msg.callback != null) {
-                            msg.callback.execute(tasks);
+                            msg.callback.execute(outStreamId, tasks, msg.values);
                         }
                     }
-
                 }
             }
 
@@ -208,7 +243,7 @@ public class BoltBatchCollector extends BoltCollector {
                 }
             }
 
-            return ret;
+            return null;
         } catch (Exception e) {
             LOG.error("bolt emit", e);
         } finally {
@@ -220,25 +255,24 @@ public class BoltBatchCollector extends BoltCollector {
 
     @Override
     public void ack(Tuple input) {
-        if (ackerNum > 0) {
+        if (input.getMessageId() != null) {
             if (!sendAckTuple(input)) {
                 pendingAcks.add(input);
             }
         }
 
         Long latencyStart = (Long) tuple_start_times.remove(input);
+        task_stats.bolt_acked_tuple(input.getSourceComponent(), input.getSourceStreamId());
         if (latencyStart != null && JStormMetrics.enabled) {
             long endTime = System.currentTimeMillis();
-            long lifeCycleStart = ((TupleExt) input).getCreationTimeStamp();
-            task_stats.bolt_acked_tuple(
-                    input.getSourceComponent(), input.getSourceStreamId(), latencyStart, lifeCycleStart, endTime);
+            task_stats.update_bolt_acked_latency(input.getSourceComponent(), input.getSourceStreamId(), latencyStart, endTime);
         }
     }
 
     @Override
     public void fail(Tuple input) {
         // if ackerNum == 0, we can just return
-        if (ackerNum > 0) {
+        if (input.getMessageId() != null) {
             pending_acks.remove(input);
             for (Map.Entry<Long, Long> e : input.getMessageId().getAnchorsToIds().entrySet()) {
                 List<Object> ackTuple = JStormUtils.mk_list((Object) e.getKey());
@@ -251,8 +285,9 @@ public class BoltBatchCollector extends BoltCollector {
 
     @Override
     protected MessageId getMessageId(Collection<Tuple> anchors) {
-        Map<Long, Long> anchors_to_ids = new HashMap<Long, Long>();
+        MessageId ret = null;
         if (anchors != null) {
+            Map<Long, Long> anchors_to_ids = new HashMap<Long, Long>();
             long now = System.currentTimeMillis();
             if (now - lastRotate > rotateTime) {
                 pending_acks.rotate();
@@ -267,12 +302,16 @@ public class BoltBatchCollector extends BoltCollector {
                 synchronized (pending_acks) {
                     put_xor(pending_acks, a, edge_id);
                 }
-                for (Long root_id : a.getMessageId().getAnchorsToIds().keySet()) {
-                    put_xor(anchors_to_ids, root_id, edge_id);
+                MessageId messageId = a.getMessageId();
+                if (messageId != null){
+                    for (Long root_id : messageId.getAnchorsToIds().keySet()) {
+                        put_xor(anchors_to_ids, root_id, edge_id);
+                    }
                 }
             }
+            ret = MessageId.makeId(anchors_to_ids);
         }
-        return MessageId.makeId(anchors_to_ids);
+        return ret;
     }
 
     private boolean sendAckTuple(Tuple input) {
@@ -287,13 +326,14 @@ public class BoltBatchCollector extends BoltCollector {
             if (pend_val != null) {
                 ack_val = (Long) (pend_val);
             }
-
-            for (Map.Entry<Long, Long> e : input.getMessageId().getAnchorsToIds().entrySet()) {
-                List<Object> ackTuple = JStormUtils.mk_list((Object) e.getKey(), JStormUtils.bit_xor(e.getValue(), ack_val));
-                sendBoltMsg(Acker.ACKER_ACK_STREAM_ID, null, ackTuple, null, null);
+            MessageId messageId = input.getMessageId();
+            if (messageId != null){
+                for (Map.Entry<Long, Long> e : messageId.getAnchorsToIds().entrySet()) {
+                    List<Object> ackTuple = JStormUtils.mk_list((Object) e.getKey(), JStormUtils.bit_xor(e.getValue(), ack_val));
+                    sendBoltMsg(Acker.ACKER_ACK_STREAM_ID, null, ackTuple, null, null);
+                }
             }
             ret = true;
-            //LOG.info("Acked tuple=" + input);
         }
 
         return ret;
@@ -302,18 +342,5 @@ public class BoltBatchCollector extends BoltCollector {
     @Override
     public void flush() {
         batchCollector.flush();
-    }
-
-    @Override
-    void transferCtr(TupleImplExt tupleExt) {
-        int taskId = tupleExt.getTargetTaskId();
-        BatchTuple batchTuple = new BatchTuple(taskId, 1);
-        batchTuple.addToBatch(tupleExt);
-        taskTransfer.transferControl(batchTuple);
-    }
-
-    @Override
-    void unanchoredSend(TopologyContext topologyContext, TaskSendTargets taskTargets, TaskTransfer transfer_fn, String stream, List<Object> values) {
-        UnanchoredSend.sendBatch(topologyContext, taskTargets, transfer_fn, stream, values);
     }
 }

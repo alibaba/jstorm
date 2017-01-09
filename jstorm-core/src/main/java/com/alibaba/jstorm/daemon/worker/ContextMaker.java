@@ -18,10 +18,9 @@
 package com.alibaba.jstorm.daemon.worker;
 
 import backtype.storm.generated.StormTopology;
-import backtype.storm.generated.StreamInfo;
 import backtype.storm.task.TopologyContext;
+import backtype.storm.task.WorkerTopologyContext;
 import backtype.storm.tuple.Fields;
-import backtype.storm.utils.ThriftTopologyUtils;
 import com.alibaba.jstorm.cluster.StormConfig;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.PathUtils;
@@ -32,8 +31,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 
 /**
  * ContextMaker This class is used to create TopologyContext
@@ -47,6 +44,8 @@ public class ContextMaker {
     private WorkerData workerData;
 
     private String resourcePath;
+    private String workerId;
+    private String workerIdDir;
     private String pidDir;
     private String codeDir;
     private List<Integer> workerTasks;
@@ -62,12 +61,13 @@ public class ContextMaker {
         try {
             Map stormConf = workerData.getStormConf();
             String topologyId = workerData.getTopologyId();
-            String workerId = workerData.getWorkerId();
+            workerId = workerData.getWorkerId();
 
-            String distroot = StormConfig.supervisor_stormdist_root(stormConf, topologyId);
+            String distroot = StormConfig.supervisor_stormdist_root(workerData.getConf(), topologyId);
 
             resourcePath = StormConfig.supervisor_storm_resources_path(distroot);
 
+            workerIdDir = StormConfig.worker_root(stormConf, workerId);
             pidDir = StormConfig.worker_pids_root(stormConf, workerId);
 
             String codePath = StormConfig.stormcode_path(distroot);
@@ -84,12 +84,23 @@ public class ContextMaker {
         Map stormConf = workerData.getStormConf();
         String topologyId = workerData.getTopologyId();
 
-        HashMap<String, Map<String, Fields>> componentToStreamToFields = workerData.generatecomponentToStreamToFields(topology);
+        HashMap<String, Map<String, Fields>> componentToStreamToFields = workerData.generateComponentToStreamToFields(topology);
 
         return new TopologyContext(topology, stormConf, workerData.getTasksToComponent(), workerData.getComponentToSortedTasks(), componentToStreamToFields,
-                topologyId, resourcePath, pidDir, taskId, workerData.getPort(), workerTasks, workerData.getDefaultResources(), workerData.getUserResources(),
+                topologyId, resourcePath, workerId, taskId, workerData.getPort(), workerTasks, workerData.getDefaultResources(), workerData.getUserResources(),
                 workerData.getExecutorData(), workerData.getRegisteredMetrics(), openOrPrepareWasCalled, workerData.getZkCluster());
 
     }
 
+    public WorkerTopologyContext makeWorkerTopologyContext(StormTopology topology) {
+
+        Map stormConf = workerData.getStormConf();
+        String topologyId = workerData.getTopologyId();
+
+        HashMap<String, Map<String, Fields>> componentToStreamToFields = workerData.generateComponentToStreamToFields(topology);
+
+        return new WorkerTopologyContext(topology, stormConf, workerData.getTasksToComponent(), workerData.getComponentToSortedTasks(), componentToStreamToFields,
+                topologyId, resourcePath, workerId, workerData.getPort(), workerTasks, workerData.getDefaultResources(), workerData.getUserResources());
+
+    }
 }

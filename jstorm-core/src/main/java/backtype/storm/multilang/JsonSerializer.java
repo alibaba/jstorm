@@ -129,7 +129,7 @@ public class JsonSerializer implements ISerializer {
 
         shellMsg.setTuple((List) msg.get("tuple"));
 
-        List<Tuple> anchors = new ArrayList<Tuple>();
+        //List<Tuple> anchors = new ArrayList<Tuple>();
         Object anchorObj = msg.get("anchors");
         if (anchorObj != null) {
             if (anchorObj instanceof String) {

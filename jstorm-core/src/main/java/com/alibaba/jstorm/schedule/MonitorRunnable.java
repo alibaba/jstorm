@@ -17,24 +17,29 @@
  */
 package com.alibaba.jstorm.schedule;
 
-import backtype.storm.Config;
-import backtype.storm.generated.TaskHeartbeat;
-import backtype.storm.generated.TopologyTaskHbInfo;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.alibaba.jstorm.cluster.StormClusterState;
 import com.alibaba.jstorm.daemon.nimbus.NimbusData;
 import com.alibaba.jstorm.daemon.nimbus.NimbusUtils;
 import com.alibaba.jstorm.daemon.nimbus.StatusType;
+import com.alibaba.jstorm.daemon.nimbus.metric.assignment.TaskDeadEvent;
 import com.alibaba.jstorm.schedule.default_assign.ResourceWorkerSlot;
 import com.alibaba.jstorm.task.error.ErrorConstants;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.TimeFormat;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import static com.alibaba.jstorm.daemon.nimbus.TopologyMetricsRunnable.TaskDeadEvent;
-
-import java.util.*;
+import backtype.storm.Config;
+import backtype.storm.generated.TaskHeartbeat;
+import backtype.storm.generated.TopologyTaskHbInfo;
 
 /**
  * Scan all task's heartbeat, if task isn't alive, DO NimbusUtils.transition(monitor)
@@ -86,7 +91,7 @@ public class MonitorRunnable implements Runnable {
                 boolean needReassign = false;
                 for (Integer task : taskIds) {
                     boolean isTaskDead = NimbusUtils.isTaskDead(data, topologyid, task);
-                    if (isTaskDead == true) {
+                    if (isTaskDead) {
                         deadTasks.add(task);
                         needReassign = true;
                     }
@@ -94,7 +99,7 @@ public class MonitorRunnable implements Runnable {
 
 
                 TopologyTaskHbInfo topologyHbInfo = data.getTasksHeartbeat().get(topologyid);
-                if (needReassign == true) {
+                if (needReassign) {
                     if (topologyHbInfo != null) {
                         int topologyMasterId = topologyHbInfo.get_topologyMasterId();
                         if (deadTasks.contains(topologyMasterId)) {
@@ -138,12 +143,7 @@ public class MonitorRunnable implements Runnable {
 
                         if (deadTaskWorkers.size() > 0) {
                             // notify jstorm monitor
-                            TaskDeadEvent event = new TaskDeadEvent();
-                            event.clusterName = data.getClusterName();
-                            event.topologyId = topologyid;
-                            event.deadTasks = deadTaskWorkers;
-                            event.timestamp = System.currentTimeMillis();
-                            data.getMetricRunnable().pushEvent(event);
+                            TaskDeadEvent.pushEvent(topologyid, deadTaskWorkers);
                         }
                     }
                     NimbusUtils.transition(data, topologyid, false, StatusType.monitor);

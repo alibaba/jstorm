@@ -153,4 +153,15 @@ public class RotatingMap<K, V> implements TimeOutMap<K, V> {
         }
         return size;
     }
+
+    public void clear() {
+        for (Map<K, V> bucket : _buckets) {
+            bucket.clear();
+        }
+    }
+
+    @Override
+    public String toString() {
+        return _buckets.toString();
+    }
 }

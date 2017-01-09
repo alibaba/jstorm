@@ -34,6 +34,8 @@ storm.zookeeper.retry.interval: 1000
 storm.zookeeper.retry.intervalceiling.millis: 30000
 storm.zookeeper.auth.user: null
 storm.zookeeper.auth.password: null
+storm.exhibitor.port: 8080
+storm.exhibitor.poll.uripath: "/exhibitor/v1/cluster/list"
 storm.cluster.mode: "distributed" # can be distributed or local
 storm.local.mode.zmq: false
 storm.thrift.transport: "backtype.storm.security.auth.SimpleTransportPlugin"
@@ -47,11 +49,18 @@ storm.auth.simple-white-list.users: []
 storm.auth.simple-acl.users: []
 storm.auth.simple-acl.users.commands: []
 storm.auth.simple-acl.admins: []
+storm.cluster.state.store: "backtype.storm.cluster.ZKStateStorageFactory"
 storm.meta.serialization.delegate: "backtype.storm.serialization.DefaultSerializationDelegate"
+storm.codedistributor.class: "backtype.storm.codedistributor.LocalFileSystemCodeDistributor"
+storm.workers.artifacts.dir: "workers-artifacts"
+storm.health.check.dir: "healthchecks"
+storm.health.check.timeout.ms: 5000
+
 
 ### nimbus.* configs are for the master
 nimbus.host: "localhost"
 nimbus.thrift.port: 8627
+nimbus.thrift.threads: 64
 nimbus.thrift.max_buffer_size: 16384000
 nimbus.childopts: " -Xms4g -Xmx4g -Xmn1536m -XX:PermSize=256m  -XX:SurvivorRatio=4 -XX:+UseConcMarkSweepGC  -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:CMSFullGCsBeforeCompaction=5 -XX:+HeapDumpOnOutOfMemoryError -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=5 -XX:GCLogFileSize=100M -XX:+UseCMSCompactAtFullCollection -XX:CMSMaxAbortablePrecleanTime=5000 "
 nimbus.task.timeout.secs: 240
@@ -59,13 +68,19 @@ nimbus.supervisor.timeout.secs: 180
 nimbus.monitor.freq.secs: 10
 nimbus.cleanup.inbox.freq.secs: 600
 nimbus.inbox.jar.expiration.secs: 3600
+nimbus.code.sync.freq.secs: 120
 nimbus.task.launch.secs: 240
 nimbus.reassign: true
 nimbus.file.copy.expiration.secs: 120
 nimbus.topology.validator: "backtype.storm.nimbus.DefaultTopologyValidator"
+topology.min.replication.count: 1
+topology.max.replication.wait.time.sec: 60
 nimbus.classpath: ""
+## which external plugin to use, e.g. "hbase,hdfs", jstorm will automate load jstorm-hbase and jstorm-hdfs classpath
+nimbus.external: ""
 nimbus.use.ip: true
 nimbus.credential.renewers.freq.secs: 600
+nimbus.impersonation.authorizer: "backtype.storm.security.auth.authorizer.ImpersonationAuthorizer"
 ## Two type cache 
 ## "com.alibaba.jstorm.cache.TimeoutMemCache" is suitable for small cluster
 ## "com.alibaba.jstorm.cache.TimeoutMemCache" can only run under linux/mac, it is suitable for huge cluster
@@ -74,6 +89,9 @@ nimbus.cache.class: null
 ## if this is true, nimbus db cache will be reset when start nimbus
 nimbus.cache.reset: true
 cache.timeout.list: null
+nimbus.impersonation.authorizer: "backtype.storm.security.auth.authorizer.ImpersonationAuthorizer"
+nimbus.queue.size: 100000
+scheduler.display.resource: false
 
 cluster.name: "default"
 ### ui.* configs are for the master
@@ -90,6 +108,8 @@ logviewer.port: 8000
 logviewer.childopts: "-Xmx128m"
 logviewer.cleanup.age.mins: 10080
 logviewer.appender.name: "A1"
+logviewer.max.sum.worker.logs.size.mb: 4096
+logviewer.max.per.worker.logs.size.mb: 2048
 
 logs.users: null
 drpc.port: 4772
@@ -111,6 +131,8 @@ drpc.authorizer.acl.strict: false
 transactional.zookeeper.root: "/transactional"
 transactional.zookeeper.servers: null
 transactional.zookeeper.port: null
+
+
 # 
 # 
 # ##### These may optionally be filled in:
@@ -161,11 +183,26 @@ supervisor.hostname: null
 supervisor.use.ip: true
 supervisor.supervisors: []
 supervisor.supervisors.commands: []
+supervisor.memory.capacity.mb: 4096.0
+#By convention 1 cpu core should be about 100, but this can be adjusted if needed
+# using 100 makes it simple to set the desired value to the capacity measurement
+# for single threaded bolts
+supervisor.cpu.capacity: 400.0
+supervisor.external: ""
 
 ### worker.* configs are for task workers
 # worker gc configuration
 # worker.gc.path will put all gc logs and memory dump file
 worker.gc.childopts: " -XX:SurvivorRatio=4 -XX:+UseConcMarkSweepGC  -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:CMSFullGCsBeforeCompaction=5 -XX:+HeapDumpOnOutOfMemoryError -XX:+UseCMSCompactAtFullCollection -XX:CMSMaxAbortablePrecleanTime=5000 "
+# Unlocking commercial features requires a special license from Oracle.
+# See http://www.oracle.com/technetwork/java/javase/terms/products/index.html
+# For this reason, profiler features are disabled by default.
+worker.profiler.enabled: false
+worker.profiler.childopts: "-XX:+UnlockCommercialFeatures -XX:+FlightRecorder"
+worker.profiler.command: "flight.bash"
+
+# check whether dynamic log levels can be reset from DEBUG to INFO in workers
+worker.log.level.reset.poll.secs: 30
 worker.heartbeat.frequency.secs: 2
 worker.metric.report.frequency.secs: 60
 worker.classpath: ""
@@ -173,7 +210,7 @@ worker.redirect.output: false
 # if worker.redirect.output.file is null, then it will be $LOG.out
 # please use absolute path
 worker.redirect.output.file: null
-
+worker.external: ""
 
 # control how many worker receiver threads we need per worker
 topology.worker.receiver.thread.count: 1
@@ -181,6 +218,8 @@ topology.worker.receiver.thread.count: 1
 # when supervisor is shutdown, automatically shutdown worker
 worker.stop.without.supervisor: false
 worker.memory.size: 2147483648
+# you can set the worker's memory which contain tm, and the default value is the same as worker.memory.size
+topology.master.worker.memory.size: null
 # when min memory size is null, set Xmx as Xms
 worker.memory.min.size: null
 
@@ -195,9 +234,10 @@ zmq.linger.millis: 5000
 zmq.hwm: 0
 
 # Netty thread num: 0 means no limit
-storm.messaging.netty.server_worker_threads: 1
+storm.messaging.netty.server_worker_threads: 5
 storm.messaging.netty.client_worker_threads: 1
 storm.messaging.netty.buffer_size: 5242880 #5MB buffer
+storm.messaging.netty.receive.buffer_size: 20971520 #20MB
 storm.messaging.netty.max_retries: 30
 storm.messaging.netty.max_wait_ms: 1000
 storm.messaging.netty.min_wait_ms: 100
@@ -205,27 +245,35 @@ storm.messaging.netty.disruptor: true
 # If async and batch is used in netty transfer, netty will batch message
 storm.messaging.netty.transfer.async.batch: true
 # If the Netty messaging layer is busy(netty internal buffer not writable), the Netty client will try to batch message as more as possible up to the size of storm.messaging.netty.transfer.batch.size bytes, otherwise it will try to flush message as soon as possible to reduce latency.
-storm.messaging.netty.transfer.batch.size: 262144
+storm.messaging.netty.transfer.batch.size: 65536
 # Sets the backlog value to specify when the channel binds to a local address
 storm.messaging.netty.socket.backlog: 500
 # We check with this interval that whether the Netty channel is writable and try to write pending messages if it is.
-storm.messaging.netty.flush.check.interval.ms: 10
+storm.messaging.netty.flush.check.interval.ms: 5
 # when netty connection is broken, 
 # when buffer size is more than storm.messaging.netty.buffer.threshold
 # it will slow down the netty sending speed
 storm.messaging.netty.buffer.threshold: 8388608
 storm.messaging.netty.max.pending: 4
-## send message with sync or async mode
-storm.messaging.netty.sync.mode: false
 ## when netty is in sync mode and client channel is unavailable, 
 ## it will block sending until channel is ready
 storm.messaging.netty.async.block: true
 
 # By default, the Netty SASL authentication is set to false.  Users can override and set it true for a specific topology.
 storm.messaging.netty.authentication: false
+# configuration for flow control in netty client
+# When cache size is null, the transfer batch size of netty client will be used.
+netty.client.flow.ctrl.wait.time.ms: 5
+netty.client.flow.ctrl.cache.size: null
 
+# Default plugin to use for automatic network topology discovery
+storm.network.topography.plugin: backtype.storm.networktopography.DefaultRackDNSToSwitchMapping
 # default number of seconds group mapping service will cache user group
 storm.group.mapping.service.cache.duration.secs: 120
+
+# netty pending buffer timeout, if pending time is longer than this setting, the pending buffer will be throw
+# set it as -1, client won't send message until the channel is read
+storm.messaging.netty.pending.buffer.timeout: null
 
 ### topology.* configs are for specific executing storms
 topology.enable.message.timeouts: true
@@ -233,11 +281,13 @@ topology.debug: false
 topology.optimize: true
 topology.workers: 1
 topology.acker.executors: null
+topology.eventlogger.executors: null
 topology.tasks: null
 topology.master.single.worker: null # true/false. If null, this config is based on the num of topology workers.
 # maximum amount of time a message has to complete before it's considered failed
 topology.message.timeout.secs: 30
 topology.multilang.serializer: "backtype.storm.multilang.JsonSerializer"
+topology.shellbolt.max.pending: 100
 topology.skip.missing.kryo.registrations: false
 topology.max.task.parallelism: null
 # topology.spout.parallelism and topology.bolt.parallelism are used 
@@ -263,11 +313,9 @@ topology.executor.receive.buffer.size: 1024 #batched
 topology.executor.send.buffer.size: 1024 #individual messages
 topology.receiver.buffer.size: 8 # setting it too high causes a lot of problems (heartbeat thread gets starved, throughput plummets)
 topology.transfer.buffer.size: 2048 # batched
-topology.buffer.size.limited: true #topology queue capacity is unlimited
 topology.tick.tuple.freq.secs: null
 topology.worker.shared.thread.pool.size: 4
-topology.disruptor.wait.strategy: "com.lmax.disruptor.TimeoutBlockingWaitStrategy"
-topology.disruptor.wait.timeout: 5 # ms
+topology.disruptor.wait.timeout: 10 # ms
 topology.spout.wait.strategy: "backtype.storm.spout.SleepSpoutWaitStrategy"
 topology.sleep.spout.wait.strategy.time.ms: 1
 topology.error.throttle.interval.secs: 10
@@ -275,6 +323,8 @@ topology.max.error.report.per.interval: 5
 topology.kryo.factory: "backtype.storm.serialization.DefaultKryoFactory"
 topology.tuple.serializer: "backtype.storm.serialization.types.ListDelegateSerializer"
 topology.trident.batch.emit.interval.millis: 500
+topology.accurate.metric: false
+topology.histogram.size: 256
 
 # jstorm metrics monitor configuration
 topology.performance.metrics: true
@@ -292,22 +342,37 @@ topology.testing.always.try.serialize: false
 topology.classpath: null
 topology.environment: null
 topology.bolts.outgoing.overflow.buffer.enable: false
-topology.max.worker.num.for.netty.metrics: 100
+topology.max.worker.num.for.netty.metrics: 1
 topology.metric.sample.rate: 0.05
+topology.enable.stream.metrics: false
 topology.timer.update.interval: 10
+# disable some worker metrics and time realted task/comp metrics by default
+topology.disabled.metric.names: "EmitTime,MsgDecodeTime"
 
 topology.backpressure.enable: true
 topology.backpressure.water.mark.high: 0.8
-topology.backpressure.water.mark.low: 0.05
-topology.backpressure.coordinator.trigger.ratio: 0.1 # task_sent_request/component_task_num. if the ratio is bigger than configured value, coordinator will trigger the backpressure request to source component
-topology.backpressure.trigger.sample.number: 4
-topology.backpressure.check.interval: 500
-topology.backpressure.trigger.sample.rate: 1
+topology.backpressure.water.mark.low: 0.2
+
+topology.disable.loadaware: false
+topology.state.checkpoint.interval.ms: 1000
+
+# Configs for Resource Aware Scheduler
+# topology priority describing the importance of the topology in decreasing importance starting from 0 (i.e. 0 is the highest priority and the priority importance decreases as the priority number increases).
+# Recommended range of 0-29 but no hard limit set.
+topology.priority: 29
+topology.component.resources.onheap.memory.mb: 128.0
+topology.component.resources.offheap.memory.mb: 0.0
+topology.component.cpu.pcore.percent: 10.0
+topology.worker.max.heap.size.mb: 768.0
+topology.scheduler.strategy: "backtype.storm.scheduler.resource.strategies.scheduling.DefaultResourceAwareStrategy"
+resource.aware.scheduler.eviction.strategy: "backtype.storm.scheduler.resource.strategies.eviction.DefaultEvictionStrategy"
+resource.aware.scheduler.priority.strategy: "backtype.storm.scheduler.resource.strategies.priority.DefaultSchedulingPriorityStrategy"
+
 
 # Enbale topology automatically to batch the tuples before sending them out.
 # The batch size is 4.
 task.batch.tuple: true
-task.msg.batch.size: 20
+task.msg.batch.size: 50
 task.msg.batch.flush.interval.millis: 2
 
 # enable supervisor use cgroup to make resource isolation
@@ -318,14 +383,28 @@ task.msg.batch.flush.interval.millis: 2
 # You can get more about cgroup:
 #   http://t.cn/8s7nexU
 #
-# For cgroup root dir, the full path is "/cgroup/cpu + root_dir".
-# The /cgroup/cpu part is fixed. The root dir is configurable, 
+# For cgroup root dir, the full path is ${supervisor.cgroup.basedir} + / + ${supervisor.cgroup.rootdir}.
 # which should be consistent with the part configured in /etc/cgconfig.conf
 supervisor.enable.cgroup: false
+supervisor.cgroup.basedir: "/cgroup/cpu"
 supervisor.cgroup.rootdir: "jstorm"
 worker.cpu.core.upper.limit: 3
 
 dev.zookeeper.path: "/tmp/dev-storm-zookeeper"
+
+pacemaker.host: "localhost"
+pacemaker.port: 6699
+pacemaker.base.threads: 10
+pacemaker.max.threads: 50
+pacemaker.thread.timeout: 10
+pacemaker.childopts: "-Xmx1024m"
+pacemaker.auth.method: "NONE"
+pacemaker.kerberos.users: []
+
+#default storm daemon metrics reporter plugins
+storm.daemon.metrics.reporter.plugins:
+     - "backtype.storm.daemon.metrics.reporters.JmxPreparableReporter"
+
 
 # if this configuration has been set,
 # the spout or bolt will log all received tuples
@@ -392,3 +471,64 @@ storm.machine.resource.warning.check.dir: null
 ###supervisor machine resource limit
 storm.machine.resource.reserve.mem: 1073741824
 storm.machine.resource.reserve.cpu.percent: 30
+
+## blobstore configs
+
+### The directory where all blobs are stored. For local file system it represents the directory on
+### the nimbus node and for HDFS file system it represents the hdfs file system path.
+blobstore.dir: null
+blobstore.hdfs.hostname: null
+blobstore.hdfs.port: null
+### This configuration is meant to set the client for the supervisor in order to talk to the blob store.
+### For a local file system blob store it is set to "com.alibaba.jstorm.blobstore.NimbusBlobStore"
+### and for the HDFS blob store it is set to "com.alibaba.jstorm.hdfs.blobstore.HdfsClientBlobStore"
+supervisor.blobstore.class: "com.alibaba.jstorm.blobstore.NimbusBlobStore"
+supervisor.blobstore.download.thread.count: 5
+supervisor.blobstore.download.max_retries: 3
+supervisor.localizer.cache.target.size.mb: 10240
+supervisor.localizer.cleanup.interval.ms: 600000
+client.blobstore.class: "com.alibaba.jstorm.blobstore.NimbusBlobStore"
+
+### Sets the blobstore implementation nimbus uses.
+### For a local file system blob store it is set to "com.alibaba.jstorm.blobstore.LocalFsBlobStore"
+### and for the HDFS blob store it is set to "com.alibaba.jstorm.hdfs.blobstore.HdfsBlobStore"
+nimbus.blobstore.class: "com.alibaba.jstorm.blobstore.LocalFsBlobStore"
+nimbus.blobstore.expiration.secs: 600
+
+storm.blobstore.inputstream.buffer.size.bytes: 65536
+### It sets the replication for each blob within the blob store. The "topology.min.replication.count" ensures
+### the minimum replication the topology specific blobs are set before launching the topology. default is set to 3.
+storm.blobstore.replication.factor: 3
+
+
+### worker's share thread pool about flush thread
+### the default min value for pool is 5 when min size is null, and the default max value is task.num * 2 when
+### max size is null
+worker.flush.pool.min.size: null
+worker.flush.pool.max.size: null
+
+disruptor.queue.batch.mode: true
+disruptor.buffer.size: 20
+disruptor.buffer.interval.millis: 5
+
+### you can configure the task/worker's ser&deser thread num at the same time, but the task ser$deser thread num must
+### are greater than zero, otherwise dead lock will happened. The default configure for task is one ser$deser thread
+### , and the default for worker is 1.2*task.num deser thread. The deserialize operation tasks more time.
+
+task.serialize.thread.num: null
+task.deserialize.thread.num: null
+worker.deserialize.thread.ratio: null
+worker.serialize.thread.ratio: null
+
+### Config for "snapshot state" transaction topology
+transaction.schedule.batch.delay.ms: 1000
+transaction.max.pending.batch: 2
+
+transaction.cache.block.size: 1073741824 # 1GB
+transaction.max.cache.block.num: 3
+
+#if set "shuffle.enable.inter.path", the tuple will firstly try to send the task in the same worker
+shuffle.enable.inter.path: true
+shuffle.inter.load.mark: 0.5
+
+jstorm.yarn.conf.blacklist: "jstorm.home,jstorm.log.dir,storm.local.dir,java.library.path"

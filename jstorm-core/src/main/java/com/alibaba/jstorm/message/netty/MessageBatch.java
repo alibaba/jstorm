@@ -18,6 +18,7 @@
 package com.alibaba.jstorm.message.netty;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBufferOutputStream;
@@ -26,39 +27,78 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import backtype.storm.messaging.ControlMessage;
+import backtype.storm.messaging.NettyMessage;
 import backtype.storm.messaging.TaskMessage;
 
-class MessageBatch {
+class MessageBatch implements NettyMessage{
     private static final Logger LOG = LoggerFactory.getLogger(MessageBatch.class);
     private int buffer_size;
     private ArrayList<Object> msgs;
-    private int encoded_length;
+    private int encodedLength;
 
     MessageBatch(int buffer_size) {
         this.buffer_size = buffer_size;
         msgs = new ArrayList<Object>();
-        encoded_length = ControlMessage.EOB_MESSAGE.encodeLength();
+        encodedLength = ControlMessage.EOB_MESSAGE.getEncodedLength();
     }
 
-    void add(Object obj) {
+    void add(NettyMessage obj) {
         if (obj == null)
             throw new RuntimeException("null object forbidded in message batch");
 
         if (obj instanceof TaskMessage) {
             TaskMessage msg = (TaskMessage) obj;
             msgs.add(msg);
-            encoded_length += msgEncodeLength(msg);
+            encodedLength += msgEncodeLength(msg);
+            return;
+        }
+
+        if (obj instanceof MessageBatch){
+            MessageBatch batch = (MessageBatch) obj;
+            add(batch);
             return;
         }
 
         if (obj instanceof ControlMessage) {
             ControlMessage msg = (ControlMessage) obj;
             msgs.add(msg);
-            encoded_length += msg.encodeLength();
+            encodedLength += msg.getEncodedLength();
             return;
         }
 
         throw new RuntimeException("Unsuppoted object type " + obj.getClass().getName());
+    }
+
+    void add(List objs) {
+        if (objs == null || objs.size() == 0)
+            throw new RuntimeException("null object forbidded in message batch");
+
+        if (objs.get(0) instanceof TaskMessage) {
+            for (Object obj : objs) {
+                TaskMessage msg = (TaskMessage) obj;
+                msgs.add(msg);
+                encodedLength += msgEncodeLength(msg);
+            }
+            return;
+        }
+
+        if (objs.get(0) instanceof ControlMessage) {
+            for (Object obj : objs) {
+                ControlMessage msg = (ControlMessage) obj;
+                msgs.add(msg);
+                encodedLength += msg.getEncodedLength();
+            }
+            return;
+        }
+
+        throw new RuntimeException("Unsuppoted object type " + objs.get(0).getClass().getName());
+    }
+
+    public void add(MessageBatch batch) {
+    	if (batch != null && batch.size() >= 0) {
+            msgs.addAll(batch.getMessages());
+            encodedLength += batch.getEncodedLength();
+    	}
     }
 
     void remove(Object obj) {
@@ -68,14 +108,14 @@ class MessageBatch {
         if (obj instanceof TaskMessage) {
             TaskMessage msg = (TaskMessage) obj;
             msgs.remove(msg);
-            encoded_length -= msgEncodeLength(msg);
+            encodedLength -= msgEncodeLength(msg);
             return;
         }
 
         if (obj instanceof ControlMessage) {
             ControlMessage msg = (ControlMessage) obj;
             msgs.remove(msg);
-            encoded_length -= msg.encodeLength();
+            encodedLength -= msg.getEncodedLength();
             return;
         }
     }
@@ -91,7 +131,7 @@ class MessageBatch {
      * @return false if the msg could not be added due to buffer size limit; true otherwise
      */
     boolean tryAdd(TaskMessage taskMsg) {
-        if ((encoded_length + msgEncodeLength(taskMsg)) > buffer_size)
+        if ((encodedLength + msgEncodeLength(taskMsg)) > buffer_size)
             return false;
         add(taskMsg);
         return true;
@@ -113,7 +153,7 @@ class MessageBatch {
      * @return
      */
     boolean isFull() {
-        return encoded_length >= buffer_size;
+        return encodedLength >= buffer_size;
     }
 
     /**
@@ -121,7 +161,8 @@ class MessageBatch {
      *
      * @return
      */
-    boolean isEmpty() {
+    @Override
+    public boolean isEmpty() {
         return msgs.isEmpty();
     }
 
@@ -134,15 +175,20 @@ class MessageBatch {
         return msgs.size();
     }
 
-    public int getEncoded_length() {
-        return encoded_length;
+    public int getEncodedLength() {
+        return encodedLength;
+    }
+
+    public List<Object> getMessages() {
+    	return msgs;
     }
 
     /**
      * create a buffer containing the encoding of this batch
      */
-    ChannelBuffer buffer() throws Exception {
-        ChannelBufferOutputStream bout = new ChannelBufferOutputStream(ChannelBuffers.directBuffer(encoded_length));
+    @Override
+    public ChannelBuffer buffer() throws Exception {
+        ChannelBufferOutputStream bout = new ChannelBufferOutputStream(ChannelBuffers.directBuffer(encodedLength));
 
         for (Object msg : msgs)
             if (msg instanceof TaskMessage)
@@ -186,5 +232,10 @@ class MessageBatch {
         // @@@ TESTING CODE
         // LOG.info("Write one message taskid:{}, len:{}, data:{}", task_id
         // , payload_len, JStormUtils.toPrintableString(message.message()) );
+    }
+
+    @Override
+    public String toString() {
+    	return "bufferSize=" + buffer_size + ", messageSize=" + msgs.size();
     }
 }

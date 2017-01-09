@@ -52,14 +52,14 @@ public class UITaskMetric extends UIComponentMetric {
         // the queue value should be displayed in percent
         for (String q : METRIC_QUEUE){
             if (metrics.containsKey(q)){
-                metrics.put(q, UIMetricUtils.format(JStormUtils.parseDouble(metrics.get(q)) * 100, FORMAT));
+                metrics.put(q, UIMetricUtils.format(JStormUtils.parseDouble(metrics.get(q), 0) * 100, FORMAT));
             }
         }
         for (Map.Entry<String,String> entry : subMetrics.entrySet()){
             String metricName = entry.getKey().split("@")[0];
             String value = entry.getValue();
             if(METRIC_QUEUE.contains(metricName)){
-                String v = UIMetricUtils.format(JStormUtils.parseDouble(value)*100,FORMAT);
+                String v = UIMetricUtils.format(JStormUtils.parseDouble(value, 0)*100,FORMAT);
                 subMetrics.put(entry.getKey(), v);
             }
         }

@@ -39,6 +39,8 @@ import com.alibaba.jstorm.task.TaskShutdownDameon;
 import com.alibaba.jstorm.utils.JStormServerUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.PathUtils;
+import com.alibaba.jstorm.utils.ProcessLauncher;
+import com.lmax.disruptor.TimeoutBlockingWaitStrategy;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
 import org.apache.commons.lang.StringUtils;
@@ -47,6 +49,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 /**
  * worker entrance
@@ -58,12 +61,13 @@ public class Worker {
     private static Logger LOG = LoggerFactory.getLogger(Worker.class);
 
     /**
-     * Why need workerData, it is for thread comeptition
+     * use workerData to deal with racing conditions
      */
     private WorkerData workerData;
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    public Worker(Map conf, IContext context, String topology_id, String supervisor_id, int port, String worker_id, String jar_path) throws Exception {
+    public Worker(Map conf, IContext context, String topology_id, String supervisor_id,
+                  int port, String worker_id, String jar_path) throws Exception {
         workerData = new WorkerData(conf, context, topology_id, supervisor_id, port, worker_id, jar_path);
     }
 
@@ -72,13 +76,13 @@ public class Worker {
      */
     public static Set<Integer> worker_output_tasks(WorkerData workerData) {
         ContextMaker context_maker = workerData.getContextMaker();
-        Set<Integer> task_ids = workerData.getTaskids();
+        Set<Integer> taskIds = workerData.getTaskids();
         StormTopology topology = workerData.getSysTopology();
 
-        Set<Integer> rtn = new HashSet<Integer>();
+        Set<Integer> rtn = new HashSet<>();
 
-        for (Integer taskid : task_ids) {
-            TopologyContext context = context_maker.makeTopologyContext(topology, taskid, null);
+        for (Integer taskId : taskIds) {
+            TopologyContext context = context_maker.makeTopologyContext(topology, taskId, null);
 
             // <StreamId, <ComponentId, Grouping>>
             Map<String, Map<String, Grouping>> targets = context.getThisTargets();
@@ -94,28 +98,24 @@ public class Worker {
     }
 
     private RefreshConnections makeRefreshConnections() {
-
         // get output streams of every task
         Set<Integer> outboundTasks = worker_output_tasks(workerData);
 
         workerData.initOutboundTaskStatus(outboundTasks);
         workerData.setOutboundTasks(outboundTasks);
 
-        RefreshConnections refresh_connections = new RefreshConnections(workerData);
-
-        return refresh_connections;
+        return new RefreshConnections(workerData);
     }
 
     private List<TaskShutdownDameon> createTasks() throws Exception {
-        List<TaskShutdownDameon> shutdowntasks =
-                new ArrayList<TaskShutdownDameon>();
+        List<TaskShutdownDameon> shutdownTasks = new ArrayList<>();
 
-        Set<Integer> taskids = workerData.getTaskids();
+        Set<Integer> taskIds = workerData.getTaskids();
 
-        Set<Thread> threads = new HashSet<Thread>();
-        List<Task> taskArrayList = new ArrayList<Task>();
-        for (int taskid : taskids) {
-            Task task = new Task(workerData, taskid);
+        Set<Thread> threads = new HashSet<>();
+        List<Task> taskArrayList = new ArrayList<>();
+        for (int taskId : taskIds) {
+            Task task = new Task(workerData, taskId);
             Thread thread = new Thread(task);
             threads.add(thread);
             taskArrayList.add(task);
@@ -125,13 +125,13 @@ public class Worker {
             thread.join();
         }
         for (Task t : taskArrayList) {
-            shutdowntasks.add(t.getTaskShutdownDameon());
+            shutdownTasks.add(t.getTaskShutdownDameon());
         }
-        return shutdowntasks;
+        return shutdownTasks;
     }
 
     private AsyncLoopThread startDispatchThread() {
-        // send tuple directly from nettyserver
+        // send tuple directly from netty server
         // send control tuple to dispatch thread
         // startDispatchDisruptor();
 
@@ -140,38 +140,32 @@ public class Worker {
 
         //create recv connection
         Map stormConf = workerData.getStormConf();
-        WaitStrategy waitStrategy = (WaitStrategy) JStormUtils.createDisruptorWaitStrategy(stormConf);
+        long timeout = JStormUtils.parseLong(stormConf.get(Config.TOPOLOGY_DISRUPTOR_WAIT_TIMEOUT), 10);
+        WaitStrategy waitStrategy = new TimeoutBlockingWaitStrategy(timeout, TimeUnit.MILLISECONDS);
         int queueSize = JStormUtils.parseInt(stormConf.get(Config.TOPOLOGY_CTRL_BUFFER_SIZE), 256);
         DisruptorQueue recvControlQueue = DisruptorQueue.mkInstance("Dispatch-control", ProducerType.MULTI,
-                queueSize, waitStrategy);
+                queueSize, waitStrategy, false, 0, 0);
 
         //metric for recvControlQueue
         QueueGauge revCtrlGauge = new QueueGauge(recvControlQueue, MetricDef.RECV_CTRL_QUEUE);
         JStormMetrics.registerWorkerMetric(JStormMetrics.workerMetricName(MetricDef.RECV_CTRL_QUEUE, MetricType.GAUGE), new AsmGauge(
                 revCtrlGauge));
 
-        IConnection recvConnection = context.bind(topologyId, workerData.getPort(), workerData.getDeserializeQueues(), recvControlQueue);
+        IConnection recvConnection = context.bind(topologyId, workerData.getPort(), workerData.getDeserializeQueues(),
+                recvControlQueue, false, workerData.getTaskids());
         workerData.setRecvConnection(recvConnection);
 
         // create recvice control messages's thread
-        RunnableCallback recvControlDispather = null;
+        RunnableCallback recvControlDispather = new VirtualPortCtrlDispatch(
+                workerData, recvConnection, recvControlQueue, MetricDef.RECV_THREAD);
 
-        boolean isTaskBatchTuple = ConfigExtension.isTaskBatchTuple(stormConf);
-        if (isTaskBatchTuple) {
-            recvControlDispather = new VirtualPortBatchCtrlDispatch(workerData, recvConnection, recvControlQueue, MetricDef.BATCH_RECV_THREAD);
-        } else {
-            recvControlDispather = new VirtualPortCtrlDispatch(workerData, recvConnection, recvControlQueue, MetricDef.RECV_THREAD);
-        }
-
-        AsyncLoopThread recvControlThread = new AsyncLoopThread(recvControlDispather, false,
-                Thread.MAX_PRIORITY, true);
-        return recvControlThread;
+        return new AsyncLoopThread(recvControlDispather, false, Thread.MAX_PRIORITY, true);
     }
 
     public WorkerShutdown execute() throws Exception {
-        List<AsyncLoopThread> threads = new ArrayList<AsyncLoopThread>();
+        List<AsyncLoopThread> threads = new ArrayList<>();
 
-        // create recv connection
+        // create recv connection, reduce the count of netty client reconnect
         AsyncLoopThread controlRvthread = startDispatchThread();
         threads.add(controlRvthread);
 
@@ -189,12 +183,7 @@ public class Worker {
 
         //create send control message thread
         DrainerCtrlRunable drainerCtrlRunable;
-        boolean isTaskBatchTuple = ConfigExtension.isTaskBatchTuple(workerData.getStormConf());
-        if (isTaskBatchTuple) {
-            drainerCtrlRunable = new DrainerBatchCtrlRunable(workerData, MetricDef.BATCH_SEND_THREAD);
-        } else {
-            drainerCtrlRunable = new DrainerCtrlRunable(workerData, MetricDef.SEND_THREAD);
-        }
+        drainerCtrlRunable = new DrainerCtrlRunable(workerData, MetricDef.SEND_THREAD);
         AsyncLoopThread controlSendThread = new AsyncLoopThread(drainerCtrlRunable, false, Thread.MAX_PRIORITY, true);
         threads.add(controlSendThread);
 
@@ -209,14 +198,19 @@ public class Worker {
         workerData.setMetricsReporter(metricReporter);
 
         // refresh hearbeat to Local dir
-        RunnableCallback heartbeat_fn = new WorkerHeartbeatRunable(workerData);
-        AsyncLoopThread hb = new AsyncLoopThread(heartbeat_fn, false, null, Thread.NORM_PRIORITY, true);
+        RunnableCallback heartbeatFn = new WorkerHeartbeatRunable(workerData);
+        AsyncLoopThread hb = new AsyncLoopThread(heartbeatFn, false, null, Thread.NORM_PRIORITY, true);
         threads.add(hb);
 
         // shutdown task callbacks
-        List<TaskShutdownDameon> shutdowntasks = createTasks();
-        workerData.setShutdownTasks(shutdowntasks);
+        List<TaskShutdownDameon> shutdownTasks = createTasks();
+        workerData.setShutdownTasks(shutdownTasks);
 
+        //create worker serializes/deserializes
+        List<AsyncLoopThread> serializeThreads = workerData.setSerializeThreads();
+        threads.addAll(serializeThreads);
+        List<AsyncLoopThread> deserializeThreads = workerData.setDeserializeThreads();
+        threads.addAll(deserializeThreads);
 
         return new WorkerShutdown(workerData, threads);
 
@@ -225,17 +219,17 @@ public class Worker {
     /**
      * create worker instance and run it
      *
-     * @param conf
-     * @param topology_id
-     * @param supervisor_id
-     * @param port
-     * @param worker_id
-     * @return
+     * @param conf          storm conf
+     * @param topology_id   topology id
+     * @param supervisor_id supervisor iid
+     * @param port          worker port
+     * @param worker_id     worker id
+     * @return WorkerShutDown
      * @throws Exception
      */
     @SuppressWarnings("rawtypes")
-    public static WorkerShutdown mk_worker(Map conf, IContext context, String topology_id, String supervisor_id, int port, String worker_id, String jar_path)
-            throws Exception {
+    public static WorkerShutdown mk_worker(Map conf, IContext context, String topology_id, String supervisor_id,
+                                           int port, String worker_id, String jar_path) throws Exception {
 
         StringBuilder sb = new StringBuilder();
         sb.append("topologyId:" + topology_id + ", ");
@@ -253,7 +247,6 @@ public class Worker {
     }
 
     public void redirectOutput() {
-
         if (System.getenv("REDIRECT") == null || !System.getenv("REDIRECT").equals("true")) {
             return;
         }
@@ -271,13 +264,13 @@ public class Worker {
         } else {
             try {
                 File file = new File(outputFile);
-                if (file.exists() == false) {
+                if (!file.exists()) {
                     PathUtils.touch(outputFile);
                 } else {
-                    if (file.isDirectory() == true) {
+                    if (file.isDirectory()) {
                         LOG.warn("Failed to write " + outputFile);
                         outputFile = DEFAULT_OUT_TARGET_FILE;
-                    } else if (file.canWrite() == false) {
+                    } else if (!file.canWrite()) {
                         LOG.warn("Failed to write " + outputFile);
                         outputFile = DEFAULT_OUT_TARGET_FILE;
                     }
@@ -297,15 +290,16 @@ public class Worker {
     }
 
     /**
-     * Have one problem if the worker's start parameter length is longer than 4096, ps -ef|grep com.alibaba.jstorm.daemon.worker.Worker can't find worker
+     * Note that if the worker's start parameter length is longer than 4096,
+     * ps -ef|grep com.alibaba.jstorm.daemon.worker.Worker can't find worker
      *
-     * @param port
+     * @param port worker port
      */
 
     public static List<Integer> getOldPortPids(String port) {
         String currPid = JStormUtils.process_pid();
 
-        List<Integer> ret = new ArrayList<Integer>();
+        List<Integer> ret = new ArrayList<>();
 
         StringBuilder sb = new StringBuilder();
 
@@ -337,9 +331,11 @@ public class Worker {
                 }
 
                 // LOG.info("Output:" + str);
-                if (str.contains(Worker.class.getName()) == false) {
+                if (!str.contains(Worker.class.getName())) {
                     continue;
-                } else if (str.contains(port) == false) {
+                } else if (str.contains(ProcessLauncher.class.getName())) {
+                    continue;
+                } else if (!str.contains(port)) {
                     continue;
                 }
 
@@ -351,9 +347,9 @@ public class Worker {
                 int i = 0;
                 for (; i < fields.length; i++) {
                     String field = fields[i];
-                    LOG.debug("Filed, " + i + ":" + field);
+                    LOG.debug("Found, " + i + ":" + field);
 
-                    if (field.contains(Worker.class.getName()) == true) {
+                    if (field.contains(Worker.class.getName())) {
                         if (i + 3 >= fields.length) {
                             LOG.info("Failed to find port ");
 
@@ -365,7 +361,7 @@ public class Worker {
                     }
                 }
 
-                if (find == false) {
+                if (!find) {
                     LOG.info("No old port worker");
                     continue;
                 }
@@ -373,7 +369,7 @@ public class Worker {
                 if (fields.length >= 2) {
                     try {
                         if (currPid.equals(fields[1])) {
-                            LOG.info("Skip kill myself");
+                            LOG.info("Skip killing myself");
                             continue;
                         }
                         Integer pid = Integer.valueOf(fields[1]);
@@ -382,7 +378,6 @@ public class Worker {
                         ret.add(pid);
                     } catch (Exception e) {
                         LOG.error(e.getMessage(), e);
-                        continue;
                     }
                 }
             }
@@ -404,15 +399,15 @@ public class Worker {
     }
 
     /**
-     * worker entrance
+     * start worker
      *
-     * @param args
+     * @param args worker start args
      */
     @SuppressWarnings("rawtypes")
     public static void main(String[] args) {
         StringBuilder sb = new StringBuilder();
         for (String arg : args) {
-            sb.append(arg + " ");
+            sb.append(arg).append(" ");
         }
         LOG.info("!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         LOG.info("Begin to start worker:" + sb.toString());
@@ -437,10 +432,10 @@ public class Worker {
 
             JStormServerUtils.startTaobaoJvmMonitor();
 
-            sb.append("topologyId:" + topology_id + ", ");
-            sb.append("port:" + port_str + ", ");
-            sb.append("workerId:" + worker_id + ", ");
-            sb.append("jar_path:" + jar_path + "\n");
+            sb.append("topologyId:" + topology_id + ", ")
+                    .append("port:" + port_str + ", ")
+                    .append("workerId:" + worker_id + ", ")
+                    .append("jar_path:" + jar_path + "\n");
 
             WorkerShutdown sd = mk_worker(conf, null, topology_id, supervisor_id, Integer.parseInt(port_str), worker_id, jar_path);
             sd.join();

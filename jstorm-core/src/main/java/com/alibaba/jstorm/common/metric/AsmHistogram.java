@@ -24,6 +24,7 @@ import com.alibaba.jstorm.common.metric.snapshot.AsmHistogramSnapshot;
 import com.alibaba.jstorm.common.metric.snapshot.AsmSnapshot;
 
 import com.alibaba.jstorm.metric.JStormMetrics;
+import com.alibaba.jstorm.metric.MetricUtils;
 import com.alibaba.jstorm.utils.TimeUtils;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -102,6 +103,22 @@ public class AsmHistogram extends AsmMetric<JHistogram> {
         }
     }
 
+    public void updateTime(long start, int n) {
+        if (JStormMetrics.enabled) {
+            if (sample() && enabled.get() && start >= 0L) {
+                if (timeUnit == TimeUnit.MILLISECONDS) {
+                    long end = System.currentTimeMillis();
+                    long delta = (end - start) / n;
+                    this.unFlushed.update(delta * TimeUtils.US_PER_MS);
+                } else {
+                    long end = System.nanoTime();
+                    long delta = (end - start) / n;
+                    this.unFlushed.update(delta / TimeUtils.NS_PER_US);
+                }
+            }
+        }
+    }
+
     public void setLastUpdateTime(long time) {
         lastUpdateTime = time;
     }
@@ -141,9 +158,11 @@ public class AsmHistogram extends AsmMetric<JHistogram> {
                 histogram.update(val);
             }
         }
-        for (long val : values) {
-            for (AsmMetric metric : this.assocMetrics) {
-                metric.updateDirectly(val);
+        if (MetricUtils.metricAccurateCal){
+            for (long val : values) {
+                for (AsmMetric metric : this.assocMetrics) {
+                    metric.updateDirectly(val);
+                }
             }
         }
         this.unFlushed = newHistogram();

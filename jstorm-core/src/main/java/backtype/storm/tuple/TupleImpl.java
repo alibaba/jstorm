@@ -42,6 +42,10 @@ public class TupleImpl extends IndifferentAccessMap implements Seqable, Indexed,
     private MessageId id;
     private IPersistentMap _meta = null;
 
+    public TupleImpl() {
+        
+    }
+
     public TupleImpl(GeneralTopologyContext context, List<Object> values, int taskId, String streamId, MessageId id) {
         this.values = values;
         this.taskId = taskId;
@@ -49,12 +53,13 @@ public class TupleImpl extends IndifferentAccessMap implements Seqable, Indexed,
         this.id = id;
         this.context = context;
 
+        /*
         String componentId = context.getComponentId(taskId);
         Fields schema = context.getComponentOutputFields(componentId, streamId);
         if (values.size() != schema.size()) {
             throw new IllegalArgumentException("Tuple created with wrong number of fields. " + "Expected " + schema.size() + " fields but got " + values.size()
                     + " fields");
-        }
+        }*/
     }
 
     public TupleImpl(GeneralTopologyContext context, List<Object> values, int taskId, String streamId) {
@@ -345,4 +350,11 @@ public class TupleImpl extends IndifferentAccessMap implements Seqable, Indexed,
         return _map;
     }
 
+    public void setTopologyContext(GeneralTopologyContext context) {
+    	this.context = context;
+    }
+    
+    public GeneralTopologyContext getTopologyContext() {
+    	return context;
+    }
 }

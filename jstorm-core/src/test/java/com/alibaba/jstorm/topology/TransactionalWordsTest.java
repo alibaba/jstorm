@@ -284,9 +284,10 @@ public class TransactionalWordsTest {
             assertNotSame(0, receiveCounter1.get());
             assertNotSame(0, receiveCounter2.get());
             
-            cluster.killTopology("top-n-topology");
-            cluster.shutdown();
+            //cluster.killTopology("top-n-topology");
+            //cluster.shutdown();
         } catch (Exception e) {
+            e.printStackTrace();
             Assert.fail("Failed to run simple transaction");
         }
 

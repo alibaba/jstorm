@@ -34,11 +34,12 @@ import storm.trident.tuple.TridentTuple;
 import storm.trident.tuple.TridentTupleView.ProjectionFactory;
 
 public class MapReducerAggStateUpdater implements StateUpdater<MapState> {
+    private static final long serialVersionUID = 8667174018978959987L;
     ReducerAggregator _agg;
     Fields _groupFields;
     Fields _inputFields;
-    ProjectionFactory _groupFactory;
-    ProjectionFactory _inputFactory;
+    transient ProjectionFactory _groupFactory;
+    transient ProjectionFactory _inputFactory;
     ComboList.Factory _factory;
 
     public MapReducerAggStateUpdater(ReducerAggregator agg, Fields groupFields, Fields inputFields) {
@@ -50,22 +51,20 @@ public class MapReducerAggStateUpdater implements StateUpdater<MapState> {
 
     @Override
     public void updateState(MapState map, List<TridentTuple> tuples, TridentCollector collector) {
-        Map<List<Object>, List<TridentTuple>> grouped = new HashMap();
-
-        List<List<Object>> groups = new ArrayList<List<Object>>(tuples.size());
-        List<Object> values = new ArrayList<Object>(tuples.size());
-        for (TridentTuple t : tuples) {
+        Map<List<Object>, List<TridentTuple>> grouped = new HashMap<>();
+        
+        for(TridentTuple t: tuples) {
             List<Object> group = _groupFactory.create(t);
             List<TridentTuple> groupTuples = grouped.get(group);
-            if (groupTuples == null) {
-                groupTuples = new ArrayList();
+            if(groupTuples==null) {
+                groupTuples = new ArrayList<>();
                 grouped.put(group, groupTuples);
             }
             groupTuples.add(_inputFactory.create(t));
         }
-        List<List<Object>> uniqueGroups = new ArrayList(grouped.keySet());
-        List<ValueUpdater> updaters = new ArrayList(uniqueGroups.size());
-        for (List<Object> group : uniqueGroups) {
+        List<List<Object>> uniqueGroups = new ArrayList<>(grouped.keySet());
+        List<ValueUpdater> updaters = new ArrayList<>(uniqueGroups.size());
+        for(List<Object> group: uniqueGroups) {
             updaters.add(new ReducerValueUpdater(_agg, grouped.get(group)));
         }
         List<Object> results = map.multiUpdate(uniqueGroups, updaters);

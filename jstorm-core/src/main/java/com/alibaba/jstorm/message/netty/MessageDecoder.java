@@ -53,21 +53,9 @@ public class MessageDecoder extends FrameDecoder {
     private static AsmHistogram msgDecodeTimer;
 
     /**
-     * netty recv speed, bytes/sec
-     */
-    private static AsmMeter nettyServerRecvSpeed = (AsmMeter) JStormMetrics.registerWorkerMetric(
-                        MetricUtils.workerMetricName(MetricDef.NETTY_SRV_RECV_SPEED, MetricType.METER), new AsmMeter());
-
-    /**
      * netty transmit time map
      */
     private static Map<Channel, AsmHistogram> networkTransmitTimeMap = new HashMap<Channel, AsmHistogram>();
-
-    /**
-     * worker level transmit time which summarizes all channel transmit time
-     */
-    private static AsmHistogram networkWorkerTransmitTime = (AsmHistogram) JStormMetrics.registerWorkerMetric(
-            JStormMetrics.workerMetricName(MetricDef.NETTY_SRV_MSG_TRANS_TIME, MetricType.HISTOGRAM), new AsmHistogram());
 
     private static Map<Channel, String> transmitNameMap = new HashMap<Channel, String>();
     private boolean isServer;
@@ -88,6 +76,7 @@ public class MessageDecoder extends FrameDecoder {
                     MetricUtils.workerMetricName(MetricDef.NETWORK_MSG_DECODE_TIME, MetricType.HISTOGRAM), new AsmHistogram());
             msgDecodeTimer.setTimeUnit(TimeUnit.NANOSECONDS);
         }
+        NettyMetricInstance.register();
     }
 
     /*
@@ -141,9 +130,10 @@ public class MessageDecoder extends FrameDecoder {
                             netTransTime.update(interval * TimeUtils.NS_PER_US);
                         }
                     }
-                    networkWorkerTransmitTime.update(interval * TimeUtils.NS_PER_US);
+                    if (MetricUtils.metricAccurateCal)
+                        NettyMetricInstance.networkWorkerTransmitTime.update(interval * TimeUtils.NS_PER_US);
                 }
-                nettyServerRecvSpeed.update(ControlMessage.encodeLength());
+                NettyMetricInstance.nettyServerRecvSpeed.update(ctrl_msg.getEncodedLength());
                 return ctrl_msg;
             }
 
@@ -188,7 +178,7 @@ public class MessageDecoder extends FrameDecoder {
             // task, length, JStormUtils.toPrintableString(rawBytes));
 
             TaskMessage ret = new TaskMessage(type, task, rawBytes);
-            nettyServerRecvSpeed.update(rawBytes.length + 8);
+            NettyMetricInstance.nettyServerRecvSpeed.update(rawBytes.length + 8);
             return ret;
         } finally {
             if (isServer && enableNettyMetrics && msgDecodeTimer != null) {

@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import java.io.FileNotFoundException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -54,6 +55,8 @@ public class RefreshConnections extends RunnableCallback {
     private AtomicBoolean shutdown;
 
     @SuppressWarnings("rawtypes")
+    private Map stormConf;
+
     private Map conf;
 
     private StormClusterState zkCluster;
@@ -87,7 +90,8 @@ public class RefreshConnections extends RunnableCallback {
         this.workerData = workerData;
 
         this.shutdown = workerData.getShutdown();
-        this.conf = workerData.getStormConf();
+        this.stormConf = workerData.getStormConf();
+        this.conf = workerData.getConf();
         this.zkCluster = workerData.getZkCluster();
         this.topologyId = workerData.getTopologyId();
         this.outboundTasks = workerData.getOutboundTasks();
@@ -97,9 +101,9 @@ public class RefreshConnections extends RunnableCallback {
         this.supervisorId = workerData.getSupervisorId();
 
         // this.endpoint_socket_lock = endpoint_socket_lock;
-        frequence = JStormUtils.parseInt(conf.get(Config.TASK_REFRESH_POLL_SECS), 5);
+        frequence = JStormUtils.parseInt(stormConf.get(Config.TASK_REFRESH_POLL_SECS), 5);
 
-        taskTimeoutSecs = JStormUtils.parseInt(conf.get(Config.TASK_HEARTBEAT_FREQUENCY_SECS), 10);
+        taskTimeoutSecs = JStormUtils.parseInt(stormConf.get(Config.TASK_HEARTBEAT_FREQUENCY_SECS), 10);
         taskTimeoutSecs = taskTimeoutSecs * 3;
     }
 
@@ -121,7 +125,7 @@ public class RefreshConnections extends RunnableCallback {
                 Long localAssignmentTS = null;
                 try {
                     localAssignmentTS = StormConfig.read_supervisor_topology_timestamp(conf, topologyId);
-                    isUpdateSupervisorTimeStamp = localAssignmentTS.longValue() > workerData.getAssignmentTs().longValue();
+                    isUpdateSupervisorTimeStamp = localAssignmentTS > workerData.getAssignmentTs();
                 } catch (FileNotFoundException e) {
                     LOG.warn("Failed to read supervisor topology timeStamp for " + topologyId + " port=" + workerData.getPort(), e);
                 }
@@ -205,7 +209,7 @@ public class RefreshConnections extends RunnableCallback {
 
                     workerData.updateWorkerToResource(workers);
 
-                    Map<Integer, WorkerSlot> my_assignment = new HashMap<Integer, WorkerSlot>();
+                    Map<Integer, WorkerSlot> taskNodeportTmp = new HashMap<Integer, WorkerSlot>();
 
                     Map<String, String> node = assignment.getNodeHost();
 
@@ -222,15 +226,16 @@ public class RefreshConnections extends RunnableCallback {
                             if (supervisorId.equals(worker.getNodeId()) && worker.getPort() == workerData.getPort())
                                 localTasks.addAll(worker.getTasks());
                             for (Integer id : worker.getTasks()) {
+                                taskNodeportTmp.put(id, worker);
                                 if (outboundTasks.contains(id)) {
-                                    my_assignment.put(id, worker);
+                                    
                                     need_connections.add(worker);
                                 }
                             }
                         }
                     }
-                    taskNodeport.putAll(my_assignment);
-                    workerData.setLocalTasks(localTasks);
+                    taskNodeport.putAll(taskNodeportTmp);
+                    //workerData.setLocalTasks(localTasks);
                     workerData.setLocalNodeTasks(localNodeTasks);
 
                     // get which connection need to be remove or add
@@ -368,11 +373,19 @@ public class RefreshConnections extends RunnableCallback {
             return;
 
         List<TaskShutdownDameon> shutdowns = workerData.getShutdownDaemonbyTaskIds(tasks);
-        for (TaskShutdownDameon shutdown : shutdowns) {
-            try {
-                shutdown.shutdown();
-            } catch (Exception e) {
-                LOG.error("Failed to shutdown task-" + shutdown.getTaskId(), e);
+        List<Future> futures = new ArrayList<>();
+        for (ShutdownableDameon task : shutdowns) {
+            Future<?> future = workerData.getFlusherPool().submit(task);
+            futures.add(future);
+        }
+        // To be assure all tasks are closed rightly
+        for (Future future : futures) {
+            if (future != null) {
+                try {
+                    future.get();
+                } catch (Exception ex) {
+                    LOG.error("Failed to shutdown task {}", ex);
+                }
             }
         }
     }

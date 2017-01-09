@@ -56,6 +56,9 @@ public class CleanRunnable implements Runnable {
         OlderFileFilter filter = new OlderFileFilter(seconds);
 
         File[] files = file.listFiles(filter);
+        if (files == null) {
+        	return ;
+        }
         for (File f : files) {
             if (f.isFile()) {
                 log.info("Cleaning inbox ... deleted: " + f.getName());
@@ -66,7 +69,8 @@ public class CleanRunnable implements Runnable {
                 }
             } else {
                 clean(f);
-                if (f.listFiles().length == 0) {
+                File[] subFiles = f.listFiles();
+                if (subFiles == null || subFiles.length == 0) {
                     log.info("Cleaning inbox ... deleted: " + f.getName());
                     try {
                         f.delete();

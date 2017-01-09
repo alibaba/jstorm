@@ -25,6 +25,8 @@ import backtype.storm.serialization.KryoTupleSerializer;
 import backtype.storm.tuple.ITupleExt;
 import backtype.storm.tuple.TupleExt;
 import backtype.storm.tuple.TupleImplExt;
+import backtype.storm.utils.Utils;
+import com.esotericsoftware.kryo.KryoException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,7 +77,7 @@ public class DrainerCtrlRunable extends DisruptorRunable {
         if (kryo != null) {
             bytes = kryo.serialize((TupleExt) tuple);
         } else {
-            LOG.warn("KryoTupleSerializer is null, so drop batchTuple...");
+            LOG.warn("KryoTupleSerializer is null, so drop tuple...");
         }
         return bytes;
     }
@@ -95,10 +97,14 @@ public class DrainerCtrlRunable extends DisruptorRunable {
             try {
                 //it maybe happened errors when update_topology
                 tupleMessage = serialize(tuple);
-            }catch (Throwable e){
-                LOG.warn("serialize happened errors!!!",e);
+            } catch (Throwable e) {
+                if (Utils.exceptionCauseIsInstanceOf(KryoException.class, e)) {
+                    throw new RuntimeException(e);
+                } else {
+                    LOG.warn("serialize happened errors!!!", e);
+                }
             }
-            TaskMessage message = new TaskMessage((short) 1, targetTask, tupleMessage);
+            TaskMessage message = new TaskMessage((short) TaskMessage.CONTROL_MESSAGE, targetTask, tupleMessage);
             conn.send(message);
         }
     }

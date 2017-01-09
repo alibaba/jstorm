@@ -31,10 +31,9 @@ public class ProcessLauncher {
 	/**
 	 * Due to ProcessLaucher will catch the exception when fail to start worker
 	 * ProcessLauncher will use the same log as the worker's log
-	 * So ProcessLauncher don't log until child process is over. 
+	 * So ProcessLauncher don't log until child process is over.
 	 */
 	private static final Logger LOG = LoggerFactory.getLogger(ProcessLauncher.class);
-
 
 
 	private static class LogWriter extends Thread {
@@ -75,6 +74,7 @@ public class ProcessLauncher {
 
 		private String[] args;
 		private int ret = 0;
+
 		public LauncherThread(String[] args) {
 			this.args = args;
 		}
@@ -87,8 +87,8 @@ public class ProcessLauncher {
 			} catch (IOException e1) {
 				// TODO Auto-generated catch block, log can't print here
 				ret = -1;
-				System.out.println("Failed to start " + args + "\n" +e1);
-				return ;
+				System.out.println("Failed to start " + JStormUtils.mk_list(args) + "\n" + e1);
+				return;
 			}
 
 			try {
@@ -96,13 +96,13 @@ public class ProcessLauncher {
 				LOG.info(JStormUtils.getOutput(p.getErrorStream()));
 				LOG.info(JStormUtils.getOutput(p.getInputStream()));
 				LOG.info("!!!! Wokrer shutdown quickly !!!!");
-			}  catch( InterruptedException e) {
+			} catch (InterruptedException e) {
 				ret = 0;
 				System.out.println("Successfully start process");
-			}catch( Throwable e) {
+			} catch (Throwable e) {
 				//ret = -1;
 				LOG.error("Unknow exception" + e.getCause(), e);
-			}finally {
+			} finally {
 				System.out.println("Begin to exit:" + ret);
 				//JStormUtils.haltProcess(launcher.getResult());
 				System.exit(ret);
@@ -118,63 +118,65 @@ public class ProcessLauncher {
 		Map<Object, Object> conf = null;
 		try {
 			conf = Utils.readStormConfig();
-		}catch(Exception e) {
+		} catch (Exception e) {
 			conf = new HashMap<Object, Object>();
 		}
 		return ConfigExtension.getProcessLauncherSleepSeconds(conf);
 	}
 
-	public static void main(String [] args) throws Exception {
-
-
-		System.out.println("Enviroment:" + System.getenv());
-		System.out.println("Properties:" + System.getProperties());
-
-		//when worker is dead, supervisor can kill ProcessLauncher right now
-		String workerId = System.getenv("jstorm.workerId");
-		if (StringUtils.isNotBlank(workerId)){
-			Map conf = Utils.readStormConfig();
-			StormConfig.validate_distributed_mode(conf);
-			String pidDir = StormConfig.worker_pids_root(conf, workerId);
-			JStormServerUtils.createPid(pidDir);
-		}
-
-		int sleepSeconds = getSleepSeconds();
-		int ret = -1;
-
+	public static void main(String[] args) throws Exception{
 		try {
-			if (System.getenv("REDIRECT") != null && System.getenv("REDIRECT").equals("true")) {
-				ProcessBuilder pb = new ProcessBuilder(args);
-				Process p = pb.start();
-				LogWriter err = null;
-				LogWriter in = null;
+			System.out.println("Enviroment:" + System.getenv());
+			System.out.println("Properties:" + System.getProperties());
 
-				try {
-					err = new LogWriter(p.getErrorStream(), LOG);
-					err.start();
-					in = new LogWriter(p.getInputStream(), LOG);
-					in.start();
-					ret = p.waitFor();
-				} finally {
-					if (err != null) err.close();
-					if (in != null) in.close();
+			int sleepSeconds = getSleepSeconds();
+			int ret = -1;
+
+			try {
+				if (System.getenv("REDIRECT") != null && System.getenv("REDIRECT").equals("true")) {
+					ProcessBuilder pb = new ProcessBuilder(args);
+					Process p = pb.start();
+					LogWriter err = null;
+					LogWriter in = null;
+
+					try {
+						err = new LogWriter(p.getErrorStream(), LOG);
+						err.start();
+						in = new LogWriter(p.getInputStream(), LOG);
+						in.start();
+						ret = p.waitFor();
+					} finally {
+						if (err != null) err.close();
+						if (in != null) in.close();
+					}
+				} else {
+					//when worker is dead, supervisor can kill ProcessLauncher right now
+					//once worker start, worker will kill the processLauncher
+					String workerId = System.getenv("jstorm.workerId");
+					if (StringUtils.isNotBlank(workerId)) {
+						Map conf = Utils.readStormConfig();
+						StormConfig.validate_distributed_mode(conf);
+						String pidDir = StormConfig.worker_pids_root(conf, workerId);
+						JStormServerUtils.createPid(pidDir);
+					}
+
+					LauncherThread launcher = new LauncherThread(args);
+					launcher.start();
+					Thread.sleep(sleepSeconds * 1000);
+					launcher.interrupt();
+					ret = launcher.getResult();
 				}
-			} else {
-				LauncherThread launcher = new LauncherThread(args);
-				launcher.start();
-				Thread.sleep(sleepSeconds * 1000);
-				launcher.interrupt();
-				ret = launcher.getResult();
-			}
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
 
-		}finally {
-			System.out.println("Begin to exit:" + ret);
-			//JStormUtils.haltProcess(launcher.getResult());
-			JStormUtils.haltProcess(ret);
+			} finally {
+				System.out.println("Begin to exit:" + ret);
+				//JStormUtils.haltProcess(launcher.getResult());
+				JStormUtils.haltProcess(ret);
+			}
+		} catch (Exception e) {
+			LOG.error("find error!!", e);
+			throw e;
 		}
 	}
-
-
 }

@@ -104,9 +104,16 @@ public class SubtopologyBolt implements ITridentBatchBolt {
                 if (outgoingNode) {
                     targets.add(new BridgeReceiver(batchCollector));
                 }
-
-                TridentContext triContext =
-                        new TridentContext(pn.selfOutFields, parentFactories, parentStreams, targets, pn.streamId, stateIndex, batchCollector);
+                
+                TridentContext triContext = new TridentContext(
+                        pn.selfOutFields,
+                        parentFactories,
+                        parentStreams,
+                        targets,
+                        pn.streamId,
+                        stateIndex,
+                        batchCollector
+                        );
                 pn.processor.prepare(conf, context, triContext);
                 _outputFactories.put(n, pn.processor.getOutputFactory());
             }
@@ -171,9 +178,10 @@ public class SubtopologyBolt implements ITridentBatchBolt {
     public Map<String, Object> getComponentConfiguration() {
         return null;
     }
-
-    protected class InitialReceiver {
-        List<TridentProcessor> _receivers = new ArrayList();
+    
+    
+    protected static class InitialReceiver {
+        List<TridentProcessor> _receivers = new ArrayList<>();
         RootFactory _factory;
         ProjectionFactory _project;
         String _stream;

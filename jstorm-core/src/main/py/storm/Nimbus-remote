@@ -24,8 +24,8 @@ if len(sys.argv) <= 1 or sys.argv[1] == '--help':
   print('Usage: ' + sys.argv[0] + ' [-h host[:port]] [-u url] [-f[ramed]] [-s[sl]] function [arg1 [arg2...]]')
   print('')
   print('Functions:')
-  print('  void submitTopology(string name, string uploadedJarLocation, string jsonConf, StormTopology topology)')
-  print('  void submitTopologyWithOpts(string name, string uploadedJarLocation, string jsonConf, StormTopology topology, SubmitOptions options)')
+  print('  string submitTopology(string name, string uploadedJarLocation, string jsonConf, StormTopology topology)')
+  print('  string submitTopologyWithOpts(string name, string uploadedJarLocation, string jsonConf, StormTopology topology, SubmitOptions options)')
   print('  void killTopology(string name)')
   print('  void killTopologyWithOpts(string name, KillOptions options)')
   print('  void activate(string name)')
@@ -33,6 +33,20 @@ if len(sys.argv) <= 1 or sys.argv[1] == '--help':
   print('  void rebalance(string name, RebalanceOptions options)')
   print('  void metricMonitor(string name, MonitorOptions options)')
   print('  void restart(string name, string jsonConf)')
+  print('  string beginCreateBlob(string key, SettableBlobMeta meta)')
+  print('  string beginUpdateBlob(string key)')
+  print('  void uploadBlobChunk(string session, string chunk)')
+  print('  void finishBlobUpload(string session)')
+  print('  void cancelBlobUpload(string session)')
+  print('  ReadableBlobMeta getBlobMeta(string key)')
+  print('  void setBlobMeta(string key, SettableBlobMeta meta)')
+  print('  BeginDownloadResult beginBlobDownload(string key)')
+  print('  string downloadBlobChunk(string session)')
+  print('  void deleteBlob(string key)')
+  print('  ListBlobsResult listBlobs(string session)')
+  print('  i32 getBlobReplication(string key)')
+  print('  i32 updateBlobReplication(string key, i32 replication)')
+  print('  void createStateInZookeeper(string key)')
   print('  void beginLibUpload(string libName)')
   print('  string beginFileUpload()')
   print('  void uploadChunk(string location, string chunk)')
@@ -41,14 +55,19 @@ if len(sys.argv) <= 1 or sys.argv[1] == '--help':
   print('  string downloadChunk(string id)')
   print('  void finishFileDownload(string id)')
   print('  string getNimbusConf()')
+  print('  string getStormRawConf()')
+  print('  string getSupervisorConf(string id)')
   print('  string getTopologyConf(string id)')
   print('  string getTopologyId(string topologyName)')
   print('  ClusterSummary getClusterInfo()')
   print('  SupervisorWorkers getSupervisorWorkers(string host)')
+  print('  SupervisorWorkers getSupervisorWorkersById(string id)')
   print('  TopologyInfo getTopologyInfo(string id)')
   print('  TopologyInfo getTopologyInfoByName(string topologyName)')
+  print('   getTopologyTasksToSupervisorIds(string topologyName)')
   print('  StormTopology getTopology(string id)')
   print('  StormTopology getUserTopology(string id)')
+  print('  void notifyThisTopologyTasksIsDead(string topologyId)')
   print('  void uploadTopologyMetrics(string topologyId, TopologyMetric topologyMetrics)')
   print('   registerMetrics(string topologyId,  metrics)')
   print('  TopologyMetric getTopologyMetrics(string topologyId)')
@@ -63,6 +82,8 @@ if len(sys.argv) <= 1 or sys.argv[1] == '--help':
   print('  string getVersion()')
   print('  void updateTopology(string name, string uploadedLocation, string updateConf)')
   print('  void updateTaskHeartbeat(TopologyTaskHbInfo taskHbs)')
+  print('  void setHostInBlackList(string host)')
+  print('  void removeHostOutBlackList(string host)')
   print('')
   sys.exit(0)
 
@@ -173,6 +194,90 @@ elif cmd == 'restart':
     sys.exit(1)
   pp.pprint(client.restart(args[0],args[1],))
 
+elif cmd == 'beginCreateBlob':
+  if len(args) != 2:
+    print('beginCreateBlob requires 2 args')
+    sys.exit(1)
+  pp.pprint(client.beginCreateBlob(args[0],eval(args[1]),))
+
+elif cmd == 'beginUpdateBlob':
+  if len(args) != 1:
+    print('beginUpdateBlob requires 1 args')
+    sys.exit(1)
+  pp.pprint(client.beginUpdateBlob(args[0],))
+
+elif cmd == 'uploadBlobChunk':
+  if len(args) != 2:
+    print('uploadBlobChunk requires 2 args')
+    sys.exit(1)
+  pp.pprint(client.uploadBlobChunk(args[0],args[1],))
+
+elif cmd == 'finishBlobUpload':
+  if len(args) != 1:
+    print('finishBlobUpload requires 1 args')
+    sys.exit(1)
+  pp.pprint(client.finishBlobUpload(args[0],))
+
+elif cmd == 'cancelBlobUpload':
+  if len(args) != 1:
+    print('cancelBlobUpload requires 1 args')
+    sys.exit(1)
+  pp.pprint(client.cancelBlobUpload(args[0],))
+
+elif cmd == 'getBlobMeta':
+  if len(args) != 1:
+    print('getBlobMeta requires 1 args')
+    sys.exit(1)
+  pp.pprint(client.getBlobMeta(args[0],))
+
+elif cmd == 'setBlobMeta':
+  if len(args) != 2:
+    print('setBlobMeta requires 2 args')
+    sys.exit(1)
+  pp.pprint(client.setBlobMeta(args[0],eval(args[1]),))
+
+elif cmd == 'beginBlobDownload':
+  if len(args) != 1:
+    print('beginBlobDownload requires 1 args')
+    sys.exit(1)
+  pp.pprint(client.beginBlobDownload(args[0],))
+
+elif cmd == 'downloadBlobChunk':
+  if len(args) != 1:
+    print('downloadBlobChunk requires 1 args')
+    sys.exit(1)
+  pp.pprint(client.downloadBlobChunk(args[0],))
+
+elif cmd == 'deleteBlob':
+  if len(args) != 1:
+    print('deleteBlob requires 1 args')
+    sys.exit(1)
+  pp.pprint(client.deleteBlob(args[0],))
+
+elif cmd == 'listBlobs':
+  if len(args) != 1:
+    print('listBlobs requires 1 args')
+    sys.exit(1)
+  pp.pprint(client.listBlobs(args[0],))
+
+elif cmd == 'getBlobReplication':
+  if len(args) != 1:
+    print('getBlobReplication requires 1 args')
+    sys.exit(1)
+  pp.pprint(client.getBlobReplication(args[0],))
+
+elif cmd == 'updateBlobReplication':
+  if len(args) != 2:
+    print('updateBlobReplication requires 2 args')
+    sys.exit(1)
+  pp.pprint(client.updateBlobReplication(args[0],eval(args[1]),))
+
+elif cmd == 'createStateInZookeeper':
+  if len(args) != 1:
+    print('createStateInZookeeper requires 1 args')
+    sys.exit(1)
+  pp.pprint(client.createStateInZookeeper(args[0],))
+
 elif cmd == 'beginLibUpload':
   if len(args) != 1:
     print('beginLibUpload requires 1 args')
@@ -221,6 +326,18 @@ elif cmd == 'getNimbusConf':
     sys.exit(1)
   pp.pprint(client.getNimbusConf())
 
+elif cmd == 'getStormRawConf':
+  if len(args) != 0:
+    print('getStormRawConf requires 0 args')
+    sys.exit(1)
+  pp.pprint(client.getStormRawConf())
+
+elif cmd == 'getSupervisorConf':
+  if len(args) != 1:
+    print('getSupervisorConf requires 1 args')
+    sys.exit(1)
+  pp.pprint(client.getSupervisorConf(args[0],))
+
 elif cmd == 'getTopologyConf':
   if len(args) != 1:
     print('getTopologyConf requires 1 args')
@@ -245,6 +362,12 @@ elif cmd == 'getSupervisorWorkers':
     sys.exit(1)
   pp.pprint(client.getSupervisorWorkers(args[0],))
 
+elif cmd == 'getSupervisorWorkersById':
+  if len(args) != 1:
+    print('getSupervisorWorkersById requires 1 args')
+    sys.exit(1)
+  pp.pprint(client.getSupervisorWorkersById(args[0],))
+
 elif cmd == 'getTopologyInfo':
   if len(args) != 1:
     print('getTopologyInfo requires 1 args')
@@ -257,6 +380,12 @@ elif cmd == 'getTopologyInfoByName':
     sys.exit(1)
   pp.pprint(client.getTopologyInfoByName(args[0],))
 
+elif cmd == 'getTopologyTasksToSupervisorIds':
+  if len(args) != 1:
+    print('getTopologyTasksToSupervisorIds requires 1 args')
+    sys.exit(1)
+  pp.pprint(client.getTopologyTasksToSupervisorIds(args[0],))
+
 elif cmd == 'getTopology':
   if len(args) != 1:
     print('getTopology requires 1 args')
@@ -268,6 +397,12 @@ elif cmd == 'getUserTopology':
     print('getUserTopology requires 1 args')
     sys.exit(1)
   pp.pprint(client.getUserTopology(args[0],))
+
+elif cmd == 'notifyThisTopologyTasksIsDead':
+  if len(args) != 1:
+    print('notifyThisTopologyTasksIsDead requires 1 args')
+    sys.exit(1)
+  pp.pprint(client.notifyThisTopologyTasksIsDead(args[0],))
 
 elif cmd == 'uploadTopologyMetrics':
   if len(args) != 2:
@@ -352,6 +487,18 @@ elif cmd == 'updateTaskHeartbeat':
     print('updateTaskHeartbeat requires 1 args')
     sys.exit(1)
   pp.pprint(client.updateTaskHeartbeat(eval(args[0]),))
+
+elif cmd == 'setHostInBlackList':
+  if len(args) != 1:
+    print('setHostInBlackList requires 1 args')
+    sys.exit(1)
+  pp.pprint(client.setHostInBlackList(args[0],))
+
+elif cmd == 'removeHostOutBlackList':
+  if len(args) != 1:
+    print('removeHostOutBlackList requires 1 args')
+    sys.exit(1)
+  pp.pprint(client.removeHostOutBlackList(args[0],))
 
 else:
   print('Unrecognized method %s' % cmd)

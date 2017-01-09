@@ -19,19 +19,20 @@
 package com.alibaba.jstorm.metric;
 
 import backtype.storm.generated.MetricInfo;
+import backtype.storm.generated.MetricSnapshot;
 import com.alibaba.jstorm.common.metric.*;
 import com.alibaba.jstorm.common.metric.snapshot.AsmSnapshot;
 import com.alibaba.jstorm.utils.NetWorkUtils;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import java.nio.ByteBuffer;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * @author Cody (weiyue.wy@alibaba-inc.com)
@@ -74,10 +75,17 @@ public class JStormMetrics implements Serializable {
     protected static int port;
     protected static boolean debug;
 
-    protected static Set<String> debugMetricNames = new HashSet<String>();
+    protected static final Set<String> debugMetricNames = new HashSet<>();
+    protected static final Set<String> disabledMetricNames = new HashSet<>();
+
+    protected static int histogramValueSize;
 
     static {
         host = NetWorkUtils.ip();
+    }
+
+    public static void setHistogramValueSize(int histogramValueSize) {
+        JStormMetrics.histogramValueSize = histogramValueSize;
     }
 
     public static volatile boolean enabled = true;
@@ -125,6 +133,9 @@ public class JStormMetrics implements Serializable {
     }
 
     public static void addDebugMetrics(String names) {
+        if (names == null) {
+            return;
+        }
         String[] metrics = names.split(",");
         for (String metric : metrics) {
             metric = metric.trim();
@@ -133,6 +144,21 @@ public class JStormMetrics implements Serializable {
             }
         }
         LOG.info("debug metric names:{}", Joiner.on(",").join(debugMetricNames));
+    }
+
+    public static void updateDisabledMetrics(String names) {
+        if (names == null) {
+            return;
+        }
+        disabledMetricNames.clear();
+        String[] metrics = names.split(",");
+        for (String metric : metrics) {
+            metric = metric.trim();
+            if (!StringUtils.isBlank(metric)) {
+                disabledMetricNames.add(metric);
+            }
+        }
+        LOG.info("disabled metric names:{}", Joiner.on(",").join(disabledMetricNames));
     }
 
     /**
@@ -358,6 +384,11 @@ public class JStormMetrics implements Serializable {
         for (Map.Entry<String, AsmMetric> entry : entries) {
             String name = entry.getKey();
             AsmMetric metric = entry.getValue();
+
+            // skip disabled metrics, double check
+            if (disabledMetricNames.contains(metric.getShortName())) {
+                continue;
+            }
             Map<Integer, AsmSnapshot> snapshots = metric.getSnapshots();
             if (snapshots.size() == 0) {
                 continue;
@@ -394,8 +425,94 @@ public class JStormMetrics implements Serializable {
             MetricUtils.printMetricInfo(metricInfo, debugMetricNames);
         }
         LOG.debug("compute all metrics, cost:{}", System.currentTimeMillis() - start);
+        return metricInfo;
+    }
+
+    public static MetricInfo approximateComputeAllMetrics() {
+        long start = System.currentTimeMillis();
+        MetricInfo metricInfo = MetricUtils.mkMetricInfo();
+        Map<String, Map<Integer, MetricSnapshot>> mergeWorkerMetrics = metricInfo.get_metrics();
+        mergeLevelMetricSnapshot(mergeWorkerMetrics, streamMetrics.metrics);
+        mergeLevelMetricSnapshot(mergeWorkerMetrics, taskMetrics.metrics);
+        mergeLevelMetricSnapshot(mergeWorkerMetrics, componentMetrics.metrics);
+        mergeLevelMetricSnapshot(mergeWorkerMetrics, workerMetrics.metrics);
+        mergeLevelMetricSnapshot(mergeWorkerMetrics, nettyMetrics.metrics);
+        mergeLevelMetricSnapshot(mergeWorkerMetrics, topologyMetrics.metrics);
+
+        if (debug) {
+            MetricUtils.printMetricInfo(metricInfo, debugMetricNames);
+        }
+        Set<String> fiterStreamNames = new HashSet<>();
+        if (!enableStreamMetrics) {
+            for (Map.Entry<String, AsmMetric> entry : streamMetrics.metrics.entrySet()) {
+                fiterStreamNames.add(entry.getKey());
+            }
+        }
+        Map<String, Map<Integer, MetricSnapshot>> uploadWorkerMetrics = new HashMap<>();
+        for (Map.Entry<String, Map<Integer, MetricSnapshot>> entry : mergeWorkerMetrics.entrySet()) {
+            if (!fiterStreamNames.contains(entry.getKey()))
+                uploadWorkerMetrics.put(entry.getKey(), entry.getValue());
+        }
+        metricInfo.set_metrics(uploadWorkerMetrics);
+        LOG.debug("approximate compute all metrics, cost:{}", System.currentTimeMillis() - start);
 
         return metricInfo;
+    }
+
+    public static void mergeLevelMetricSnapshot(Map<String, Map<Integer, MetricSnapshot>> mergeWorkerMetrics, ConcurrentMap<String, AsmMetric> metrics) {
+
+        for (Map.Entry<String, AsmMetric> entry : metrics.entrySet()) {
+            String name = entry.getKey();
+            AsmMetric metric = entry.getValue();
+            if (metric.isAttached()){
+                LOG.debug("start merge this isattached Metrics {}", metric.getMetricName());
+                continue;
+            }
+
+            // skip disabled metrics, double check
+            if (disabledMetricNames.contains(metric.getShortName())) {
+                LOG.debug("start merge this disable Metrics {}", metric.getMetricName());
+                continue;
+            }
+            Map<Integer, AsmSnapshot> snapshots = metric.getSnapshots();
+            if (snapshots.size() == 0) {
+                LOG.debug("start merge this snapshots Metrics {}", metric.getMetricName());
+                continue;
+            }
+            Set<AsmMetric> assocMetrics = metric.getAssocMetrics();
+            MetricType metricType = MetricUtils.metricType(metric.getMetricName());
+
+            List<AsmMetric> asmMetricList = Lists.newLinkedList(assocMetrics);
+            asmMetricList.add(metric);
+
+            for (AsmMetric asmMetric : asmMetricList) {
+                LOG.debug("asmMetric {}, parentMetrics {}", asmMetric.getMetricName(), metric.getMetricName());
+                int op = metric.getOp();
+                if ((op & AsmMetric.MetricOp.LOG) == AsmMetric.MetricOp.LOG) {
+                    MetricUtils.printMetricSnapshot(asmMetric, metric.getSnapshots());
+                }
+                if ((op & AsmMetric.MetricOp.REPORT) == AsmMetric.MetricOp.REPORT) {
+                    try {
+                        Map<Integer, MetricSnapshot> relatedSnapshotMap = MetricUtils.toThriftSnapshots(metric.getSnapshots(), metricType);
+                        Map<Integer, MetricSnapshot> oldSnapshotMap = mergeWorkerMetrics.get(asmMetric.getMetricName());
+                        if (oldSnapshotMap == null) {
+                            Map<Integer, MetricSnapshot> generateSnapshotMap = MetricUtils.toThriftSnapshots(asmMetric.getSnapshots(), metricType);
+                            for (Map.Entry<Integer, MetricSnapshot> entry1 : relatedSnapshotMap.entrySet()) {
+                                entry1.getValue().set_ts(generateSnapshotMap.get(entry1.getKey()).get_ts());
+                                entry1.getValue().set_metricId(asmMetric.getMetricId());
+                            }
+                            oldSnapshotMap = relatedSnapshotMap;
+                            mergeWorkerMetrics.put(asmMetric.getMetricName(), oldSnapshotMap);
+                        } else {
+                            MetricUtils.mergeMetricSnapshotMap(oldSnapshotMap, relatedSnapshotMap, asmMetric, metricType);
+                        }
+                    } catch (Exception ex) {
+                        LOG.error("Error", ex);
+                    }
+                }
+            }
+            LOG.debug("mergeWorkerMetrics {}", mergeWorkerMetrics);
+        }
     }
 
     @SuppressWarnings("unchecked")

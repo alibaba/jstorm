@@ -133,6 +133,8 @@ public class Httpserver implements Shutdownable {
                 handleListDir(t, paramMap);
             } else if (HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_CMD_JSTACK.equals(cmd)) {
                 handleJstack(t, paramMap);
+            } else if (HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_CMD_JSTAT.equals(cmd)) {
+                handleJstat(t, paramMap);
             } else if (HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_CMD_SHOW_CONF.equals(cmd)) {
                 handleShowConf(t, paramMap);
             } else if (HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_CMD_SEARCH_LOG.equals(cmd)) {
@@ -280,6 +282,9 @@ public class Httpserver implements Shutdownable {
             File file = new File(path);
 
             String[] files = file.list();
+            if (files == null) {
+            	files = new String[] {};
+            }
 
             for (String fileName : files) {
                 String logFile = Joiner.on(File.separator).join(path, fileName);
@@ -672,6 +677,25 @@ public class Httpserver implements Shutdownable {
             }
         }
 
+
+        void handleJstat (StringBuilder sb, Integer pid) {
+            String cmd = "jstat -gc " + pid;
+
+            try {
+                LOG.info("Begin to execute " + cmd);
+                String output = JStormUtils.launchProcess(cmd, new HashMap<String, String>(), false);
+                sb.append(output);
+
+                LOG.info("Successfully get output of " + cmd);
+            } catch (IOException e) {
+                LOG.info("Failed to execute " + cmd, e);
+                sb.append("Failed to execute " + cmd);
+            } catch (Exception e) {
+                LOG.error(e.getMessage(), e);
+                sb.append("Failed to execute " + cmd + ", " + e.getCause());
+            }
+        }
+
         void handleJstack(HttpExchange t, Map<String, String> paramMap) throws IOException {
             String workerPort = paramMap.get(HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_WORKER_PORT);
             if (workerPort == null) {
@@ -688,6 +712,28 @@ public class Httpserver implements Shutdownable {
                 sb.append("\r\n!!!!!!!!!!!!!!!!!!\r\n");
 
                 handleJstack(sb, pid);
+            }
+
+            byte[] data = sb.toString().getBytes();
+            sendResponse(t, HttpURLConnection.HTTP_OK, data);
+        }
+
+        void handleJstat(HttpExchange t, Map<String, String> paramMap) throws IOException {
+            String workerPort = paramMap.get(HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_WORKER_PORT);
+            if (workerPort == null) {
+                handlFailure(t, "Not set worker's port");
+                return;
+            }
+
+            LOG.info("Begin to get jstat of " + workerPort);
+            StringBuilder sb = new StringBuilder();
+            List<Integer> pids = Worker.getOldPortPids(workerPort);
+            for (Integer pid : pids) {
+                sb.append("!!!!!!!!!!!!!!!!!!\r\n");
+                sb.append("WorkerPort:" + workerPort + ", pid:" + pid);
+                sb.append("\r\n!!!!!!!!!!!!!!!!!!\r\n");
+
+                handleJstat(sb, pid);
             }
 
             byte[] data = sb.toString().getBytes();

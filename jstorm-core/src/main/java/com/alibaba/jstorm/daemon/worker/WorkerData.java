@@ -30,7 +30,7 @@ import backtype.storm.scheduler.WorkerSlot;
 import backtype.storm.serialization.KryoByteBufferSerializer;
 import backtype.storm.serialization.KryoTupleDeserializer;
 import backtype.storm.serialization.KryoTupleSerializer;
-import backtype.storm.task.GeneralTopologyContext;
+import backtype.storm.task.WorkerTopologyContext;
 import backtype.storm.tuple.Fields;
 import backtype.storm.utils.DisruptorQueue;
 import backtype.storm.utils.ThriftTopologyUtils;
@@ -42,6 +42,7 @@ import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.cluster.*;
 import com.alibaba.jstorm.common.metric.AsmGauge;
 import com.alibaba.jstorm.common.metric.AsmMetric;
+import com.alibaba.jstorm.common.metric.FullGcGauge;
 import com.alibaba.jstorm.common.metric.QueueGauge;
 import com.alibaba.jstorm.daemon.nimbus.StatusType;
 import com.alibaba.jstorm.daemon.worker.timer.TimerTrigger;
@@ -54,8 +55,11 @@ import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.LogUtils;
 import com.alibaba.jstorm.zk.ZkTool;
 import com.codahale.metrics.Gauge;
+import com.lmax.disruptor.TimeoutBlockingWaitStrategy;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,6 +78,9 @@ import static com.alibaba.jstorm.schedule.Assignment.AssignmentType;
 public class WorkerData {
 
     private static Logger LOG = LoggerFactory.getLogger(WorkerData.class);
+
+    public static final int THREAD_POOL_NUM = 4;
+    private ScheduledExecutorService threadPool;
 
     // system configuration
 
@@ -111,8 +118,7 @@ public class WorkerData {
     private ConcurrentSkipListSet<ResourceWorkerSlot> workerToResource;
 
     private volatile Set<Integer> outboundTasks;
-    private Set<Integer> localTasks;
-    private Set<Integer> localNodeTasks;
+    private Set<Integer> localNodeTasks = new HashSet<Integer>();
 
 
     private ConcurrentHashMap<Integer, DisruptorQueue> innerTaskTransfer;
@@ -151,8 +157,7 @@ public class WorkerData {
 
     private ConcurrentHashMap<Integer, Boolean> outTaskStatus; // true => active
 
-    public static final int THREAD_POOL_NUM = 4;
-    private ScheduledExecutorService threadPool;
+    private FlusherPool flusherPool;
 
     private volatile Long assignmentTS; // Assignment timeStamp. The time of
     // last update of assignment
@@ -165,16 +170,17 @@ public class WorkerData {
 
     private AsyncLoopThread healthReporterThread;
 
-    private AtomicBoolean workerOldStatus;
-
     private AtomicBoolean workeInitConnectionStatus;
-    
+
     private AtomicReference<KryoTupleSerializer> atomKryoSerializer = new AtomicReference<>();
 
     private AtomicReference<KryoTupleDeserializer> atomKryoDeserializer = new AtomicReference<>();
 
     // the data/config which need dynamic update
     private UpdateListener updateListener;
+
+    protected List<AsyncLoopThread> deserializeThreads = new ArrayList<>();
+    protected List<AsyncLoopThread> serializeThreads = new ArrayList<>();
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     public WorkerData(Map conf, IContext context, String topology_id, String supervisor_id, int port, String worker_id, String jar_path) throws Exception {
@@ -189,9 +195,8 @@ public class WorkerData {
         this.shutdown = new AtomicBoolean(false);
 
         this.monitorEnable = new AtomicBoolean(true);
-        this.topologyStatus = StatusType.active;
+        this.topologyStatus = null;
 
-        this.workerOldStatus = new AtomicBoolean(false);
         this.workeInitConnectionStatus = new AtomicBoolean(false);
 
         if (StormConfig.cluster_mode(conf).equals("distributed")) {
@@ -213,6 +218,7 @@ public class WorkerData {
         // register dynamic updaters
         registerUpdateListeners();
 
+        JStormMetrics.setHistogramValueSize(ConfigExtension.getTopologyHistogramSize(stormConf));
         JStormMetrics.setTopologyId(topology_id);
         JStormMetrics.setPort(port);
         JStormMetrics.setDebug(ConfigExtension.isEnableMetricDebug(stormConf));
@@ -250,17 +256,65 @@ public class WorkerData {
                         return JStormUtils.getMemUsage();
                     }
                 }));
-        
-        
 
-        /*
-        JStormMetrics.registerWorkerMetric(JStormMetrics.workerMetricName(MetricDef.DISK_USAGE, MetricType.GAUGE), new AsmGauge(new Gauge<Double>() {
-            @Override
-            public Double getValue() {
-                return JStormUtils.getDiskUsage();
-            }
-        }));
-        */
+
+        JStormMetrics.registerWorkerTopologyMetric(JStormMetrics.workerMetricName(MetricDef.FULL_GC, MetricType.GAUGE),
+                new AsmGauge(new FullGcGauge()){
+                    @Override
+                    public AsmMetric clone() {
+                        AsmMetric metric = new AsmGauge((Gauge<Double>)Utils.newInstance(this.gauge.getClass().getName()));
+                        metric.setMetricName(this.getMetricName());
+                        return metric;
+                    }
+                });
+
+        JStormMetrics.registerWorkerMetric(MetricUtils.workerMetricName("GCTime", MetricType.GAUGE),
+                new AsmGauge(new Gauge<Double>() {
+                    final List<GarbageCollectorMXBean> gcBeans = ManagementFactory.getGarbageCollectorMXBeans();
+                    double lastGcTime = getGcTime();
+
+                    @Override
+                    public Double getValue() {
+                        double newGcTime = getGcTime();
+                        double delta = newGcTime - lastGcTime;
+                        lastGcTime = newGcTime;
+                        return delta;
+                    }
+
+                    double getGcTime() {
+                        double sum = 0;
+                        for (GarbageCollectorMXBean gcBean : gcBeans) {
+                            sum += gcBean.getCollectionTime();
+
+                        }
+                        // convert time to us
+                        return sum * 1000;
+                    }
+                })
+        );
+
+        JStormMetrics.registerWorkerMetric(MetricUtils.workerMetricName("GCCount", MetricType.GAUGE),
+                new AsmGauge(new Gauge<Double>() {
+                    final List<GarbageCollectorMXBean> gcBeans = ManagementFactory.getGarbageCollectorMXBeans();
+                    double lastGcNum = getGcNum();
+
+                    @Override
+                    public Double getValue() {
+                        double newGcNum = getGcNum();
+                        double delta = newGcNum - lastGcNum;
+                        lastGcNum = newGcNum;
+                        return delta;
+                    }
+
+                    double getGcNum() {
+                        double cnt = 0;
+                        for (GarbageCollectorMXBean gcBean : gcBeans) {
+                            cnt += gcBean.getCollectionCount();
+                        }
+                        return cnt;
+                    }
+                })
+        );
 
         LOG.info("Worker Configuration " + stormConf);
 
@@ -268,7 +322,7 @@ public class WorkerData {
             boolean enableClassloader = ConfigExtension.isEnableTopologyClassLoader(stormConf);
             boolean enableDebugClassloader = ConfigExtension.isEnableClassloaderDebug(stormConf);
 
-            if (jar_path == null && enableClassloader == true && !conf.get(Config.STORM_CLUSTER_MODE).equals("local")) {
+            if (jar_path == null && enableClassloader && !conf.get(Config.STORM_CLUSTER_MODE).equals("local")) {
                 LOG.error("enable classloader, but not app jar");
                 throw new InvalidParameterException();
             }
@@ -302,14 +356,13 @@ public class WorkerData {
 
         boolean disruptorUseSleep = ConfigExtension.isDisruptorUseSleep(stormConf);
         DisruptorQueue.setUseSleep(disruptorUseSleep);
-        boolean isLimited = ConfigExtension.getTopologyBufferSizeLimited(stormConf);
-        DisruptorQueue.setLimited(isLimited);
-        LOG.info("Disruptor use sleep:" + disruptorUseSleep + ", limited size:" + isLimited);
+        LOG.info("Disruptor use sleep:" + disruptorUseSleep);
 
         // this.transferCtrlQueue = new LinkedBlockingQueue<TransferData>();
         int queueSize = JStormUtils.parseInt(stormConf.get(Config.TOPOLOGY_CTRL_BUFFER_SIZE), 256);
-        WaitStrategy waitStrategy = (WaitStrategy) JStormUtils.createDisruptorWaitStrategy(stormConf);
-        this.transferCtrlQueue = DisruptorQueue.mkInstance("TotalTransfer", ProducerType.MULTI, queueSize, waitStrategy);
+        long timeout = JStormUtils.parseLong(stormConf.get(Config.TOPOLOGY_DISRUPTOR_WAIT_TIMEOUT), 10);
+        WaitStrategy waitStrategy = new TimeoutBlockingWaitStrategy(timeout, TimeUnit.MILLISECONDS);
+        this.transferCtrlQueue = DisruptorQueue.mkInstance("TotalTransfer", ProducerType.MULTI, queueSize, waitStrategy, false, 0, 0);
 
         //metric for transferCtrlQueue
         QueueGauge transferCtrlGauge = new QueueGauge(transferCtrlQueue, MetricDef.SEND_QUEUE);
@@ -318,7 +371,7 @@ public class WorkerData {
 
         //this.transferCtrlQueue.consumerStarted();
         int buffer_size = Utils.getInt(stormConf.get(Config.TOPOLOGY_TRANSFER_BUFFER_SIZE));
-        this.sendingQueue = DisruptorQueue.mkInstance("TotalSending", ProducerType.MULTI, buffer_size, waitStrategy);
+        this.sendingQueue = DisruptorQueue.mkInstance("TotalSending", ProducerType.MULTI, buffer_size, waitStrategy, false, 0, 0);
         //this.sendingQueue.consumerStarted();
 
         this.nodeportSocket = new ConcurrentHashMap<WorkerSlot, IConnection>();
@@ -356,22 +409,36 @@ public class WorkerData {
 
         outTaskStatus = new ConcurrentHashMap<Integer, Boolean>();
 
+        int minPoolSize = taskids.size() > 5 ? 5 : taskids.size();
+        int maxPoolSize = 2 * taskids.size();
+
         threadPool = Executors.newScheduledThreadPool(THREAD_POOL_NUM);
         TimerTrigger.setScheduledExecutorService(threadPool);
+
+        if (ConfigExtension.getWorkerFlushPoolMinSize(stormConf) != null) {
+            minPoolSize = ConfigExtension.getWorkerFlushPoolMinSize(stormConf);
+        }
+        if (ConfigExtension.getWorkerFlushPoolMaxSize(stormConf) != null) {
+            maxPoolSize = ConfigExtension.getWorkerFlushPoolMaxSize(stormConf);
+        }
+        if (minPoolSize > maxPoolSize) {
+            LOG.error("Irrational flusher pool parameter configuration");
+        }
+        flusherPool = new FlusherPool(minPoolSize, maxPoolSize, 30, TimeUnit.SECONDS);
+        Flusher.setFlusherPool(flusherPool);
 
         if (!StormConfig.local_mode(stormConf)) {
             healthReporterThread = new AsyncLoopThread(new JStormHealthReporter(this));
         }
 
         try {
-            Long tmp = StormConfig.read_supervisor_topology_timestamp(conf, topology_id);
-            assignmentTS = (tmp == null ? System.currentTimeMillis() : tmp);
+            assignmentTS = StormConfig.read_supervisor_topology_timestamp(conf, topology_id);
         } catch (FileNotFoundException e) {
             assignmentTS = System.currentTimeMillis();
         }
 
         outboundTasks = new HashSet<Integer>();
-        
+
         // kryo
         updateKryoSerializer();
 
@@ -379,14 +446,14 @@ public class WorkerData {
 
     }
 
-    private void registerUpdateListeners(){
+    private void registerUpdateListeners() {
         updateListener = new UpdateListener();
 
         //disable/enable metrics on the fly
         updateListener.registerUpdater(new UpdateListener.IUpdater() {
             @Override
             public void update(Map conf) {
-                metricReporter.updateMetricConfig(conf);
+                metricReporter.updateMetricConfig(combineConf(conf));
             }
         });
 
@@ -394,7 +461,7 @@ public class WorkerData {
         updateListener.registerUpdater(new UpdateListener.IUpdater() {
             @Override
             public void update(Map conf) {
-                JStormDebugger.update(conf);
+                JStormDebugger.update(combineConf(conf));
             }
         });
 
@@ -402,23 +469,26 @@ public class WorkerData {
         updateListener.registerUpdater(new UpdateListener.IUpdater() {
             @Override
             public void update(Map conf) {
-                LogUtils.update(conf);
+                LogUtils.update(combineConf(conf));
             }
         });
     }
 
-    public UpdateListener getUpdateListener(){
+    private Map<Object, Object> combineConf(Map newConf) {
+        Map<Object, Object> ret = new HashMap<>(this.conf);
+        ret.putAll(newConf);
+        return ret;
+    }
+
+    public UpdateListener getUpdateListener() {
         return updateListener;
     }
 
-    // create kryo serilizer
+    // create kryo serializer
     public void updateKryoSerializer() {
-        HashMap<String, Map<String, Fields>> componentToStreamToFields = generatecomponentToStreamToFields(sysTopology);
-        GeneralTopologyContext topologyContext =
-                new GeneralTopologyContext(sysTopology, stormConf, tasksToComponent, componentToSortedTasks, componentToStreamToFields, topologyId);
-
-        KryoTupleDeserializer kryoTupleDeserializer = new KryoTupleDeserializer(stormConf, topologyContext);
-        KryoTupleSerializer kryoTupleSerializer = new KryoTupleSerializer(stormConf, topologyContext);
+        WorkerTopologyContext workerTopologyContext = contextMaker.makeWorkerTopologyContext(sysTopology);
+        KryoTupleDeserializer kryoTupleDeserializer = new KryoTupleDeserializer(stormConf, workerTopologyContext, workerTopologyContext.getRawTopology());
+        KryoTupleSerializer kryoTupleSerializer = new KryoTupleSerializer(stormConf, workerTopologyContext.getRawTopology());
 
         atomKryoDeserializer.getAndSet(kryoTupleDeserializer);
         atomKryoSerializer.getAndSet(kryoTupleSerializer);
@@ -458,7 +528,7 @@ public class WorkerData {
     }
 
     public Map<Object, Object> getConf() {
-        return stormConf;
+        return conf;
     }
 
     public Map<Object, Object> getStormConf() {
@@ -505,20 +575,9 @@ public class WorkerData {
         return taskNodeport;
     }
 
-    public ConcurrentSkipListSet<ResourceWorkerSlot> getWorkerToResource() {
-        synchronized (workerToResource) {
-            return workerToResource;
-        }
-    }
-
     public void updateWorkerToResource(Set<ResourceWorkerSlot> workers) {
-        synchronized (workerToResource) {
-            Set<ResourceWorkerSlot> oldWorkers = workerToResource.clone();
-            oldWorkers.removeAll(workers);
-            if (oldWorkers.size() > 0)
-                workerToResource.removeAll(workers);
-            workerToResource.addAll(workers);
-        }
+        workerToResource.removeAll(workers);
+        workerToResource.addAll(workers);
     }
 
     public ConcurrentHashMap<Integer, DisruptorQueue> getInnerTaskTransfer() {
@@ -606,20 +665,8 @@ public class WorkerData {
         return ret;
     }
 
-    public AtomicBoolean getWorkerOldStatus() {
-        return workerOldStatus;
-    }
-
     public AtomicBoolean getWorkeInitConnectionStatus() {
         return workeInitConnectionStatus;
-    }
-
-    public Set<Integer> getLocalTasks() {
-        return localTasks;
-    }
-
-    public void setLocalTasks(Set<Integer> localTasks) {
-        this.localTasks = localTasks;
     }
 
     public void initOutboundTaskStatus(Set<Integer> outboundTasks) {
@@ -752,8 +799,8 @@ public class WorkerData {
     public void setMetricsReporter(JStormMetricsReporter metricReporter) {
         this.metricReporter = metricReporter;
     }
-    
-    public HashMap<String, Map<String, Fields>> generatecomponentToStreamToFields(StormTopology topology){
+
+    public HashMap<String, Map<String, Fields>> generateComponentToStreamToFields(StormTopology topology) {
         HashMap<String, Map<String, Fields>> componentToStreamToFields = new HashMap<String, Map<String, Fields>>();
 
         Set<String> components = ThriftTopologyUtils.getComponentIds(topology);
@@ -780,5 +827,39 @@ public class WorkerData {
 
     public AtomicReference<KryoTupleSerializer> getAtomKryoSerializer() {
         return atomKryoSerializer;
+    }
+
+    protected List<AsyncLoopThread> setDeserializeThreads() {
+        WorkerTopologyContext workerTopologyContext = contextMaker.makeWorkerTopologyContext(sysTopology);
+        int tasksNum = shutdownTasks.size();
+        double workerRatio = ConfigExtension.getWorkerDeserializeThreadRatio(stormConf);
+        int workerDeseriaThreadNum = Utils.getInt(Math.ceil(workerRatio * tasksNum));
+        if (workerDeseriaThreadNum > 0 && tasksNum > 0) {
+            double average = tasksNum / (double) workerDeseriaThreadNum;
+            for (int i = 0; i < workerDeseriaThreadNum; i++) {
+                int startRunTaskIndex = Utils.getInt(Math.rint(average * i));
+                deserializeThreads.add(new AsyncLoopThread(new WorkerDeserializeRunnable(shutdownTasks, stormConf, workerTopologyContext, startRunTaskIndex, i)));
+            }
+        }
+        return deserializeThreads;
+    }
+
+    protected List<AsyncLoopThread> setSerializeThreads() {
+        WorkerTopologyContext workerTopologyContext = contextMaker.makeWorkerTopologyContext(sysTopology);
+        int tasksNum = shutdownTasks.size();
+        double workerRatio = ConfigExtension.getWorkerSerializeThreadRatio(stormConf);
+        int workerSerialThreadNum = Utils.getInt(Math.ceil(workerRatio * tasksNum));
+        if (workerSerialThreadNum > 0 && tasksNum > 0) {
+            double average = tasksNum / (double) workerSerialThreadNum;
+            for (int i = 0; i < workerSerialThreadNum; i++) {
+                int startRunTaskIndex = Utils.getInt(Math.rint(average * i));
+                serializeThreads.add(new AsyncLoopThread(new WorkerSerializeRunnable(shutdownTasks, stormConf, workerTopologyContext, startRunTaskIndex, i)));
+            }
+        }
+        return serializeThreads;
+    }
+
+    public FlusherPool getFlusherPool() {
+        return flusherPool;
     }
 }

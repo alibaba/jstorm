@@ -17,6 +17,7 @@
  */
 package com.alibaba.jstorm.daemon.supervisor;
 
+import com.alibaba.jstorm.config.SupervisorRefreshConfig;
 import com.alibaba.jstorm.metric.JStormMetricsReporter;
 import java.io.File;
 import java.util.Map;
@@ -50,12 +51,19 @@ import com.alibaba.jstorm.utils.JStormServerUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
 
 /**
- * Supevisor workflow 1. write SupervisorInfo to ZK
+ * Supervisor workflow
  *
- * 2. Every 10 seconds run SynchronizeSupervisor 2.1 download new topology 2.2 release useless worker 2.3 assgin new task to /local-dir/supervisor/localstate
+ * 1. write SupervisorInfo to ZK
+ *
+ * 2. Every 10 seconds run SynchronizeSupervisor
+ * 2.1 download new topology
+ * 2.2 release useless worker
+ * 2.3 assign new task to /local-dir/supervisor/localstate
  * 2.4 add one syncProcesses event
  *
- * 3. Every supervisor.monitor.frequency.secs run SyncProcesses 3.1 kill useless worker 3.2 start new worker
+ * 3. Every supervisor.monitor.frequency.secs run SyncProcesses
+ * 3.1 kill useless worker
+ * 3.2 start new worker
  *
  * 4. create heartbeat thread every supervisor.heartbeat.frequency.secs, write SupervisorInfo to ZK
  *
@@ -67,14 +75,13 @@ public class Supervisor {
 
     private static Logger LOG = LoggerFactory.getLogger(Supervisor.class);
 
-
     volatile MachineCheckStatus checkStatus = new MachineCheckStatus();
     //volatile HealthStatus healthStatus = new HealthStatus();
 
     /**
-     * create and start one supervisor
+     * create and start a supervisor
      *
-     * @param conf          : configurationdefault.yaml storm.yaml
+     * @param conf          : configuration (default.yaml & storm.yaml)
      * @param sharedContext : null (right now)
      * @return SupervisorManger: which is used to shutdown all workers and supervisor
      */
@@ -90,18 +97,18 @@ public class Supervisor {
         FileUtils.cleanDirectory(new File(path));
 
         /**
-         * Step 2: create ZK operation instance StromClusterState
+         * Step 2: create ZK operation instance StormClusterState
          */
 
         StormClusterState stormClusterState = Cluster.mk_storm_cluster_state(conf);
 
         String hostName = JStormServerUtils.getHostName(conf);
-        WorkerReportError workerReportError =
-                new WorkerReportError(stormClusterState, hostName);
-
+        WorkerReportError workerReportError = new WorkerReportError(stormClusterState, hostName);
 
         /**
-         * Step 3, create LocalStat LocalStat is one KV database 4.1 create LocalState instance; 4.2 get supervisorId, if no supervisorId, create one
+         * Step 3, create LocalStat (a simple KV store)
+         * 3.1 create LocalState instance;
+         * 3.2 get supervisorId, if there's no supervisorId, create one
          */
 
         LocalState localState = StormConfig.supervisorState(conf);
@@ -111,17 +118,18 @@ public class Supervisor {
             supervisorId = UUID.randomUUID().toString();
             localState.put(Common.LS_ID, supervisorId);
         }
-        //clean LocalStat's zk-assgiment&versions
+        //clean LocalStat's zk-assignment & versions
         localState.remove(Common.LS_LOCAl_ZK_ASSIGNMENTS);
         localState.remove(Common.LS_LOCAL_ZK_ASSIGNMENT_VERSION);
 
         Vector<AsyncLoopThread> threads = new Vector<>();
 
-        // Step 5 create HeartBeat
+        // Step 4 create HeartBeat
         // every supervisor.heartbeat.frequency.secs, write SupervisorInfo to ZK
         // sync heartbeat to nimbus
         Heartbeat hb = new Heartbeat(conf, stormClusterState, supervisorId, localState, checkStatus);
         hb.update();
+
         AsyncLoopThread heartbeat = new AsyncLoopThread(hb, false, null, Thread.MIN_PRIORITY, true);
         threads.add(heartbeat);
 
@@ -131,41 +139,49 @@ public class Supervisor {
             threads.add(syncContainerHbThread);
         }
 
-        // Step 6 create and start sync Supervisor thread
+        // Step 5 create and start sync Supervisor thread
         // every supervisor.monitor.frequency.secs second run SyncSupervisor
-
         ConcurrentHashMap<String, String> workerThreadPids = new ConcurrentHashMap<>();
-        SyncProcessEvent syncProcessEvent = new SyncProcessEvent(supervisorId, conf, localState, workerThreadPids, sharedContext, workerReportError);
+        SyncProcessEvent syncProcessEvent = new SyncProcessEvent(
+                supervisorId, conf, localState, workerThreadPids, sharedContext, workerReportError);
 
         EventManagerImp syncSupEventManager = new EventManagerImp();
         AsyncLoopThread syncSupEventThread = new AsyncLoopThread(syncSupEventManager);
         threads.add(syncSupEventThread);
 
-        SyncSupervisorEvent syncSupervisorEvent =
-                new SyncSupervisorEvent(supervisorId, conf, syncSupEventManager, stormClusterState, localState, syncProcessEvent, hb);
+        SyncSupervisorEvent syncSupervisorEvent = new SyncSupervisorEvent(
+                supervisorId, conf, syncSupEventManager, stormClusterState, localState, syncProcessEvent, hb);
 
-        int syncFrequence = JStormUtils.parseInt(conf.get(Config.SUPERVISOR_MONITOR_FREQUENCY_SECS));
-        EventManagerPusher syncSupervisorPusher = new EventManagerPusher(syncSupEventManager, syncSupervisorEvent, syncFrequence);
+        int syncFrequency = JStormUtils.parseInt(conf.get(Config.SUPERVISOR_MONITOR_FREQUENCY_SECS));
+        EventManagerPusher syncSupervisorPusher = new EventManagerPusher(
+                syncSupEventManager, syncSupervisorEvent, syncFrequency);
         AsyncLoopThread syncSupervisorThread = new AsyncLoopThread(syncSupervisorPusher);
         threads.add(syncSupervisorThread);
 
+        // Step 6 start httpserver
         Httpserver httpserver = null;
         if (!StormConfig.local_mode(conf)) {
-            // Step 7 start httpserver
             int port = ConfigExtension.getSupervisorDeamonHttpserverPort(conf);
             httpserver = new Httpserver(port, conf);
             httpserver.start();
         }
 
-        //Step 9 check supervisor
-        if (!StormConfig.local_mode(conf) && ConfigExtension.isEnableCheckSupervisor(conf)) {
-            SupervisorHealth supervisorHealth = new SupervisorHealth(conf, checkStatus,supervisorId);
-            AsyncLoopThread healthThread = new AsyncLoopThread(supervisorHealth, false, null, Thread.MIN_PRIORITY, true);
-            threads.add(healthThread);
+        //Step 7 check supervisor
+        if (!StormConfig.local_mode(conf)) {
+            if (ConfigExtension.isEnableCheckSupervisor(conf)) {
+                SupervisorHealth supervisorHealth = new SupervisorHealth(conf, checkStatus, supervisorId);
+                AsyncLoopThread healthThread = new AsyncLoopThread(supervisorHealth, false, null, Thread.MIN_PRIORITY, true);
+                threads.add(healthThread);
+            }
+
+            // init refresh config thread
+            AsyncLoopThread refreshConfigThread = new AsyncLoopThread(new SupervisorRefreshConfig(conf));
+            threads.add(refreshConfigThread);
         }
 
-        // SupervisorManger which can shutdown all supervisor and workers
-        return new SupervisorManger(conf, supervisorId, threads, syncSupEventManager, httpserver, stormClusterState, workerThreadPids);
+        // create SupervisorManger which can shutdown all supervisor and workers
+        return new SupervisorManger(
+                conf, supervisorId, threads, syncSupEventManager, httpserver, stormClusterState, workerThreadPids);
     }
 
     /**
@@ -217,14 +233,14 @@ public class Supervisor {
             }
             LOG.error("Fail to run supervisor ", e);
             System.exit(1);
-        }  finally {
+        } finally {
             LOG.info("Shutdown supervisor!!!");
         }
 
     }
 
     /**
-     * supervisor daemon enter entrance
+     * start supervisor daemon
      */
     public static void main(String[] args) {
 

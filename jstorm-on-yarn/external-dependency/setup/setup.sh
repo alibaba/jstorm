@@ -1,0 +1,1 @@
+cd thrift-0.9.3_1 && sudo python setup.py install && cd ../setuptools-20.10.1 && sudo python setup.py install && cd ../pycrypto-2.6.1/ && sudo python setup.py install &&cd ../ecdsa-0.13/ && sudo python setup.py install && cd ../kazoo-2.2.1/ && sudo python setup.py install

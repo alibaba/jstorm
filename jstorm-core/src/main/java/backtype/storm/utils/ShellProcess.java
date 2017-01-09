@@ -17,30 +17,33 @@
  */
 package backtype.storm.utils;
 
-import backtype.storm.Config;
-import backtype.storm.multilang.ISerializer;
-import backtype.storm.multilang.BoltMsg;
-import backtype.storm.multilang.NoOutputException;
-import backtype.storm.multilang.ShellMsg;
-import backtype.storm.multilang.SpoutMsg;
-import backtype.storm.task.TopologyContext;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import backtype.storm.Config;
+import backtype.storm.multilang.BoltMsg;
+import backtype.storm.multilang.ISerializer;
+import backtype.storm.multilang.NoOutputException;
+import backtype.storm.multilang.ShellMsg;
+import backtype.storm.multilang.SpoutMsg;
+import backtype.storm.task.TopologyContext;
+
 public class ShellProcess implements Serializable {
-    public static Logger LOG = LoggerFactory.getLogger(ShellProcess.class);
+    public static final Logger LOG = LoggerFactory.getLogger(ShellProcess.class);
     public static Logger ShellLogger;
-    private Process _subprocess;
-    private InputStream processErrorStream;
-    private String[] command;
-    public ISerializer serializer;
+    private Process      _subprocess;
+    private InputStream  processErrorStream;
+    private String[]     command;
+    private Map<String, String> env = new HashMap<>();
+    public ISerializer   serializer;
     public Number pid;
     public String componentName;
 
@@ -48,8 +51,27 @@ public class ShellProcess implements Serializable {
         this.command = command;
     }
 
+    public void setEnv(Map<String, String> env) {
+        this.env = env;
+    }
+
+    private void modifyEnvironment(Map<String, String> buildEnv) {
+        for (Map.Entry<String, String> entry : env.entrySet()) {
+            if ("PATH".equals(entry.getKey())) {
+                buildEnv.put("PATH", buildEnv.get("PATH") + File.pathSeparatorChar + env.get("PATH"));
+            } else {
+                buildEnv.put(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+
     public Number launch(Map conf, TopologyContext context) {
         ProcessBuilder builder = new ProcessBuilder(command);
+        if (!env.isEmpty()) {
+            Map<String, String> buildEnv = builder.environment();
+            modifyEnvironment(buildEnv);
+        }
         builder.directory(new File(context.getCodeDir()));
 
         ShellLogger = LoggerFactory.getLogger(context.getThisComponentId());
@@ -63,7 +85,9 @@ public class ShellProcess implements Serializable {
             serializer.initialize(_subprocess.getOutputStream(), _subprocess.getInputStream());
             this.pid = serializer.connect(conf, context);
         } catch (IOException e) {
-            throw new RuntimeException("Error when launching multilang subprocess\n" + getErrorsString(), e);
+            throw new RuntimeException(
+                    "Error when launching multilang subprocess\n"
+                            + getErrorsString(), e);
         } catch (NoOutputException e) {
             throw new RuntimeException(e + getErrorsString() + "\n");
         }
@@ -71,11 +95,11 @@ public class ShellProcess implements Serializable {
     }
 
     private ISerializer getSerializer(Map conf) {
-        // get factory class name
-        String serializer_className = (String) conf.get(Config.TOPOLOGY_MULTILANG_SERIALIZER);
+        //get factory class name
+        String serializer_className = (String)conf.get(Config.TOPOLOGY_MULTILANG_SERIALIZER);
         LOG.info("Storm multilang serializer: " + serializer_className);
 
-        ISerializer serializer = null;
+        ISerializer serializer;
         try {
             // create a factory class
             Class klass = Class.forName(serializer_className);

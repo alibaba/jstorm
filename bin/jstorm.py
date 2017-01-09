@@ -25,6 +25,13 @@ import subprocess as sub
 import getopt
 import time
 
+try:
+    # python 3
+    from urllib.parse import quote_plus
+except ImportError:
+    # python 2
+    from urllib import quote_plus
+
 def identity(x):
     return x
 
@@ -72,7 +79,7 @@ def get_exclude_jars():
 
 def get_config_opts():
     global CONFIG_OPTS
-    return "-Dstorm.options=" + (','.join(CONFIG_OPTS)).replace(' ', "%%%%")
+    return "-Dstorm.options=" + ','.join(map(quote_plus,CONFIG_OPTS))
 
 def get_client_childopts():
     ret = (" -Dstorm.root.logger=INFO,stdout -Dlogback.configurationFile=" + JSTORM_DIR +
@@ -122,6 +129,8 @@ def get_classpath(extrajars):
     ret.extend(INCLUDE_JARS)
     return normclasspath(":".join(ret))
     
+def get_external_classpath(external):
+    return map(lambda x:JSTORM_DIR + "/lib/ext/" + x + "/*", external.split(","))
 
 def confvalue(name, extrapaths):
     command = [
@@ -141,8 +150,8 @@ def confvalue(name, extrapaths):
 def print_localconfvalue(name):
     """Syntax: [jstorm localconfvalue conf-name]
 
-    Prints out the value for conf-name in the local JStorm configs. 
-    The local JStorm configs are the ones in ~/.jstorm/storm.yaml merged 
+    Prints out the value for conf-name in the local JStorm configs.
+    The local JStorm configs are the ones in ~/.jstorm/storm.yaml merged
     in with the configs in defaults.yaml.
     """
     print name + ": " + confvalue(name, [JSTORM_CONF_DIR])
@@ -162,9 +171,9 @@ def get_log_dir():
 def print_remoteconfvalue(name):
     """Syntax: [jstorm remoteconfvalue conf-name]
 
-    Prints out the value for conf-name in the cluster's JStorm configs. 
-    The cluster's JStorm configs are the ones in $STORM-PATH/conf/storm.yaml 
-    merged in with the configs in defaults.yaml. 
+    Prints out the value for conf-name in the cluster's JStorm configs.
+    The cluster's JStorm configs are the ones in $STORM-PATH/conf/storm.yaml
+    merged in with the configs in defaults.yaml.
 
     This command must be run on a cluster machine.
     """
@@ -176,11 +185,7 @@ def exec_storm_class(klass, jvmtype="-server", childopts="", extrajars=[], args=
     #args_str = " ".join(map(lambda s: "\"" + s + "\"", args))
     args_str = " ".join(args)
     print args_str
-    if "NimbusServer" in klass:
-        # fix cmd > 4096, use dir in cp, only for nimbus server
-        command = "java " + jvmtype + " -Djstorm.home=" + JSTORM_DIR + " " + get_config_opts() + " -Djava.library.path=" + nativepath + " " + childopts + " -cp " + get_classpath(extrajars) + ":" + JSTORM_DIR + "/lib/ext/* " + klass + " " + args_str
-    else:
-        command = "java " + jvmtype + " -Djstorm.home=" + JSTORM_DIR + " " + get_config_opts() + " -Djava.library.path=" + nativepath + " " + childopts + " -cp " + get_classpath(extrajars) + " " + klass + " " + args_str
+    command = "java " + jvmtype + " -Djstorm.home=" + JSTORM_DIR + " " + get_config_opts() + " -Djava.library.path=" + nativepath + " " + childopts + " -cp " + get_classpath(extrajars) + " " + klass + " " + args_str
     print "Running: " + command
     global STATUS
     STATUS = os.execvp("java", filter_array(command.split(" ")))
@@ -189,9 +194,9 @@ def exec_storm_class(klass, jvmtype="-server", childopts="", extrajars=[], args=
 def jar(jarfile, klass, *args):
     """Syntax: [jstorm jar topology-jar-path class ...]
 
-    Runs the main method of class with the specified arguments. 
-    The jstorm jars and configs in $JSTORM_CONF_DIR/storm.yaml are put on the classpath. 
-    The process is configured so that StormSubmitter 
+    Runs the main method of class with the specified arguments.
+    The jstorm jars and configs in $JSTORM_CONF_DIR/storm.yaml are put on the classpath.
+    The process is configured so that StormSubmitter
     (https://github.com/alibaba/jstorm/wiki/JStorm-Chinese-Documentation)
     will upload the jar at topology-jar-path when the topology is submitted.
     """
@@ -206,9 +211,9 @@ def jar(jarfile, klass, *args):
 def zktool(*args):
     """Syntax: [jstorm jar topology-jar-path class ...]
 
-    Runs the main method of class with the specified arguments. 
-    The jstorm jars and configs in ~/.jstorm are put on the classpath. 
-    The process is configured so that StormSubmitter 
+    Runs the main method of class with the specified arguments.
+    The jstorm jars and configs in ~/.jstorm are put on the classpath.
+    The process is configured so that StormSubmitter
     (https://github.com/alibaba/jstorm/wiki/JStorm-Chinese-Documentation)
     will upload the jar at topology-jar-path when the topology is submitted.
     """
@@ -223,18 +228,18 @@ def zktool(*args):
 def kill(*args):
     """Syntax: [jstorm kill topology-name [wait-time-secs]]
 
-    Kills the topology with the name topology-name. JStorm will 
-    first deactivate the topology's spouts for the duration of 
-    the topology's message timeout to allow all messages currently 
-    being processed to finish processing. JStorm will then shutdown 
-    the workers and clean up their state. You can override the length 
+    Kills the topology with the name topology-name. JStorm will
+    first deactivate the topology's spouts for the duration of
+    the topology's message timeout to allow all messages currently
+    being processed to finish processing. JStorm will then shutdown
+    the workers and clean up their state. You can override the length
     of time JStorm waits between deactivation and shutdown.
     """
     childopts = get_client_childopts()
     exec_storm_class(
-        "backtype.storm.command.kill_topology", 
-        args=args, 
-        jvmtype="-client -Xms256m -Xmx256m", 
+        "backtype.storm.command.kill_topology",
+        args=args,
+        jvmtype="-client -Xms256m -Xmx256m",
         extrajars=[JSTORM_CONF_DIR, JSTORM_DIR + "/bin", CLIENT_CONF_FILE],
         childopts=childopts)
 
@@ -245,9 +250,9 @@ def activate(*args):
     """
     childopts = get_client_childopts()
     exec_storm_class(
-        "backtype.storm.command.activate", 
-        args=args, 
-        jvmtype="-client -Xms256m -Xmx256m", 
+        "backtype.storm.command.activate",
+        args=args,
+        jvmtype="-client -Xms256m -Xmx256m",
         extrajars=[JSTORM_CONF_DIR, JSTORM_DIR + "/bin", CLIENT_CONF_FILE],
         childopts=childopts)
 
@@ -258,34 +263,34 @@ def deactivate(*args):
     """
     childopts = get_client_childopts()
     exec_storm_class(
-        "backtype.storm.command.deactivate", 
-        args=args, 
-        jvmtype="-client -Xms256m -Xmx256m", 
+        "backtype.storm.command.deactivate",
+        args=args,
+        jvmtype="-client -Xms256m -Xmx256m",
         extrajars=[JSTORM_CONF_DIR, JSTORM_DIR + "/bin", CLIENT_CONF_FILE],
         childopts=childopts)
 
 def rebalance(*args):
     """Syntax: [jstorm rebalance topology-name [-w wait-time-secs]]
 
-    Sometimes you may wish to spread out where the workers for a topology 
-    are running. For example, let's say you have a 10 node cluster running 
-    4 workers per node, and then let's say you add another 10 nodes to 
-    the cluster. You may wish to have JStorm spread out the workers for the 
-    running topology so that each node runs 2 workers. One way to do this 
-    is to kill the topology and resubmit it, but JStorm provides a "rebalance" 
+    Sometimes you may wish to spread out where the workers for a topology
+    are running. For example, let's say you have a 10 node cluster running
+    4 workers per node, and then let's say you add another 10 nodes to
+    the cluster. You may wish to have JStorm spread out the workers for the
+    running topology so that each node runs 2 workers. One way to do this
+    is to kill the topology and resubmit it, but JStorm provides a "rebalance"
     command that provides an easier way to do this.
 
-    Rebalance will first deactivate the topology for the duration of the 
-    message timeout  and then redistribute 
-    the workers evenly around the cluster. The topology will then return to 
-    its previous state of activation (so a deactivated topology will still 
+    Rebalance will first deactivate the topology for the duration of the
+    message timeout  and then redistribute
+    the workers evenly around the cluster. The topology will then return to
+    its previous state of activation (so a deactivated topology will still
     be deactivated and an activated topology will go back to being activated).
     """
     childopts = get_client_childopts()
     exec_storm_class(
-        "backtype.storm.command.rebalance", 
-        args=args, 
-        jvmtype="-client -Xms256m -Xmx256m", 
+        "backtype.storm.command.rebalance",
+        args=args,
+        jvmtype="-client -Xms256m -Xmx256m",
         extrajars=[JSTORM_CONF_DIR, JSTORM_DIR + "/bin", CLIENT_CONF_FILE],
         childopts=childopts)
 
@@ -294,9 +299,9 @@ def restart(*args):
     """
     childopts = get_client_childopts()
     exec_storm_class(
-        "backtype.storm.command.restart", 
-        args=args, 
-        jvmtype="-client -Xms256m -Xmx256m", 
+        "backtype.storm.command.restart",
+        args=args,
+        jvmtype="-client -Xms256m -Xmx256m",
         extrajars=[JSTORM_CONF_DIR, JSTORM_DIR + "/bin", CLIENT_CONF_FILE],
         childopts=childopts)
 
@@ -314,36 +319,38 @@ def update_topology(*args):
 def nimbus():
     """Syntax: [jstorm nimbus]
 
-    Launches the nimbus daemon. This command should be run under 
-    supervision with a tool like daemontools or monit. 
+    Launches the nimbus daemon. This command should be run under
+    supervision with a tool like daemontools or monit.
 
     See Setting up a JStorm cluster for more information.
     (https://github.com/alibaba/jstorm/wiki/JStorm-Chinese-Documentation)
     """
     cppaths = [JSTORM_CONF_DIR]
     nimbus_classpath = confvalue("nimbus.classpath", cppaths)
+    nimbus_external_cp = get_external_classpath(confvalue("nimbus.external", cppaths))
     childopts = confvalue("nimbus.childopts", cppaths) + get_server_childopts("nimbus")
     exec_storm_class(
-        "com.alibaba.jstorm.daemon.nimbus.NimbusServer", 
-        jvmtype="-server", 
-        extrajars=(cppaths+[nimbus_classpath]), 
+        "com.alibaba.jstorm.daemon.nimbus.NimbusServer",
+        jvmtype="-server",
+        extrajars=(cppaths+nimbus_external_cp+[nimbus_classpath]),
         childopts=childopts)
 
 def supervisor():
     """Syntax: [jstorm supervisor]
 
-    Launches the supervisor daemon. This command should be run 
-    under supervision with a tool like daemontools or monit. 
+    Launches the supervisor daemon. This command should be run
+    under supervision with a tool like daemontools or monit.
 
     See Setting up a JStorm cluster for more information.
     (https://github.com/alibaba/jstorm/wiki/JStorm-Chinese-Documentation)
     """
     cppaths = [JSTORM_CONF_DIR]
+    supervisor_classpath = get_external_classpath(confvalue("supervisor.external", cppaths))
     childopts = confvalue("supervisor.childopts", cppaths) + get_server_childopts("supervisor")
     exec_storm_class(
-        "com.alibaba.jstorm.daemon.supervisor.Supervisor", 
-        jvmtype="-server", 
-        extrajars=cppaths, 
+        "com.alibaba.jstorm.daemon.supervisor.Supervisor",
+        jvmtype="-server",
+        extrajars=(cppaths+supervisor_classpath),
         childopts=childopts)
 
 def drpc():
@@ -420,11 +427,38 @@ def list(*args):
         extrajars=[JSTORM_CONF_DIR, JSTORM_DIR + "/bin", CLIENT_CONF_FILE],
         childopts=childopts)
 
+def blobstore(*args):
+    """Syntax: [jstorm blobstore -m]
+
+    migrate stormdist to blobstore
+    """
+    childopts = get_client_childopts()
+    exec_storm_class(
+        "backtype.storm.command.blobstore",
+        args=args,
+        jvmtype="-client -Xms256m -Xmx256m",
+        extrajars=[JSTORM_CONF_DIR, JSTORM_DIR + "/bin", CLIENT_CONF_FILE],
+        childopts=childopts)
+
+def blacklist(*args):
+    """Syntax: [jstorm blacklist add|remove hostname]
+
+        hostname which in blacklist won't scheduler by nimbus
+    """
+    childopts = get_client_childopts()
+    exec_storm_class(
+        "backtype.storm.command.blacklist",
+        args=args,
+        jvmtype="-client -Xms256m -Xmx256m",
+        extrajars=[JSTORM_CONF_DIR, JSTORM_DIR + "/bin", CLIENT_CONF_FILE],
+        childopts=childopts)
+
 COMMANDS = {"jar": jar, "kill": kill, "nimbus": nimbus, "zktool": zktool,
             "drpc": drpc, "supervisor": supervisor, "localconfvalue": print_localconfvalue,
             "remoteconfvalue": print_remoteconfvalue, "classpath": print_classpath,
             "activate": activate, "deactivate": deactivate, "rebalance": rebalance, "help": print_usage,
-            "metricsMonitor": metrics_Monitor, "list": list, "restart": restart, "update_topology": update_topology}
+            "metricsMonitor": metrics_Monitor, "list": list, "restart": restart, "update_topology": update_topology,
+            "blobstore": blobstore, "blacklist": blacklist}
 
 def parse_config(config_list):
     global CONFIG_OPTS
@@ -492,4 +526,3 @@ def main():
 if __name__ == "__main__":
     check_java()
     main()
-

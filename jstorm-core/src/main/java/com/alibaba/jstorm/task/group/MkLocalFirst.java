@@ -50,6 +50,7 @@ public class MkLocalFirst extends Shuffer {
     private boolean isLocalWorkerAvail;
     private WorkerData workerData;
     private IntervalCheck intervalCheck;
+    private float loadMark;
 
     public MkLocalFirst(List<Integer> workerTasks, List<Integer> allOutTasks, WorkerData workerData) {
         super(workerData);
@@ -79,6 +80,8 @@ public class MkLocalFirst extends Shuffer {
         remoteRandomRange = new RandomRange(remoteOutTasks.size());
 
         LOG.info("Local out tasks:" + localOutTasks + ", Remote out tasks:" + remoteOutTasks);
+        
+        loadMark = JStormUtils.parseDouble(workerData.getStormConf().get("shuffle.load.mark"), 1.0).floatValue();
     }
 
     @Override
@@ -92,7 +95,7 @@ public class MkLocalFirst extends Shuffer {
             boolean taskStatus = workerData.isOutboundTaskActive(taskId);
             DisruptorQueue exeQueue = (workerData.getInnerTaskTransfer().get(taskId));
             float queueLoadRatio = exeQueue != null ? exeQueue.pctFull() : 0;
-            if (taskStatus && queueLoadRatio < 1.0)
+            if (taskStatus && queueLoadRatio < loadMark)
                 break;
             else
                 index = randomrange.nextInt();

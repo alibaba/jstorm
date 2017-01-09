@@ -60,25 +60,39 @@ public interface InputDeclarer<T extends InputDeclarer> {
     public T globalGrouping(String componentId, String streamId);
 
     /**
+     * Recommend to use localOrShuffleGrouping
+     * 
      * Tuples are randomly distributed across the bolt's tasks in a way such that each bolt is guaranteed to get an equal number of tuples.
      * 
      * @param componentId
      * @return
      */
+    @Deprecated
     public T shuffleGrouping(String componentId);
 
     /**
+     * Recommend to use localOrShuffleGrouping
+     * 
      * Tuples are randomly distributed across the bolt's tasks in a way such that each bolt is guaranteed to get an equal number of tuples.
+     * 
+     * 
      * 
      * @param componentId
      * @param streamId
      * @return
      */
+    @Deprecated
     public T shuffleGrouping(String componentId, String streamId);
 
     /**
-     * If the target bolt has one or more tasks in the same worker process, tuples will be shuffled to just those in-process tasks. Otherwise, this acts like a
-     * normal shuffle grouping.
+     * There are 3 kind of tasks.
+     * 
+     * (1) The tasks run on the same worker process, this kind of tasks have the highest priority.
+     * (2) The tasks run on the same node, but not in the same worker, this kind of task have the second  priority.
+     * (3) The tasks run on other nodes, this kind of task have the lowest priority
+     * 
+     * 
+     * 
      * 
      * @param componentId
      * @return
@@ -86,17 +100,35 @@ public interface InputDeclarer<T extends InputDeclarer> {
     public T localOrShuffleGrouping(String componentId);
 
     /**
-     * If the target bolt has one or more tasks in the same worker process, tuples will be shuffled to just those in-process tasks. Otherwise, this acts like a
-     * normal shuffle grouping.
+     * There are 3 kind of tasks.
+     * 
+     * (1) The tasks run on the same worker process, this kind of tasks have the highest priority.
+     * (2) The tasks run on the same node, but not in the same worker, this kind of task have the second  priority.
+     * (3) The tasks run on other nodes, this kind of task have the lowest priority
+     * 
+     * 
+     * 
      * 
      * @param componentId
-     * @param streamId
      * @return
      */
     public T localOrShuffleGrouping(String componentId, String streamId);
 
+    /**
+     *    
+     * There are 2 kind of tasks.
+     * 
+     * (1) The tasks run on the same worker process, this kind of tasks have the highest priority.
+     * (2) The tasks run on the other worker process, lower priority
+     * 
+     * 
+     * @param componentId
+     * @return
+     */
+    @Deprecated
     public T localFirstGrouping(String componentId);
 
+    @Deprecated
     public T localFirstGrouping(String componentId, String streamId);
 
     /**

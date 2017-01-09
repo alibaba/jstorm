@@ -56,10 +56,8 @@ public class UpdateTopologyTransitionCallback extends BaseCallback {
         StormClusterState clusterState = data.getStormClusterState();
         try {
             Map userConf = (Map) args[0];
-            Map topoConf = StormConfig.read_nimbus_topology_conf(data.getConf(), topologyId);
+            Map topoConf = StormConfig.read_nimbus_topology_conf(topologyId, data.getBlobStore());
             topoConf.putAll(userConf);
-            StormConfig.write_nimbus_topology_conf(data.getConf(), topologyId, topoConf);
-
             Assignment assignment = clusterState.assignment_info(topologyId, null);
             assignment.setAssignmentType(AssignmentType.UpdateTopology);
             assignment.updateTimeStamp();

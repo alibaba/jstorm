@@ -20,7 +20,9 @@ package com.alibaba.jstorm.daemon.worker.timer;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 
+import com.alibaba.jstorm.task.TaskStatus;
 import com.alibaba.jstorm.task.error.ErrorConstants;
 import com.alibaba.jstorm.task.execute.BoltCollector;
 import com.alibaba.jstorm.task.execute.spout.SpoutCollector;
@@ -62,8 +64,10 @@ public class TaskHeartbeatTrigger extends TimerTrigger {
 
     private UptimeComputer uptime;
 
+    protected volatile TaskStatus executorStatus;
+
     public TaskHeartbeatTrigger(Map conf, String name, DisruptorQueue controlQueue, int taskId, String componentId,
-            TopologyContext sysTopologyCtx, ITaskReportErr reportError) {
+            TopologyContext sysTopologyCtx, ITaskReportErr reportError, TaskStatus executorStatus) {
         this.name = name;
         this.queue = controlQueue;
         this.opCode = TimerConstants.TASK_HEARTBEAT;
@@ -73,7 +77,7 @@ public class TaskHeartbeatTrigger extends TimerTrigger {
         this.sysTopologyCtx = sysTopologyCtx;
 
         this.frequence = JStormUtils.parseInt(conf.get(Config.TASK_HEARTBEAT_FREQUENCY_SECS), 10);
-        this.firstTime = frequence;
+        this.firstTime = 0;
 
         this.executeThreadHbTime = TimeUtils.current_time_secs();
         this.taskHbTimeout = JStormUtils.parseInt(conf.get(Config.NIMBUS_TASK_TIMEOUT_SECS), 180);
@@ -84,6 +88,7 @@ public class TaskHeartbeatTrigger extends TimerTrigger {
         this.reportError = reportError;
 
         this.uptime = new UptimeComputer();
+        this.executorStatus = executorStatus;
     }
 
     @Override
@@ -105,17 +110,9 @@ public class TaskHeartbeatTrigger extends TimerTrigger {
                 checkExecuteThreadHb();
             }
 
-            if (componentId.equals(Common.TOPOLOGY_MASTER_COMPONENT_ID)) {
-                Values values = new Values(uptime.uptime());
-                TupleExt tuple = new TupleImplExt(sysTopologyCtx, values, taskId, Common.TOPOLOGY_MASTER_HB_STREAM_ID);
-                queue.publish(tuple);
-            } else {
-                // Send task heartbeat to topology master
-                sendHbMsg();
-            }
-
+            sendHbMsg();
             // Send message used to monitor execute thread 
-            queue.publish(new TimerEvent(opCode, object), true);
+            queue.publish(new TimerEvent(opCode, object), false);
             LOG.debug("Offer task HB event to controlQueue, taskId=" + taskId);
         } catch (Exception e) {
             LOG.warn("Failed to publish timer event to " + name, e);
@@ -139,15 +136,29 @@ public class TaskHeartbeatTrigger extends TimerTrigger {
     }
 
     //taskheartbeat send control message
-    private void sendHbMsg() {
-        List values = JStormUtils.mk_list(uptime.uptime());
-        if (spoutCollector != null) {
-            spoutCollector.emitCtrl(Common.TOPOLOGY_MASTER_HB_STREAM_ID, values, null);
-        } else if (boltCollector != null) {
-            boltCollector.emitCtrl(Common.TOPOLOGY_MASTER_HB_STREAM_ID, null, values);
+    public void sendHbMsg() {
+        if (componentId.equals(Common.TOPOLOGY_MASTER_COMPONENT_ID)) {
+            Values values = new Values(uptime.uptime(), executorStatus.getStatus());
+            TupleExt tuple = new TupleImplExt(sysTopologyCtx, values, taskId, Common.TOPOLOGY_MASTER_HB_STREAM_ID);
+            queue.publish(tuple);
         } else {
-            LOG.warn("Failed to send hearbeat msg. OutputCollector has not been initialized!");
+            // Send task heartbeat to topology master
+            List values = JStormUtils.mk_list(uptime.uptime(), executorStatus.getStatus());
+            if (spoutCollector != null) {
+                spoutCollector.emitCtrl(Common.TOPOLOGY_MASTER_HB_STREAM_ID, values, null);
+            } else if (boltCollector != null) {
+                boltCollector.emitCtrl(Common.TOPOLOGY_MASTER_HB_STREAM_ID, null, values);
+            } else {
+                LOG.warn("Failed to send hearbeat msg. OutputCollector has not been initialized!");
+            }
         }
+    }
+
+    public void updateExecutorStatus(byte status) {
+        LOG.info("due to task-{} status changed: {}, so we notify the TopologyMaster", taskId, status);
+        executorStatus.setStatus(status);
+        //notify to TM
+        sendHbMsg();
     }
 
     private void checkExecuteThreadHb() {

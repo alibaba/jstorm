@@ -21,7 +21,7 @@ import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBufferOutputStream;
 import org.jboss.netty.buffer.ChannelBuffers;
 
-public enum ControlMessage {
+public enum ControlMessage implements NettyMessage{
     EOB_MESSAGE((short) -201), OK_RESPONSE((short) -200);
 
     private short code;
@@ -51,7 +51,10 @@ public enum ControlMessage {
         return null;
     }
 
-    public static int encodeLength() {
+    
+    @Override
+    public int getEncodedLength() {
+        // TODO Auto-generated method stub
         return 14; // short + long + int
     }
 
@@ -60,8 +63,9 @@ public enum ControlMessage {
      *
      * @throws Exception
      */
+    @Override
     public ChannelBuffer buffer() throws Exception {
-        ChannelBufferOutputStream bout = new ChannelBufferOutputStream(ChannelBuffers.directBuffer(encodeLength()));
+        ChannelBufferOutputStream bout = new ChannelBufferOutputStream(ChannelBuffers.directBuffer(getEncodedLength()));
         write(bout);
         bout.close();
         return bout.buffer();
@@ -72,4 +76,12 @@ public enum ControlMessage {
         bout.writeLong(System.currentTimeMillis());
         bout.writeInt(port);
     }
+
+    @Override
+    public boolean isEmpty() {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
+    
 }

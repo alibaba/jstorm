@@ -33,8 +33,6 @@ import com.lmax.disruptor.SequenceBarrier;
 import com.lmax.disruptor.Sequencer;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
-import backtype.storm.utils.disruptor.MultiProducerSequencer;
-import backtype.storm.utils.disruptor.SingleProducerSequencer;
 
 /**
  * Ring based store of reusable entries containing the data representing an event being exchanged between event producer and {@link EventProcessor}s.
@@ -812,23 +810,23 @@ public class RingBuffer<E> implements Cursored, DataProvider<E> {
     }
 
     /**
-     * Publish the specified sequence. This action marks this particular message as being available to be read.
-     * 
-     * @param sequence the sequence to publish.
-     */
-    public void publish(long sequence) {
-        sequencer.publish(sequence);
-    }
-
-    /**
      * Publish the specified sequences. This action marks these particular messages as being available to be read.
-     * 
+     *
      * @see Sequencer#next(int)
      * @param lo the lowest sequence number to be published
      * @param hi the highest sequence number to be published
      */
     public void publish(long lo, long hi) {
         sequencer.publish(lo, hi);
+    }
+
+    /**
+     * Publish the specified sequence. This action marks this particular message as being available to be read.
+     *
+     * @param sequence the sequence to publish.
+     */
+    public void publish(long sequence) {
+        sequencer.publish(sequence);
     }
 
     /**

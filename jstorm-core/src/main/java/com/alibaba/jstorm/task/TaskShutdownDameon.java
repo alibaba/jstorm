@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
+ * <p>
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,22 +26,22 @@ import backtype.storm.utils.WorkerClassLoader;
 import com.alibaba.jstorm.callback.AsyncLoopThread;
 import com.alibaba.jstorm.cluster.StormClusterState;
 import com.alibaba.jstorm.daemon.worker.ShutdownableDameon;
+import com.alibaba.jstorm.daemon.worker.timer.TaskHeartbeatTrigger;
 import com.alibaba.jstorm.utils.JStormUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * shutdown one task
- * 
+ *
  * @author yannian/Longda
  */
 public class TaskShutdownDameon implements ShutdownableDameon {
     private static Logger LOG = LoggerFactory.getLogger(TaskShutdownDameon.class);
-
-    public static final byte QUIT_MSG = (byte) 0xff;
 
     private Task task;
     private TaskStatus taskStatus;
@@ -50,10 +50,12 @@ public class TaskShutdownDameon implements ShutdownableDameon {
     private List<AsyncLoopThread> all_threads;
     private StormClusterState zkCluster;
     private Object task_obj;
-    private boolean isClosed = false;
+    private AtomicBoolean isClosing = new AtomicBoolean(false);
+    private TaskHeartbeatTrigger taskHeartbeatTrigger;
+
 
     public TaskShutdownDameon(TaskStatus taskStatus, String topology_id, Integer task_id, List<AsyncLoopThread> all_threads, StormClusterState zkCluster,
-            Object task_obj, Task task) {
+                              Object task_obj, Task task, TaskHeartbeatTrigger taskHeartbeatTrigger) {
         this.taskStatus = taskStatus;
         this.topology_id = topology_id;
         this.task_id = task_id;
@@ -61,56 +63,52 @@ public class TaskShutdownDameon implements ShutdownableDameon {
         this.zkCluster = zkCluster;
         this.task_obj = task_obj;
         this.task = task;
+        this.taskHeartbeatTrigger = taskHeartbeatTrigger;
     }
 
     @Override
     public void shutdown() {
-        synchronized (this) {
-            if (isClosed == true) {
-                return;
+        if (isClosing.compareAndSet(false, true)) {
+            LOG.info("Begin to shut down task " + topology_id + ":" + task_id);
+
+            TopologyContext userContext = task.getUserContext();
+            for (ITaskHook iTaskHook : userContext.getHooks())
+                iTaskHook.cleanup();
+            closeComponent(task_obj);
+            taskHeartbeatTrigger.updateExecutorStatus(TaskStatus.SHUTDOWN);
+
+            // waiting 1000ms for executor thread shutting it's own
+            // To be assure send  the shutdown information TM
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
             }
-            isClosed = true;
+
+            // all thread will check the taskStatus
+            // once it has been set SHUTDOWN, it will quit
+            taskStatus.setStatus(TaskStatus.SHUTDOWN);
+
+            for (AsyncLoopThread thr : all_threads) {
+                LOG.info("Begin to shutdown " + thr.getThread().getName());
+                thr.cleanup();
+                JStormUtils.sleepMs(10);
+                thr.interrupt();
+                // try {
+                // //thr.join();
+                // thr.getThread().stop(new RuntimeException());
+                // } catch (Throwable e) {
+                // }
+                LOG.info("Successfully shutdown " + thr.getThread().getName());
+            }
+
+            try {
+                zkCluster.disconnect();
+            } catch (Exception e) {
+                LOG.error("Failed to disconnect zk for task-" + task_id);
+            }
+
+            LOG.info("Successfully shutdown task " + topology_id + ":" + task_id);
         }
-
-        LOG.info("Begin to shut down task " + topology_id + ":" + task_id);
-
-        // all thread will check the taskStatus
-        // once it has been set SHUTDOWN, it will quit
-        taskStatus.setStatus(TaskStatus.SHUTDOWN);
-
-        // waiting 100ms for executor thread shutting it's own
-        try {
-            Thread.sleep(100);
-        } catch (InterruptedException e) {
-        }
-
-        for (AsyncLoopThread thr : all_threads) {
-            LOG.info("Begin to shutdown " + thr.getThread().getName());
-            thr.cleanup();
-            JStormUtils.sleepMs(10);
-            thr.interrupt();
-            // try {
-            // //thr.join();
-            // thr.getThread().stop(new RuntimeException());
-            // } catch (Throwable e) {
-            // }
-            LOG.info("Successfully shutdown " + thr.getThread().getName());
-        }
-
-        TopologyContext userContext = task.getUserContext();
-        for (ITaskHook iTaskHook : userContext.getHooks())
-            iTaskHook.cleanup();
-        
-        closeComponent(task_obj);
-
-        try {
-            zkCluster.disconnect();
-        } catch (Exception e) {
-            LOG.error("Failed to disconnect zk for task-" + task_id);
-        }
-
-        LOG.info("Successfully shutdown task " + topology_id + ":" + task_id);
-
     }
 
     public void join() throws InterruptedException {
@@ -145,7 +143,7 @@ public class TaskShutdownDameon implements ShutdownableDameon {
             } finally {
                 WorkerClassLoader.restoreThreadContext();
             }
-        }else {
+        } else {
             taskStatus.setStatus(TaskStatus.PAUSE);
         }
 
@@ -160,7 +158,7 @@ public class TaskShutdownDameon implements ShutdownableDameon {
             } finally {
                 WorkerClassLoader.restoreThreadContext();
             }
-        }else {
+        } else {
             taskStatus.setStatus(TaskStatus.RUN);
         }
     }
@@ -168,6 +166,9 @@ public class TaskShutdownDameon implements ShutdownableDameon {
     public void update(Map conf) {
         if (task_obj instanceof IDynamicComponent) {
             ((IDynamicComponent) task_obj).update(conf);
+        } else {
+            if (task.getBaseExecutors() != null)
+                task.getBaseExecutors().update(conf);
         }
     }
 
@@ -183,4 +184,5 @@ public class TaskShutdownDameon implements ShutdownableDameon {
     public Task getTask() {
         return this.task;
     }
+
 }

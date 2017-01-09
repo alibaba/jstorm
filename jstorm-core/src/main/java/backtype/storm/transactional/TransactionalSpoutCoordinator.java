@@ -90,18 +90,20 @@ public class TransactionalSpoutCoordinator extends BaseRichSpout {
     }
 
     @Override
-    public void nextTuple() {
+    public synchronized void nextTuple() {
         sync();
     }
 
     @Override
-    public void ack(Object msgId) {
+    public synchronized void ack(Object msgId) {
         TransactionAttempt tx = (TransactionAttempt) msgId;
         TransactionStatus status = _activeTx.get(tx.getTransactionId());
         if (status != null && tx.equals(status.attempt)) {
             if (status.status == AttemptStatus.PROCESSING) {
+                LOG.debug("acker batch stream {}", tx);
                 status.status = AttemptStatus.PROCESSED;
             } else if (status.status == AttemptStatus.COMMITTING) {
+                LOG.debug("acker commit stream {}", tx);
                 _activeTx.remove(tx.getTransactionId());
                 _coordinatorState.cleanupBefore(tx.getTransactionId());
                 _currTransaction = nextTransactionId(tx.getTransactionId());
@@ -112,7 +114,7 @@ public class TransactionalSpoutCoordinator extends BaseRichSpout {
     }
 
     @Override
-    public void fail(Object msgId) {
+    public synchronized void fail(Object msgId) {
         TransactionAttempt tx = (TransactionAttempt) msgId;
         TransactionStatus stored = _activeTx.remove(tx.getTransactionId());
         if (stored != null && tx.equals(stored.attempt)) {
@@ -137,6 +139,7 @@ public class TransactionalSpoutCoordinator extends BaseRichSpout {
         TransactionStatus maybeCommit = _activeTx.get(_currTransaction);
         if (maybeCommit != null && maybeCommit.status == AttemptStatus.PROCESSED) {
             maybeCommit.status = AttemptStatus.COMMITTING;
+            LOG.debug("send commit stream {}", maybeCommit);
             _collector.emit(TRANSACTION_COMMIT_STREAM_ID, new Values(maybeCommit.attempt), maybeCommit.attempt);
         }
 
@@ -148,6 +151,7 @@ public class TransactionalSpoutCoordinator extends BaseRichSpout {
                         TransactionAttempt attempt = new TransactionAttempt(curr, _rand.nextLong());
                         Object state = _coordinatorState.getState(curr, _initializer);
                         _activeTx.put(curr, new TransactionStatus(attempt));
+                        LOG.debug("send batch stream {}", attempt);
                         _collector.emit(TRANSACTION_BATCH_STREAM_ID, new Values(attempt, state, previousTransactionId(_currTransaction)), attempt);
                     }
                     curr = nextTransactionId(curr);

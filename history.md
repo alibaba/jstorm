@@ -1,6 +1,67 @@
 [JStorm English introduction](http://42.121.19.155/jstorm/JStorm-introduce-en.pptx)
 [JStorm Chinese introduction](http://42.121.19.155/jstorm/JStorm-introduce.pptx)
 
+# Release 2.2.1
+
+## New features
+* Performance is improved by 200%~300%, compared to Release 2.1.1 and 0.9.8.1 in several testing scenarios, while 
+120%~200% compared to Flink and 300%~400% compared to Storm.
+	1. Restructure the batch solution
+	2. Improve serialization and deserialization to reduce the cost of cpu and network
+	3. Improve the cost of cpu on critical path and metrics
+	4. Improve the strategy of netty client and netty server 
+	5. Support consume and publish of disruptor queue under batch mode
+* Introduce snapshot exactly once framework
+	1. Compared to Trident solution, the performance of new framework is increased by several times. Besides it. 
+	2. The new framework also support "at least once" mode. Compared to the acker mechanism，it will reduce the cost 
+	of relative calculation in acker, and the cost of network, which will improve the performance singificantly.
+* Support JStorm on yarn。
+	1. Currently, jstorm cluster is capable of fast deployments，and fast scale-in/scale-out. It will improve the utility of resource.
+* Re-design the solution of backpressure. Currently, the flow control is stage by stage。
+	1. The solution is simple and effective now. The  response is much more faster when the exchange of switch on/off
+	 of backpressure. 
+	2. The performance and stability is improved significantly, compared to the original solution.
+* Introduce Window API
+	1. Support tumbling window，sliding window
+	2. window support two collection mode, count and duration. 
+	3. Support watermark mechanism
+* Introduce the support of Flux
+	1. Flux is a programing framework or component which is aim to help create and deploy the topology of jstorm 
+	quickly.
+* Isolate the dependencies of jstorm and user topology by maven shade plugin to fix the conflict problem.
+* Improve Shuffle grouping solution
+	1. Integrate shuffle， localOrShuffle and localFirst. The grouping solution will be auto adapted according to the assignment of topology.
+	2. Introduce load aware in shuffle to ensure the load balance of downstreams.
+* Support to configure blacklist in Nimbus to exclude some problematic nodes
+* Support batch mode in trident
+* Support the push of configuration of cluster
+* Add buildTs to supervisor info and heartbeats
+* Add ext module for nimbus and supervisor to support external plugins
+* Add jstorm-elasticsearch support, thanks to @elloray for your contribution
+
+
+## Improvements
+* Restructure nimbus metrics implementation. Currently, the topology metrics runnable is event-drive.
+* Restructure topology master. Currently, the processor in TM is event-drive.
+* Add some examples to cover more scenarios
+* Disable stream metrics to reduce the cost of sending metrics to Nimbus
+* Support metrics in local mode
+* Improve the implementation of gauge by changing the instantaneous value of each minute，to the average value of some sample values in each minute.
+* Introduce an approximate histogram calculation to reduce memory usage of histogram metrics
+* Add Full GC and supervisor network related metrics 
+
+
+## Bug Fix
+* Fix message disorder bug
+* Fix the bug that some connections to zookeeper are not closed by expected when encountering exception in supervisor.
+* The deactivate might be called by mistake when task init
+* The rootId might be duplicated occasionally. It will cause the unexpected message failure.
+* Fix the bug when local mode
+* Fix logwriter's bug
+* Some task metrics(RecvTps ProcessLatency) might not be aggregated correctly.
+* Fix the racing condition of AsmCounter during flushing
+
+
 # Release 2.1.1
 
 ## New features
