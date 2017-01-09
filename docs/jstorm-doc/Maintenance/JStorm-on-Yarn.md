@@ -85,6 +85,14 @@ In order to facilitate the maintenance, please add the following configuration a
  jstorm.log.dir: /home/yarn/jstorm_logs/<cluster_name>
 ```
 
+if you need enable nimbus auto restart, pleas add the following configuration
+
+```
+blobstore.dir: /yourhdfsdir
+blobstore.hdfs.hostname: yourhdfshost
+blobstore.hdfs.port: yourhdfsport
+```
+
 The above configuration will override the default log path, all the logs are redirected to the /home/yarn below, preventing from missing the log after the container hangs. If more than one container of supervisor is launch on the same machine, it will add value `supervisor.deamon.logview.port` at the end of supervisor log (YARN dynamically generated port and port range for each container) to distinguish logs and prevent the logs from affecting each other. For example if two supervisor http ports are 9000 and 9001 respectively, then supervisor-9000.log and supervisor-9001.log are generated. koala will add the specified port suffix for the log according to the `jstorm.on.yarn` configuration.
 
 ## Yarn Configuration
