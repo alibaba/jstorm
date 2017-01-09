@@ -45,6 +45,7 @@ top-nav-title: JStorm-on-Yarn
 ## 对集群进行伸缩容
 ### 随机分配容器
 * 执行addSupervisors和removeSupervisors命令
+
 ### 指定机架
 * 执行addSpecSupervisors和removeSpecSupervisors命令
 
