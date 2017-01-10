@@ -134,13 +134,13 @@ public class RocksDBCache implements JStormCache {
 
     @Override
     public void cleanup() {
-        LOG.info("Begin to close rocketDb of {}", rootDir);
+        LOG.info("Begin to close rocksDb of {}", rootDir);
 
         if (db != null) {
             db.close();
         }
 
-        LOG.info("Successfully closed rocketDb of {}", rootDir);
+        LOG.info("Successfully closed rocksDb of {}", rootDir);
     }
 
     @Override
