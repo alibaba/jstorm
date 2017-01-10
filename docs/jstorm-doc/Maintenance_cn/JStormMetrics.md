@@ -407,14 +407,14 @@ worker级别的总发送控制队列堆积情况
 
 ### supervisor 级别
 
-#### 磁盘使用
+#### DiskUsage
 当前jstorm账户所在文件磁盘空间的利用率；
 
-#### 内存使用
+#### MemoryUsage
 当前机器的内存利用率
 
-#### CPU使用
+#### CpuUsedRatio
 当前机器的cpu利用率
 
-#### I/O byte/s
+#### NettyCliSendSpeed/NettySrvRecvSpeed
 当前机器网卡每秒接收和发送字节数

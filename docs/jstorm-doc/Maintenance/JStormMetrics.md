@@ -428,14 +428,14 @@ The worker-level outgoing control queue usage.
 
 ### Supervisor Metrics
 
-#### 磁盘使用
+#### DiskUsage
 Home disk usage of current user.
 
-#### 内存使用
+#### MemoryUsage
 Physical memory usage of current machine.
 
-#### CPU使用
+#### CpuUsedRatio
 CPU usage of current machine.
 
-#### I/O byte/s
+#### NettyCliSendSpeed/NettySrvRecvSpeed
 Input/output bytes of NIC in Bytes.
