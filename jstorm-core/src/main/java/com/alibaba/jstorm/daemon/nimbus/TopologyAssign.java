@@ -17,12 +17,33 @@
  */
 package com.alibaba.jstorm.daemon.nimbus;
 
-import backtype.storm.Config;
-import backtype.storm.generated.StormTopology;
-import backtype.storm.scheduler.WorkerSlot;
+import com.alibaba.jstorm.metric.JStormMetrics;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.concurrent.LinkedBlockingQueue;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.alibaba.jstorm.blobstore.BlobStoreUtils;
 import com.alibaba.jstorm.client.ConfigExtension;
-import com.alibaba.jstorm.cluster.*;
-import com.alibaba.jstorm.daemon.nimbus.TopologyMetricsRunnable.TaskStartEvent;
+import com.alibaba.jstorm.cluster.Cluster;
+import com.alibaba.jstorm.cluster.Common;
+import com.alibaba.jstorm.cluster.StormBase;
+import com.alibaba.jstorm.cluster.StormClusterState;
+import com.alibaba.jstorm.cluster.StormConfig;
+import com.alibaba.jstorm.cluster.StormStatus;
+import com.alibaba.jstorm.daemon.nimbus.metric.ClusterMetricsRunnable;
+import com.alibaba.jstorm.daemon.nimbus.metric.assignment.TaskStartEvent;
 import com.alibaba.jstorm.daemon.supervisor.SupervisorInfo;
 import com.alibaba.jstorm.schedule.Assignment;
 import com.alibaba.jstorm.schedule.AssignmentBak;
@@ -33,16 +54,11 @@ import com.alibaba.jstorm.schedule.default_assign.ResourceWorkerSlot;
 import com.alibaba.jstorm.task.TaskInfo;
 import com.alibaba.jstorm.utils.FailedAssignTopologyException;
 import com.alibaba.jstorm.utils.JStormUtils;
-import com.alibaba.jstorm.utils.PathUtils;
 import com.alibaba.jstorm.utils.TimeUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.LinkedBlockingQueue;
+import backtype.storm.Config;
+import backtype.storm.generated.StormTopology;
+import backtype.storm.scheduler.WorkerSlot;
 
 public class TopologyAssign implements Runnable {
 
@@ -137,6 +153,28 @@ public class TopologyAssign implements Runnable {
         }
 
     }
+    
+    protected void pushTaskStartEvent(Assignment oldAssignment, Assignment newAssignment, TopologyAssignEvent event)
+            throws Exception {
+        // notify jstorm monitor on task assign/reassign/rebalance
+        TaskStartEvent taskEvent = new TaskStartEvent();
+        taskEvent.setOldAssignment(oldAssignment);
+        taskEvent.setNewAssignment(newAssignment);
+        taskEvent.setTopologyId(event.getTopologyId());
+        
+        Map<Integer, String> task2Component;
+        // get from nimbus cache first
+        Map<Integer, TaskInfo> taskInfoMap = Cluster.get_all_taskInfo(nimbusData.getStormClusterState(),
+                event.getTopologyId());
+        if (taskInfoMap != null) {
+            task2Component = Common.getTaskToComponent(taskInfoMap);
+        } else {
+            task2Component = Common.getTaskToComponent(
+                    Cluster.get_all_taskInfo(nimbusData.getStormClusterState(), event.getTopologyId()));
+        }
+        taskEvent.setTask2Component(task2Component);
+        ClusterMetricsRunnable.pushEvent(taskEvent);
+    }
 
     /**
      * Create/Update topology assignment set topology status
@@ -154,24 +192,7 @@ public class TopologyAssign implements Runnable {
             }
             assignment = mkAssignment(event);
 
-            // notify jstorm monitor on task assign/reassign/rebalance
-            TaskStartEvent taskEvent = new TaskStartEvent();
-            taskEvent.oldAssignment = oldAssignment;
-            taskEvent.newAssignment = assignment;
-            taskEvent.topologyId = event.getTopologyId();
-            taskEvent.clusterName = nimbusData.getClusterName();
-            taskEvent.timestamp = System.currentTimeMillis();
-
-            Map<Integer, String> task2Component;
-            // get from nimbus cache first
-            Map<Integer, TaskInfo> taskInfoMap = Cluster.get_all_taskInfo(nimbusData.getStormClusterState(), event.getTopologyId());
-            if (taskInfoMap != null) {
-                task2Component = Common.getTaskToComponent(taskInfoMap);
-            } else {
-                task2Component = Common.getTaskToComponent(Cluster.get_all_taskInfo(nimbusData.getStormClusterState(), event.getTopologyId()));
-            }
-            taskEvent.task2Component = task2Component;
-            nimbusData.getMetricRunnable().pushEvent(taskEvent);
+            pushTaskStartEvent(oldAssignment, assignment, event);
 
             if (!isReassign) {
                 setTopologyStatus(event);
@@ -201,54 +222,30 @@ public class TopologyAssign implements Runnable {
             return;
         }
 
+//        Map<String, List<String>> topoIdToKeys = new HashMap<>();
         Set<String> cleanupIds = get_cleanup_ids(clusterState, active_topologys);
+        for (String sysTopology : JStormMetrics.SYS_TOPOLOGIES) {
+            cleanupIds.remove(sysTopology);
+        }
 
         for (String topologyId : cleanupIds) {
 
             LOG.info("Cleaning up " + topologyId);
 
             clusterState.try_remove_storm(topologyId);
-            //
+
             nimbusData.getTaskHeartbeatsCache().remove(topologyId);
             nimbusData.getTasksHeartbeat().remove(topologyId);
 
             NimbusUtils.removeTopologyTaskTimeout(nimbusData, topologyId);
 
-            // get /nimbus/stormdist/topologyId
-            String master_stormdist_root = StormConfig.masterStormdistRoot(nimbusData.getConf(), topologyId);
-            try {
-                // delete topologyId local dir
-                PathUtils.rmr(master_stormdist_root);
-            } catch (IOException e) {
-                LOG.warn("Failed to delete " + master_stormdist_root + ",", e);
-            }
+
+            // delete topology files in blobstore
+            List<String> deleteKeys = BlobStoreUtils.getKeyListFromId(nimbusData, topologyId);
+            BlobStoreUtils.cleanup_keys(deleteKeys, nimbusData.getBlobStore(), nimbusData.getStormClusterState());
+
+            // don't need to delete local dir
         }
-    }
-
-    private void get_code_ids(List<String> code_ids, HashSet<String> latest_code_ids) throws IOException {
-        Map conf = nimbusData.getConf();
-
-        String master_stormdist_root = StormConfig.masterStormdistRoot(conf);
-        // listdir /local-dir/nimbus/stormdist
-        List<String> all_code_ids = PathUtils.read_dir_contents(master_stormdist_root);
-        code_ids.addAll(all_code_ids);
-
-        long now = System.currentTimeMillis();
-        for (String dir : code_ids) {
-            File file = new File(master_stormdist_root + File.separator + dir);
-            try {
-                if (file.exists() == false) {
-                    continue;
-                }
-
-                long modify = file.lastModified();
-
-            } catch (Exception exception) {
-                LOG.error("Failed to get modify time of " + dir, exception);
-            }
-
-        }
-
     }
 
     /**
@@ -265,16 +262,14 @@ public class TopologyAssign implements Runnable {
         List<String> error_ids = clusterState.task_error_storms();
         List<String> assignment_ids = clusterState.assignments(null);
         List<String> metric_ids = clusterState.get_metrics();
-        List<String> backpressure_ids = clusterState.backpressureInfos();
 
-        List<String> code_ids = new ArrayList<String>();
         HashSet<String> latest_code_ids = new HashSet<String>();
-        get_code_ids(code_ids, latest_code_ids);
 
-        // Set<String> assigned_ids =
-        // JStormUtils.listToSet(clusterState.active_storms());
+        Set<String> code_ids = BlobStoreUtils.code_ids(nimbusData.getBlobStore());
+
+
         Set<String> to_cleanup_ids = new HashSet<String>();
-        Set<String> pendingTopologys = nimbusData.getPendingSubmitTopoloygs().keySet();
+        Set<String> pendingTopologys = nimbusData.getPendingSubmitTopologies().buildMap().keySet();
 
         if (task_ids != null) {
             to_cleanup_ids.addAll(task_ids);
@@ -298,10 +293,6 @@ public class TopologyAssign implements Runnable {
 
         if (metric_ids != null) {
             to_cleanup_ids.addAll(metric_ids);
-        }
-
-        if (backpressure_ids != null) {
-            to_cleanup_ids.addAll(backpressure_ids);
         }
 
         if (active_topologys != null) {
@@ -373,9 +364,9 @@ public class TopologyAssign implements Runnable {
         LOG.info("prepareTopologyAssign, topoMasterId={}", topoMasterId);
 
         Map<Object, Object> nimbusConf = nimbusData.getConf();
-        Map<Object, Object> topologyConf = StormConfig.read_nimbus_topology_conf(nimbusConf, topologyId);
+        Map<Object, Object> topologyConf = StormConfig.read_nimbus_topology_conf(topologyId, nimbusData.getBlobStore());
 
-        StormTopology rawTopology = StormConfig.read_nimbus_topology_code(nimbusConf, topologyId);
+        StormTopology rawTopology = StormConfig.read_nimbus_topology_code(topologyId, nimbusData.getBlobStore());
         ret.setRawTopology(rawTopology);
 
         Map stormConf = new HashMap();
@@ -509,7 +500,7 @@ public class TopologyAssign implements Runnable {
 
             Map<Integer, Integer> startTimes = getTaskStartTimes(context, nimbusData, topologyId, context.getOldAssignment(), assignments);
 
-            String codeDir = StormConfig.masterStormdistRoot(nimbusData.getConf(), topologyId);
+            String codeDir = (String) nimbusData.getConf().get(Config.STORM_LOCAL_DIR);
 
             assignment = new Assignment(codeDir, assignments, nodeHost, startTimes);
 

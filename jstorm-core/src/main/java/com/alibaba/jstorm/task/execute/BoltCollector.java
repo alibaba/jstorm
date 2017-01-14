@@ -25,10 +25,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 
-import java.util.concurrent.TimeUnit;
-
 import backtype.storm.task.ICollectorCallback;
 import backtype.storm.task.OutputCollectorCb;
+
 import backtype.storm.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +48,6 @@ import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.RotatingMap;
 
 import backtype.storm.Config;
-import backtype.storm.task.IOutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.MessageId;
 import backtype.storm.tuple.Tuple;
@@ -112,6 +110,7 @@ public class BoltCollector extends OutputCollectorCb {
         //this.emitTimer.setTimeUnit(TimeUnit.NANOSECONDS);
 
         random = new Random(Utils.secureRandomLong());
+/*        random.setSeed(System.currentTimeMillis());*/
     }
 
     @Override
@@ -150,32 +149,39 @@ public class BoltCollector extends OutputCollectorCb {
     }
 
     protected MessageId getMessageId(Collection<Tuple> anchors) {
-        Map<Long, Long> anchors_to_ids = new HashMap<Long, Long>();
-        if (anchors != null) {
+        MessageId ret = null;
+        if (anchors != null && ackerNum > 0) {
+            Map<Long, Long> anchors_to_ids = new HashMap<Long, Long>();
             for (Tuple a : anchors) {
-                Long edge_id = MessageId.generateId(random);
-                put_xor(pending_acks, a, edge_id);
-                for (Long root_id : a.getMessageId().getAnchorsToIds().keySet()) {
-                    put_xor(anchors_to_ids, root_id, edge_id);
-                }
+            	if (a.getMessageId() != null) {
+                    Long edge_id = MessageId.generateId(random);
+                    put_xor(pending_acks, a, edge_id);
+                    MessageId messageId = a.getMessageId();
+                    if (messageId != null){
+                        for (Long root_id : messageId.getAnchorsToIds().keySet()) {
+                            put_xor(anchors_to_ids, root_id, edge_id);
+                        }
+                    }
+            	}
             }
+            ret = MessageId.makeId(anchors_to_ids);
         }
-        return MessageId.makeId(anchors_to_ids);
+        return ret;
     }
 
     public List<Integer> sendMsg(String out_stream_id, List<Object> values, Collection<Tuple> anchors, Integer out_task_id, ICollectorCallback callback) {
         final long start = emitTimer.getTime();
-        java.util.List<Integer> out_tasks = null;
+        List<Integer> outTasks = null;
         try {
 
             if (out_task_id != null) {
-                out_tasks = sendTargets.get(out_task_id, out_stream_id, values, anchors, null);
+                outTasks = sendTargets.get(out_task_id, out_stream_id, values, anchors, null);
             } else {
-                out_tasks = sendTargets.get(out_stream_id, values, anchors, null);
+                outTasks = sendTargets.get(out_stream_id, values, anchors, null);
             }
 
             tryRotate();
-            for (Integer t : out_tasks) {
+            for (Integer t : outTasks) {
                 MessageId msgid = getMessageId(anchors);
 
                 TupleImplExt tp = new TupleImplExt(topologyContext, values, task_id, out_stream_id, msgid);
@@ -185,14 +191,14 @@ public class BoltCollector extends OutputCollectorCb {
         } catch (Exception e) {
             LOG.error("bolt emit", e);
         } finally {
-            if (out_tasks == null) {
-                out_tasks = new ArrayList<Integer>();
+            if (outTasks == null) {
+                outTasks = new ArrayList<Integer>();
             }
             if (callback != null)
-                callback.execute(out_tasks);
+                callback.execute(out_stream_id, outTasks,  values);
             emitTimer.updateTime(start);
         }
-        return out_tasks;
+        return outTasks;
     }
 
     private void tryRotate() {
@@ -240,7 +246,7 @@ public class BoltCollector extends OutputCollectorCb {
 
     @Override
     public void ack(Tuple input) {
-        if (ackerNum > 0) {
+        if (input.getMessageId() != null) {
             Long ack_val = 0L;
             Object pend_val = pending_acks.remove(input);
             if (pend_val != null) {
@@ -254,25 +260,25 @@ public class BoltCollector extends OutputCollectorCb {
         }
 
         Long latencyStart = (Long) tuple_start_times.remove(input);
+        task_stats.bolt_acked_tuple(input.getSourceComponent(), input.getSourceStreamId());
         if (latencyStart != null && JStormMetrics.enabled) {
-            long lifeCycleStart = ((TupleExt) input).getCreationTimeStamp();
             long endTime = System.currentTimeMillis();
-
-            task_stats.bolt_acked_tuple(input.getSourceComponent(), input.getSourceStreamId(),
-                    latencyStart, lifeCycleStart, endTime);
+            task_stats.update_bolt_acked_latency(input.getSourceComponent(), input.getSourceStreamId(),
+                    latencyStart, endTime);
         }
     }
 
     @Override
     public void fail(Tuple input) {
         // if ackerNum == 0, we can just return
-        if (ackerNum > 0) {
+        if (input.getMessageId() != null) {
             pending_acks.remove(input);
             for (Entry<Long, Long> e : input.getMessageId().getAnchorsToIds().entrySet()) {
                 unanchoredSend(topologyContext, sendTargets, taskTransfer, Acker.ACKER_FAIL_STREAM_ID, JStormUtils.mk_list((Object) e.getKey()));
             }
         }
 
+        tuple_start_times.remove(input);
         task_stats.bolt_failed_tuple(input.getSourceComponent(), input.getSourceStreamId());
     }
 

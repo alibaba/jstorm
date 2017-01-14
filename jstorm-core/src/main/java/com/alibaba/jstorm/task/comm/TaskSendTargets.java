@@ -131,17 +131,17 @@ public class TaskSendTargets {
         return out_tasks;
     }
 
-    public Map<List<Integer>, List<MsgInfo>> getBatch(Integer outTaskId, String stream, List<MsgInfo> batch) {
-        Map<List<Integer>, List<MsgInfo>> outTasks = new HashMap<List<Integer>, List<MsgInfo>>();
-        outTasks.put(JStormUtils.mk_list(outTaskId), batch);
+    public Map<Object, List<MsgInfo>> getBatch(Integer outTaskId, String stream, List<MsgInfo> batch) {
+        Map<Object, List<MsgInfo>> outTasks = new HashMap<Object, List<MsgInfo>>();
+        outTasks.put(outTaskId, batch);
 
         taskStats.send_tuple(stream, batch.size());
 
         return outTasks;
     }
 
-    public Map<List<Integer>, List<MsgInfo>> getBatch(String stream, List<MsgInfo> batch) {
-        Map<List<Integer>, List<MsgInfo>> outTasks = new HashMap<List<Integer>, List<MsgInfo>>();
+    public Map<Object, List<MsgInfo>> getBatch(String stream, List<MsgInfo> batch) {
+        Map<Object, List<MsgInfo>> outTasks = new HashMap<Object, List<MsgInfo>>();
 
         // get grouper, then get which task should tuple be sent to.
         Map<String, MkGrouper> componentCrouping = streamComponentgrouper.get(stream);
@@ -169,8 +169,12 @@ public class TaskSendTargets {
         }*/
 
         int num_out_tasks = 0;
-        for (Entry<List<Integer>, List<MsgInfo>> entry : outTasks.entrySet()) {
-           num_out_tasks += entry.getKey().size() * entry.getValue().size();
+        for (Entry<Object, List<MsgInfo>> entry : outTasks.entrySet()) {
+            if (entry.getKey() instanceof Integer) {
+            	num_out_tasks += entry.getValue().size();
+            } else {
+                num_out_tasks += ((List<Integer>) entry.getKey()).size() * entry.getValue().size();
+            }
         }
         taskStats.send_tuple(stream, num_out_tasks);
 

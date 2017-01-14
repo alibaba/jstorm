@@ -1,5 +1,6 @@
 package com.alibaba.jstorm.common.metric.codahale;
 
+import com.alibaba.jstorm.metric.MetricUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.codahale.metrics.Metered;
 import java.util.concurrent.TimeUnit;

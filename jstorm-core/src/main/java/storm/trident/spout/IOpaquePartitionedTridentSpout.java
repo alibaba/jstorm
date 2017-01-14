@@ -42,25 +42,23 @@ public interface IOpaquePartitionedTridentSpout<Partitions, Partition extends IS
         /**
          * Emit a batch of tuples for a partition/transaction.
          * 
-         * Return the metadata describing this batch that will be used as lastPartitionMeta for defining the parameters of the next batch.
+         * Return the metadata describing this batch that will be used as lastPartitionMeta
+         * for defining the parameters of the next batch.
          */
         M emitPartitionBatch(TransactionAttempt tx, TridentCollector collector, Partition partition, M lastPartitionMeta);
 
         /**
-         * This method is called when this task is responsible for a new set of partitions. Should be used to manage things like connections to brokers.
-         */
-        void refreshPartitions(List<Partition> partitionResponsibilities);
-
+         * This method is called when this task is responsible for a new set of partitions. Should be used
+         * to manage things like connections to brokers.
+         */        
+        void refreshPartitions(List<Partition> partitionResponsibilities);        
         List<Partition> getOrderedPartitions(Partitions allPartitionInfo);
 
         void close();
     }
-
-    Emitter<Partitions, Partition, M> getEmitter(Map conf, TopologyContext context);
-
-    Coordinator getCoordinator(Map conf, TopologyContext context);
-
-    Map getComponentConfiguration();
-
+    
+    Emitter<Partitions, Partition, M> getEmitter(Map conf, TopologyContext context);     
+    Coordinator getCoordinator(Map conf, TopologyContext context);     
+    Map<String, Object> getComponentConfiguration();
     Fields getOutputFields();
 }

@@ -39,6 +39,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import java.io.Serializable;
+
 /**
  * A bolt that shells out to another process to process tuples. ShellBolt communicates with that process over stdio using a special protocol. An ~100 line
  * library is required to implement that protocol, and adapter libraries currently exist for Ruby and Python.
@@ -200,10 +202,7 @@ public class ShellBolt implements IBolt {
         }
 
         if (shellMsg.getTask() == 0) {
-            List<Integer> outtasks = _collector.emit(shellMsg.getStream(), anchors, shellMsg.getTuple());
-            if (shellMsg.areTaskIdsNeeded()) {
-                _pendingWrites.put(outtasks);
-            }
+            _collector.emit(shellMsg.getStream(), anchors, shellMsg.getTuple(), new ShellEmitCb(shellMsg));
         } else {
             _collector.emitDirect((int) shellMsg.getTask(), shellMsg.getStream(), anchors, shellMsg.getTuple());
         }
@@ -375,5 +374,28 @@ public class ShellBolt implements IBolt {
             msg.setTuple(new ArrayList<Object>());
             return msg;
         }
+    }
+    
+    public class ShellEmitCb implements ICollectorCallback {
+        
+        
+        private ShellMsg shellMsg;
+        
+        public ShellEmitCb(ShellMsg shellMsg) {
+            this.shellMsg = shellMsg;
+        }
+
+        @Override
+        public void execute(String stream, List<Integer> outTasks, List values) {
+            if (shellMsg.areTaskIdsNeeded()) {
+                try {
+                    _pendingWrites.put(outTasks);
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    LOG.warn("Skip write outTasks", e);
+                }
+            } 
+        }
+        
     }
 }

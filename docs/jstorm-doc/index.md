@@ -68,13 +68,13 @@ Contain the Apache Storm API,  application is easy to migrate from Apache Storm 
 Download the **latest stable release** and run JStorm on your machine, cluster, or cloud:
 
 <div class="text-center download-button">
-  <a href="downloads.html" class="btn btn-primary" markdown="1">**Download** Alibaba JStorm {{ site.stable }}</a>
+  <a href="Downloads.html" class="btn btn-primary" markdown="1">**Download** Alibaba JStorm {{ site.stable }}</a>
   <a href="https://github.com/alibaba/jstorm" class="btn btn-info" markdown="1">Alibaba JStorm on **GitHub**</a>
 </div>
 
 The documentation contains a [setup guide]({{ site.baseurl }}/QuickStart_cn/Deploy) for all deployment options.
 
-The [programming guide]({{ site.baseurl }}/QuickStart_cn/Example.html) contains all information to get you started with writing and testing your Flink programs.
+The [programming guide]({{ site.baseurl }}/QuickStart_cn/Example.html) contains all information to get you started with writing and testing your JStorm programs.
 
 
 </div>

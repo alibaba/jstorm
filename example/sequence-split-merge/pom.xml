@@ -3,7 +3,7 @@
     <parent>
         <groupId>com.alibaba.jstorm</groupId>
         <artifactId>jstorm-all</artifactId>
-        <version>2.1.1</version>
+        <version>2.2.1</version>
         <relativePath>../..</relativePath>
     </parent>
 
@@ -11,7 +11,7 @@
     <artifactId>sequence-split-merge</artifactId>
     <packaging>jar</packaging>
 
-    <name>sequence-split-merge</name>
+    <name>${project.artifactId}-${project.version}</name>
     <url>http://maven.apache.org</url>
 
     <properties>
@@ -33,10 +33,59 @@
             <version>4.10</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>commons-collections</groupId>
+            <artifactId>commons-collections</artifactId>
+            <version>3.2.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>1.11</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.4</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>16.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>2.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>1.11</version>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
+            <version>3.1.2</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>2.5</version>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!--<forkCount>1</forkCount>-->
+                    <forkMode>pertest</forkMode>
+                    <argLine>-Xms1024m -Xmx4096m</argLine>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -49,26 +98,24 @@
                         </goals>
                         <configuration>
                             <transformers>
-                                <!--
-                                    <transformer
+                                <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                                        <resource>META-INF/spring.handlers</resource>
-                                    </transformer>
-                                    <transformer
+                                    <resource>META-INF/spring.handlers</resource>
+                                </transformer>
+                                <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                                        <resource>META-INF/spring.schemas</resource>
-                                    </transformer>
-                                    <transformer
+                                    <resource>META-INF/spring.schemas</resource>
+                                </transformer>
+                                <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                        <mainClass>${这里请定义好你的启动拓扑的全类名,例如:com.alibaba.aloha.pandora.PandoraTopology}</mainClass>
-                                    </transformer>
-                                     -->
+                                    <mainClass>com.alipay.dw.jstorm.example.sequence.SequenceTopology</mainClass>
+                                </transformer>
                             </transformers>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
-            
+
         </plugins>
     </build>
 </project>

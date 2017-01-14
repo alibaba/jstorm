@@ -86,6 +86,7 @@ class StormServerHandler extends SimpleChannelUpstreamHandler {
         LOG.info("Connection channelDisconnected {}", e.getChannel().getRemoteAddress());
 
         MessageDecoder.removeTransmitHistogram(e.getChannel());
+        server.getChannelGroup().remove(e.getChannel());
     };
 
     @Override
@@ -105,11 +106,6 @@ class StormServerHandler extends SimpleChannelUpstreamHandler {
 
         // end of batch?
         if (msg == ControlMessage.EOB_MESSAGE) {
-            if (server.isSyncMode() == true) {
-                Channel channel = ctx.getChannel();
-                // simplify the logic, just send OK_RESPONSE
-                channel.write(ControlMessage.OK_RESPONSE);
-            }
             return;
         } else if (msg instanceof ControlMessage) {
             // LOG.debug("Receive ...{}", msg);
@@ -118,9 +114,9 @@ class StormServerHandler extends SimpleChannelUpstreamHandler {
 
         // enqueue the received message for processing
         try {
-            server.enqueue((TaskMessage) msg);
+            server.enqueue((TaskMessage) msg, ctx.getChannel());
         } catch (Exception e1) {
-            LOG.warn("Failed to enqueue a request message" + e1.toString(), e);
+            LOG.warn("Failed to enqueue a request message " + e.toString(), e1);
             // Channel channel = ctx.getChannel();
             // incFailureCounter(channel);
         }
@@ -130,7 +126,7 @@ class StormServerHandler extends SimpleChannelUpstreamHandler {
     public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) {
         // removeFailureCounter(e.getChannel());
         if (e.getChannel() != null) {
-            LOG.info("Channel occur exception {}", e.getChannel().getRemoteAddress());
+            LOG.info("Channel occur exception {}, cause={}", e.getChannel().getRemoteAddress(), e.getCause());
         }
 
         server.closeChannel(e.getChannel());

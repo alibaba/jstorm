@@ -24,7 +24,7 @@ import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.RandomRange;
 
 public abstract class Shuffer {
-    private WorkerData workerData;
+    protected WorkerData workerData;
 
     public Shuffer(WorkerData workerData) {
         this.workerData = workerData;

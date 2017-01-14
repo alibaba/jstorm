@@ -28,6 +28,7 @@ import backtype.storm.topology.TopologyBuilder;
 import com.alibaba.jstorm.batch.impl.BatchSpoutTrigger;
 import com.alibaba.jstorm.batch.impl.CoordinatedBolt;
 import com.alibaba.jstorm.batch.util.BatchDef;
+import com.alibaba.jstorm.client.ConfigExtension;
 
 public class BatchTopologyBuilder {
     private static final Logger LOG = LoggerFactory.getLogger(BatchTopologyBuilder.class);
@@ -39,6 +40,7 @@ public class BatchTopologyBuilder {
     public BatchTopologyBuilder(String topologyName) {
         topologyBuilder = new TopologyBuilder();
 
+        System.setProperty(ConfigExtension.TASK_BATCH_TUPLE, "false");
         spoutDeclarer = topologyBuilder.setSpout(BatchDef.SPOUT_TRIGGER, new BatchSpoutTrigger(), 1);
     }
 

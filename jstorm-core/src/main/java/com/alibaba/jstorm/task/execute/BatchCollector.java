@@ -35,13 +35,18 @@ public abstract class BatchCollector {
 
         int flushTime = ConfigExtension.getTaskMsgFlushInervalMs(conf);
         TaskBatchFlushTrigger batchFlushTrigger = new TaskBatchFlushTrigger(flushTime, componentId + "-" + taskId, this);
-        batchFlushTrigger.register(TimeUnit.MILLISECONDS);
+/*        batchFlushTrigger.register(TimeUnit.MILLISECONDS);*/
+        batchFlushTrigger.start();
 
         LOG.info("BatchCollector: batchSize=" + batchSize + ", flushTime=" + flushTime);
     }
 
-    public abstract List<MsgInfo> push(String streamId, List<Object> tuple, Integer outTaskId, Collection<Tuple> anchors, Object messageId, Long rootId,
+    public abstract void pushAndSend(String streamId, List<Object> tuple, Integer outTaskId, Collection<Tuple> anchors, Object messageId, Long rootId,
                                        ICollectorCallback callback);
 
     public abstract void flush();
+    
+    public int getConfigBatchSize() {
+    	return batchSize;
+    }
 }

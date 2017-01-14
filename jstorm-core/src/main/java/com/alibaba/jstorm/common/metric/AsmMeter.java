@@ -19,6 +19,7 @@ package com.alibaba.jstorm.common.metric;
 
 import com.alibaba.jstorm.common.metric.codahale.JMeter;
 import com.alibaba.jstorm.common.metric.snapshot.AsmMeterSnapshot;
+import com.alibaba.jstorm.metric.MetricUtils;
 import com.codahale.metrics.Meter;
 
 import java.util.Map;
@@ -78,8 +79,10 @@ public class AsmMeter extends AsmMetric<Meter> {
     protected void doFlush() {
         long v = unflushed.getAndSet(0l);
         meter.mark(v);
-        for (AsmMetric metric : this.assocMetrics) {
-            metric.update(v);
+        if (MetricUtils.metricAccurateCal){
+            for (AsmMetric metric : this.assocMetrics) {
+                metric.update(v);
+            }
         }
     }
 

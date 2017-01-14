@@ -6,26 +6,27 @@ import backtype.storm.topology.IRichSpout;
 import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Values;
-import com.alibaba.jstorm.client.metric.MetricClient;
 import com.alibaba.jstorm.client.spout.IAckValueSpout;
 import com.alibaba.jstorm.client.spout.IFailValueSpout;
-import com.alibaba.jstorm.metric.JStormHistogram;
+import com.alibaba.jstorm.common.metric.AsmHistogram;
+import com.alibaba.jstorm.metric.MetricClient;
 import com.alibaba.jstorm.ons.OnsTuple;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.aliyun.openservices.ons.api.*;
-import org.apache.log4j.Logger;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class ConsumerSpout implements IRichSpout, IAckValueSpout, IFailValueSpout, MessageListener {
-    /**  */
+
     private static final long serialVersionUID = 8476906628618859716L;
-    private static final Logger LOG = Logger.getLogger(ConsumerSpout.class);
-    
+    private static final Logger LOG = LoggerFactory.getLogger(ConsumerSpout.class);
+
     public static final String ONS_SPOUT_FLOW_CONTROL = "OnsSpoutFlowControl";
     public static final String ONS_SPOUT_AUTO_ACK = "OnsSpoutAutoAck";
     public static final String ONS_MSG_MAX_FAIL_TIMES = "OnsMsgMaxFailTimes";
@@ -38,27 +39,23 @@ public class ConsumerSpout implements IRichSpout, IAckValueSpout, IFailValueSpou
     protected String id;
     protected boolean flowControl;
     protected boolean autoAck;
-    protected long    maxFailTimes;
+    protected long maxFailTimes;
     protected boolean active = true;
 
     protected transient LinkedBlockingDeque<OnsTuple> sendingQueue;
 
     protected transient MetricClient metricClient;
-    protected transient JStormHistogram waithHistogram;
-    protected transient JStormHistogram processHistogram;
-
+    protected transient AsmHistogram waithHistogram;
+    protected transient AsmHistogram processHistogram;
 
     public ConsumerSpout() {
-
     }
-
 
     public void initMetricClient(TopologyContext context) {
         metricClient = new MetricClient(context);
-        waithHistogram = metricClient.registerHistogram("OnsTupleWait", null);
-        processHistogram = metricClient.registerHistogram("OnsTupleProcess", null);
+        waithHistogram = metricClient.registerHistogram("OnsTupleWait");
+        processHistogram = metricClient.registerHistogram("OnsTupleProcess");
     }
-
 
     @Override
     public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
@@ -80,10 +77,9 @@ public class ConsumerSpout implements IRichSpout, IAckValueSpout, IFailValueSpou
         initMetricClient(context);
 
         try {
-        	consumerConfig = new ConsumerConfig(conf);
+            consumerConfig = new ConsumerConfig(conf);
             consumer = ConsumerFactory.mkInstance(consumerConfig, this);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             LOG.error("Failed to create Meta Consumer ", e);
             throw new RuntimeException("Failed to create MetaConsumer" + id, e);
         }
@@ -92,14 +88,12 @@ public class ConsumerSpout implements IRichSpout, IAckValueSpout, IFailValueSpou
             LOG.warn(id + " already exist consumer in current worker, don't need to fetch data ");
 
             new Thread(new Runnable() {
-
                 @Override
                 public void run() {
                     while (true) {
                         try {
                             Thread.sleep(10000);
-                        }
-                        catch (InterruptedException e) {
+                        } catch (InterruptedException e) {
                             break;
                         }
 
@@ -116,30 +110,26 @@ public class ConsumerSpout implements IRichSpout, IAckValueSpout, IFailValueSpou
         LOG.info("Successfully init " + id);
     }
 
-
     @Override
     public void close() {
-        if (consumer != null && active == true) {
-        	active = false;
-        	consumer.shutdown();
-            
+        if (consumer != null && active) {
+            active = false;
+            consumer.shutdown();
+
         }
     }
-
 
     @Override
     public void activate() {
-        if (consumer != null && active == false) {
+        if (consumer != null && !active) {
             active = true;
             consumer.start();
         }
-
     }
-
 
     @Override
     public void deactivate() {
-        if (consumer != null && active == true) {
+        if (consumer != null && active) {
             active = false;
             consumer.shutdown();
         }
@@ -157,8 +147,7 @@ public class ConsumerSpout implements IRichSpout, IAckValueSpout, IFailValueSpou
         OnsTuple OnsTuple = null;
         try {
             OnsTuple = sendingQueue.take();
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException ignored) {
         }
 
         if (OnsTuple == null) {
@@ -208,8 +197,7 @@ public class ConsumerSpout implements IRichSpout, IAckValueSpout, IFailValueSpou
 
         if (flowControl) {
             sendingQueue.offer(OnsTuple);
-        }
-        else {
+        } else {
             sendTuple(OnsTuple);
         }
     }
@@ -241,26 +229,22 @@ public class ConsumerSpout implements IRichSpout, IAckValueSpout, IFailValueSpou
 
             if (flowControl) {
                 sendingQueue.offer(OnsTuple);
-            }
-            else {
+            } else {
                 sendTuple(OnsTuple);
             }
 
             if (autoAck) {
                 return Action.CommitMessage;
-            }
-            else {
-            	OnsTuple.waitFinish();
-                if (OnsTuple.isSuccess() == true) {
+            } else {
+                OnsTuple.waitFinish();
+                if (OnsTuple.isSuccess()) {
                     return Action.CommitMessage;
-                }
-                else {
+                } else {
                     return Action.ReconsumeLater;
                 }
             }
 
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             LOG.error("Failed to emit " + id, e);
             return Action.ReconsumeLater;
         }

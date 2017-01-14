@@ -17,16 +17,18 @@
  */
 package com.alibaba.jstorm.message.netty;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+
+import backtype.storm.Config;
+
+import com.lmax.disruptor.BlockingWaitStrategy;
+import com.lmax.disruptor.TimeoutBlockingWaitStrategy;
 
 import junit.framework.Assert;
 
@@ -35,7 +37,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import backtype.storm.Config;
 import backtype.storm.messaging.IConnection;
 import backtype.storm.messaging.IContext;
 import backtype.storm.messaging.TaskMessage;
@@ -44,6 +45,8 @@ import backtype.storm.utils.DisruptorQueue;
 import backtype.storm.utils.Utils;
 
 import com.alibaba.jstorm.client.ConfigExtension;
+import com.alibaba.jstorm.daemon.worker.Flusher;
+import com.alibaba.jstorm.daemon.worker.FlusherPool;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
@@ -60,23 +63,19 @@ public class NettyUnitTest {
 
     private static Map storm_conf = new HashMap<Object, Object>();
     private static IContext context = null;
+    
 
     @BeforeClass
     public static void setup() {
         storm_conf = Utils.readDefaultConfig();
         ConfigExtension.setLocalWorkerPort(storm_conf, port);
-        boolean syncMode = false;
-        if (syncMode) {
-            DisruptorQueue.setLimited(true);
-            ConfigExtension.setNettyMaxSendPending(storm_conf, 1);
-            ConfigExtension.setNettySyncMode(storm_conf, true);
-        } else {
-            ConfigExtension.setNettySyncMode(storm_conf, false);
-            ConfigExtension.setNettyASyncBlock(storm_conf, false);
-        }
+        ConfigExtension.setNettyASyncBlock(storm_conf, false);
+        storm_conf.put(ConfigExtension.TOPOLOGY_BACKPRESSURE_ENABLE, false);
 
         // Check whether context can be reused or not
         context = TransportFactory.makeContext(storm_conf);
+        FlusherPool flusherPool = new FlusherPool(1, 100, 30, TimeUnit.SECONDS);
+        Flusher.setFlusherPool(flusherPool);
     }
 
     private IConnection initNettyServer() {
@@ -85,18 +84,80 @@ public class NettyUnitTest {
 
     private IConnection initNettyServer(int port) {
         ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues = new ConcurrentHashMap<Integer, DisruptorQueue>();
-        ConcurrentHashMap<Integer, DisruptorQueue> deserializeCtrlQueues = new ConcurrentHashMap<Integer, DisruptorQueue>();
+        //ConcurrentHashMap<Integer, DisruptorQueue> deserializeCtrlQueues = new ConcurrentHashMap<Integer, DisruptorQueue>();
 
         WaitStrategy wait = (WaitStrategy)Utils.newInstance("com.lmax.disruptor.TimeoutBlockingWaitStrategy", 5, TimeUnit.MILLISECONDS);
         DisruptorQueue recvControlQueue = DisruptorQueue.mkInstance("Dispatch-control", ProducerType.MULTI,
-                256, wait);
-        IConnection server = context.bind(null, port, deserializeQueues, recvControlQueue);
+                256, wait, false, 0, 0);
+        Set<Integer> taskSet = new HashSet<Integer>();
+        taskSet.add(1);
+        IConnection server = context.bind(null, port, deserializeQueues, recvControlQueue, true, taskSet);
 
-        WaitStrategy waitStrategy = (WaitStrategy) JStormUtils.createDisruptorWaitStrategy(storm_conf);
-        DisruptorQueue recvQueue = DisruptorQueue.mkInstance("NettyUnitTest", ProducerType.SINGLE, 1024, waitStrategy);
+        WaitStrategy waitStrategy = new BlockingWaitStrategy();
+        DisruptorQueue recvQueue = DisruptorQueue.mkInstance("NettyUnitTest", ProducerType.SINGLE, 1024, waitStrategy, false, 0, 0);
         server.registerQueue(task, recvQueue);
 
         return server;
+    }
+    
+    @Test
+    public void test_pending_read_server() {
+    	System.out.println("!!!!!!!! Start test_pending_read_server !!!!!!!!!!!");
+        final String req_msg = "Aloha is the most Hawaiian word.";
+
+        final IConnection server;
+        final IConnection client;
+
+        server = initNettyServer();
+
+        client = context.connect(null, "localhost", port);
+        JStormUtils.sleepMs(1000);
+
+        List<TaskMessage> list = new ArrayList<TaskMessage>();
+        TaskMessage message = new TaskMessage(task, req_msg.getBytes());
+        list.add(message);
+
+        NettyServer nServer = (NettyServer) server;
+        StormChannelGroup channleGroup = nServer.getChannelGroup();
+        String remoteAddress = channleGroup.getAllRemoteAddress().iterator().next();
+        System.out.println("!!!!!!!!!!!!!!!!!! All remoteAddress: " + channleGroup.getAllRemoteAddress() + " !!!!!!!!!!!!!!!!!!");
+        channleGroup.suspendChannel(remoteAddress);
+        System.out.println("!!!!!!!!!!!!!!!!!! Suspend netty channel=" + remoteAddress + " !!!!!!!!!!!!!!!!!!");
+        client.send(message);
+
+        final List<String> recvMsg = new ArrayList<String>(); 
+        Thread thread = new Thread(new Runnable() {
+        	@Override
+        	public void run() {
+        		System.out.println("!!!!!!!!!!!!!!!!!! Start to receive msg !!!!!!!!!!!!!!!!!");
+        		byte[] recv = (byte[]) server.recv(task, 0);
+                Assert.assertEquals(req_msg, new String(recv));
+                recvMsg.add(new String(recv));
+                System.out.println("!!!!!!!!!!!!!!!!!! Finish to receive msg !!!!!!!!!!!!!!!!!!");
+        	}
+        });
+        thread.start();
+        
+        JStormUtils.sleepMs(1000);
+        Assert.assertEquals(true, recvMsg.size() == 0);
+        System.out.println("!!!!!!!!!!!!!!!!!! Resume channel=" + remoteAddress + " !!!!!!!!!!!!!!!!!!");
+        channleGroup.resumeChannel(remoteAddress);
+        JStormUtils.sleepMs(1000);
+        
+        try {
+			thread.join();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+        
+        System.out.println("!!!!!!!!!!!!!!!!!! Recv Msg=" + recvMsg + " !!!!!!!!!!!!!!!!!!");
+        Assert.assertEquals(true, recvMsg.size() == 1);
+        Assert.assertEquals(req_msg, recvMsg.get(0));
+
+        server.close();
+        client.close();
+
+        System.out.println("!!!!!!!!!!!! End test_pending_read_server !!!!!!!!!!!!!");
     }
 
     @Test
@@ -166,7 +227,7 @@ public class NettyUnitTest {
     }
 
     @Test
-    public void test_server_delay() throws InterruptedException {
+    public void test_server_delay()  {
         System.out.println("!!!!!!!!!!Start delay message test!!!!!!!!");
         String req_msg = setupLargMsg();
 
@@ -183,7 +244,7 @@ public class NettyUnitTest {
 
         LOG.info("Client send data");
         client.send(message);
-        Thread.sleep(1000);
+        JStormUtils.sleepMs(1000);
 
         byte[] recv = (byte[]) server.recv(task, 0);
         Assert.assertEquals(req_msg, new String(recv));
@@ -194,7 +255,7 @@ public class NettyUnitTest {
     }
 
     @Test
-    public void test_first_client() throws InterruptedException {
+    public void test_first_client()  {
         System.out.println("!!!!!!!!Start test_first_client !!!!!!!!!!!");
         final String req_msg = setupLargMsg();
 
@@ -244,21 +305,29 @@ public class NettyUnitTest {
         System.out.println("Finished to receive message");
 
         lock.lock();
-        clientClose.signal();
-        server.close();
-        contextClose.await();
-        context.term();
-        lock.unlock();
+		try {
+			clientClose.signal();
+			server.close();
+			try {
+				contextClose.await();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			context.term();
+		} finally {
+			lock.unlock();
+		}
 
         System.out.println("!!!!!!!!!!!!End test_first_client!!!!!!!!!!!!!");
     }
 
     @Test
-    public void test_msg_buffer_timeout() throws InterruptedException {
+    public void test_msg_buffer_timeout() {
         System.out.println("!!!!!!!!Start test_msg_buffer_timeout !!!!!!!!!!!");
         final String req_msg = setupLargMsg();
 
-        ConfigExtension.setNettyPendingBufferTimeout(storm_conf, 10 * 1000l);
+        ConfigExtension.setNettyPendingBufferTimeout(storm_conf, 5 * 1000l);
         final IContext context = TransportFactory.makeContext(storm_conf);
 
         new Thread(new Runnable() {
@@ -292,30 +361,39 @@ public class NettyUnitTest {
 
         IConnection server = null;
 
-        JStormUtils.sleepMs(11000);
+        JStormUtils.sleepMs(7000);
         System.out.println("!!server begin start!!!!!");
 
         server = initNettyServer();
         JStormUtils.sleepMs(5000);
 
-        System.out.println("Begin to receive message");
         byte[] recv = (byte[]) server.recv(task, 1);
+        System.out.println("Begin to receive message. recv message size: " + (recv == null ? 0 : recv.length));
         Assert.assertEquals(null, recv);
 
         System.out.println("Pending message was timouout:" + (recv == null));
 
-        lock.lock();
-        clientClose.signal();
-        server.close();
-        contextClose.await();
-        context.term();
-        lock.unlock();
+		lock.lock();
+		try {
+			clientClose.signal();
+			server.close();
+			try {
+				contextClose.await();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			context.term();
+		} finally {
+			lock.unlock();
+		}
 
+		ConfigExtension.setNettyPendingBufferTimeout(storm_conf, 60 * 1000l);
         System.out.println("!!!!!!!!!!!!End test_msg_buffer_timeout!!!!!!!!!!!!!");
     }
 
     @Test
-    public void test_batch() throws InterruptedException {
+    public void test_batch()  {
         System.out.println("!!!!!!!!!!Start batch message test!!!!!!!!");
         final int base = 100000;
 
@@ -335,7 +413,6 @@ public class NettyUnitTest {
 
                     TaskMessage message = new TaskMessage(task, req_msg.getBytes());
                     list.add(message);
-
                 }
 
                 client.send(list);
@@ -378,16 +455,24 @@ public class NettyUnitTest {
         System.out.println("Finish Receive ");
 
         lock.lock();
-        clientClose.signal();
-        server.close();
-        contextClose.await();
-        context.term();
-        lock.unlock();
+        try {
+	        clientClose.signal();
+	        server.close();
+	        try {
+				contextClose.await();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				
+			}
+	        context.term();
+        }finally {
+        	lock.unlock();
+        }
         System.out.println("!!!!!!!!!!End batch message test!!!!!!!!");
     }
 
     @Test
-    public void test_slow_receive() throws InterruptedException {
+    public void test_slow_receive()  {
         System.out.println("!!!!!!!!!!Start test_slow_receive message test!!!!!!!!");
         final int base = 100000;
 
@@ -452,16 +537,24 @@ public class NettyUnitTest {
         System.out.println("Finish Receive ");
 
         lock.lock();
-        clientClose.signal();
-        server.close();
-        contextClose.await();
-        context.term();
-        lock.unlock();
+		try {
+			clientClose.signal();
+			server.close();
+			try {
+				contextClose.await();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			context.term();
+		} finally {
+			lock.unlock();
+		}
         System.out.println("!!!!!!!!!!End test_slow_receive message test!!!!!!!!");
     }
 
     @Test
-    public void test_slow_receive_big() throws InterruptedException {
+    public void test_slow_receive_big() {
         System.out.println("!!!!!!!!!!Start test_slow_receive_big message test!!!!!!!!");
         final int base = 100;
         final String req_msg = setupLargMsg();
@@ -512,16 +605,24 @@ public class NettyUnitTest {
         System.out.println("Finish Receive ");
 
         lock.lock();
-        clientClose.signal();
-        server.close();
-        contextClose.await();
-        context.term();
-        lock.unlock();
+		try {
+			clientClose.signal();
+			server.close();
+			try {
+				contextClose.await();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			context.term();
+		} finally {
+			lock.unlock();
+		}
         System.out.println("!!!!!!!!!!End test_slow_receive_big message test!!!!!!!!");
     }
 
     @Test
-    public void test_client_reboot() throws InterruptedException {
+    public void test_client_reboot() {
         System.out.println("!!!!!!!!!!Start client reboot test!!!!!!!!");
         final String req_msg = setupLargMsg();
 
@@ -575,23 +676,36 @@ public class NettyUnitTest {
         System.out.println("Sever receive first");
         Assert.assertEquals(req_msg, new String(recv));
 
-        Thread.sleep(1000);
+        try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
         byte[] recv2 = (byte[]) server.recv(task, 0);
         System.out.println("Sever receive second");
         Assert.assertEquals(req_msg, new String(recv2));
 
-        lock.lock();
-        clientClose.signal();
-        server.close();
-        contextClose.await();
-        context.term();
-        lock.unlock();
+		lock.lock();
+		try {
+			clientClose.signal();
+			server.close();
+			try {
+				contextClose.await();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			context.term();
+		} finally {
+			lock.unlock();
+		}
         System.out.println("!!!!!!!!!!End client reboot test!!!!!!!!");
     }
 
     @Test
-    public void test_server_reboot() throws InterruptedException {
+    public void test_server_reboot() {
         System.out.println("!!!!!!!!!!Start server reboot test!!!!!!!!");
         final String req_msg = setupLargMsg();
 
@@ -646,7 +760,12 @@ public class NettyUnitTest {
         server.close();
 
         System.out.println("!!shutdow server and sleep 30s, please wait!!");
-        Thread.sleep(30000);
+        try {
+			Thread.sleep(30000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
         IConnection server2 = server = initNettyServer();
         System.out.println("!!!!!!!!!!!!!!!!!!!! restart server !!!!!!!!!!!");
@@ -655,11 +774,19 @@ public class NettyUnitTest {
         Assert.assertEquals(req_msg, new String(recv2));
 
         lock.lock();
-        clientClose.signal();
-        server2.close();
-        contextClose.await();
-        context.term();
-        lock.unlock();
+		try {
+			clientClose.signal();
+			server2.close();
+			try {
+				contextClose.await();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			context.term();
+		} finally {
+			lock.unlock();
+		}
         System.out.println("!!!!!!!!!!End server reboot test!!!!!!!!");
     }
 
@@ -668,7 +795,7 @@ public class NettyUnitTest {
      * 
      * @throws InterruptedException
      */
-    public void test_multiple_client() throws InterruptedException {
+    public void test_multiple_client()  {
         System.out.println("!!!!!!!!Start test_multiple_client !!!!!!!!!!!");
         final String req_msg = setupLargMsg();
 
@@ -720,7 +847,7 @@ public class NettyUnitTest {
     }
 
     @Test
-    public void test_multiple_server() throws InterruptedException {
+    public void test_multiple_server()  {
         System.out.println("!!!!!!!!Start test_multiple_server !!!!!!!!!!!");
         final String req_msg = setupLargMsg();
 

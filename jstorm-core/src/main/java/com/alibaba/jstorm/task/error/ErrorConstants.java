@@ -56,9 +56,11 @@ public class ErrorConstants {
     public static final int CODE_USER = 700;
 
     /** default duration seconds is 30min **/
-    public static final int DURATION_SECS_DEFAULT = JStormUtils.MIN_30;
+    public static final int DURATION_SECS_DEFAULT = JStormUtils.MIN_10;
     /** queue full error duration seconds is 3min **/
     public static final int DURATION_SECS_QUEUE_FULL = JStormUtils.MIN_1 * 3;
     /** task dead error duration seconds is 3days **/
     public static final int DURATION_SECS_TASK_DEAD = JStormUtils.DAY_1 * 3;
+    /** error will never be expired **/
+    public static final int DURATION_SECS_FOREVER = Integer.MAX_VALUE;
 }

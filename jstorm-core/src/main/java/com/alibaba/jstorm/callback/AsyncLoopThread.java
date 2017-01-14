@@ -17,6 +17,7 @@
  */
 package com.alibaba.jstorm.callback;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.lang.Thread.UncaughtExceptionHandler;
 
 import org.slf4j.Logger;
@@ -29,10 +30,8 @@ import com.alibaba.jstorm.utils.SmartThread;
 
 /**
  * Wrapper Timer thread Every several seconds execute afn, if something is run, run kill_fn
- * 
- * 
+ *
  * @author yannian
- * 
  */
 public class AsyncLoopThread implements SmartThread {
     private static final Logger LOG = LoggerFactory.getLogger(AsyncLoopThread.class);
@@ -58,22 +57,13 @@ public class AsyncLoopThread implements SmartThread {
         this.init(afn, daemon, kill_fn, priority, start);
     }
 
-    /**
-     * 
-     * @param afn
-     * @param daemon
-     * @param kill_fn (Exception e)
-     * @param priority
-     * @param args_fn
-     * @param start
-     */
     private void init(RunnableCallback afn, boolean daemon, RunnableCallback kill_fn, int priority, boolean start) {
         if (kill_fn == null) {
             kill_fn = new AsyncLoopDefaultKill();
         }
 
-        Runnable runable = new AsyncLoopRunnable(afn, kill_fn);
-        thread = new Thread(runable);
+        Runnable runnable = new AsyncLoopRunnable(afn, kill_fn);
+        thread = new Thread(runnable);
         String threadName = afn.getThreadName();
         if (threadName == null) {
             threadName = afn.getClass().getSimpleName();
@@ -107,7 +97,7 @@ public class AsyncLoopThread implements SmartThread {
         thread.join();
     }
 
-    // for test
+    @VisibleForTesting
     public void join(int times) throws InterruptedException {
         thread.join(times);
     }
@@ -128,7 +118,6 @@ public class AsyncLoopThread implements SmartThread {
 
     @Override
     public void cleanup() {
-        // TODO Auto-generated method stub
         afn.shutdown();
     }
 }

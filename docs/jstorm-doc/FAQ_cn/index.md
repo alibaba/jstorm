@@ -72,7 +72,7 @@ JStorm bolt/spout 中有三个基本的队列： Deserialize Queue ---> Executor
 如果是spout或bolt的成员变量没有实现Serializable时，但又必须使用时， 
 可以对该变量申明时，增加transient 修饰符， 然后在open或prepare时，进行实例化
 
-![seriliazble_error]({{site.baseurl}}/img/FAQ_cn/serializable_error.jpg)
+![seriliazble_error]({{site.baseurl}}/img/FAQ/serializable_error.jpg)
 
 ## 日志冲突
 JStorm 0.9.x系列使用log4j作为日志系统，2.x系列使用logback作为日志系统。
@@ -121,7 +121,7 @@ JStorm默认是关掉classloader，因此JStorm会强制使用JStorm依赖的jar
 * 通常是用户jar冲突或初始化发生问题
 打开supervisor 日志，找出启动worker命令，单独执行，然后检查是否有问题。类似下图：
 
-![fail_start_worker]({{site.baseurl}}/img/FAQ_cn/fail_start_worker.jpg)
+![fail_start_worker]({{site.baseurl}}/img/FAQ/fail_start_worker.jpg)
 
 * 检查是不是storm和jstorm使用相同的本地目录
 检查配置项 ”storm.local.dir“， 是不是storm和jstorm使用相同的本地目录，如果相同，则将二者分开

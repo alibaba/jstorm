@@ -28,6 +28,8 @@ import backtype.storm.utils.DisruptorQueue;
 
 import com.alibaba.jstorm.utils.TimeUtils;
 
+import java.util.concurrent.TimeUnit;
+
 public class TickTupleTrigger extends TimerTrigger {
     private static final Logger LOG = LoggerFactory.getLogger(TickTupleTrigger.class);
 
@@ -40,12 +42,17 @@ public class TickTupleTrigger extends TimerTrigger {
 
         if (frequence <= 0) {
             LOG.warn(" The frequence of " + name + " is invalid");
-            frequence = 1;
+            frequence = 1000;
         }
         this.firstTime = frequence;
         this.frequence = frequence;
         this.topologyContext = topologyContext;
 
+    }
+
+    @Override
+    public void register() {
+        register(TimeUnit.MILLISECONDS);
     }
 
     @Override

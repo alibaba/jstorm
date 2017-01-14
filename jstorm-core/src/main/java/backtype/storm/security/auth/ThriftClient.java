@@ -100,7 +100,7 @@ public class ThriftClient {
             zkobj = Utils.newCurator(conf, (List<String>) conf.get(Config.STORM_ZOOKEEPER_SERVERS), conf.get(Config.STORM_ZOOKEEPER_PORT), zkMasterDir);
             zkobj.start();
             if (zkobj.checkExists().forPath("/") == null) {
-                throw new RuntimeException("No alive nimbus ");
+                throw new RuntimeException("!!!!!!!!!!! \n\n\n No alive nimbus !!!!!!!!!!! \n\n\n");
             }
 
             masterHost = new String(zkobj.getData().forPath("/"));
@@ -128,7 +128,9 @@ public class ThriftClient {
                 hostPort = ThriftClient.getMasterByZk(conf);
             } catch (Exception e) {
                 // TODO Auto-generated catch block
-                throw new RuntimeException("Failed to get master from ZK.", e);
+                String errMsg = "Failed to get master.\n\n" + e.getMessage();
+                errMsg += "\n\n\nConfiguration is " + conf.toString();
+                throw new RuntimeException(errMsg, e);
             }
             String[] host_port = hostPort.split(":");
             if (host_port.length != 2) {
@@ -142,7 +144,7 @@ public class ThriftClient {
         if (this.host == null) {
             throw new IllegalArgumentException("host is not set");
         }
-        if (this.port == null || this.port <= 0) {
+        if (this.port <= 0) {
             throw new IllegalArgumentException("invalid port: " + port);
         }
     }

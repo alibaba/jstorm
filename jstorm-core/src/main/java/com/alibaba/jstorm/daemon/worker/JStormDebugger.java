@@ -6,7 +6,7 @@
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,9 +18,14 @@
 package com.alibaba.jstorm.daemon.worker;
 
 import backtype.storm.Config;
+import backtype.storm.tuple.MessageId;
 import backtype.storm.tuple.Tuple;
+
 import com.alibaba.jstorm.client.ConfigExtension;
+import com.alibaba.jstorm.config.Refreshable;
+import com.alibaba.jstorm.config.RefreshableComponents;
 import com.alibaba.jstorm.utils.JStormUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,10 +35,21 @@ import java.util.Set;
 
 /**
  * manage the global state of topology.debug & topology.debug.recv.tuple & topology.debug.sample.rate on the fly
+ *
  * @author Jark (wuchong.wc@alibaba-inc.com)
  */
-public class JStormDebugger {
+public class JStormDebugger implements Refreshable {
     private static Logger LOG = LoggerFactory.getLogger(JStormDebugger.class);
+
+    private JStormDebugger() {
+        RefreshableComponents.registerRefreshable(this);
+    }
+
+    private static final JStormDebugger INSTANCE = new JStormDebugger();
+
+    public static JStormDebugger getInstance() {
+        return INSTANCE;
+    }
 
     public static volatile boolean isDebug = false;
     public static volatile boolean isDebugRecv = false;
@@ -57,6 +73,10 @@ public class JStormDebugger {
 
     public static boolean isDebug(Object id) {
         return isDebug && sample(id);
+    }
+
+    public static boolean isDebugRecv(MessageId msgId) {
+        return msgId != null && isDebugRecv(msgId.getAnchors());
     }
 
     public static boolean isDebugRecv(Set<Long> root_ids) {
@@ -134,5 +154,10 @@ public class JStormDebugger {
             sampleRate = _sampleRate;
             LOG.info("switch topology.debug.sample.rate to {}", _sampleRate);
         }
+    }
+
+    @Override
+    public void refresh(Map conf) {
+        update(conf);
     }
 }

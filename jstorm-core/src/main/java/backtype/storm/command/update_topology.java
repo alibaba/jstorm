@@ -43,6 +43,7 @@ public class update_topology {
 
         System.out.println("update topology jar and conf, please do as following:");
         System.out.println("update_topology topologyName -jar jarFile -conf configFile");
+
     }
 
     private static Options buildGeneralOptions(Options opts) {
@@ -59,12 +60,13 @@ public class update_topology {
         Option conf = OptionBuilder.withArgName("configuration file").hasArg()
                 .withDescription("an application configuration file")
                 .create("conf");
+
         r.addOption(conf);
+
         return r;
     }
 
-    private static void updateTopology(String topologyName, String pathJar,
-                                       String pathConf) {
+    private static void updateTopology(String topologyName, String pathJar, String pathConf) {
         NimbusClient client;
         Map loadMap;
         if (pathConf != null) {
@@ -80,9 +82,9 @@ public class update_topology {
         try {
             // update jar
             String uploadLocation = null;
+            String path = client.getClient().beginFileUpload();
             if (pathJar != null) {
                 System.out.println("Jar update to master yet. Submitting jar of " + pathJar);
-                String path = client.getClient().beginFileUpload();
                 String[] pathCache = path.split("/");
                 uploadLocation = path + "/stormjar-" + pathCache[pathCache.length - 1] + ".jar";
                 List<String> lib = (List<String>) conf.get(GenericOptionsParser.TOPOLOGY_LIB_NAME);
@@ -102,7 +104,7 @@ public class update_topology {
             String jsonConf = Utils.to_json(loadMap);
             System.out.println("New configuration:\n" + jsonConf);
 
-            client.getClient().updateTopology(topologyName, uploadLocation, jsonConf);
+            client.getClient().updateTopology(topologyName, path, jsonConf);
 
             System.out.println("Successfully submit command update " + topologyName);
 

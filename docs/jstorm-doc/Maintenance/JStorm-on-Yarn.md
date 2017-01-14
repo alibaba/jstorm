@@ -1,5 +1,5 @@
 ---
-title:  "How to create/remove/enlarge/reduce one JStorm logic cluster?"
+title:  "How to create/remove/enlarge/reduce one JStorm logic cluster on yarn?"
 # Top-level navigation
 top-nav-group: Maintenance
 top-nav-pos: 5
@@ -37,19 +37,21 @@ The invoke path is bin/JstormYarn
 * Execute upgradeCluster command
 
 ## View cluster status
-* Execute list command
+* Execute info command
 
 ## Expand and reduce the capacity of cluster
 * Execute Command addSupervisors and removeSupervisors
 
+
+
+## Expand and reduce the capacity of cluster with rack assignment
+* Execute Command addSpecSupervisors and removeSpecSupervisors
+
 # JStorm-on-Yarn Process
-Unlike spark-on-yarn that an AM is generated each time when submitting an application to cluster. The AM of jstorm-on-yarn is permanent, that is, for a JStorm cluster, it will be only one AM.
+jstorm-on-yarn use wholesale mode Unlike spark-on-yarn use resale mode. means an AM is generated each time when submitting an application to cluster. The AM of jstorm-on-yarn is permanent, that is, for a JStorm cluster, it will be only one AM.
 
+wholesale mode raise 50% utilization, for example, in production environment we found resale mode (spark-on-yarn) can only use 60-70% physical resource. but wholesale can reach nearly 90%. that's a  wide gap；Flexible resource grading support requirement better in many cases，eg：application 1 use more memory resource in period A,  use more cpu cores in period B, application 2 use more network IO in period A,use more memory resource in period B, then, if use resale mode , total resource needs equals every resource 's peak value  of application 1 plus every resource's peak value of  application 2. and wholesale mode can share resource between multi-application in whole lifecycle,reduce resource waste；And if use resale mode , container often crash. because default GC strategy most application can't trigger oldgen GC, when heap memory run out, NM kill this container and AM will start another contaier in difference place. that need schedule overhead and state management.  use wholesale mode this situation can be completely avoided 
 
-This is mainly determined by the scheduling of JStorm: JStorm currently have TopologyMaster, as the arbiter of the topology. 
-According to the design of YARN, the ideal way should be let TopologyMaster be AM, to coordinate the operation of a particular topology, 
-including the allocation of worker, tracking heartbeat of task. However, since the TopologyMaster has been formed 
-and on top of it, metrics, heartbeat, back pressure will go through TM. That makes the cost will be very expensive if we make such modification, it may lead to the change in the entire JStorm architecture, more harm than good.
 
 So currently jstorm-on-yarn works as that there is an AM as total control. It is responsible for the following tasks:
 * Create Nimbus (and automatically restart nimbus when it hung)
@@ -81,6 +83,14 @@ In order to facilitate the maintenance, please add the following configuration a
  jstorm.on.yarn: true
  supervisor.childopts:  -Djstorm-on-yarn=true
  jstorm.log.dir: /home/yarn/jstorm_logs/<cluster_name>
+```
+
+if you need enable nimbus auto restart, pleas add the following configuration
+
+```
+blobstore.dir: /yourhdfsdir
+blobstore.hdfs.hostname: yourhdfshost
+blobstore.hdfs.port: yourhdfsport
 ```
 
 The above configuration will override the default log path, all the logs are redirected to the /home/yarn below, preventing from missing the log after the container hangs. If more than one container of supervisor is launch on the same machine, it will add value `supervisor.deamon.logview.port` at the end of supervisor log (YARN dynamically generated port and port range for each container) to distinguish logs and prevent the logs from affecting each other. For example if two supervisor http ports are 9000 and 9001 respectively, then supervisor-9000.log and supervisor-9001.log are generated. koala will add the specified port suffix for the log according to the `jstorm.on.yarn` configuration.

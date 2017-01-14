@@ -18,6 +18,8 @@
 package com.alibaba.jstorm.daemon.supervisor;
 
 import backtype.storm.utils.LocalState;
+import com.alibaba.jstorm.blobstore.BlobStore;
+import com.alibaba.jstorm.blobstore.BlobStoreUtils;
 import com.alibaba.jstorm.callback.RunnableCallback;
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.cluster.Common;
@@ -39,6 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.util.*;
@@ -234,11 +237,32 @@ class SyncSupervisorEvent extends RunnableCallback {
     }
 
     private void downloadLocalStormCode(Map conf, String topologyId, String masterCodeDir) throws IOException, TException {
+        // STORM_LOCAL_DIR/supervisor/tmp/(UUID)
+        String tmproot = StormConfig.supervisorTmpDir(conf) + File.separator + UUID.randomUUID().toString();
 
         // STORM-LOCAL-DIR/supervisor/stormdist/storm-id
         String stormroot = StormConfig.supervisor_stormdist_root(conf, topologyId);
 
-        FileUtils.copyDirectory(new File(masterCodeDir), new File(stormroot));
+        BlobStore blobStore = null;
+
+        try {
+            blobStore = BlobStoreUtils.getNimbusBlobStore(conf, masterCodeDir, null);
+            FileUtils.forceMkdir(new File(tmproot));
+            blobStore.readBlobTo(StormConfig.master_stormcode_key(topologyId), new FileOutputStream(StormConfig.stormcode_path(tmproot)));
+            blobStore.readBlobTo(StormConfig.master_stormconf_key(topologyId), new FileOutputStream(StormConfig.stormconf_path(tmproot)));
+        } finally {
+            if (blobStore != null)
+                blobStore.shutdown();
+        }
+
+        File srcDir = new File(tmproot);
+        File destDir = new File(stormroot);
+        try {
+            FileUtils.moveDirectory(srcDir, destDir);
+        } catch (FileExistsException e) {
+            FileUtils.copyDirectory(srcDir, destDir);
+            FileUtils.deleteQuietly(srcDir);
+        }
 
         ClassLoader classloader = Thread.currentThread().getContextClassLoader();
 
@@ -274,29 +298,38 @@ class SyncSupervisorEvent extends RunnableCallback {
      * @throws TException
      */
     private void downloadDistributeStormCode(Map conf, String topologyId, String masterCodeDir) throws IOException, TException {
+        String tmproot = null;
+       try {
+           // STORM_LOCAL_DIR/supervisor/tmp/(UUID)
+           tmproot = StormConfig.supervisorTmpDir(conf) + File.separator + UUID.randomUUID().toString();
 
-        // STORM_LOCAL_DIR/supervisor/tmp/(UUID)
-        String tmproot = StormConfig.supervisorTmpDir(conf) + File.separator + UUID.randomUUID().toString();
+           // STORM_LOCAL_DIR/supervisor/stormdist/topologyId
+           String stormroot = StormConfig.supervisor_stormdist_root(conf, topologyId);
 
-        // STORM_LOCAL_DIR/supervisor/stormdist/topologyId
-        String stormroot = StormConfig.supervisor_stormdist_root(conf, topologyId);
+//        JStormServerUtils.downloadCodeFromMaster(conf, tmproot, masterCodeDir, topologyId, true);
+           JStormServerUtils.downloadCodeFromBlobStore(conf, tmproot, topologyId);
 
-        JStormServerUtils.downloadCodeFromMaster(conf, tmproot, masterCodeDir, topologyId, true);
+           // tmproot/stormjar.jar
+           String localFileJarTmp = StormConfig.stormjar_path(tmproot);
 
-        // tmproot/stormjar.jar
-        String localFileJarTmp = StormConfig.stormjar_path(tmproot);
+           // extract dir from jar
+           JStormUtils.extractDirFromJar(localFileJarTmp, StormConfig.RESOURCES_SUBDIR, tmproot);
 
-        // extract dir from jar
-        JStormUtils.extractDirFromJar(localFileJarTmp, StormConfig.RESOURCES_SUBDIR, tmproot);
+           File srcDir = new File(tmproot);
+           File destDir = new File(stormroot);
+           try {
+               FileUtils.moveDirectory(srcDir, destDir);
+           } catch (FileExistsException e) {
+               FileUtils.copyDirectory(srcDir, destDir);
+               FileUtils.deleteQuietly(srcDir);
+           }
+       }finally {
+           if (tmproot != null){
+               File srcDir = new File(tmproot);
+               FileUtils.deleteQuietly(srcDir);
+           }
+       }
 
-        File srcDir = new File(tmproot);
-        File destDir = new File(stormroot);
-        try {
-            FileUtils.moveDirectory(srcDir, destDir);
-        } catch (FileExistsException e) {
-            FileUtils.copyDirectory(srcDir, destDir);
-            FileUtils.deleteQuietly(srcDir);
-        }
     }
 
     private String resourcesJar() {
@@ -450,10 +483,10 @@ class SyncSupervisorEvent extends RunnableCallback {
                         StormConfig.write_supervisor_topology_timestamp(conf, topologyId, assignments.get(topologyId).getTimeStamp());
                         break;
                     } catch (IOException e) {
-                        LOG.error(e + " downloadStormCode failed " + "topologyId:" + topologyId + "masterCodeDir:" + masterCodeDir);
+                        LOG.error(e + " downloadStormCode failed " + "topologyId:" + topologyId + " masterCodeDir:" + masterCodeDir);
 
                     } catch (TException e) {
-                        LOG.error(e + " downloadStormCode failed " + "topologyId:" + topologyId + "masterCodeDir:" + masterCodeDir);
+                        LOG.error(e + " downloadStormCode failed " + "topologyId:" + topologyId + " masterCodeDir:" + masterCodeDir);
                     }
                     retry++;
                 }

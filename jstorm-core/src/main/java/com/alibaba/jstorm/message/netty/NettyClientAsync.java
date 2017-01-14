@@ -17,13 +17,18 @@
  */
 package com.alibaba.jstorm.message.netty;
 
-import backtype.storm.Config;
-import backtype.storm.messaging.TaskMessage;
-import backtype.storm.utils.Utils;
-import com.alibaba.jstorm.client.ConfigExtension;
-import com.alibaba.jstorm.utils.IntervalCheck;
-import com.alibaba.jstorm.utils.JStormServerUtils;
-import com.alibaba.jstorm.utils.JStormUtils;
+import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.jboss.netty.channel.Channel;
@@ -31,81 +36,89 @@ import org.jboss.netty.channel.ChannelFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import com.alibaba.jstorm.client.ConfigExtension;
+import com.alibaba.jstorm.daemon.worker.Flusher;
+import com.alibaba.jstorm.utils.JStormUtils;
+
+import backtype.storm.Config;
+import backtype.storm.messaging.NettyMessage;
+import backtype.storm.messaging.TaskMessage;
+import backtype.storm.utils.Utils;
 
 class NettyClientAsync extends NettyClient {
     private static final Logger LOG = LoggerFactory.getLogger(NettyClientAsync.class);
     public static final String PREFIX = "Netty-Client-";
-
-    // when batch buffer size is more than BATCH_THREASHOLD_WARN
-    // it will block Drainer thread
-    protected long BATCH_THREASHOLD_WARN;
-    protected final boolean directlySend;
-
-    protected AtomicBoolean flush_later;
     protected int flushCheckInterval;
-    protected final boolean blockSend;
+    
+    private HashMap<Integer, Condition> targetTasksUnderFlowCtrl;
+    private Map<Integer, MessageBatch> targetTasksCache;
+    private ConcurrentHashMap<String, Set<Integer>> remoteAddrToTasks;
+    private ReentrantLock lock;
+    private ReentrantLock flowCtrlLock;
+    private int flowCtrlAwaitTime;
+    private int cacheSize;
 
-    boolean isDirectSend(Map conf) {
-        if (JStormServerUtils.isOnePending(conf)) {
-            return true;
+    private class NettyClientFlush extends Flusher {
+        private AtomicBoolean _isFlushing = new AtomicBoolean(false);
+
+        public NettyClientFlush(long flushInterval) {
+            _flushIntervalMs = flushInterval;
         }
 
-        return !ConfigExtension.isNettyTransferAsyncBatch(conf);
-    }
-
-    boolean isBlockSend(Map storm_conf) {
-        if (!ConfigExtension.isTopologyContainAcker(storm_conf)) {
-            return false;
+        public void run() {
+            if (_isFlushing.compareAndSet(false, true)) {
+                synchronized (writeLock) {
+                    Channel channel = channelRef.get();
+                    if (channel != null && channel.isWritable() && messageBuffer.size() > 0) {
+                        MessageBatch messageBatch = messageBuffer.drain();
+                        flushRequest(channel, messageBatch);
+                    }
+                }
+                _isFlushing.set(false);
+            }
         }
-
-        return ConfigExtension.isNettyASyncBlock(storm_conf);
     }
 
     @SuppressWarnings("rawtypes")
-    NettyClientAsync(Map storm_conf, ChannelFactory factory, ScheduledExecutorService scheduler, String host, int port, ReconnectRunnable reconnector) {
-        super(storm_conf, factory, scheduler, host, port, reconnector);
-
-        BATCH_THREASHOLD_WARN = ConfigExtension.getNettyBufferThresholdSize(storm_conf);
-        blockSend = isBlockSend(storm_conf);
-        directlySend = isDirectSend(storm_conf);
-
-        flush_later = new AtomicBoolean(false);
-        flushCheckInterval = Utils.getInt(storm_conf.get(Config.STORM_NETTY_FLUSH_CHECK_INTERVAL_MS), 10);
-
-        Runnable flusher = new Runnable() {
-            @Override
-            public void run() {
-                flush();
-            }
-        };
-        long initialDelay = Math.min(1000, max_sleep_ms * max_retries);
-        scheduler.scheduleAtFixedRate(flusher, initialDelay, flushCheckInterval, TimeUnit.MILLISECONDS);
+    NettyClientAsync(Map storm_conf, ChannelFactory factory, String host, int port, ReconnectRunnable reconnector) {
+        super(storm_conf, factory, host, port, reconnector);
 
         clientChannelFactory = factory;
+        targetTasksUnderFlowCtrl = new HashMap<Integer, Condition>();
+        targetTasksCache = new HashMap<Integer, MessageBatch>();
+        remoteAddrToTasks = new ConcurrentHashMap<String, Set<Integer>>();
+        lock = new ReentrantLock();
+        flowCtrlLock = new ReentrantLock();
+        flowCtrlAwaitTime = ConfigExtension.getNettyFlowCtrlWaitTime(storm_conf);
+        cacheSize = ConfigExtension.getNettyFlowCtrlCacheSize(storm_conf) != null ? 
+        		ConfigExtension.getNettyFlowCtrlCacheSize(storm_conf) : messageBatchSize;
+
+        flushCheckInterval = Utils.getInt(storm_conf.get(Config.STORM_NETTY_FLUSH_CHECK_INTERVAL_MS), 5);
+        Flusher flusher = new NettyClientFlush(flushCheckInterval);
+        flusher.start();
 
         start();
-        LOG.info(this.toString());
+        //LOG.info(this.toString());
     }
 
     /**
+     * TODO: this interface is not compatible with the latest backpressure solution.
+     *       maybe we should remove it.
      * Enqueue a task message to be sent to server
      */
     @Override
-    public synchronized void send(List<TaskMessage> messages) {
+    public void send(List<TaskMessage> messages) {
         // throw exception if the client is being closed
         if (isClosed()) {
             LOG.warn("Client is being closed, and does not take requests any more");
             return;
         }
 
-        long start = enableNettyMetrics ? sendTimer.getTime() : 0L;
+        long start = enableNettyMetrics && sendTimer != null ? sendTimer.getTime() : 0L;
         try {
-            pushBatch(messages);
+            for (TaskMessage message : messages) {
+            	waitforFlowCtrlAndSend(message);
+            }
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
@@ -116,208 +129,255 @@ class NettyClientAsync extends NettyClient {
     }
 
     @Override
-    public synchronized void send(TaskMessage message) {
+    public void send(TaskMessage message) {
         // throw exception if the client is being closed
         if (isClosed()) {
             LOG.warn("Client is being closed, and does not take requests any more");
             return;
-        }
-
-        long start = enableNettyMetrics ? sendTimer.getTime() : 0L;
-        try {
-            pushBatch(message);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            if (sendTimer != null && enableNettyMetrics) {
-                sendTimer.updateTime(start);
-            }
-        }
-    }
-
-    void waitChannelReady(long cachedSize, long sleepMs) {
-        long begin = System.currentTimeMillis();
-        boolean changeThreadhold = false;
-        IntervalCheck oneSecond = new IntervalCheck();
-        IntervalCheck timeoutIntervalCheck = new IntervalCheck();
-        timeoutIntervalCheck.setIntervalMs(timeoutMs);
-        sleepMs = (sleepMs < timeoutMs) ? sleepMs : timeoutMs;
-        while (isChannelReady() == null) {
-
-            long now = System.currentTimeMillis();
-            long delt = now - begin;
-            if (oneSecond.check()) {
-                LOG.warn("Target server  {} is unavailable, pending {}, bufferSize {}, block sending {}ms", name, pendings.get(), cachedSize, delt);
-            }
-
-            if (timeoutIntervalCheck.check()) {
-                if (messageBatchRef.get() != null) {
-                    LOG.warn("Target server  {} is unavailable, wait too much time, throw timeout message", name);
-                    messageBatchRef.set(null);
-                }
-                setChannel(null);
-                LOG.warn("Reset channel as null");
-
-                if (!blockSend) {
-                    reconnect();
-                    break;
-                }
-            }
-
-            reconnect();
-            JStormUtils.sleepMs(sleepMs);
-
-            if (delt > 2 * timeoutMs * 1000L && !changeThreadhold) {
-                if (channelRef.get() != null && BATCH_THREASHOLD_WARN >= 2 * messageBatchSize) {
-                    // it is just channel isn't writable;
-                    BATCH_THREASHOLD_WARN = BATCH_THREASHOLD_WARN / 2;
-                    LOG.info("Reduce BATCH_THREASHOLD_WARN to {}", BATCH_THREASHOLD_WARN);
-
-                    changeThreadhold = true;
-                }
-            }
-
-            if (isClosed()) {
-                LOG.info("Channel has been closed " + name());
-                break;
-            }
-        }
-    }
-
-    long getDelaySec(long cachedSize) {
-        long count = cachedSize / BATCH_THREASHOLD_WARN;
-        long sleepMs = (long) (Math.pow(2, count) * 10);
-
-        if (sleepMs > 1000) {
-            sleepMs = 1000;
-        }
-
-        return sleepMs;
-    }
-
-    void handleFailedChannel(MessageBatch messageBatch) {
-
-        messageBatchRef.set(messageBatch);
-        flush_later.set(true);
-
-        long cachedSize = messageBatch.getEncoded_length();
-        if (cachedSize > BATCH_THREASHOLD_WARN) {
-            long sleepMs = getDelaySec(cachedSize);
-            waitChannelReady(cachedSize, sleepMs);
-        }
-    }
-
-    void pushBatch(List<TaskMessage> messages) {
-
-        if (messages.isEmpty()) {
-            return;
-        }
-
-        MessageBatch messageBatch = messageBatchRef.getAndSet(null);
-        if (null == messageBatch) {
-            messageBatch = new MessageBatch(messageBatchSize);
-        }
-
-        for (TaskMessage message : messages) {
-            if (TaskMessage.isEmpty(message)) {
-                continue;
-            }
-
-            messageBatch.add(message);
-
-            if (messageBatch.isFull()) {
-                Channel channel = isChannelReady();
-                if (channel != null) {
-                    flushRequest(channel, messageBatch);
-
-                    messageBatch = new MessageBatch(messageBatchSize);
-                }
-
-            }
-        }
-
-        Channel channel = isChannelReady();
-        if (channel == null) {
-            handleFailedChannel(messageBatch);
-        } else if (!messageBatch.isEmpty()) {
-            flushRequest(channel, messageBatch);
-        }
-    }
-
-    void pushBatch(TaskMessage message) {
-
-        if (TaskMessage.isEmpty(message)) {
-            return;
-        }
-
-        MessageBatch messageBatch = messageBatchRef.getAndSet(null);
-        if (null == messageBatch) {
-            messageBatch = new MessageBatch(messageBatchSize);
-        }
-
-        messageBatch.add(message);
-
-        Channel channel = isChannelReady();
-        if (channel == null) {
-            handleFailedChannel(messageBatch);
-            return;
-        }
-
-        if (messageBatch.isFull()) {
-            flushRequest(channel, messageBatch);
-
-            return;
-        }
-
-        if (directlySend) {
-            flushRequest(channel, messageBatch);
         } else {
-            if (messageBatchRef.compareAndSet(null, messageBatch)) {
-                flush_later.set(true);
-            } else
-                LOG.error("MessageBatch will be lost. This should not happen.");
+        	long start = enableNettyMetrics && sendTimer != null ? sendTimer.getTime() : 0L;
+            try {
+        	    waitforFlowCtrlAndSend(message);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            } finally {
+                if (sendTimer != null && enableNettyMetrics) {
+                    sendTimer.updateTime(start);
+                }
+            }
         }
     }
 
-    void flush() {
-        if (isClosed()) {
+    void pushBatch(NettyMessage message) {
+        if (message == null || message.isEmpty()) {
             return;
         }
 
-        if (!flush_later.get()) {
-            return;
+        synchronized (writeLock) {
+            Channel channel = channelRef.get();
+            if (channel == null) {
+                messageBuffer.add(message, false);
+                LOG.debug("Pending requested message, the size is {}, because channel is not ready.", messageBuffer.size());
+            } else {
+                if (channel.isWritable()) {
+                    MessageBatch messageBatch = messageBuffer.add(message);
+                    if (messageBatch != null) {
+                        flushRequest(channel, messageBatch);
+                    }
+                } else {
+                    messageBuffer.add(message, false);
+                }
+            }
+
+            if (messageBuffer.size() >= BATCH_THREASHOLD_WARN) {
+                waitForChannelReady();
+            }
+        }
+    }
+
+    public void waitForChannelReady() {
+        Channel channel = channelRef.get();
+        long pendingTime = 0;
+        while (channel == null || !channel.isWritable()) {
+            JStormUtils.sleepMs(1);
+            pendingTime++;
+            if (timeoutMs != -1 && pendingTime >= timeoutMs) {
+                LOG.warn("Discard message due to pending message timeout({}ms), messageSize={}", timeoutMs, messageBuffer.size());
+                messageBuffer.clear();
+                return;
+            }
+            if (pendingTime % 30000 == 0) {
+                LOG.info("Pending total time={}, channel.isWritable={}, remoteAddress={}", pendingTime, 
+                		channel != null ? channel.isWritable() : null, channel != null ? channel.getRemoteAddress() : null);
+            }
+            channel = channelRef.get();
         }
 
-        Channel channel = isChannelReady();
-        if (channel == null) {
-            return;
-        }
-
-        flush_later.set(false);
-        MessageBatch toBeFlushed = messageBatchRef.getAndSet(null);
-        flushRequest(channel, toBeFlushed);
+        MessageBatch messageBatch = messageBuffer.drain();
+        flushRequest(channel, messageBatch);
     }
 
     @Override
-    Channel isChannelReady() {
-        Channel channel = super.isChannelReady();
-        if (channel == null) {
-            return null;
-        }
+    public void handleResponse(Channel channel, Object msg) {
+    	if (msg == null) {
+    		return;
+    	}
 
-        if (blockSend && pendings.get() >= MAX_SEND_PENDING) {
-            return null;
-        }
-        return channel;
-    }
+    	TaskMessage message = (TaskMessage) msg;
+    	short type = message.get_type();
+        if (type == TaskMessage.BACK_PRESSURE_REQUEST) {
+        	byte[] messageData = message.message();
+            ByteBuffer buffer = ByteBuffer.allocate(Integer.SIZE + 1);
+            buffer.put(messageData);
+            buffer.flip();
+            boolean startFlowCtrl = buffer.get() == 1 ? true : false;
+            int targetTaskId = buffer.getInt();
+            //LOG.debug("Received flow ctrl ({}) for target task-{}", startFlowCtrl, targetTaskId);
 
-    @Override
-    public void handleResponse() {
-        // do nothing
+            Set<Integer> targetTasks = remoteAddrToTasks.get(channel.getRemoteAddress().toString());
+            if (targetTasks != null) {
+                synchronized (targetTasks) {
+            	    if (!targetTasks.contains(targetTaskId)) {
+            	        targetTasks.add(targetTaskId);
+            	    }
+                }
+            } else {
+            	LOG.warn("TargetTasks set was not initialized correctly!");
+            	Set<Integer> taskSet = new HashSet<Integer>();
+            	taskSet.add(targetTaskId);
+            	remoteAddrToTasks.put(channel.getRemoteAddress().toString(), taskSet);
+            }
+
+            try {
+            	flowCtrlLock.lock();
+                if (startFlowCtrl) {
+                    targetTasksUnderFlowCtrl.put(targetTaskId, lock.newCondition());
+                    //LOG.debug("Start flow ctrl for target task-{}", targetTaskId);
+                } else {
+                    Condition condition = targetTasksUnderFlowCtrl.remove(targetTaskId);
+                    if (condition != null) {
+                    	try {
+                    		lock.lock();
+                    	    condition.signalAll();
+                    	} finally {
+                    		lock.unlock();
+                    	}
+                    }
+                
+                    MessageBatch cache = null;
+                    synchronized (targetTasksCache) {
+                    	if(targetTasksCache.get(targetTaskId) != null) {
+                    		cache = targetTasksCache.remove(targetTaskId);
+                    	}
+                    }
+                    if (cache != null) {
+                    	pushBatch(cache);
+                    }
+                }
+            } finally {
+            	flowCtrlLock.unlock();
+            }
+        } else {
+            LOG.warn("Unexpected message (type={}) was received from task {}", type, message.task());
+        }
     }
 
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this, ToStringStyle.SHORT_PREFIX_STYLE);
+    }
+
+    private void waitforFlowCtrlAndSend(TaskMessage message) {
+    	int targetTaskId = message.task();
+
+    	boolean isSend = true;
+    	Condition condition = null;
+    	MessageBatch flushCache = null;
+    	try {
+    		flowCtrlLock.lock();
+            condition = targetTasksUnderFlowCtrl.get(targetTaskId);
+            // If target task is under flow control
+            if (condition != null) {	
+        	    MessageBatch cache = targetTasksCache.get(targetTaskId);
+        	    if (cache == null) {
+        		    cache = new MessageBatch(cacheSize);
+        		    targetTasksCache.put(targetTaskId, cache);
+        	    }
+        		cache.add(message);
+        		
+        		if (cache.isFull()) {
+        			flushCache = targetTasksCache.remove(targetTaskId);
+        		} else {
+        			isSend = false;
+        		}
+        	}
+    	} finally {
+    		flowCtrlLock.unlock();
+    	}
+
+    	if (isSend) {
+        	// Cache is full. Try to flush till flow control is released.
+        	if (flushCache != null) {
+        		//LOG.debug("Flow Ctrl: Wait for target task-{}", targetTaskId);
+        	    long pendingTime = 0;
+        	    boolean done = false;
+        	    while (condition != null && !done) {
+                	try {
+                		lock.lock();
+    		    		done = condition.await(flowCtrlAwaitTime, TimeUnit.MILLISECONDS);
+    		    		pendingTime += flowCtrlAwaitTime;
+    		    		if (timeoutMs != -1 && pendingTime >= timeoutMs) {
+    		                LOG.warn("Discard message under flow ctrl due to pending message timeout({}ms), messageSize={}", 
+    		                		timeoutMs, flushCache.getEncodedLength());
+    		                targetTasksUnderFlowCtrl.remove(targetTaskId);
+    		                return;
+    		            }
+    	          		if (pendingTime % 30000 == 0) {
+    	          			LOG.info("Pending total time={} since target task-{} is under flow control ", pendingTime, targetTaskId);
+    	          		}
+    		    	} catch (InterruptedException e) {
+    		    		LOG.info("flow control was interrupted! targetTask-{}", targetTaskId);
+    		    	} finally {
+    		    		lock.unlock();
+    		    	}
+                
+                	try {
+                		flowCtrlLock.lock();
+                		condition = targetTasksUnderFlowCtrl.get(targetTaskId);
+                	} finally {
+                		flowCtrlLock.unlock();
+                	}
+          	    	
+                }
+
+        	    pushBatch(flushCache);
+        	} else {
+            	pushBatch(message);
+            }
+        } 
+    }
+
+    @Override
+    public void connectChannel(Channel channel) {
+        remoteAddrToTasks.put(channel.getRemoteAddress().toString(), new HashSet<Integer>());
+    }
+
+    private void releaseFlowCtrlsForRemoteAddr(String remoteAddr) {
+    	Set<Integer> targetTasks = remoteAddrToTasks.get(remoteAddr);
+        if (targetTasks != null) {
+        	try {
+        		flowCtrlLock.lock();
+                for (Integer taskId : targetTasks) {
+                    Condition condition = targetTasksUnderFlowCtrl.remove(taskId);
+                    if (condition != null) {
+                    	try {
+                    		lock.lock();
+                    	    condition.signalAll();
+                    	} finally {
+                    		lock.unlock();
+                    	}
+                    }
+                }
+        	} finally {
+        		flowCtrlLock.unlock();
+        	}
+        }
+    }
+
+    @Override
+    public void disconnectChannel(Channel channel) {
+    	if (isClosed()) {
+            return;
+        }
+
+        if (channel == channelRef.get()) {
+            setChannel(null);
+            releaseFlowCtrlsForRemoteAddr(channel.getRemoteAddress().toString());
+            reconnect();
+        } else {
+        	releaseFlowCtrlsForRemoteAddr(channel.getRemoteAddress().toString());
+            closeChannel(channel);
+        }
+        
     }
 }

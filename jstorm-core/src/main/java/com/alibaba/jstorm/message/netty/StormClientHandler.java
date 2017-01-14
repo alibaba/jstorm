@@ -60,12 +60,13 @@ public class StormClientHandler extends SimpleChannelUpstreamHandler {
         Channel channel = event.getChannel();
         LOG.info("connection established to :{}, local port:{}", client.getRemoteAddr(), channel.getLocalAddress());
 
-        client.handleResponse();
+        client.connectChannel(ctx.getChannel());
+        client.handleResponse(ctx.getChannel(), null);
     }
 
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent event) {
-        client.handleResponse();
+        client.handleResponse(ctx.getChannel(), event.getMessage());
 
     }
 
@@ -108,4 +109,8 @@ public class StormClientHandler extends SimpleChannelUpstreamHandler {
         super.channelClosed(ctx, e);
     }
 
+    @Override
+    public void channelInterestChanged(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        client.notifyInterestChanged(e.getChannel());
+    }
 }

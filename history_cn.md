@@ -1,6 +1,61 @@
 [JStorm English introduction](http://42.121.19.155/jstorm/JStorm-introduce-en.pptx)
 [JStorm Chinese introduction](http://42.121.19.155/jstorm/JStorm-introduce.pptx)
 
+# Release 2.2.1
+
+## New features
+* 性能优化:对比2.1.1和去年的双十一版本0.9.8.1有200%~300%的提升。在高并发和低并发的多个测试场景(word count)中，是Flink性能的120%~200%，是Storm的300%~400%。
+	1. 重构batch的实现方案
+	2. 优化序列化和反序列过程，减少cpu和网络消耗
+	3. 优化消息关键路径和metrics的cpu开销
+	4. 优化网络接收和发送端的处理策略
+	5. 增加disruptorQueue的异步batch操作
+* 加入新的snapshot exactly once(只处理一次)框架。
+	1. 对比原有的Trident解决方案有着数倍的性能提升。同时可以减少用户在回滚的过程中的处理逻辑。
+	2. 同时支持at least once(至少处理一次场景)。对比原有的acker机制，可以减少acker的消息处理开销，同时在高吞吐的场景中可以大量的减少acker消息占用的网络带宽。以提高任务性能。
+* 完成JStorm on yarn支持。
+	1. 现在JStorm可以实现快速的集群部署，以及集群的扩容和缩容。有效的提高集群资源的弹性和利用率。
+* 重构backpressure设计，支持stage by stage的流控模式。
+	1. 当前的设计更加轻量，让backpressure在流控开启和关闭时更加高效。
+	2. 性能和稳定性对比原因的方案有着很大的提升。
+* 引入Window API。
+	1. 支持tumbling window，sliding window
+	2. 对应的window支持count和duration 模式
+	3. 支持window的watermark机制
+* 引入对Flux的支持
+	1. Flux是帮助创建和部署storm拓扑的编程框架及通用组件。帮助用户更方便创建及部署JStorm流式计算拓扑的编程框架
+* 通过maven shade的方式，对一些容易冲突的依赖包做shade。以解决jstorm依赖和用户依赖之前的冲突问题。
+* 优化Shuffle grouping方案
+	1. 合并shuffle， localOrShuffle和localFirst。根据任务情况自动适配。
+	2. shuffle时会根据下游节点的负载情况，做shuffle。以达到负载均衡。
+* 增加Nimbus的黑名单机制。
+* 增加Trident对消息batch模式的支持
+* 支持集群的全局配置推送
+* supervisor info和心跳中增加了buildTs，便于区分出集群中是否存在不同版本的supervisor
+* nimbus和supervisor通过ext模块来支持外部插件
+* 添加elastic search 5.11的支持, 感谢 @elloray 的PR
+
+## Improvements
+* 重构nimbus metrics 框架，将原TopologyMetricsRunnable打散成事件驱动
+* 重构Topology master的处理逻辑。改为事件驱动。提高Topology的处理性能。
+* 重构example 代码， 增加大量example和测试用例
+* 默认禁用stream metrics以及其他特定metrics，以减少发送的数据量
+* 本地模式下启用metrics
+* gauge的实现，由每分钟单值，改为每分钟采样多次计算平均值
+* 引入了一种近似计算的方式来计算histogram的值，以减少内存开销
+* 增加了Full GC以及supervisor中网络相关的metrics
+
+## Bug Fix
+* Fix 消息的乱序问题
+* Fix supervisor上有大量的zookeeper连接的问题
+* Fix task初始化时，deactivate的错误调用
+* Fix spout并发高时，少量消息rootid重复，导致消息失败的问题。
+* Fix 本地模式的一些bug
+* Fix logwriter的bug
+* 修复了task metrics中RecvTps, ProcessLatency没有合并到task的bug
+* 修复了AsmCounter在flush时的线程同步问题
+
+
 # Release 2.1.1
 
 ## New features

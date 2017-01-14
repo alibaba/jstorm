@@ -3,8 +3,11 @@ package com.alibaba.jstorm.metric;
 import backtype.storm.generated.MetricInfo;
 import backtype.storm.generated.MetricSnapshot;
 import backtype.storm.generated.TopologyMetric;
+import backtype.storm.utils.Utils;
 import com.alibaba.jstorm.client.ConfigExtension;
-import com.alibaba.jstorm.common.metric.AsmMetric;
+import com.alibaba.jstorm.common.metric.*;
+import com.alibaba.jstorm.common.metric.codahale.JAverageReservoir;
+import com.alibaba.jstorm.common.metric.codahale.JAverageSnapshot;
 import com.alibaba.jstorm.common.metric.snapshot.*;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.TimeUtils;
@@ -28,6 +31,8 @@ public class MetricUtils {
     public static final String EMPTY = "";
     public static final String DEFAULT_GROUP = "sys";
     public static final int NETTY_METRIC_PAGE_SIZE = 200;
+
+    public static volatile boolean metricAccurateCal = false;
 
     public static boolean isValidId(long metricId) {
         return metricId != 0;
@@ -119,6 +124,11 @@ public class MetricUtils {
         return MetricType.parse(name.charAt(1) + EMPTY);
     }
 
+    public static String metricName(String name) {
+        String[] parts = name.split(DELIM);
+        return parts[parts.length - 1];
+    }
+
     /**
      * make streamId empty, remain other parts the same
      */
@@ -127,6 +137,9 @@ public class MetricUtils {
         if (parts.length >= 7) {
             parts[0] = MetaType.TASK.getV() + parts[0].charAt(1);
             parts[parts.length - 3] = EMPTY;
+
+            String metricName = getMergeMetricName(parts[parts.length - 1]);
+            parts[parts.length - 1] = metricName;
         }
         return concat(parts);
     }
@@ -154,18 +167,22 @@ public class MetricUtils {
             parts[parts.length - 3] = EMPTY;
             parts[parts.length - 4] = "0";
 
-            String metricName = parts[parts.length - 1];
-            int dotIndex = metricName.indexOf(".");
-            if (dotIndex != -1) {
-                metricName = metricName.substring(dotIndex + 1);
-                parts[parts.length - 1] = metricName;
-            }
+            String metricName = getMergeMetricName(parts[parts.length - 1]);
+            parts[parts.length - 1] = metricName;
         }
         return concat(parts);
     }
 
+    private static String getMergeMetricName(String name) {
+        int dotIndex = name.lastIndexOf(".");
+        if (dotIndex != -1) {
+            return name.substring(dotIndex + 1);
+        }
+        return name;
+    }
+
     /**
-     * change component metric name to worker metric name, only for topology metrics
+     * change component metric name to topology metric name
      */
     public static String comp2topologyName(String old) {
         String[] parts = old.split(DELIM);
@@ -222,10 +239,17 @@ public class MetricUtils {
     }
 
     public static Histogram metricSnapshot2Histogram(MetricSnapshot snapshot) {
-        Histogram histogram = new Histogram(new ExponentiallyDecayingReservoir());
-        byte[] points = snapshot.get_points();
-        int len = snapshot.get_pointSize();
-        updateHistogramPoints(histogram, points, len);
+        Histogram histogram;
+        if (metricAccurateCal){
+            histogram = new Histogram(new ExponentiallyDecayingReservoir());
+            byte[] points = snapshot.get_points();
+            int len = snapshot.get_pointSize();
+            updateHistogramPoints(histogram, points, len);
+        }else {
+            histogram = new Histogram(new JAverageReservoir());
+            JAverageSnapshot averageSnapshot = (JAverageSnapshot) histogram.getSnapshot();
+            averageSnapshot.setMetricSnapshot(snapshot.deepCopy());
+        }
         return histogram;
     }
 
@@ -262,6 +286,17 @@ public class MetricUtils {
         return ret;
     }
 
+    public static Map<Integer, MetricSnapshot> toThriftHistoSnapshots(Map<Integer, AsmSnapshot> snapshots) {
+        Map<Integer, MetricSnapshot> ret = Maps.newHashMapWithExpectedSize(snapshots.size());
+        for (Map.Entry<Integer, AsmSnapshot> entry : snapshots.entrySet()) {
+            MetricSnapshot histogramSnapshot = convert((AsmHistogramSnapshot) entry.getValue());
+            if (histogramSnapshot != null) {
+                ret.put(entry.getKey(), histogramSnapshot);
+            }
+        }
+        return ret;
+    }
+
     public static Map<Integer, MetricSnapshot> toThriftHistoSnapshots(MetaType metaType, Map<Integer, AsmSnapshot> snapshots) {
         Map<Integer, MetricSnapshot> ret = Maps.newHashMapWithExpectedSize(snapshots.size());
         for (Map.Entry<Integer, AsmSnapshot> entry : snapshots.entrySet()) {
@@ -271,6 +306,20 @@ public class MetricUtils {
             }
         }
         return ret;
+    }
+
+    public static Map<Integer, MetricSnapshot> toThriftSnapshots(Map<Integer, AsmSnapshot> snapshots, MetricType metricType) {
+        if (metricType == MetricType.COUNTER) {
+            return MetricUtils.toThriftCounterSnapshots(snapshots);
+        } else if (metricType == MetricType.GAUGE) {
+            return MetricUtils.toThriftGaugeSnapshots(snapshots);
+        } else if (metricType == MetricType.METER) {
+            return MetricUtils.toThriftMeterSnapshots(snapshots);
+        } else if (metricType == MetricType.HISTOGRAM) {
+            return MetricUtils.toThriftHistoSnapshots(snapshots);
+        } else {
+            throw new RuntimeException("invalid metricType " + metricType);
+        }
     }
 
     public static MetricSnapshot convert(AsmCounterSnapshot snapshot) {
@@ -307,6 +356,35 @@ public class MetricUtils {
         return ret;
     }
 
+    public static MetricSnapshot convert( AsmHistogramSnapshot snapshot) {
+        // some histograms are never updated, skip such metrics
+        //if (snapshot.getSnapshot().getValues().length == 0) {
+        //    return null;
+        //}
+
+        MetricSnapshot ret = new MetricSnapshot();
+        ret.set_metricId(snapshot.getMetricId());
+        ret.set_ts(TimeUtils.alignTimeToMin(snapshot.getTs()));
+        ret.set_metricType(MetricType.HISTOGRAM.getT());
+
+        Snapshot ws = snapshot.getSnapshot();
+        ret.set_min(ws.getMin());
+        ret.set_max(ws.getMax());
+        ret.set_p50(ws.getMedian());
+        ret.set_p75(ws.get75thPercentile());
+        ret.set_p95(ws.get95thPercentile());
+        ret.set_p98(ws.get98thPercentile());
+        ret.set_p99(ws.get99thPercentile());
+        ret.set_p999(ws.get999thPercentile());
+        ret.set_mean(ws.getMean());
+        ret.set_stddev(ws.getStdDev());
+        ret.set_points(new byte[0]);
+        ret.set_pointSize(0);
+
+        return ret;
+    }
+
+
     public static MetricSnapshot convert(MetaType metaType, AsmHistogramSnapshot snapshot) {
         // some histograms are never updated, skip such metrics
         //if (snapshot.getSnapshot().getValues().length == 0) {
@@ -331,7 +409,7 @@ public class MetricUtils {
         ret.set_stddev(ws.getStdDev());
 
         // only upload points for component metrics
-        if (metaType == MetaType.COMPONENT || metaType == MetaType.TOPOLOGY) {
+        if (metricAccurateCal && (metaType == MetaType.COMPONENT || metaType == MetaType.TOPOLOGY)) {
             byte[] points = longs2bytes(ws.getValues());
 
             ret.set_points(points);
@@ -516,5 +594,55 @@ public class MetricUtils {
             }
             LOG.info("\n");
         }
+    }
+
+    public static void mergeMetricSnapshotMap(Map<Integer, MetricSnapshot> returnSnapshotMaps, Map<Integer, MetricSnapshot> snapshotMap, AsmMetric asmMetric,
+            MetricType metricType) {
+        Map<Integer, MetricSnapshot> generateSnapshotMap = MetricUtils.toThriftSnapshots(asmMetric.getSnapshots(), metricType);
+        for (Map.Entry<Integer, MetricSnapshot> entry : snapshotMap.entrySet()) {
+            Integer key = entry.getKey();
+            MetricSnapshot snapshot = entry.getValue();
+            MetricSnapshot old = returnSnapshotMaps.get(key);
+            if (old == null) {
+                snapshot.set_ts(generateSnapshotMap.get(key).get_ts());
+                snapshot.set_metricId(asmMetric.getMetricId());
+                old = snapshot;
+                returnSnapshotMaps.put(key, old);
+            } else {
+                if (metricType == MetricType.COUNTER) {
+                    old.set_longValue(old.get_longValue() + snapshot.get_longValue());
+                } else if (metricType == MetricType.GAUGE) {
+                    old.set_doubleValue(old.get_doubleValue() + snapshot.get_doubleValue());
+                } else if (metricType == MetricType.METER) {
+                    old.set_mean(old.get_mean() + snapshot.get_mean());
+                    old.set_m1(old.get_m1() + snapshot.get_m1());
+                    old.set_m5(old.get_m5() + snapshot.get_m5());
+                    old.set_m15(old.get_m15() + snapshot.get_m15());
+                } else if (metricType == MetricType.HISTOGRAM) {
+                    old.set_min((old.get_min() + snapshot.get_min()) / 2);
+                    old.set_max((old.get_max() + snapshot.get_max()) / 2);
+                    old.set_p50((old.get_p50() + snapshot.get_p50()) / 2);
+                    old.set_p75((old.get_p75() + snapshot.get_p75()) / 2);
+                    old.set_p95((old.get_p95() + snapshot.get_p95()) / 2);
+                    old.set_p98((old.get_p98() + snapshot.get_p98()) / 2);
+                    old.set_p99((old.get_p99() + snapshot.get_p99()) / 2);
+                    old.set_p999((old.get_p999() + snapshot.get_p999()) / 2);
+                    old.set_mean((old.get_mean() + snapshot.get_mean()) / 2);
+                    old.set_stddev((old.get_stddev() + snapshot.get_stddev()) / 2);
+                }
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        String streamName = "SM@b2b_crm_order_PaymentSpout-1-1461743650@__topology_master" +
+                "@2@__master_task_heartbeat@sys@com.alibaba.crm.searchincr.jstorm.martini.ordcash.PaymentToplogy.RecvTps";
+        String taskName = stream2taskName(streamName);
+        System.out.println(taskName);
+        String compName = task2compName(taskName);
+        System.out.println(compName);
+        System.out.println(task2MergeCompName(taskName));
+        String tpName = comp2topologyName(compName);
+        System.out.println(tpName);
     }
 }

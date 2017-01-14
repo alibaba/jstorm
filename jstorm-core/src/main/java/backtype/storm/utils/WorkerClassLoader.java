@@ -17,15 +17,21 @@
  */
 package backtype.storm.utils;
 
+
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.misc.CompoundEnumeration;
+
 
 public class WorkerClassLoader extends URLClassLoader {
 
@@ -168,5 +174,20 @@ public class WorkerClassLoader extends URLClassLoader {
             rtn.add(o);
         }
         return rtn;
+    }
+
+    public Enumeration<URL> getResources(String name) throws IOException {
+        Enumeration<URL>[] tmp = (Enumeration<URL>[]) new Enumeration<?>[2];
+        tmp[0] = super.getResources(name);
+        tmp[1] = defaultClassLoader.getResources(name);
+        return new CompoundEnumeration<>(tmp);
+    }
+
+    public InputStream getResourceAsStream(String name) {
+        InputStream is = super.getResourceAsStream(name);
+        if (is == null){
+            is = defaultClassLoader.getResourceAsStream(name);
+        }
+        return is;
     }
 }
