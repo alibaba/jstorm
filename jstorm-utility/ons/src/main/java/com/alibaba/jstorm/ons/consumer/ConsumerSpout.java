@@ -135,12 +135,10 @@ public class ConsumerSpout implements IRichSpout, IAckValueSpout, IFailValueSpou
         }
     }
 
-
     public void sendTuple(OnsTuple OnsTuple) {
         OnsTuple.updateEmitMs();
         collector.emit(new Values(OnsTuple), OnsTuple.getCreateMs());
     }
-
 
     @Override
     public void nextTuple() {
@@ -153,35 +151,28 @@ public class ConsumerSpout implements IRichSpout, IAckValueSpout, IFailValueSpou
         if (OnsTuple == null) {
             return;
         }
-
         sendTuple(OnsTuple);
-
     }
-
 
     @Deprecated
     public void ack(Object msgId) {
         LOG.warn("Shouldn't go this function");
     }
 
-
     @Deprecated
     public void fail(Object msgId) {
         LOG.warn("Shouldn't go this function");
     }
-
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(new Fields("OnsTuple"));
     }
 
-
     @Override
     public Map<String, Object> getComponentConfiguration() {
         return null;
     }
-
 
     @Override
     public void fail(Object msgId, List<Object> values) {
@@ -202,13 +193,11 @@ public class ConsumerSpout implements IRichSpout, IAckValueSpout, IFailValueSpou
         }
     }
 
-
     public void finishTuple(OnsTuple OnsTuple) {
         waithHistogram.update(OnsTuple.getEmitMs() - OnsTuple.getCreateMs());
         processHistogram.update(System.currentTimeMillis() - OnsTuple.getEmitMs());
         OnsTuple.done();
     }
-
 
     @Override
     public void ack(Object msgId, List<Object> values) {
@@ -216,11 +205,9 @@ public class ConsumerSpout implements IRichSpout, IAckValueSpout, IFailValueSpou
         finishTuple(OnsTuple);
     }
 
-
     public Consumer getConsumer() {
         return consumer;
     }
-
 
     @Override
     public Action consume(Message message, ConsumeContext context) {

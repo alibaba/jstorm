@@ -11,39 +11,36 @@ import java.util.Map;
 import java.util.Properties;
 
 public class ConsumerFactory {
+    private static final Logger LOG = Logger.getLogger(ConsumerFactory.class);
 
-	private static final Logger LOG = Logger.getLogger(ConsumerFactory.class);
+    public static Map<String, Consumer> consumers = new HashMap<String, Consumer>();
 
-	public static Map<String, Consumer> consumers = new HashMap<String, Consumer>();
+    public static synchronized Consumer mkInstance(ConsumerConfig consumerConfig, MessageListener listener) throws Exception {
+        String consumerId = consumerConfig.getConsumerId();
+        Consumer consumer = consumers.get(consumerId);
+        if (consumer != null) {
 
-	public static synchronized Consumer mkInstance(ConsumerConfig consumerConfig, MessageListener listener) throws Exception {
-		
+            LOG.info("Consumer of " + consumerId + " has been created, don't recreate it ");
 
-		String consumerId = consumerConfig.getConsumerId();
-		Consumer consumer = consumers.get(consumerId);
-		if (consumer != null) {
+            // Attention, this place return null to info duplicated consumer
+            return null;
+        }
 
-			LOG.info("Consumer of " + consumerId + " has been created, don't recreate it ");
+        Properties properties = new Properties();
+        properties.put(PropertyKeyConst.AccessKey, consumerConfig.getAccessKey());
+        properties.put(PropertyKeyConst.SecretKey, consumerConfig.getSecretKey());
+        properties.put(PropertyKeyConst.ConsumerId, consumerId);
+        properties.put(PropertyKeyConst.ConsumeThreadNums, consumerConfig.getConsumerThreadNum());
+        consumer = ONSFactory.createConsumer(properties);
 
-			// Attention, this place return null to info duplicated consumer
-			return null;
-		}
+        consumer.subscribe(consumerConfig.getTopic(), consumerConfig.getSubExpress(), listener);
+        consumer.start();
 
-		Properties properties = new Properties();
-		properties.put(PropertyKeyConst.AccessKey, consumerConfig.getAccessKey());
-		properties.put(PropertyKeyConst.SecretKey, consumerConfig.getSecretKey());
-		properties.put(PropertyKeyConst.ConsumerId, consumerId);
-		properties.put(PropertyKeyConst.ConsumeThreadNums, consumerConfig.getConsumerThreadNum());
-		consumer = ONSFactory.createConsumer(properties);
+        consumers.put(consumerId, consumer);
+        LOG.info("Successfully create " + consumerId + " consumer");
 
-		consumer.subscribe(consumerConfig.getTopic(), consumerConfig.getSubExpress(), listener);
-		consumer.start();
+        return consumer;
 
-		consumers.put(consumerId, consumer);
-		LOG.info("Successfully create " + consumerId + " consumer");
-
-		return consumer;
-
-	}
+    }
 
 }

@@ -33,7 +33,7 @@ public class OnsConfig implements Serializable{
 	}
 	
 	public void checkValid() {
-		if (StringUtils.isBlank(topic) == true) {
+		if (StringUtils.isBlank(topic)) {
 			throw new RuntimeException("Topic hasn't been set");
 		}else if (StringUtils.isBlank(subExpress)) {
 			throw new RuntimeException("SubExpress hasn't been set");
