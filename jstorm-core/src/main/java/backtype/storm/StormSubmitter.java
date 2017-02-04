@@ -204,7 +204,6 @@ public class StormSubmitter {
     private static String path = null;
 
     private static void submitJar(NimbusClient client, Map conf) {
-    	String submittedJar = null;
 //    	if (submittedJar == null) {
         try {
             LOG.info("Jar not uploaded to master yet. Submitting jar...");
@@ -229,7 +228,7 @@ public class StormSubmitter {
             }
 
             if (localJar != null) {
-                submittedJar = submitJar(conf, localJar, uploadLocation, client);
+                submitJar(conf, localJar, uploadLocation, client);
             } else {
                 // no client jar, but with lib jar
                 client.getClient().finishFileUpload(uploadLocation);
