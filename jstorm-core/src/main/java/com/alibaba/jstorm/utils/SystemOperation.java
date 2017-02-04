@@ -49,7 +49,7 @@ public class SystemOperation {
 
     public static String exec(String cmd) throws IOException {
         List<String> commands = new ArrayList<String>();
-        commands.add("/bin/bash");
+        commands.add("/bin/sh");
         commands.add("-c");
         commands.add(cmd);
 
