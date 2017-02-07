@@ -100,9 +100,9 @@ blobstore.hdfs.port: yourhdfsport
 
 ## Yarn 
 ### 准备工作
-系统要求centos6u或7u，jdk版本支持1.7和1.8，安装hadoop2.6.3后
-启动HDFS、yarn、zookeeper(若已存在zk服务，也可以向外部连接)
-### 配置
+系统要求centos6u或7u，安装hadoop2.6.3后
+启动HDFS、yarn、zookeeper，具体过程可参照官方文档(若已存在zk服务，也可以向外部连接)
+### 配置修改
 首先需要配置cgroup,隔离CPU资源。在yarn-site.xml中加入下列配置项，注意把用户组替换成实际的执行用户
 ```
   <property>
@@ -132,7 +132,7 @@ blobstore.hdfs.port: yourhdfsport
 ```
 
 
-配置yarn注册服务，hadoop.registry.zk.quorum项要替换成实际的zk：
+配置yarn注册服务，其中hadoop.registry.zk.quorum项要替换成实际的zk：
 ```
  <property>
       <name>hadoop.registry.jaas.context</name>
@@ -190,4 +190,4 @@ blobstore.hdfs.port: yourhdfsport
     </property>
     
 ```
-配置完毕后，重启yarn的ResourceManager和NodeManager，使用JstormOnYarn的命令提交应用，可以通过RM的WebUI查看资源占用情况。
+配置完毕后，重启yarn的ResourceManager和NodeManager，使用JstormOnYarn的命令提交应用，可以通过RM的WebUI查看应用日志和资源占用情况。
