@@ -185,7 +185,19 @@ public class LinuxResource {
         }
         return 0L;
     }
-
+    public static Long getAvailablePhysicalMem() {
+        if (!OSInfo.isLinux()) {
+            return 0L;
+        }
+        try {
+            List<String> lines = IOUtils.readLines(new FileInputStream(PROCFS_MEMINFO));
+            String free = lines.get(2).split("\\s+")[1];
+            return Long.valueOf(free);
+        } catch (Exception ignored) {
+            LOG.warn("failed to get total free memory.");
+        }
+        return 0L;
+    }
     /**
      * calcute the disk usage at current filesystem
      * @return

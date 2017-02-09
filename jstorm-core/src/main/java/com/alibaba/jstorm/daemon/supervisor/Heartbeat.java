@@ -202,7 +202,7 @@ class Heartbeat extends RunnableCallback {
         if (cpuUsage <= 0.0 || !ConfigExtension.isSupervisorEnableAutoAdjustSlots(conf)) {
             return defaultPortList;
         }
-        long freeMemory = JStormUtils.getFreePhysicalMem() * 1024L;
+        long freeMemory = JStormUtils.getAvailablePhysicalMem() * 1024L;
 
         long reserveMemory = ConfigExtension.getStormMachineReserveMem(conf);
 
