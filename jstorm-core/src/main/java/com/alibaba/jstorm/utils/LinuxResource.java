@@ -26,6 +26,7 @@ public class LinuxResource {
     private static final Pattern CPU_TIME_FORMAT = Pattern.compile("^cpu[ \t]+([0-9]+)[ \t]+([0-9]+)[ \t]+([0-9]+)");
 
     private static final String PROCFS_MEMINFO = "/proc/meminfo";
+    private static final String MEMINFO_MEMAVAILABLE = "MemAvailable";
     public static final long JIFFY_LENGTH_IN_MILLIS;
     static {
         long jiffiesPerSecond = getJiffies();
@@ -190,8 +191,13 @@ public class LinuxResource {
             return 0L;
         }
         try {
+
             List<String> lines = IOUtils.readLines(new FileInputStream(PROCFS_MEMINFO));
             String free = lines.get(2).split("\\s+")[1];
+            String name = lines.get(2).split(":")[0].trim();
+            if( ! MEMINFO_MEMAVAILABLE.equals(name) ){
+                free = lines.get(1).split("\\s+")[1];
+            }
             return Long.valueOf(free);
         } catch (Exception ignored) {
             LOG.warn("failed to get total free memory.");
