@@ -5,6 +5,7 @@ import backtype.storm.utils.Utils;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -194,8 +195,7 @@ public class LinuxResource {
 
             List<String> lines = IOUtils.readLines(new FileInputStream(PROCFS_MEMINFO));
             String free = lines.get(2).split("\\s+")[1];
-            String name = lines.get(2).split(":")[0].trim();
-            if( ! MEMINFO_MEMAVAILABLE.equals(name) ){
+            if( StringUtils.indexOfIgnoreCase(lines.get(2), MEMINFO_MEMAVAILABLE) < 0 ){
                 free = lines.get(1).split("\\s+")[1];
             }
             return Long.valueOf(free);
