@@ -1,7 +1,6 @@
 package com.alibaba.jstorm.yarn.registry;
 
 import com.alibaba.jstorm.yarn.constants.JOYConstants;
-import com.alibaba.jstorm.yarn.constants.JstormKeys;
 import com.alibaba.jstorm.yarn.utils.JstormYarnUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -46,13 +45,13 @@ public class SlotPortsView {
     public List<String> getSetPortUsedBySupervisor(String supervisorHost, int slotCount) throws Exception {
 
         String appPath = RegistryUtils.serviceclassPath(
-                JstormKeys.APP_TYPE, "");
+                JOYConstants.APP_TYPE, "");
 
         String path = RegistryUtils.serviceclassPath(
-                JstormKeys.APP_TYPE, instanceName);
+                JOYConstants.APP_TYPE, instanceName);
 
         String containerPath = RegistryUtils.componentPath(
-                JstormKeys.APP_TYPE, instanceName, containerId.getApplicationAttemptId().getApplicationId().toString(), containerId.toString());
+                JOYConstants.APP_TYPE, instanceName, containerId.getApplicationAttemptId().getApplicationId().toString(), containerId.toString());
 
         List<String> reList = new ArrayList<String>();
         try {
@@ -65,16 +64,15 @@ public class SlotPortsView {
             for (String instance : instanceNames) {
 
                 String servicePath = RegistryUtils.serviceclassPath(
-                        JstormKeys.APP_TYPE, instance);
+                        JOYConstants.APP_TYPE, instance);
 
                 List<String> apps = registryOperations.list(servicePath);
 
                 for (String subapp : apps) {
 
                     String subAppPath = RegistryUtils.servicePath(
-                            JstormKeys.APP_TYPE, instance, subapp);
-                    LOG.info("subapp:" + subAppPath);
-                    String componentsPath = subAppPath + "/components";
+                            JOYConstants.APP_TYPE, instance, subapp);
+                    String componentsPath = subAppPath + JOYConstants.COMPONENTS;
                     if (!registryOperations.exists(componentsPath))
                         continue;
                     Map<String, ServiceRecord> containers = RegistryUtils.listServiceRecords(registryOperations, componentsPath);
@@ -83,12 +81,12 @@ public class SlotPortsView {
                         ServiceRecord sr = containers.get(container);
                         LOG.info(sr.toString());
 
-                        if (!sr.get("host").equals(supervisorHost))
+                        if (!sr.get(JOYConstants.HOST).equals(supervisorHost))
                             continue;
                         hostContainers.add(sr);
                         String[] portList = new String[]{};
-                        if (sr.get("portList") != null)
-                            portList = sr.get("portList").split(",");
+                        if (sr.get(JOYConstants.PORT_LIST) != null)
+                            portList = sr.get(JOYConstants.PORT_LIST).split(JOYConstants.COMMA);
                         for (String usedport : portList) {
                             hostUsedPorts.add(usedport);
                         }
@@ -110,21 +108,21 @@ public class SlotPortsView {
 
             if (registryOperations.exists(containerPath)) {
                 ServiceRecord sr = registryOperations.resolve(containerPath);
-                String portListUpdate = JstormYarnUtils.join(reList, ",", false);
-                if (sr.get("portList") != null) {
-                    String[] portList = sr.get("portList").split(",");
-                    portListUpdate = JstormYarnUtils.join(portList, ",", true) + JstormYarnUtils.join(reList, ",", false);
+                String portListUpdate = JstormYarnUtils.join(reList, JOYConstants.COMMA, false);
+                if (sr.get(JOYConstants.PORT_LIST) != null) {
+                    String[] portList = sr.get(JOYConstants.PORT_LIST).split(JOYConstants.COMMA);
+                    portListUpdate = JstormYarnUtils.join(portList, JOYConstants.COMMA, true) + JstormYarnUtils.join(reList, JOYConstants.COMMA, false);
                 }
-                sr.set("portList", portListUpdate);
+                sr.set(JOYConstants.PORT_LIST, portListUpdate);
                 registryOperations.bind(containerPath, sr, BindFlags.OVERWRITE);
             } else {
                 registryOperations.mknode(containerPath, true);
                 ServiceRecord sr = new ServiceRecord();
-                sr.set("host", supervisorHost);
-                String portListUpdate = JstormYarnUtils.join(reList, ",", false);
-                sr.set("portList", portListUpdate);
+                sr.set(JOYConstants.HOST, supervisorHost);
+                String portListUpdate = JstormYarnUtils.join(reList, JOYConstants.COMMA, false);
+                sr.set(JOYConstants.PORT_LIST, portListUpdate);
                 sr.set(YarnRegistryAttributes.YARN_ID, containerId.toString());
-                sr.description = "container";
+                sr.description = JOYConstants.CONTAINER;
                 sr.set(YarnRegistryAttributes.YARN_PERSISTENCE,
                         PersistencePolicies.CONTAINER);
 
@@ -140,7 +138,7 @@ public class SlotPortsView {
     public String getSupervisorSlotPorts(int memory, int vcores, String supervisorHost) throws Exception {
 
         String hostPath = RegistryUtils.servicePath(
-                JstormKeys.APP_TYPE, this.instanceName, supervisorHost);
+                JOYConstants.APP_TYPE, this.instanceName, supervisorHost);
 
         tryHostLock(hostPath);
         try {
@@ -184,13 +182,12 @@ public class SlotPortsView {
         if (registryOperations.exists(hostPath)) {
             try {
                 ServiceRecord host = registryOperations.resolve(hostPath);
-                Long cTime = Long.parseLong(host.get("cTime", "0"));
+                Long cTime = Long.parseLong(host.get(JOYConstants.CTIME, "0"));
                 Date now = new Date();
                 if (now.getTime() - cTime > JOYConstants.HOST_LOCK_TIMEOUT || cTime > now.getTime())
                     registryOperations.delete(hostPath, true);
             } catch (Exception ex) {
                 LOG.error(ex);
-//                registryOperations.delete(hostPath, true);
             }
         }
 
@@ -206,12 +203,10 @@ public class SlotPortsView {
             ServiceRecord sr = new ServiceRecord();
             Date date = new Date();
             date.getTime();
-            sr.set("cTime", String.valueOf(date.getTime()));
+            sr.set(JOYConstants.CTIME, String.valueOf(date.getTime()));
             registryOperations.bind(hostPath, sr, BindFlags.OVERWRITE);
             return;
         }
-
-
         throw new Exception("can't get host lock");
     }
 

@@ -31,10 +31,6 @@ public interface MasterContext {
 
     String getAddress();
 
-    int getRPCPort();
-
-    int getHttpPort();
-
     Configuration getYarnConfiguration();
 
     BlockingQueue<Container> getContainers();

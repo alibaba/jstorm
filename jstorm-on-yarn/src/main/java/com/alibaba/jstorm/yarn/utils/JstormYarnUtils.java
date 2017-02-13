@@ -1,7 +1,10 @@
 package com.alibaba.jstorm.yarn.utils;
 
-import com.alibaba.jstorm.yarn.constants.JstormKeys;
+import com.alibaba.jstorm.yarn.constants.JOYConstants;
 import com.alibaba.jstorm.yarn.constants.JstormXmlConfKeys;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -11,9 +14,7 @@ import org.apache.hadoop.registry.client.binding.RegistryUtils;
 import org.apache.hadoop.registry.client.types.ServiceRecord;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
@@ -245,7 +246,7 @@ public class JstormYarnUtils {
      * @return
      */
     public static String getSupervisorSlotPorts(int memory, int vcores, String instanceName, String supervisorHost, RegistryOperations registryOperations) {
-        return join(getSupervisorPorts(memory, vcores, instanceName, supervisorHost, registryOperations), ",", false);
+        return join(getSupervisorPorts(memory, vcores, instanceName, supervisorHost, registryOperations), JOYConstants.COMMA, false);
     }
 
     /**
@@ -260,45 +261,41 @@ public class JstormYarnUtils {
     public static boolean getSetPortUsedBySupervisor(String instanceName, String supervisorHost, int port, RegistryOperations registryOperations) {
 
         String appPath = RegistryUtils.serviceclassPath(
-                "JstormOnYarn", JstormKeys.APP_TYPE);
+                JOYConstants.APP_NAME, JOYConstants.APP_TYPE);
         String path = RegistryUtils.servicePath(
-                "JstormOnYarn", JstormKeys.APP_TYPE, instanceName);
+                JOYConstants.APP_NAME, JOYConstants.APP_TYPE, instanceName);
         String hostPath = RegistryUtils.componentPath(
-                "JstormOnYarn", JstormKeys.APP_TYPE, instanceName, supervisorHost);
+                JOYConstants.APP_NAME, JOYConstants.APP_TYPE, instanceName, supervisorHost);
 
         try {
-
             List<String> instanceNames = registryOperations.list(appPath);
             for (String instance : instanceNames) {
                 String servicePath = RegistryUtils.servicePath(
-                        "JstormOnYarn", JstormKeys.APP_TYPE, instance);
-//                List<String> hosts = registryOperations.list(servicePath);
+                        JOYConstants.APP_NAME, JOYConstants.APP_TYPE, instance);
                 Map<String, ServiceRecord> hosts = RegistryUtils.listServiceRecords(registryOperations, servicePath);
-                for(String host:hosts.keySet())
-                {
-                    ServiceRecord sr = hosts.get("host");
-                    String[] portList = sr.get("portList").split(",");
+                for (String host : hosts.keySet()) {
+                    ServiceRecord sr = hosts.get(JOYConstants.HOST);
+                    String[] portList = sr.get(JOYConstants.PORT_LIST).split(JOYConstants.COMMA);
                     for (String usedport : portList) {
                         if (Integer.parseInt(usedport) == port)
                             return true;
                     }
                 }
-
             }
 
             if (registryOperations.exists(path)) {
                 ServiceRecord sr = registryOperations.resolve(path);
-                String[] portList = sr.get("portList").split(",");
+                String[] portList = sr.get(JOYConstants.PORT_LIST).split(JOYConstants.COMMA);
 
-                String portListUpdate = join(portList, ",", true) + String.valueOf(port);
-                sr.set("portList", portListUpdate);
+                String portListUpdate = join(portList, JOYConstants.COMMA, true) + String.valueOf(port);
+                sr.set(JOYConstants.PORT_LIST, portListUpdate);
                 registryOperations.bind(path, sr, BindFlags.OVERWRITE);
                 return false;
             } else {
                 registryOperations.mknode(path, true);
                 ServiceRecord sr = new ServiceRecord();
                 String portListUpdate = String.valueOf(port);
-                sr.set("portList", portListUpdate);
+                sr.set(JOYConstants.PORT_LIST, portListUpdate);
                 registryOperations.bind(path, sr, BindFlags.OVERWRITE);
                 return false;
             }
@@ -310,9 +307,6 @@ public class JstormYarnUtils {
     public static List<String> getSupervisorPorts(int memory, int vcores, String instanceName, String supervisorHost, RegistryOperations registryOperations) {
         List<String> relist = new ArrayList<String>();
         int slotCount = getSlotCount(memory, vcores);
-        LOG.info("memory is :" + String.valueOf(memory));
-        LOG.info("vcores is :" + String.valueOf(vcores));
-        LOG.info("slotCount is :" + String.valueOf(slotCount));
         for (int i = 9000; i < 15000; i++) {
             if (isPortAvailable(supervisorHost, i)) {
                 if (!getSetPortUsedBySupervisor(instanceName, supervisorHost, i, registryOperations))
@@ -331,5 +325,78 @@ public class JstormYarnUtils {
 //        return cpuports > memoryports ? memoryports : cpuports;
         //  doesn't support cgroup yet
         return memoryports;
+    }
+
+    public static Options initClientOptions() {
+        Options opts = new Options();
+        opts.addOption(JOYConstants.APP_NAME_KEY, true, "Application Name. Default value - com.alibaba.jstorm.yarn.JstormOnYarn");
+        opts.addOption(JOYConstants.PRIORITY, true, "Application Priority. Default 0");
+        opts.addOption(JOYConstants.PRIORITY, true, "RM Queue in which this application is to be submitted");
+        opts.addOption(JOYConstants.TIMEOUT, true, "Application timeout in milliseconds");
+        opts.addOption(JOYConstants.MASTER_MEMORY, true, "Amount of memory in MB to be requested to run the application master");
+        opts.addOption(JOYConstants.MASTER_VCORES, true, "Amount of virtual cores to be requested to run the application master");
+        opts.addOption(JOYConstants.JAR, true, "Jar file containing the application master");
+        opts.addOption(JOYConstants.LIB_JAR, true, "dependency lib");
+        opts.addOption(JOYConstants.HOME_DIR, true, "home ");
+        opts.addOption(JOYConstants.CONF_FILE, true, " path of jstorm-yarn.xml ");
+        opts.addOption(JOYConstants.RM_ADDRESS, true, "resource manager address eg hostname:port");
+        opts.addOption(JOYConstants.NN_ADDRESS, true, "nameNode address eg hostname:port");
+        opts.addOption(JOYConstants.HADOOP_CONF_DIR, true, "hadoop config directory which contains hdfs-site.xml/core-site" +
+                ".xml/yarn-site.xml");
+        opts.addOption(JOYConstants.INSTANCE_NAME, true, "instance name , which is path of registry");
+        opts.addOption(JOYConstants.DEPLOY_PATH, true, "deploy dir on HDFS  ");
+        opts.addOption(JOYConstants.SHELL_SCRIPT, true, "Location of the shell script to be " +
+                "executed. Can only specify either --shell_command or --shell_script");
+        opts.addOption(JOYConstants.SHELL_ARGS, true, "Command line args for the shell script." +
+                "Multiple args can be separated by empty space.");
+        opts.getOption(JOYConstants.SHELL_ARGS).setArgs(Option.UNLIMITED_VALUES);
+        opts.addOption(JOYConstants.SHELL_ENV, true, "Environment for shell script. Specified as env_key=env_val pairs");
+        opts.addOption(JOYConstants.SHELL_CMD_PRIORITY, true, "Priority for the shell command containers");
+        opts.addOption(JOYConstants.CONTAINER_MEMORY, true, "Amount of memory in MB to be requested to run the shell command");
+        opts.addOption(JOYConstants.CONTAINER_VCORES, true, "Amount of virtual cores to be requested to run the shell command");
+        opts.addOption(JOYConstants.NUM_CONTAINERS, true, "No. of containers on which the shell command needs to be executed");
+        opts.addOption(JOYConstants.LOG_PROPERTIES, true, "log4j.properties file");
+        opts.addOption(JOYConstants.KEEP_CONTAINERS_ACROSS_APPLICATION_ATTEMPTS, false,
+                "Flag to indicate whether to keep containers across application attempts." +
+                        " If the flag is true, running containers will not be killed when" +
+                        " application attempt fails and these containers will be retrieved by" +
+                        " the new application attempt ");
+        opts.addOption(JOYConstants.ATTEMPT_FAILURES_VALIDITY_INTERVAL, true,
+                "when attempt_failures_validity_interval in milliseconds is set to > 0," +
+                        "the failure number will not take failures which happen out of " +
+                        "the validityInterval into failure count. " +
+                        "If failure count reaches to maxAppAttempts, " +
+                        "the application will be failed.");
+        opts.addOption(JOYConstants.DEBUG, false, "Dump out debug information");
+        opts.addOption(JOYConstants.DOMAIN, true, "ID of the timeline domain where the "
+                + "timeline entities will be put");
+        opts.addOption(JOYConstants.VIEW_ACLS, true, "Users and groups that allowed to "
+                + "view the timeline entities in the given domain");
+        opts.addOption(JOYConstants.MODIFY_ACLS, true, "Users and groups that allowed to "
+                + "modify the timeline entities in the given domain");
+        opts.addOption(JOYConstants.CREATE, false, "Flag to indicate whether to create the "
+                + "domain specified with -domain.");
+        opts.addOption(JOYConstants.HELP, false, "Print usage");
+        opts.addOption(JOYConstants.NODE_LABEL_EXPRESSION, true,
+                "Node label expression to determine the nodes"
+                        + " where all the containers of this application"
+                        + " will be allocated, \"\" means containers"
+                        + " can be allocated anywhere, if you don't specify the option,"
+                        + " default node_label_expression of queue will be used.");
+        return opts;
+    }
+
+    public static void getYarnConfFromJar(String jarPath) {
+        String confPath = jarPath + JOYConstants.CONF_NAME;
+        try {
+            InputStream stream = new FileInputStream(confPath);
+            FileOutputStream out = new FileOutputStream(JOYConstants.CONF_NAME);
+            byte[] data = IOUtils.toByteArray(stream);
+            out.write(data);
+            out.close();
+        } catch (Exception e) {
+            throw new IllegalArgumentException(
+                    "No configuration file specified to be executed by application master to launch process");
+        }
     }
 }
