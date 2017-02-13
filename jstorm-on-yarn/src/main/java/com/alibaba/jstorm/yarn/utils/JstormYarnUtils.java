@@ -1,23 +1,41 @@
 package com.alibaba.jstorm.yarn.utils;
 
+import com.alibaba.jstorm.yarn.JstormOnYarn;
+import com.alibaba.jstorm.yarn.Log4jPropertyHelper;
+import com.alibaba.jstorm.yarn.appmaster.JstormMaster;
 import com.alibaba.jstorm.yarn.constants.JOYConstants;
 import com.alibaba.jstorm.yarn.constants.JstormXmlConfKeys;
+import com.alibaba.jstorm.yarn.context.JstormClientContext;
+import com.alibaba.jstorm.yarn.context.JstormMasterContext;
+import com.alibaba.jstorm.yarn.context.MasterContext;
+import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.registry.client.api.BindFlags;
 import org.apache.hadoop.registry.client.api.RegistryOperations;
 import org.apache.hadoop.registry.client.binding.RegistryUtils;
 import org.apache.hadoop.registry.client.types.ServiceRecord;
+import org.apache.hadoop.util.Shell;
+import org.apache.hadoop.yarn.api.ApplicationConstants;
+import org.apache.hadoop.yarn.api.records.ContainerId;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
+import org.apache.hadoop.yarn.util.ConverterUtils;
 
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
+
+import static com.alibaba.jstorm.yarn.constants.JOYConstants.log4jPath;
+import static com.alibaba.jstorm.yarn.constants.JOYConstants.shellArgsPath;
+import static com.alibaba.jstorm.yarn.constants.JOYConstants.shellCommandPath;
 
 /**
  * Created by fengjian on 15/12/29.
@@ -397,6 +415,304 @@ public class JstormYarnUtils {
         } catch (Exception e) {
             throw new IllegalArgumentException(
                     "No configuration file specified to be executed by application master to launch process");
+        }
+    }
+
+    public static void checkAndSetOptions(CommandLine cliParser, JstormClientContext jstormClientContext) {
+        if (cliParser.hasOption(JOYConstants.DEBUG)) {
+            jstormClientContext.debugFlag = true;
+        }
+        if (cliParser.hasOption(JOYConstants.KEEP_CONTAINERS_ACROSS_APPLICATION_ATTEMPTS)) {
+            jstormClientContext.keepContainers = true;
+        }
+        if (cliParser.hasOption(JOYConstants.LOG_PROPERTIES)) {
+            String log4jPath = cliParser.getOptionValue(JOYConstants.LOG_PROPERTIES);
+            try {
+                Log4jPropertyHelper.updateLog4jConfiguration(JstormOnYarn.class, log4jPath);
+            } catch (Exception e) {
+                LOG.warn("Can not set up custom log4j properties. " + e);
+            }
+        }
+        if (jstormClientContext.amMemory < 0) {
+            throw new IllegalArgumentException("Invalid memory specified for application master, exiting."
+                    + " Specified memory=" + jstormClientContext.amMemory);
+        }
+        if (jstormClientContext.amVCores < 0) {
+            throw new IllegalArgumentException("Invalid virtual cores specified for application master, exiting."
+                    + " Specified virtual cores=" + jstormClientContext.amVCores);
+        }
+        if (!cliParser.hasOption(JOYConstants.JAR)) {
+            throw new IllegalArgumentException("No jar file specified for application master");
+        }
+        if (!jstormClientContext.rmHost.equals(JOYConstants.EMPTY)) {
+            jstormClientContext.conf.set(JOYConstants.RM_ADDRESS_KEY, jstormClientContext.rmHost, JOYConstants.YARN_CONF_MODE);
+        }
+        if (!jstormClientContext.nameNodeHost.equals(JOYConstants.EMPTY)) {
+            jstormClientContext.conf.set(JOYConstants.FS_DEFAULTFS_KEY, jstormClientContext.nameNodeHost);
+        }
+        if (!StringUtils.isBlank(jstormClientContext.hadoopConfDir)) {
+            try {
+                Collection<File> files = FileUtils.listFiles(new File(jstormClientContext.hadoopConfDir), new String[]{JOYConstants.XML}, true);
+                for (File file : files) {
+                    LOG.info("adding hadoop conf file to conf: " + file.getAbsolutePath());
+                    jstormClientContext.conf.addResource(file.getAbsolutePath());
+                }
+            } catch (Exception ex) {
+                LOG.error("failed to list hadoop conf dir: " + jstormClientContext.hadoopConfDir);
+            }
+        }
+        String jarPath = JstormOnYarn.class.getProtectionDomain()
+                .getCodeSource().getLocation().getPath();
+        if (jstormClientContext.confFile == null) {
+            JstormYarnUtils.getYarnConfFromJar(jarPath);
+            jstormClientContext.conf.addResource(JOYConstants.CONF_NAME);
+        } else {
+            Path jstormyarnConfPath = new Path(jstormClientContext.confFile);
+            jstormClientContext.conf.addResource(jstormyarnConfPath);
+        }
+        if (!cliParser.hasOption(JOYConstants.SHELL_SCRIPT)) {
+            String jarShellScriptPath = jarPath + JOYConstants.START_JSTORM_SHELL;
+            try {
+                InputStream stream = new FileInputStream(jarShellScriptPath);
+                FileOutputStream out = new FileOutputStream(JOYConstants.START_JSTORM_SHELL);
+                out.write(IOUtils.toByteArray(stream));
+                out.close();
+                jstormClientContext.shellScriptPath = JOYConstants.START_JSTORM_SHELL;
+            } catch (Exception e) {
+                throw new IllegalArgumentException(
+                        "No shell script specified to be executed by application master to start nimbus and supervisor");
+            }
+        } else if (cliParser.hasOption(JOYConstants.SHELL_COMMAND) && cliParser.hasOption(JOYConstants.SHELL_SCRIPT)) {
+            throw new IllegalArgumentException("Can not specify shell_command option " +
+                    "and shell_script option at the same time");
+        } else if (cliParser.hasOption(JOYConstants.SHELL_COMMAND)) {
+            jstormClientContext.shellCommand = cliParser.getOptionValue(JOYConstants.SHELL_COMMAND);
+        } else {
+            jstormClientContext.shellScriptPath = cliParser.getOptionValue(JOYConstants.SHELL_SCRIPT);
+        }
+        if (cliParser.hasOption(JOYConstants.SHELL_ARGS)) {
+            jstormClientContext.shellArgs = cliParser.getOptionValues(JOYConstants.SHELL_ARGS);
+        }
+        setShellEnv(cliParser, jstormClientContext);
+        jstormClientContext.shellCmdPriority = Integer.parseInt(cliParser.getOptionValue(JOYConstants.SHELL_CMD_PRIORITY, JOYConstants.SHELL_CMD_PRIORITY_DEFAULT_VALUE));
+        //set AM memory default to 1000mb
+        jstormClientContext.containerMemory = Integer.parseInt(cliParser.getOptionValue(JOYConstants.CONTAINER_MEMORY, JOYConstants.DEFAULT_CONTAINER_MEMORY));
+        jstormClientContext.containerVirtualCores = Integer.parseInt(cliParser.getOptionValue(JOYConstants.CONTAINER_VCORES, JOYConstants.DEFAULT_CONTAINER_VCORES));
+        jstormClientContext.numContainers = Integer.parseInt(cliParser.getOptionValue(JOYConstants.NUM_CONTAINERS, JOYConstants.DEFAULT_NUM_CONTAINER));
+
+        if (jstormClientContext.containerMemory < 0 || jstormClientContext.containerVirtualCores < 0 || jstormClientContext.numContainers < 1) {
+            throw new IllegalArgumentException("Invalid no. of containers or container memory/vcores specified,"
+                    + " exiting."
+                    + " Specified containerMemory=" + jstormClientContext.containerMemory
+                    + ", containerVirtualCores=" + jstormClientContext.containerVirtualCores
+                    + ", numContainer=" + jstormClientContext.numContainers);
+        }
+
+        jstormClientContext.nodeLabelExpression = cliParser.getOptionValue(JOYConstants.NODE_LABEL_EXPRESSION, null);
+        jstormClientContext.clientTimeout = Integer.parseInt(cliParser.getOptionValue(JOYConstants.TIMEOUT, JOYConstants.DEFAULT_CLIENT_TIME_OUT));
+
+        jstormClientContext.attemptFailuresValidityInterval =
+                Long.parseLong(cliParser.getOptionValue(
+                        JOYConstants.ATTEMPT_FAILURES_VALIDITY_INTERVAL, JOYConstants.DEFAULT_ATTEMPT_FAILURES_VALIDITY_INTERVAL));
+
+        jstormClientContext.log4jPropFile = cliParser.getOptionValue(JOYConstants.LOG_PROPERTIES, JOYConstants.EMPTY);
+
+        // Get timeline domain options
+        if (cliParser.hasOption(JOYConstants.DOMAIN)) {
+            jstormClientContext.domainId = cliParser.getOptionValue(JOYConstants.DOMAIN);
+            jstormClientContext.toCreateDomain = cliParser.hasOption(JOYConstants.CREATE);
+            if (cliParser.hasOption(JOYConstants.VIEW_ACLS)) {
+                jstormClientContext.viewACLs = cliParser.getOptionValue(JOYConstants.VIEW_ACLS);
+            }
+            if (cliParser.hasOption(JOYConstants.MODIFY_ACLS)) {
+                jstormClientContext.modifyACLs = cliParser.getOptionValue(JOYConstants.MODIFY_ACLS);
+            }
+        }
+    }
+
+    public static void setShellEnv(CommandLine cliParser, MasterContext jstormContext) {
+        if (cliParser.hasOption(JOYConstants.SHELL_ENV)) {
+            String envs[] = cliParser.getOptionValues(JOYConstants.SHELL_ENV);
+            for (String env : envs) {
+                env = env.trim();
+                int index = env.indexOf(JOYConstants.EQUAL);
+                if (index == -1) {
+                    jstormContext.getShellEnv().put(env, JOYConstants.EMPTY);
+                    continue;
+                }
+                String key = env.substring(0, index);
+                String val = JOYConstants.EMPTY;
+                if (index < (env.length() - 1)) {
+                    val = env.substring(index + 1);
+                }
+                jstormContext.getShellEnv().put(key, val);
+            }
+        }
+    }
+
+    private static boolean fileExist(String filePath) {
+        return new File(filePath).exists();
+    }
+
+    /**
+     * Dump out contents of $CWD and the environment to stdout for debugging
+     */
+    private static void dumpOutDebugInfo() {
+
+        LOG.info("Dump debug output");
+        Map<String, String> envs = System.getenv();
+        for (Map.Entry<String, String> env : envs.entrySet()) {
+            LOG.info("System env: key=" + env.getKey() + ", val=" + env.getValue());
+            System.out.println("System env: key=" + env.getKey() + ", val="
+                    + env.getValue());
+        }
+
+        BufferedReader buf = null;
+        try {
+            String lines = Shell.WINDOWS ? Shell.execCommand("cmd", "/c", "dir") :
+                    Shell.execCommand("ls", "-al");
+            buf = new BufferedReader(new StringReader(lines));
+            String line = "";
+            while ((line = buf.readLine()) != null) {
+                LOG.info("System CWD content: " + line);
+                System.out.println("System CWD content: " + line);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            org.apache.hadoop.io.IOUtils.cleanup(LOG, buf);
+        }
+    }
+
+    private static String readContent(String filePath) throws IOException {
+        DataInputStream ds = null;
+        try {
+            ds = new DataInputStream(new FileInputStream(filePath));
+            return ds.readUTF();
+        } finally {
+            org.apache.commons.io.IOUtils.closeQuietly(ds);
+        }
+    }
+
+    public static void checkAndSetMasterOptions(CommandLine cliParser, JstormMasterContext jstormMasterContext, Configuration conf) throws Exception {
+
+        //Check whether customer log4j.properties file exists
+        if (fileExist(log4jPath)) {
+            try {
+                Log4jPropertyHelper.updateLog4jConfiguration(JstormMaster.class,
+                        log4jPath);
+            } catch (Exception e) {
+                LOG.warn("Can not set up custom log4j properties. " + e);
+            }
+        }
+
+        if (cliParser.hasOption(JOYConstants.DEBUG)) {
+            dumpOutDebugInfo();
+        }
+
+        Map<String, String> envs = System.getenv();
+
+        if (!envs.containsKey(ApplicationConstants.Environment.CONTAINER_ID.name())) {
+            if (cliParser.hasOption(JOYConstants.APP_ATTEMPT_ID)) {
+                String appIdStr = cliParser.getOptionValue(JOYConstants.APP_ATTEMPT_ID, JOYConstants.EMPTY);
+                jstormMasterContext.appAttemptID = ConverterUtils.toApplicationAttemptId(appIdStr);
+            } else {
+                throw new IllegalArgumentException(
+                        "Application Attempt Id not set in the environment");
+            }
+        } else {
+            ContainerId containerId = ConverterUtils.toContainerId(envs
+                    .get(ApplicationConstants.Environment.CONTAINER_ID.name()));
+            jstormMasterContext.appAttemptID = containerId.getApplicationAttemptId();
+        }
+
+        if (!envs.containsKey(ApplicationConstants.APP_SUBMIT_TIME_ENV)) {
+            throw new RuntimeException(ApplicationConstants.APP_SUBMIT_TIME_ENV
+                    + " not set in the environment");
+        }
+        if (!envs.containsKey(ApplicationConstants.Environment.NM_HOST.name())) {
+            throw new RuntimeException(ApplicationConstants.Environment.NM_HOST.name()
+                    + " not set in the environment");
+        }
+        if (!envs.containsKey(ApplicationConstants.Environment.NM_HTTP_PORT.name())) {
+            throw new RuntimeException(ApplicationConstants.Environment.NM_HTTP_PORT
+                    + " not set in the environment");
+        }
+        if (!envs.containsKey(ApplicationConstants.Environment.NM_PORT.name())) {
+            throw new RuntimeException(ApplicationConstants.Environment.NM_PORT.name()
+                    + " not set in the environment");
+        }
+
+        LOG.info("Application master for app" + ", appId="
+                + jstormMasterContext.appAttemptID.getApplicationId().getId() + ", clustertimestamp="
+                + jstormMasterContext.appAttemptID.getApplicationId().getClusterTimestamp()
+                + ", attemptId=" + jstormMasterContext.appAttemptID.getAttemptId());
+
+        if (!fileExist(shellCommandPath)
+                && envs.get(JOYConstants.DISTRIBUTEDSHELLSCRIPTLOCATION).isEmpty()) {
+            throw new IllegalArgumentException(
+                    "No shell command or shell script specified to be executed by application master");
+        }
+
+        if (fileExist(shellCommandPath)) {
+            jstormMasterContext.shellCommand = readContent(shellCommandPath);
+        }
+
+        if (fileExist(shellArgsPath)) {
+            jstormMasterContext.shellArgs = readContent(shellArgsPath);
+        }
+
+        JstormYarnUtils.setShellEnv(cliParser, jstormMasterContext);
+
+        if (envs.containsKey(JOYConstants.DISTRIBUTEDSHELLSCRIPTLOCATION)) {
+            jstormMasterContext.scriptPath = envs.get(JOYConstants.DISTRIBUTEDSHELLSCRIPTLOCATION);
+
+            jstormMasterContext.appMasterJarPath = envs.get(JOYConstants.APPMASTERJARSCRIPTLOCATION);
+            if (envs.containsKey(JOYConstants.DISTRIBUTEDSHELLSCRIPTTIMESTAMP)) {
+                jstormMasterContext.shellScriptPathTimestamp = Long.parseLong(envs
+                        .get(JOYConstants.DISTRIBUTEDSHELLSCRIPTTIMESTAMP));
+                jstormMasterContext.jarTimestamp = Long.parseLong(envs
+                        .get(JOYConstants.APPMASTERTIMESTAMP));
+            }
+            if (envs.containsKey(JOYConstants.DISTRIBUTEDSHELLSCRIPTLEN)) {
+                jstormMasterContext.shellScriptPathLen = Long.parseLong(envs
+                        .get(JOYConstants.DISTRIBUTEDSHELLSCRIPTLEN));
+                jstormMasterContext.jarPathLen = Long.parseLong(envs
+                        .get(JOYConstants.APPMASTERLEN));
+            }
+
+            if (!jstormMasterContext.scriptPath.isEmpty()
+                    && (jstormMasterContext.shellScriptPathTimestamp <= 0 || jstormMasterContext.shellScriptPathLen <= 0)) {
+                LOG.error("Illegal values in env for shell script path" + ", path="
+                        + jstormMasterContext.scriptPath + ", len=" + jstormMasterContext.shellScriptPathLen + ", timestamp="
+                        + jstormMasterContext.shellScriptPathTimestamp);
+                throw new IllegalArgumentException(
+                        "Illegal values in env for shell script path");
+            }
+        }
+
+        if (envs.containsKey(JOYConstants.DISTRIBUTEDSHELLTIMELINEDOMAIN)) {
+            jstormMasterContext.domainId = envs.get(JOYConstants.DISTRIBUTEDSHELLTIMELINEDOMAIN);
+        }
+
+        if (envs.containsKey(JOYConstants.BINARYFILEDEPLOYPATH)
+                && !envs.get(JOYConstants.BINARYFILEDEPLOYPATH).equals(JOYConstants.EMPTY)) {
+            conf.set(JOYConstants.INSTANCE_DEPLOY_DIR_KEY, envs.get(JOYConstants.BINARYFILEDEPLOYPATH));
+            jstormMasterContext.deployPath = envs.get(JOYConstants.BINARYFILEDEPLOYPATH);
+        }
+
+        if (envs.containsKey(JOYConstants.INSTANCENAME)
+                && !envs.get(JOYConstants.INSTANCENAME).equals(JOYConstants.EMPTY)) {
+            conf.set(JOYConstants.INSTANCE_NAME_KEY, envs.get(JOYConstants.INSTANCENAME));
+            jstormMasterContext.instanceName = envs.get(JOYConstants.INSTANCENAME);
+        }
+        jstormMasterContext.containerVirtualCores = Integer.parseInt(cliParser.getOptionValue(
+                JOYConstants.CONTAINER_VCORES, JOYConstants.DEFAULT_CONTAINER_VCORES));
+        jstormMasterContext.numTotalContainers = Integer.parseInt(cliParser.getOptionValue(
+                JOYConstants.NUM_CONTAINERS, JOYConstants.DEFAULT_NUM_CONTAINER));
+        if (jstormMasterContext.numTotalContainers == 0) {
+            throw new IllegalArgumentException(
+                    "Cannot run distributed shell with no containers");
         }
     }
 }

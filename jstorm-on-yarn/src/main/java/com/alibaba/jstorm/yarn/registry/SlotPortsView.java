@@ -45,7 +45,7 @@ public class SlotPortsView {
     public List<String> getSetPortUsedBySupervisor(String supervisorHost, int slotCount) throws Exception {
 
         String appPath = RegistryUtils.serviceclassPath(
-                JOYConstants.APP_TYPE, "");
+                JOYConstants.APP_TYPE, JOYConstants.EMPTY);
 
         String path = RegistryUtils.serviceclassPath(
                 JOYConstants.APP_TYPE, instanceName);
@@ -125,7 +125,6 @@ public class SlotPortsView {
                 sr.description = JOYConstants.CONTAINER;
                 sr.set(YarnRegistryAttributes.YARN_PERSISTENCE,
                         PersistencePolicies.CONTAINER);
-
                 registryOperations.bind(containerPath, sr, BindFlags.OVERWRITE);
             }
             return reList;
@@ -147,9 +146,9 @@ public class SlotPortsView {
 
             LOG.info("slotCount:" + slotCount);
             relist = getSetPortUsedBySupervisor(supervisorHost, slotCount);
-            LOG.info("get ports string:" + JstormYarnUtils.join(relist, ",", false));
+            LOG.info("get ports string:" + JstormYarnUtils.join(relist, JOYConstants.COMMA, false));
 
-            return JstormYarnUtils.join(relist, ",", false);
+            return JstormYarnUtils.join(relist, JOYConstants.COMMA, false);
         } catch (Exception e) {
             LOG.error(e);
             throw e;
@@ -160,10 +159,9 @@ public class SlotPortsView {
 
     //todo:  cause we don't support cgroup yet,now vcores is useless
     private int getSlotCount(int memory, int vcores) {
-        int cpuports = (int) Math.ceil(vcores / 1.2);
-        int memoryports = (int) Math.floor(memory / 4096.0);
+        int cpuports = (int) Math.ceil(vcores / JOYConstants.JSTORM_VCORE_WEIGHT);
+        int memoryports = (int) Math.floor(memory / JOYConstants.JSTORM_MEMORY_WEIGHT);
 //        return cpuports > memoryports ? memoryports : cpuports;
-        //  doesn't support cgroup yet
         return memoryports;
     }
 
@@ -177,12 +175,11 @@ public class SlotPortsView {
      */
     private void tryHostLock(String hostPath) throws Exception {
 
-
         //if path has created 60 seconds ago, then delete
         if (registryOperations.exists(hostPath)) {
             try {
                 ServiceRecord host = registryOperations.resolve(hostPath);
-                Long cTime = Long.parseLong(host.get(JOYConstants.CTIME, "0"));
+                Long cTime = Long.parseLong(host.get(JOYConstants.CTIME, JOYConstants.DEFAULT_CTIME));
                 Date now = new Date();
                 if (now.getTime() - cTime > JOYConstants.HOST_LOCK_TIMEOUT || cTime > now.getTime())
                     registryOperations.delete(hostPath, true);
@@ -191,9 +188,9 @@ public class SlotPortsView {
             }
         }
 
-        int failedCount = 45;
+        int failedCount = JOYConstants.RETRY_TIMES;
         while (!registryOperations.mknode(hostPath, true)) {
-            Thread.sleep(1000);
+            Thread.sleep(JOYConstants.SLEEP_INTERVAL);
             failedCount--;
             if (failedCount <= 0)
                 break;

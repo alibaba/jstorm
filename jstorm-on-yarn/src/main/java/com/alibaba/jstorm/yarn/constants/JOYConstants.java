@@ -105,6 +105,8 @@ public class JOYConstants {
     public static final String RM_ADDRESS_KEY = "yarn.resourcemanager.address";
     public static final String INSTANCE_DEPLOY_DIR_KEY = "jstorm.yarn.instance.deploy.dir";
     public static final String INSTANCE_NAME_KEY = "jstorm.yarn.instance.name";
+    public static final String SUPERVISOR_MIN_PORT_KEY = "jstorm.yarn.supervisor.minport";
+    public static final String SUPERVISOR_MAX_PORT_KEY = "jstorm.yarn.supervisor.maxport";
     public static final String HADOOP_REGISTRY_ZK_RETRY_INTERVAL_MS = "hadoop.registry.zk.retry.interval.ms";
     public static final String INSTANCE_DATA_DIR_KEY = "jstorm.yarn.instance.dataDir";
     public static final String JSTORM_YARN_USER = "jstorm.yarn.user";
@@ -119,6 +121,8 @@ public class JOYConstants {
     public static final String windows_command = "cmd /c";
     public static final Integer EXIT_SUCCESS = 0;
     public static final Integer EXIT_FAIL = -1;
+    public static final Integer EXIT_FAIL1 = 1;
+    public static final Integer EXIT_FAIL2 = 2;
 
     /**
      * application master
@@ -126,7 +130,23 @@ public class JOYConstants {
     public static final String NIMBUS_HOST = "nimbus.host";
     public static final String NIMBUS_CONTAINER = "nimbus.containerId";
     public static final String NIMBUS_LOCAL_DIR = "nimbus.localdir";
+    public static final String DEFAULT_LOGVIEW_PORT = "8622";
+    public static final String DEFAULT_NIMBUS_THRIFT_PORT = "8627";
+    public static final Integer DEFAULT_SUPERVISOR_MEMORY = 4110;
+    public static final Integer DEFAULT_SUPERVISOR_VCORES = 1;
     public static final Integer AM_RM_CLIENT_INTERVAL = 1000;
+    public static final String HADOOP_HOME_KEY = "jstorm.yarn.hadoop.home";
+    public static final String JAVA_HOME_KEY = "jstorm.yarn.java.home";
+    public static final String PYTHON_HOME_KEY = "jstorm.yarn.python.home";
+    public static final String INSTANCE_DEPLOY_DEST_KEY = "jstorm.yarn.instance.deploy.destination";
+    public static final String USER = "user";
+    public static final String NODE = "Node";
+    public static final String RESOURCES = "Resources";
+    public static final String STATE = "State";
+    public static final String EXIT_STATE = "Exit Status";
+    public static final String START = "start";
+    public static final String END = "end";
+    public static final Integer JOIN_THREAD_TIMEOUT = 10000;
 
     /**
      * port view
@@ -136,12 +156,17 @@ public class JOYConstants {
     public static final String PORT = "port";
     public static final String AM = "am";
     public static final String CTIME = "cTime";
+    public static final String DEFAULT_CTIME = "0";
     public static final String PORT_LIST = "portList";
     public static final String CONTAINER = "container";
     public static final String PORT_RANGE = "9111-9999";
     public static final String HTTP = "http";
     public static final String HOST_PORT = "host/port";
     public static final String RPC = "rpc";
+    public static final Integer SLEEP_INTERVAL = 1000;
+    public static final Integer RETRY_TIMES = 45;
+    public static final Double JSTORM_MEMORY_WEIGHT = 4096.0;
+    public static final Double JSTORM_VCORE_WEIGHT = 1.2;
 
     /**
      * cli options

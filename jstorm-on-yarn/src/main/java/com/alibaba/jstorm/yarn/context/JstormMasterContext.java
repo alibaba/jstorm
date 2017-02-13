@@ -189,4 +189,9 @@ public class JstormMasterContext implements MasterContext {
     public Set<String> getUpgradingContainerIds() {
         return null;
     }
+
+    @Override
+    public Map<String, String> getShellEnv() {
+        return shellEnv;
+    }
 }

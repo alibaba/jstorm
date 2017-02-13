@@ -24,6 +24,7 @@ import com.alibaba.jstorm.yarn.model.DSEvent;
 import com.alibaba.jstorm.yarn.model.STARTType;
 import com.alibaba.jstorm.yarn.registry.SlotPortsView;
 import com.alibaba.jstorm.yarn.server.AMServer;
+import com.alibaba.jstorm.yarn.utils.JstormYarnUtils;
 import com.alibaba.jstorm.yarn.utils.PortScanner;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
@@ -129,7 +130,7 @@ public class JstormMaster {
             LOG.info("Initializing Jstorm Master!");
             boolean doRun = appMaster.init(args);
             if (!doRun) {
-                System.exit(0);
+                System.exit(JOYConstants.EXIT_SUCCESS);
             }
             appMaster.run();
             // LRS won't finish at all
@@ -137,46 +138,17 @@ public class JstormMaster {
         } catch (Throwable t) {
             LOG.fatal("Error running JstormMaster", t);
             LogManager.shutdown();
-            ExitUtil.terminate(1, t);
+            ExitUtil.terminate(JOYConstants.EXIT_FAIL1, t);
         }
         if (result) {
             LOG.info("Application Master completed successfully. exiting");
-            System.exit(0);
+            System.exit(JOYConstants.EXIT_SUCCESS);
         } else {
             LOG.info("Application Master failed. exiting");
-            System.exit(2);
+            System.exit(JOYConstants.EXIT_FAIL2);
         }
     }
 
-    /**
-     * Dump out contents of $CWD and the environment to stdout for debugging
-     */
-    private void dumpOutDebugInfo() {
-
-        LOG.info("Dump debug output");
-        Map<String, String> envs = System.getenv();
-        for (Map.Entry<String, String> env : envs.entrySet()) {
-            LOG.info("System env: key=" + env.getKey() + ", val=" + env.getValue());
-            System.out.println("System env: key=" + env.getKey() + ", val="
-                    + env.getValue());
-        }
-
-        BufferedReader buf = null;
-        try {
-            String lines = Shell.WINDOWS ? Shell.execCommand("cmd", "/c", "dir") :
-                    Shell.execCommand("ls", "-al");
-            buf = new BufferedReader(new StringReader(lines));
-            String line = "";
-            while ((line = buf.readLine()) != null) {
-                LOG.info("System CWD content: " + line);
-                System.out.println("System CWD content: " + line);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            IOUtils.cleanup(LOG, buf);
-        }
-    }
 
     public JstormMaster() {
         // Set up the configuration
@@ -207,147 +179,18 @@ public class JstormMaster {
                 "No. of containers on which the shell command needs to be executed");
         opts.addOption(JOYConstants.PRIORITY, true, "Application Priority. Default 0");
         opts.addOption(JOYConstants.DEBUG, false, "Dump out debug information");
-
         opts.addOption(JOYConstants.HELP, false, "Print usage");
-        CommandLine cliParser = new GnuParser().parse(opts, args);
         if (args.length == 0) {
             printUsage(opts);
             throw new IllegalArgumentException(
                     "No args specified for application master to initialize");
         }
-        //Check whether customer log4j.properties file exists
-        if (fileExist(log4jPath)) {
-            try {
-                Log4jPropertyHelper.updateLog4jConfiguration(JstormMaster.class,
-                        log4jPath);
-            } catch (Exception e) {
-                LOG.warn("Can not set up custom log4j properties. " + e);
-            }
-        }
 
-        if (cliParser.hasOption(JOYConstants.DEBUG)) {
-            dumpOutDebugInfo();
-        }
-
-        Map<String, String> envs = System.getenv();
-
-        if (!envs.containsKey(Environment.CONTAINER_ID.name())) {
-            if (cliParser.hasOption(JOYConstants.APP_ATTEMPT_ID)) {
-                String appIdStr = cliParser.getOptionValue(JOYConstants.APP_ATTEMPT_ID, JOYConstants.EMPTY);
-                jstormMasterContext.appAttemptID = ConverterUtils.toApplicationAttemptId(appIdStr);
-            } else {
-                throw new IllegalArgumentException(
-                        "Application Attempt Id not set in the environment");
-            }
-        } else {
-            ContainerId containerId = ConverterUtils.toContainerId(envs
-                    .get(Environment.CONTAINER_ID.name()));
-            jstormMasterContext.appAttemptID = containerId.getApplicationAttemptId();
-        }
-
-        if (!envs.containsKey(ApplicationConstants.APP_SUBMIT_TIME_ENV)) {
-            throw new RuntimeException(ApplicationConstants.APP_SUBMIT_TIME_ENV
-                    + " not set in the environment");
-        }
-        if (!envs.containsKey(Environment.NM_HOST.name())) {
-            throw new RuntimeException(Environment.NM_HOST.name()
-                    + " not set in the environment");
-        }
-        if (!envs.containsKey(Environment.NM_HTTP_PORT.name())) {
-            throw new RuntimeException(Environment.NM_HTTP_PORT
-                    + " not set in the environment");
-        }
-        if (!envs.containsKey(Environment.NM_PORT.name())) {
-            throw new RuntimeException(Environment.NM_PORT.name()
-                    + " not set in the environment");
-        }
-
-        LOG.info("Application master for app" + ", appId="
-                + jstormMasterContext.appAttemptID.getApplicationId().getId() + ", clustertimestamp="
-                + jstormMasterContext.appAttemptID.getApplicationId().getClusterTimestamp()
-                + ", attemptId=" + jstormMasterContext.appAttemptID.getAttemptId());
-
-        if (!fileExist(shellCommandPath)
-                && envs.get(JOYConstants.DISTRIBUTEDSHELLSCRIPTLOCATION).isEmpty()) {
-            throw new IllegalArgumentException(
-                    "No shell command or shell script specified to be executed by application master");
-        }
-
-        if (fileExist(shellCommandPath)) {
-            jstormMasterContext.shellCommand = readContent(shellCommandPath);
-        }
-
-        if (fileExist(shellArgsPath)) {
-            jstormMasterContext.shellArgs = readContent(shellArgsPath);
-        }
-
-        if (cliParser.hasOption(JOYConstants.SHELL_ENV)) {
-            String shellEnvs[] = cliParser.getOptionValues(JOYConstants.SHELL_ENV);
-            for (String env : shellEnvs) {
-                env = env.trim();
-                int index = env.indexOf(JOYConstants.EQUAL);
-                if (index == -1) {
-                    jstormMasterContext.shellEnv.put(env, JOYConstants.EMPTY);
-                    continue;
-                }
-                String key = env.substring(0, index);
-                String val = JOYConstants.EMPTY;
-                if (index < (env.length() - 1)) {
-                    val = env.substring(index + 1);
-                }
-                jstormMasterContext.shellEnv.put(key, val);
-            }
-        }
-
-        if (envs.containsKey(JOYConstants.DISTRIBUTEDSHELLSCRIPTLOCATION)) {
-            jstormMasterContext.scriptPath = envs.get(JOYConstants.DISTRIBUTEDSHELLSCRIPTLOCATION);
-
-            jstormMasterContext.appMasterJarPath = envs.get(JOYConstants.APPMASTERJARSCRIPTLOCATION);
-            if (envs.containsKey(JOYConstants.DISTRIBUTEDSHELLSCRIPTTIMESTAMP)) {
-                jstormMasterContext.shellScriptPathTimestamp = Long.parseLong(envs
-                        .get(JOYConstants.DISTRIBUTEDSHELLSCRIPTTIMESTAMP));
-                jstormMasterContext.jarTimestamp = Long.parseLong(envs
-                        .get(JOYConstants.APPMASTERTIMESTAMP));
-            }
-            if (envs.containsKey(JOYConstants.DISTRIBUTEDSHELLSCRIPTLEN)) {
-                jstormMasterContext.shellScriptPathLen = Long.parseLong(envs
-                        .get(JOYConstants.DISTRIBUTEDSHELLSCRIPTLEN));
-                jstormMasterContext.jarPathLen = Long.parseLong(envs
-                        .get(JOYConstants.APPMASTERLEN));
-            }
-
-            if (!jstormMasterContext.scriptPath.isEmpty()
-                    && (jstormMasterContext.shellScriptPathTimestamp <= 0 || jstormMasterContext.shellScriptPathLen <= 0)) {
-                LOG.error("Illegal values in env for shell script path" + ", path="
-                        + jstormMasterContext.scriptPath + ", len=" + jstormMasterContext.shellScriptPathLen + ", timestamp="
-                        + jstormMasterContext.shellScriptPathTimestamp);
-                throw new IllegalArgumentException(
-                        "Illegal values in env for shell script path");
-            }
-        }
-
-        if (envs.containsKey(JOYConstants.DISTRIBUTEDSHELLTIMELINEDOMAIN)) {
-            jstormMasterContext.domainId = envs.get(JOYConstants.DISTRIBUTEDSHELLTIMELINEDOMAIN);
-        }
-
-        if (envs.containsKey(JOYConstants.BINARYFILEDEPLOYPATH)
-                && !envs.get(JOYConstants.BINARYFILEDEPLOYPATH).equals(JOYConstants.EMPTY)) {
-            conf.set(JOYConstants.INSTANCE_DEPLOY_DIR_KEY, envs.get(JOYConstants.BINARYFILEDEPLOYPATH));
-            jstormMasterContext.deployPath = envs.get(JOYConstants.BINARYFILEDEPLOYPATH);
-        }
-
-        if (envs.containsKey(JOYConstants.INSTANCENAME)
-                && !envs.get(JOYConstants.INSTANCENAME).equals(JOYConstants.EMPTY)) {
-            conf.set(JOYConstants.INSTANCE_NAME_KEY, envs.get(JOYConstants.INSTANCENAME));
-            jstormMasterContext.instanceName = envs.get(JOYConstants.INSTANCENAME);
-        }
-        jstormMasterContext.containerVirtualCores = Integer.parseInt(cliParser.getOptionValue(
-                JOYConstants.CONTAINER_VCORES, JOYConstants.DEFAULT_CONTAINER_VCORES));
-        jstormMasterContext.numTotalContainers = Integer.parseInt(cliParser.getOptionValue(
-                JOYConstants.NUM_CONTAINERS, JOYConstants.DEFAULT_NUM_CONTAINER));
-        if (jstormMasterContext.numTotalContainers == 0) {
-            throw new IllegalArgumentException(
-                    "Cannot run distributed shell with no containers");
+        try {
+            CommandLine cliParser = new GnuParser().parse(opts, args);
+            JstormYarnUtils.checkAndSetMasterOptions(cliParser, jstormMasterContext, this.conf);
+        } catch (Exception e) {
+            LOG.error(e);
         }
         return true;
     }
@@ -378,7 +221,6 @@ public class JstormMaster {
     @SuppressWarnings({"unchecked"})
     public void run() throws Exception {
         LOG.info("Starting JstormMaster");
-
         Credentials credentials =
                 UserGroupInformation.getCurrentUser().getCredentials();
         DataOutputBuffer dob = new DataOutputBuffer();
@@ -636,11 +478,9 @@ public class JstormMaster {
         }
 
         // Join all launched threads
-        // needed for when we time out
-        // and we need to release containers
         for (Thread launchThread : launchThreads) {
             try {
-                launchThread.join(10000);
+                launchThread.join(JOYConstants.JOIN_THREAD_TIMEOUT);
             } catch (InterruptedException e) {
                 LOG.info("Exception thrown in thread join: " + e.getMessage());
                 e.printStackTrace();
@@ -717,11 +557,9 @@ public class JstormMaster {
 
                 // increment counters for completed/failed containers
                 int exitStatus = containerStatus.getExitStatus();
-                if (0 != exitStatus) {
+                if (JOYConstants.EXIT_SUCCESS != exitStatus) {
                     // container failed
                     if (ContainerExitStatus.ABORTED != exitStatus) {
-                        // shell script failed
-                        // counts as completed
                         jstormMasterContext.numCompletedContainers.incrementAndGet();
                         jstormMasterContext.numFailedContainers.incrementAndGet();
                     } else {
@@ -729,8 +567,6 @@ public class JstormMaster {
                         // we should re-try as the container was lost for some reason
                         jstormMasterContext.numAllocatedContainers.decrementAndGet();
                         jstormMasterContext.numRequestedContainers.decrementAndGet();
-                        // we do not need to release the container as it would be done
-                        // by the RM
                     }
 
                     if (nimbusMap.containsKey(containerId)) {
@@ -841,13 +677,12 @@ public class JstormMaster {
                     // so when nimbus container allocated we register nimbus's host, directory and containerId,  pull previous nimbus
                     // data from previous nimbus host if necessary.
                     ServiceRecord serviceRecord = setupServiceRecord();
-                    jstormMasterContext.previousNimbusHost = "";
+                    jstormMasterContext.previousNimbusHost = JOYConstants.EMPTY;
                     try {
                         ServiceRecord sr = registryOperations.resolve(path);
                         jstormMasterContext.previousNimbusHost = sr.get(JOYConstants.NIMBUS_HOST, JOYConstants.EMPTY);
 
-                        LOG.info("previousNimbusHost is :" + jstormMasterContext.previousNimbusHost);
-                        LOG.info("nimbusHost is :" + jstormMasterContext.nimbusHost);
+                        LOG.info("previousNimbusHost is :" + jstormMasterContext.previousNimbusHost + "; nimbusHost is :" + jstormMasterContext.nimbusHost);
                         //  nimbus location register, then we can restart nimbus with no work loss
                         serviceRecord.set(JOYConstants.NIMBUS_HOST, jstormMasterContext.nimbusHost);
                         serviceRecord.set(JOYConstants.NIMBUS_LOCAL_DIR, jstormMasterContext.nimbusDataDirPrefix);
@@ -1017,10 +852,7 @@ public class JstormMaster {
             // Set the local resources
             Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
 
-            // The container for the eventual shell commands needs its own local
-            // resources too.
-            // In this scenario, if a shell script is specified, we need to have it
-            // copied and made available to the container.
+            // The container for the eventual shell commands needs its own local resources too.
             if (!jstormMasterContext.scriptPath.isEmpty()) {
                 Path renamedScriptPath;
                 if (Shell.WINDOWS) {
@@ -1028,7 +860,6 @@ public class JstormMaster {
                 } else {
                     renamedScriptPath = new Path(jstormMasterContext.scriptPath + ".sh");
                 }
-
                 try {
                     // rename the script file based on the underlying OS syntax.
                     renameScriptFile(renamedScriptPath);
@@ -1036,8 +867,7 @@ public class JstormMaster {
                     LOG.error(
                             "Not able to add suffix (.bat/.sh) to the shell script filename",
                             e);
-                    // We know we cannot continue launching the container
-                    // so we should release it.
+                    //  we cannot continue launching the container. so  release it.
                     jstormMasterContext.numCompletedContainers.incrementAndGet();
                     jstormMasterContext.numFailedContainers.incrementAndGet();
                     return;
@@ -1069,7 +899,7 @@ public class JstormMaster {
                     FileStatus scriptStatus = fileSystem.getFileStatus(renamedScriptPath);
                     jstormMasterContext.shellScriptPathLen = scriptStatus.getLen();
                     jstormMasterContext.shellScriptPathTimestamp = scriptStatus.getModificationTime();
-                    LOG.info("jarPathLen:" + jstormMasterContext.jarPathLen + " jarTimepstamp:" + jstormMasterContext.jarTimestamp);
+                    LOG.info("jar len:" + jstormMasterContext.jarPathLen + " jar timespan:" + jstormMasterContext.jarTimestamp);
 
                 } catch (IOException e) {
                     LOG.error("get hdfs filestatus"
@@ -1084,7 +914,7 @@ public class JstormMaster {
                 LocalResource jarRsrc = LocalResource.newInstance(jarUrl,
                         LocalResourceType.FILE, LocalResourceVisibility.APPLICATION,
                         jstormMasterContext.jarPathLen, jstormMasterContext.jarTimestamp);
-                localResources.put("AppMaster.jar", jarRsrc);
+                localResources.put(JOYConstants.appMasterJarPath, jarRsrc);
 
                 LOG.info(shellRsrc.getResource().getFile());
                 LOG.info(jarRsrc.getResource().getFile());
@@ -1103,11 +933,11 @@ public class JstormMaster {
                         : JOYConstants.ExecShellStringPath);
             }
 
-            String startTypeStr = "supervisor";
+            String startTypeStr = JOYConstants.SUPERVISOR;
             // start type specified to be excute by shell script to start jstorm process
             if (startType == STARTType.NIMBUS) {
-                startTypeStr = "nimbus";
-                vargs.add("nimbus");
+                startTypeStr = JOYConstants.NIMBUS;
+                vargs.add(JOYConstants.NIMBUS);
                 //put containerId in nimbus containers queue
                 try {
                     jstormMasterContext.nimbusContainers.put(this.container);
@@ -1115,7 +945,7 @@ public class JstormMaster {
                     e.printStackTrace();
                 }
             } else {
-                vargs.add("supervisor");
+                vargs.add(JOYConstants.SUPERVISOR);
                 try {
                     jstormMasterContext.supervisorContainers.put(this.container);
                 } catch (InterruptedException e) {
@@ -1124,17 +954,18 @@ public class JstormMaster {
             }
 
             // pass instanceName for multiple instance deploy
-            jstormMasterContext.nimbusDataDirPrefix = conf.get("jstorm.yarn.instance.dataDir");
-            String localDir = jstormMasterContext.nimbusDataDirPrefix + container.getId().toString() + "/" + jstormMasterContext.instanceName;
+            jstormMasterContext.nimbusDataDirPrefix = conf.get(JOYConstants.INSTANCE_DATA_DIR_KEY);
+            String localDir = jstormMasterContext.nimbusDataDirPrefix + container.getId().toString() + JOYConstants.BACKLASH
+                    + jstormMasterContext.instanceName;
             vargs.add(localDir);
 
             vargs.add(jstormMasterContext.deployPath);
 
             //get superviorhost's free port
             SlotPortsView slotPortsView = new SlotPortsView(jstormMasterContext.instanceName, container.getId(), registryOperations);
-            slotPortsView.setMinPort(conf.getInt("jstorm.yarn.supervisor.minport", JOYConstants.PORT_RANGE_MIN));
-            slotPortsView.setMaxPort(conf.getInt("jstorm.yarn.supervisor.maxport", JOYConstants.PORT_RANGE_MAX));
-            String slotPortsStr = "";
+            slotPortsView.setMinPort(conf.getInt(JOYConstants.SUPERVISOR_MIN_PORT_KEY, JOYConstants.PORT_RANGE_MIN));
+            slotPortsView.setMaxPort(conf.getInt(JOYConstants.SUPERVISOR_MAX_PORT_KEY, JOYConstants.PORT_RANGE_MAX));
+            String slotPortsStr = JOYConstants.EMPTY;
             try {
                 slotPortsStr = slotPortsView.getSupervisorSlotPorts(container.getResource().getMemory(),
                         container.getResource().getVirtualCores(), container.getNodeId().getHost());
@@ -1144,25 +975,24 @@ public class JstormMaster {
                 LOG.error("failed get slot ports , container " + container.toString() + "launch fail", ex);
                 return;
             }
-            String logviewPort = "8622";
-            String nimbusThriftPort = "8627";
+            String logviewPort = JOYConstants.DEFAULT_LOGVIEW_PORT;
+            String nimbusThriftPort = JOYConstants.DEFAULT_NIMBUS_THRIFT_PORT;
             try {
-                logviewPort = slotPortsView.getSupervisorSlotPorts(4110,
-                        1, container.getNodeId().getHost());
-                nimbusThriftPort = slotPortsView.getSupervisorSlotPorts(4110,
-                        1, container.getNodeId().getHost());
-//                supervisorLogviewPort = slotPortsView.getSetPortUsedBySupervisor(container.getNodeId().getHost(), 1).get(0);
+                logviewPort = slotPortsView.getSupervisorSlotPorts(JOYConstants.DEFAULT_SUPERVISOR_MEMORY,
+                        JOYConstants.DEFAULT_SUPERVISOR_VCORES, container.getNodeId().getHost());
+                nimbusThriftPort = slotPortsView.getSupervisorSlotPorts(JOYConstants.DEFAULT_SUPERVISOR_MEMORY,
+                        JOYConstants.DEFAULT_SUPERVISOR_VCORES, container.getNodeId().getHost());
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            String hadoopHome = conf.get("jstorm.yarn.hadoop.home");
-            String javaHome = conf.get("jstorm.yarn.java.home");
-            String pythonHome = conf.get("jstorm.yarn.python.home");
+            String hadoopHome = conf.get(JOYConstants.HADOOP_HOME_KEY);
+            String javaHome = conf.get(JOYConstants.JAVA_HOME_KEY);
+            String pythonHome = conf.get(JOYConstants.PYTHON_HOME_KEY);
             vargs.add(hadoopHome);
             vargs.add(javaHome);//$6
             vargs.add(pythonHome);//$7
 
-            String deployDst = conf.get("jstorm.yarn.instance.deploy.destination");
+            String deployDst = conf.get(JOYConstants.INSTANCE_DEPLOY_DEST_KEY);
             if (deployDst == null) {
                 deployDst = jstormMasterContext.nimbusDataDirPrefix;
             }
@@ -1186,7 +1016,7 @@ public class JstormMaster {
             Map<String, String> envs = System.getenv();
             String exectorCommand = ExecutorLoader.loadCommand(jstormMasterContext.instanceName, jstormMasterContext.shellCommand, startTypeStr,
                     this.container.getId().toString(), localDir, jstormMasterContext.deployPath, hadoopHome, javaHome, pythonHome, dstPath, slotPortsStr, jstormMasterContext.shellArgs,
-                    envs.get("CLASSPATH"), JOYConstants.ExecShellStringPath, jstormMasterContext.appAttemptID.getApplicationId().toString(), logviewPort, nimbusThriftPort);
+                    envs.get(JOYConstants.CLASS_PATH), JOYConstants.ExecShellStringPath, jstormMasterContext.appAttemptID.getApplicationId().toString(), logviewPort, nimbusThriftPort);
 
             exectorCommand = exectorCommand + " 1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout"
                     + " 2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr";
@@ -1251,19 +1081,6 @@ public class JstormMaster {
         return request;
     }
 
-    private boolean fileExist(String filePath) {
-        return new File(filePath).exists();
-    }
-
-    private String readContent(String filePath) throws IOException {
-        DataInputStream ds = null;
-        try {
-            ds = new DataInputStream(new FileInputStream(filePath));
-            return ds.readUTF();
-        } finally {
-            org.apache.commons.io.IOUtils.closeQuietly(ds);
-        }
-    }
 
     private static void publishContainerStartEvent(
             final TimelineClient timelineClient, Container container, String domainId,
@@ -1272,12 +1089,12 @@ public class JstormMaster {
         entity.setEntityId(container.getId().toString());
         entity.setEntityType(DSEntity.DS_CONTAINER.toString());
         entity.setDomainId(domainId);
-        entity.addPrimaryFilter("user", ugi.getShortUserName());
+        entity.addPrimaryFilter(JOYConstants.USER, ugi.getShortUserName());
         TimelineEvent event = new TimelineEvent();
         event.setTimestamp(System.currentTimeMillis());
         event.setEventType(DSEvent.DS_CONTAINER_START.toString());
-        event.addEventInfo("Node", container.getNodeId().toString());
-        event.addEventInfo("Resources", container.getResource().toString());
+        event.addEventInfo(JOYConstants.NODE, container.getNodeId().toString());
+        event.addEventInfo(JOYConstants.RESOURCES, container.getResource().toString());
         entity.addEvent(event);
 
         try {
@@ -1301,12 +1118,12 @@ public class JstormMaster {
         entity.setEntityId(container.getContainerId().toString());
         entity.setEntityType(DSEntity.DS_CONTAINER.toString());
         entity.setDomainId(domainId);
-        entity.addPrimaryFilter("user", ugi.getShortUserName());
+        entity.addPrimaryFilter(JOYConstants.USER, ugi.getShortUserName());
         TimelineEvent event = new TimelineEvent();
         event.setTimestamp(System.currentTimeMillis());
         event.setEventType(DSEvent.DS_CONTAINER_END.toString());
-        event.addEventInfo("State", container.getState().name());
-        event.addEventInfo("Exit Status", container.getExitStatus());
+        event.addEventInfo(JOYConstants.STATE, container.getState().name());
+        event.addEventInfo(JOYConstants.EXIT_STATE, container.getExitStatus());
         entity.addEvent(event);
         try {
             timelineClient.putEntities(entity);
@@ -1326,7 +1143,7 @@ public class JstormMaster {
         entity.setEntityId(appAttemptId);
         entity.setEntityType(DSEntity.DS_APP_ATTEMPT.toString());
         entity.setDomainId(domainId);
-        entity.addPrimaryFilter("user", ugi.getShortUserName());
+        entity.addPrimaryFilter(JOYConstants.USER, ugi.getShortUserName());
         TimelineEvent event = new TimelineEvent();
         event.setEventType(appEvent.toString());
         event.setTimestamp(System.currentTimeMillis());
@@ -1335,12 +1152,12 @@ public class JstormMaster {
             timelineClient.putEntities(entity);
         } catch (YarnException e) {
             LOG.error("App Attempt "
-                    + (appEvent.equals(DSEvent.DS_APP_ATTEMPT_START) ? "start" : "end")
+                    + (appEvent.equals(DSEvent.DS_APP_ATTEMPT_START) ? JOYConstants.START : JOYConstants.END)
                     + " event could not be published for "
                     + appAttemptId.toString(), e);
         } catch (IOException e) {
             LOG.error("App Attempt "
-                    + (appEvent.equals(DSEvent.DS_APP_ATTEMPT_START) ? "start" : "end")
+                    + (appEvent.equals(DSEvent.DS_APP_ATTEMPT_START) ? JOYConstants.START : JOYConstants.END)
                     + " event could not be published for "
                     + appAttemptId.toString(), e);
         }
