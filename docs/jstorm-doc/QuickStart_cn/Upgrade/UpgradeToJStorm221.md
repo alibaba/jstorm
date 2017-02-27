@@ -17,7 +17,7 @@ layout: plain_cn
 ## 集群重新安装
 参见集群升级指南，几点需要注意的
 
-###　配置自动同步
+### 配置自动同步
 2.2.1添加了一个新功能：配置自动同步，这意味着，supervisor会自动从nimbus同步最新的storm.yaml。所以，如果你想要同步集群的配置，
 只需要到nimbus master上修改一下storm.yaml，保存，配置就会被同步到supervisor。但是如果你想要每个supervisor都有一些不同的配置，
 那需要加一个配置：`jstorm.yarn.conf.blacklist`。如：

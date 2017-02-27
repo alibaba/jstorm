@@ -1,7 +1,7 @@
 ---
 title:  "JStorm Metrics"
 # Top-level navigation
-top-nav-group: Maintenance
+top-nav-group: Maintenance_cn
 top-nav-pos: 4
 top-nav-title: JStorm Metrics
 ---
@@ -11,24 +11,67 @@ top-nav-title: JStorm Metrics
 
 
 # JStorm Metrics与Storm Metrics的比较
-| --- | Storm/stats | Storm/built-in metrics | JStorm metrics
-| --------   | :----- | :-------  | :--------  |
-|窗口 | 10m, 3h, 1d, all-time | 1m | 1m, 10m, 2h, 1d
-|采样率 | 5%, 所有metrics都会采样 | 同stats | 10%, counter不采样（精确计算）, meters/histograms采样
-|metric数据流 | executors/tasks发送至ZK | executor发送至metrics consumer 至外部系统 | worker -> topology master -> 
-nimbus -> 外部系统
-|metrics数据 | k-v键值对 | stream/executor metrics, topology metrics在调用时计算 | 预聚合的 
-metrics of stream/task/component/topology/cluster/worker/netty/nimbus metrics
-|metrics值 | 采样计算的counter, meters/histogram平均值 | 同stats | counter精确值， 
- meter值：m1/m5/m15/mean, histogram值：p50/p75/p90/p95/p98/p99/p999/min/max/mean
-|更新策略 | 按照时间分桶，如果窗口大的话更新间隔很长 | 每分钟 | 所有窗口每分钟 
-windows
-|zk依赖 | 数据写入zk | N/A | N/A
+
+<table>
+    <thead>
+        <tr>
+            <th>---</th>
+            <th>Storm/stats</th>
+            <th>Storm/built-in metrics</th>
+            <th>JStorm metrics</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>窗口</td>
+            <td>10m, 3h, 1d, all-time</td>
+            <td>1m</td>
+            <td>1m, 10m, 2h, 1d</td>
+        </tr>
+        <tr>
+            <td>采样率</td>
+            <td>5%, 所有metrics都会采样</td>
+            <td>同stats</td>
+            <td>10%, counter不采样（精确计算）, meters/histograms采样</td>
+        </tr>
+        <tr>
+            <td>metric数据流</td>
+            <td>executors/tasks发送至ZK</td>
+            <td>executor发送至metrics consumer 至外部系统</td>
+            <td>worker -> topology master -> nimbus -> 外部系统</td>
+        </tr>
+        <tr>
+            <td>metrics数据</td>
+            <td>k-v键值对</td>
+            <td>stream/executor metrics, topology metrics在调用时计算</td>
+            <td>预聚合的 metrics of stream/task/component/topology/cluster/worker/netty/nimbus metrics</td>
+        </tr>
+        <tr>
+            <td>metrics值</td>
+            <td>采样计算的counter, meters/histogram平均值</td>
+            <td>同stats</td>
+            <td>counter精确值，meter值：m1/m5/m15/mean, histogram值：p50/p75/p90/p95/p98/p99/p999/min/max/mean</td>
+        </tr>
+        <tr>
+            <td>更新策略</td>
+            <td>按照时间分桶，如果窗口大的话更新间隔很长</td>
+            <td>每分钟</td>
+            <td>所有窗口每分钟windows</td>
+        </tr>
+        <tr>
+            <td>zk依赖</td>
+            <td>数据写入zk</td>
+            <td>N/A</td>
+            <td>N/A</td>
+        </tr>
+    </tbody>
+</table>
 
 
 # JStorm Metrics 设计
 
 ## 设计目标
+
 1. 能看到从流级别到集群级别的所有metrics，至少1分钟更新一次
 2. 能看到metrics的历史值(曲线)
 3. 支持常见metric类型以及更准确的metric统计
@@ -39,6 +82,7 @@ windows
 8. 通过metrics简化问题排查
 
 ## 基础流程
+
 ```seq
 worker->worker: 创建JStormMetricsReporter
 worker->worker: JStormMetrics.registerMetrics注册至本地registry
@@ -55,7 +99,8 @@ nimbus->external systems: 发送metrics数据至外部MetricsUploader插件
 ```
 
 
-## 基础概念:
+## 基础概念
+
 ### metric类型
 目前支持的metric类型
 `counter/gauge/meter/histogram`
@@ -101,6 +146,7 @@ metric meta其实就是metric id到metric name的一个映射，而metric data�
 metric meta的机制的确引入了一些额外的复杂性，不过它能够节省大量空间。
 
 ## JStorm metrics中的重要模块（类）
+
 ### JStormMetrics
 一个静态类，提供了`registerMetrics` 方法, 与codahale metrics类似, 所有的metrics都会存在于worker进程中的一个单例registry中。
 这个类也负责自动的向上聚合注册。
@@ -129,6 +175,7 @@ metric meta的机制的确引入了一些额外的复杂性，不过它能够节
 
 
 ## 其他
+
 ### 用户自定义metrics
 我们提供了`MetricClient`来使用用户自定义metrics。
 类似于`JStormMetrics.registerMetrics...` 方法, 当用户调用了`metricClient.registerGauge/Counter/Histogram`之后，所有的事情都
@@ -150,10 +197,9 @@ topology/task事件会被发送至`MetricUploader`，因此用户可以通过这
 我们通过`MetricUploader`接口来实现写metrics来实现监控系统。有使用HBase和aliyun OTS的两种实现。
 
 
-## 使用JStorm metrics
- 
+## 使用JStorm metrics 
 
-## Metric配置
+### Metric配置
 以下为metric配置项以及对应的说明。
 
 #### topology.enable.metrics
@@ -216,6 +262,7 @@ metric uploader在实现时还需要考虑的一个问题是nimbus的GC。对于
 JStorm提供了`MetricClient`，因此用户可以很容易地使用自定义metrics。具体使用示例如下：
 
 1. 定义metric client对象
+
 ```
 private MetricClient metricClient;
 ```
@@ -248,3 +295,126 @@ myHistogram = metricClient.registerHistogram("myHistogram");
 ## TODO
 1. 简化发往nimbus的metrics数据
 
+
+## 附录一: Metrics含义
+
+### Topology Metrics
+
+#### MemoryUsed
+cluster/topology/worker使用到的物理内存
+
+#### HeapMemory
+cluster/topology/worker JVM使用到的堆内存
+
+#### CpuUsedRatio 
+cluster/topology/worker cpu利用率，62.000 表示使用0.62个cpu，200.00表示使用2个cpu
+
+#### NettyCliSendSpeed
+cluster/topology/worker当前发送流量,单位字节/每秒
+
+#### NettySrvRecvSpeed
+cluster/topology/worker当前接收流量,单位字节/每秒
+
+#### FullGc
+cluster/topology/worker当前1分钟 full gc 次数
+
+#### RecvTps
+cluster/topology/component/task/stream 接收到的tuple的tps。
+
+#### SendTps
+cluster/topology/component/task/stream 发送tuple的tps。
+
+#### Emitted
+cluster/topology/component/task/stream 当前1分钟发送的消息数，包括业务消息和acker消息。
+
+#### Acked
+cluster/topology/component/task/stream 当前1分钟被ack的消息数。注意这个和Emitted的区别：
+如果打开了acker机制， emitted的消息里面含有acker消息， 经常emitted 消息数量是acker消息数量的2倍。
+
+#### Failed
+cluster/topology/component/task/stream 当前1分钟 被ack失败的消息数（可能是没有完全处理，也可能是超时）。
+
+
+### Component 级别
+
+#### EmitTime
+component/task/stream, 这是spout/bolt将消息发布到disruptor队列中的时间，单位为微秒，
+JStorm从2.1.0开始所有时间相关的单位均为微秒。
+
+#### DeserializeTime
+component/task/stream, TaskReceiver中对一个tuple做反序列化的时间，单位为微秒。
+
+#### SerializeTime
+component/task/stream, TaskTransfer中对一个tuple做序列化的时间，单位为微秒。
+
+#### ExecutorTime
+component/task/stream, 只在spout中存在，nextTuple所花费的时间，单位为微秒。
+
+#### ProcessLatency
+component/task/stream, 这个是bolt execute消耗的时间，单位为微秒，
+具体来说，就是从processTuple时，tuple被放进pending map时会给一个时间，
+到调用ack的时候从pending map中取出来，用当前时间减去放入的时间，即为ProcessLatency。
+
+如果是spout，则为从消息最初从spout发出，一直到最后收到acker的ack消息的完整时间。
+在spout中，由于ProcessLatency意味着一个tuple走完了所有的bolt最后被ack，
+因此通常会比较大（一般会比TupleLifeCycle还要大）。
+
+#### TupleLifeCycle
+component/task/stream, 这个是一个tuple或者一个batch从上一级component中被emit出来，单位为微秒，
+到当前component接收到这个tuple或者batch的时间，这段时间包括了上游序列化时间、网络发送和下游反序列化时间的总和
+
+
+### Task 级别
+
+#### DeserializeQueue
+反序列化队列堆积情况。补充说明，一个task 有4个队列， 反序列化队列，执行队列，控制消息队列，序列化队列。
+
+#### SerializeQueue
+序列化队列堆积情况。补充说明，一个task 有4个队列， 反序列化队列，执行队列，控制消息队列，序列化队列。
+
+#### ExecutorQueue
+执行队列堆积情况。补充说明，一个task 有4个队列， 反序列化队列，执行队列，控制消息队列，序列化队列。
+
+#### CtrlQueue
+控制执行队列的堆积情况。补充说明，一个task 有4个队列， 反序列化队列，执行队列，控制消息队列，序列化队列。
+
+#### PendingNum
+只对spout有效，表示 spout 中已经发送了但还没有ack的tuple数量
+
+#### BatchInterval
+性能调优使用， 表示2次batch打满时，间隔微秒
+
+
+### Worker 级别
+
+#### GCCount
+当前1分钟gc的次数
+
+#### GCTime
+当前1分钟gc所花费的时间之和，单位是微妙
+
+#### NettyCliSendBatchSize
+当前1分钟worker 发送netty包的平均大小(Bytes)
+
+#### NettySrvTransmitTime
+当前1分钟，worker 解析netty包的耗时，单位微秒。
+
+#### RecvCtrlQueue
+worker级别的总接受控制队列堆积情况
+
+#### SendCtrlQueue
+worker级别的总发送控制队列堆积情况
+
+### supervisor 级别
+
+#### DiskUsage
+当前jstorm账户所在文件磁盘空间的利用率；
+
+#### MemoryUsage
+当前机器的内存利用率
+
+#### CpuUsedRatio
+当前机器的cpu利用率
+
+#### NettyCliSendSpeed/NettySrvRecvSpeed
+当前机器网卡每秒接收和发送字节数

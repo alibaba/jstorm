@@ -150,10 +150,12 @@
     <module>jstorm-core</module>
     <module>example/sequence-split-merge</module>
     <module>jstorm-ui</module>
-    <module>jstorm-utility/jstorm-rocket-mq</module>
+    <!--<module>jstorm-utility/jstorm-rocket-mq</module>-->
     <module>jstorm-utility/jstorm-kafka</module>
     <module>jstorm-utility/ons</module>
     <module>jstorm-utility/jstorm-flux</module>
+    <module>jstorm-utility/jstorm-elasticsearch</module>
+    <module>jstorm-on-yarn</module>
   </modules>
 
   <profiles>

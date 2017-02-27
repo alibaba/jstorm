@@ -1,0 +1,491 @@
+#!/usr/bin/env python
+
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements. See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership. The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+
+import os
+
+from thrift import Thrift
+from thrift.transport import TSocket
+from thrift.transport import TTransport
+from thrift.protocol import TBinaryProtocol
+
+import xml.etree.ElementTree as ET
+import json
+
+HOME_DIR = "/".join(os.path.realpath( __file__ ).split("/")[:-2])
+print HOME_DIR
+
+import sys
+sys.path.append(HOME_DIR+'/gen-py')
+
+from JstormAM.ttypes import *
+from JstormAM import JstormAM
+
+tree = ET.parse(HOME_DIR+"/conf/jstorm-yarn.xml")
+root = tree.getroot()
+instanceName = root[0][1].text
+zkPath = '/registry/users/jstormonyarn/services/'+instanceName
+
+host = "localhost"
+port = -1
+
+from kazoo.client import KazooClient
+
+sys.exit
+try:
+    zk = KazooClient(hosts='10.103.127.146:2181')
+    zk.start()
+    data, stat = zk.get(zkPath)
+    print data
+
+    instance = json.loads(data)
+    host =  instance['external'][0]['addresses'][0]['host'].split('/')[1]
+    port =  int(instance['external'][0]['addresses'][0]['port'])
+
+    zk.stop()
+
+except Exception as e:
+    print "failed to read Rpc address "
+    print str(e)
+    print "perhaps you need submit Jstorm on Yarn first or wait seconds until it running "
+
+# local mode
+
+
+
+def print_classpath():
+    """Syntax: [jstorm classpath]
+
+    Prints the classpath used by the jstorm client when running commands.
+    """
+    print get_classpath([])
+
+def print_commands():
+    """Print all client commands and link to documentation"""
+    print "JstormYarn command [command parameter]"
+    print "Commands:\n\t",  "\n\t".join(sorted(COMMANDS.keys()))
+
+def print_usage(command=None):
+    """Print one help message or list of available commands"""
+    if command != None:
+        if COMMANDS.has_key(command):
+            print (COMMANDS[command].__doc__ or
+                  "No documentation provided for <%s>" % command)
+        else:
+           print "<%s> is not a valid command" % command
+    else:
+        print_commands()
+
+def unknown_command(*args):
+    print "Unknown command: [jstorm %s]" % ' '.join(sys.argv[1:])
+
+    print_usage()
+
+def list():
+    """Syntax: [JstormYarn list ]
+    """
+
+    try:
+        # Make socket
+        transport = TSocket.TSocket(host, port)
+
+        # Buffering is critical. Raw sockets are very slow
+        transport = TTransport.TBufferedTransport(transport)
+
+        # Wrap in a protocol
+        protocol = TBinaryProtocol.TBinaryProtocol(transport)
+
+        # Create a client to use the protocol encoder
+        client = JstormAM.Client(protocol)
+
+        # Connect!
+        transport.open()
+
+
+        try:
+            quotient = client.info()
+            print quotient
+        except Exception as e:
+            print(('InvalidOperation: %r' % e))
+
+
+
+        # Close!
+        transport.close()
+        return quotient
+
+    except Thrift.TException as tx:
+        print(('%s' % (tx.message)))
+        return ""
+
+
+def startNimbus(count,memory,vcores):
+    """Syntax: [JstormYarn startNimbus [ count ] [ memory ] [ vcores ]]
+    """
+
+    try:
+        # Make socket
+        transport = TSocket.TSocket(host, port)
+
+        # Buffering is critical. Raw sockets are very slow
+        transport = TTransport.TBufferedTransport(transport)
+
+        # Wrap in a protocol
+        protocol = TBinaryProtocol.TBinaryProtocol(transport)
+
+        # Create a client to use the protocol encoder
+        client = JstormAM.Client(protocol)
+
+        # Connect!
+        transport.open()
+
+
+        try:
+            quotient = client.startNimbus(int(count),int(memory),int(vcores))
+            print "send startNimbus request successful:","count is",count,"memory is", memory,"vcores is ",vcores
+        except Exception as e:
+            print(('InvalidOperation: %r' % e))
+
+
+
+        # Close!
+        transport.close()
+
+    except Thrift.TException as tx:
+        print(('%s' % (tx.message)))
+
+def killJstormOnYarn():
+    """Syntax: [JstormYarn killJstormOnYarn]
+    """
+
+    try:
+        # Make socket
+        transport = TSocket.TSocket(host, port)
+
+        # Buffering is critical. Raw sockets are very slow
+        transport = TTransport.TBufferedTransport(transport)
+
+        # Wrap in a protocol
+        protocol = TBinaryProtocol.TBinaryProtocol(transport)
+
+        # Create a client to use the protocol encoder
+        client = JstormAM.Client(protocol)
+
+        # Connect!
+        transport.open()
+
+
+        try:
+            quotient = client.stopAppMaster()
+            print "send stopAppMasterrequest successful"
+        except Exception as e:
+            print(('InvalidOperation: %r' % e))
+
+
+
+        # Close!
+        transport.close()
+
+    except Thrift.TException as tx:
+        print(('%s' % (tx.message)))
+
+
+def stopNimbus():
+    """Syntax: [JstormYarn stopNimbus ]
+    """
+
+    try:
+        # Make socket
+        transport = TSocket.TSocket(host, port)
+
+        # Buffering is critical. Raw sockets are very slow
+        transport = TTransport.TBufferedTransport(transport)
+
+        # Wrap in a protocol
+        protocol = TBinaryProtocol.TBinaryProtocol(transport)
+
+        # Create a client to use the protocol encoder
+        client = JstormAM.Client(protocol)
+
+        # Connect!
+        transport.open()
+
+
+        try:
+            quotient = client.stopNimbus()
+            print "send stopNimbus request successful"
+        except Exception as e:
+            print(('InvalidOperation: %r' % e))
+
+
+
+        # Close!
+        transport.close()
+
+    except Thrift.TException as tx:
+        print(('%s' % (tx.message)))
+
+def stopSupervisors():
+    """Syntax: [JstormYarn stopSupervisors]
+    """
+
+    try:
+        # Make socket
+        transport = TSocket.TSocket(host, port)
+
+        # Buffering is critical. Raw sockets are very slow
+        transport = TTransport.TBufferedTransport(transport)
+
+        # Wrap in a protocol
+        protocol = TBinaryProtocol.TBinaryProtocol(transport)
+
+        # Create a client to use the protocol encoder
+        client = JstormAM.Client(protocol)
+
+        # Connect!
+        transport.open()
+
+
+        try:
+            quotient = client.stopSupervisors()
+            print "send stopSupervisors successful"
+        except Exception as e:
+            print(('InvalidOperation: %r' % e))
+
+
+
+        # Close!
+        transport.close()
+
+    except Thrift.TException as tx:
+        print(('%s' % (tx.message)))
+
+
+def removeSupervisors(count):
+    """Syntax: [JstormYarn removeSupervisors [count]]
+    """
+
+    try:
+        # Make socket
+        transport = TSocket.TSocket(host, port)
+
+        # Buffering is critical. Raw sockets are very slow
+        transport = TTransport.TBufferedTransport(transport)
+
+        # Wrap in a protocol
+        protocol = TBinaryProtocol.TBinaryProtocol(transport)
+
+        # Create a client to use the protocol encoder
+        client = JstormAM.Client(protocol)
+
+        # Connect!
+        transport.open()
+
+
+        try:
+            quotient = client.removeSupervisors(int(count))
+            print "send removeSupervisors request successful,:","remove count is",count
+        except Exception as e:
+            print(('InvalidOperation: %r' % e))
+
+
+
+        # Close!
+        transport.close()
+
+    except Thrift.TException as tx:
+        print(('%s' % (tx.message)))
+
+
+def addSupervisors(count,memory,vcores):
+    """Syntax: [JstormYarn addSupervisors [count] [memory(MB)] [vcores]]
+    """
+
+    try:
+        # Make socket
+        transport = TSocket.TSocket(host, port)
+
+        # Buffering is critical. Raw sockets are very slow
+        transport = TTransport.TBufferedTransport(transport)
+
+        # Wrap in a protocol
+        protocol = TBinaryProtocol.TBinaryProtocol(transport)
+
+        # Create a client to use the protocol encoder
+        client = JstormAM.Client(protocol)
+
+        # Connect!
+        transport.open()
+
+
+        try:
+            quotient = client.addSupervisors(int(count),int(memory),int(vcores))
+            print "send addSupervisors request successful,:","count is",count,"memory is", memory,"vcores is ",vcores
+        except Exception as e:
+            print(('InvalidOperation: %r' % e))
+
+
+
+        # Close!
+        transport.close()
+
+    except Thrift.TException as tx:
+        print(('%s' % (tx.message)))
+
+
+def getConfig():
+    """Syntax: [JstormYarn getConfig]
+    """
+
+    try:
+        # Make socket
+        transport = TSocket.TSocket(host, port)
+
+        # Buffering is critical. Raw sockets are very slow
+        transport = TTransport.TBufferedTransport(transport)
+
+        # Wrap in a protocol
+        protocol = TBinaryProtocol.TBinaryProtocol(transport)
+
+        # Create a client to use the protocol encoder
+        client = JstormAM.Client(protocol)
+
+        # Connect!
+        transport.open()
+
+        try:
+            quotient = client.getConfig()
+            print quotient
+        except Exception as e:
+            print(('InvalidOperation: %r' % e))
+
+        # Close!
+        transport.close()
+
+    except Thrift.TException as tx:
+        print(('%s' % (tx.message)))
+
+
+def submitJstormOnYarn():
+    os.system('nohup sh '+HOME_DIR+'/bin/start-JstormYarn.sh ' + instanceName +' '+ HOME_DIR +' ' conf/jstorm-yarn.xml > JstormOnYarn.log &')
+    print "submit Jstorm on Yarn successful"
+    print "you can see more information eg: AppMaster status in JstormOnYarn.log"
+
+def setConfig(key,value):
+    """Syntax: [JstormYarn setConfig [key] [value]]
+    """
+
+    try:
+        # Make socket
+        transport = TSocket.TSocket(host, port)
+
+        # Buffering is critical. Raw sockets are very slow
+        transport = TTransport.TBufferedTransport(transport)
+
+        # Wrap in a protocol
+        protocol = TBinaryProtocol.TBinaryProtocol(transport)
+
+        # Create a client to use the protocol encoder
+        client = JstormAM.Client(protocol)
+
+        # Connect!
+        transport.open()
+
+
+        try:
+            quotient = client.setConfig(key,value)
+            print "send setConfig request successful,:","key is",key,"value is", value
+        except Exception as e:
+            print(('InvalidOperation: %r' % e))
+
+
+        # Close!
+        transport.close()
+
+    except Thrift.TException as tx:
+        print(('%s' % (tx.message)))
+
+def upgradeCluster():
+    """Syntax: [JstormYarn upgradeCluster]
+    """
+
+    os.system('sh '+HOME_DIR+'/bin/upgradeJstorm.sh ' + instanceName +' '+ HOME_DIR )
+    print "update jstorm file on hadoop"
+    try:
+        # Make socket
+        transport = TSocket.TSocket(host, port)
+
+        # Buffering is critical. Raw sockets are very slow
+        transport = TTransport.TBufferedTransport(transport)
+
+        # Wrap in a protocol
+        protocol = TBinaryProtocol.TBinaryProtocol(transport)
+
+        # Create a client to use the protocol encoder
+        client = JstormAM.Client(protocol)
+
+        # Connect!
+        transport.open()
+
+
+        try:
+            quotient = client.upgradeCluster()
+            print "send upgradeCluster request successful"
+        except Exception as e:
+            print(('InvalidOperation: %r' % e))
+
+
+        # Close!
+        transport.close()
+
+    except Thrift.TException as tx:
+        print(('%s' % (tx.message)))
+
+
+COMMANDS = {'killJstormOnYarn':killJstormOnYarn,'submitJstormOnYarn':submitJstormOnYarn,'addSupervisors':addSupervisors,'startNimbus':startNimbus,'removeSupervisors':removeSupervisors,
+            'stopNimbus':stopNimbus,'stopSupervisors':stopSupervisors,'list':list,'getConfig':getConfig,'setConfig':setConfig,'upgradeCluster':upgradeCluster}
+
+def main():
+    if len(sys.argv) <= 1:
+        print_usage()
+        sys.exit(-1)
+    global CONFIG_OPTS
+    args = sys.argv[1:]
+    COMMAND = args[0]
+    ARGS = args[1:]
+    if COMMANDS.get(COMMAND) == None:
+        unknown_command(COMMAND)
+        sys.exit(-1)
+    if len(ARGS) != 0 and ARGS[0] == "help":
+        print_usage(COMMAND)
+        sys.exit(0)
+    try:
+        print "\033[32m"
+        (COMMANDS.get(COMMAND, "help"))(*ARGS)
+        print "\033[0m"
+    except Exception, msg:
+        print(msg)
+        print_usage(COMMAND)
+        sys.exit(-1)
+    sys.exit(0)
+
+if __name__ == "__main__":
+    main()

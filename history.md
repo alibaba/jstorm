@@ -36,6 +36,8 @@
 * Support batch mode in trident
 * Support the push of configuration of cluster
 * Add buildTs to supervisor info and heartbeats
+* Add ext module for nimbus and supervisor to support external plugins
+* Add jstorm-elasticsearch support, thanks to @elloray for your contribution
 
 
 ## Improvements

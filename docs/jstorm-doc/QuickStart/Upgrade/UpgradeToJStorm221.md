@@ -1,10 +1,19 @@
+---
+title: Upgrade JStorm2.1.1 To JStorm2.2.1
+is_beta: false
+
+sub-nav-group: Upgrade
+sub-nav-id: UpgradeApplication
+sub-nav-pos: 3
+---
+
 This article is a guide on how to upgrade from JStorm 2.1.1 to JStorm 2.2.1. 
 
 ## Upgrade Cluster         
                                   
 Please refer to `Upgrade Cluster` document, besides, there're a few new features that need to take care of.   
 
-###　Cluster Config Sync
+### Cluster Config Sync
 
 This is a new feature in JStorm 2.2.1. Supervisors will sync the latest storm.yaml from nimbus automatically.
 So if you want to change storm.yaml for the whole cluster, just edit storm.yaml in nimbus master, save it,
