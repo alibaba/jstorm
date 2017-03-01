@@ -43,8 +43,8 @@ public class KafkaSpout implements IRichSpout {
 		this.collector = collector;
 		if (this.config == null) {
 			config = new KafkaSpoutConfig();
-			config.configure(conf);
 		}
+		config.configure(conf);
 		zkState = new ZkState(conf, config);
 		coordinator = new PartitionCoordinator(conf, config, context, zkState);
 		lastUpdateMs = System.currentTimeMillis();
