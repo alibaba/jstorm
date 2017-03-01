@@ -5,7 +5,9 @@ import com.jcraft.jsch.*;
 import javax.swing.*;
 import java.awt.*;
 import java.io.InputStream;
-
+/**
+ * Created by fengjian on 16/4/7.
+ */
 public class Exec {
 
     public Exec(String host, String username, String password) {
@@ -70,25 +72,6 @@ public class Exec {
             session.setPassword("");
             session.setConfig("StrictHostKeyChecking", "no");
             session.connect();
-      
-      /*
-      String xhost="127.0.0.1";
-      int xport=0;
-      String display=JOptionPane.showInputDialog("Enter display name", 
-                                                 xhost+":"+xport);
-      xhost=display.substring(0, display.indexOf(':'));
-      xport=Integer.parseInt(display.substring(display.indexOf(':')+1));
-      session.setX11Host(xhost);
-      session.setX11Port(xport+6000);
-      */
-
-            // username and password will be given via UserInfo interface.
-//            UserInfo ui = new MyUserInfo();
-//            session.setUserInfo(ui);
-//            session.connect();
-
-//            String command = JOptionPane.showInputDialog("Enter command",
-//                    "set|grep SSH");
 
             String command = "ls";
             Channel channel = session.openChannel("exec");

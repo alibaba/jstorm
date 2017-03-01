@@ -55,7 +55,7 @@ public class TaskHeartbeatTrigger extends TimerTrigger {
     private BoltCollector boltCollector = null;
     private SpoutCollector spoutCollector = null;
 
-    private long executeThreadHbTime;
+    private volatile long executeThreadHbTime;
     private int taskHbTimeout;
 
     private ITaskReportErr reportError;

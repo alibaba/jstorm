@@ -8,6 +8,8 @@ import org.apache.hadoop.yarn.api.records.Container;
 import org.apache.hadoop.yarn.api.records.ContainerId;
 import org.apache.hadoop.yarn.client.api.AMRMClient;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 
@@ -31,10 +33,6 @@ public interface MasterContext {
 
     String getAddress();
 
-    int getRPCPort();
-
-    int getHttpPort();
-
     Configuration getYarnConfiguration();
 
     BlockingQueue<Container> getContainers();
@@ -46,5 +44,7 @@ public interface MasterContext {
     BlockingQueue<AMRMClient.ContainerRequest> getContainerRequest();
 
     Set<String> getUpgradingContainerIds();
+
+    Map<String, String> getShellEnv();
 
 }
