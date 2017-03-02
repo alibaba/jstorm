@@ -404,11 +404,11 @@
         </executions>
       </plugin>
       
-      <!--
       <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-javadoc-plugin</artifactId>
           <configuration>
+              <additionalparam>-Xdoclint:none</additionalparam>
               <outputDirectory>${project.build.directory}/javadoc</outputDirectory>
               <reportOutputDirectory>./docs/javadoc</reportOutputDirectory>
           </configuration>
@@ -428,7 +428,7 @@
               </execution>
           </executions>
       </plugin>
-                           -->
+
       <!--
       // if release jstorm to maven center repository
       // please set parent as oss-parent
