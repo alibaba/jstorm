@@ -22,24 +22,25 @@ public class KafkaSpout implements IRichSpout {
 	private static Logger LOG = LoggerFactory.getLogger(KafkaSpout.class);
 
 	protected SpoutOutputCollector collector;
-	
+
 	private long lastUpdateMs;
 	PartitionCoordinator coordinator;
-	
+
 	private KafkaSpoutConfig config;
-	
+
 	private ZkState zkState;
-	
+
 	public KafkaSpout() {
-	    
+
 	}
-	
+
 	public KafkaSpout(KafkaSpoutConfig config) {
 		this.config = config;
 	}
-	
+
 	@Override
-	public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
+	public void open(Map conf, TopologyContext context,
+			SpoutOutputCollector collector) {
 		this.collector = collector;
 		if (this.config == null) {
 			config = new KafkaSpoutConfig();
@@ -52,62 +53,71 @@ public class KafkaSpout implements IRichSpout {
 
 	@Override
 	public void close() {
-		// TODO Auto-generated method stub
-	    zkState.close();
+		zkState.close();
 	}
 
 	@Override
 	public void activate() {
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override
 	public void deactivate() {
-		// TODO Auto-generated method stub
-		
 	}
 
 	@Override
 	public void nextTuple() {
-		Collection<PartitionConsumer> partitionConsumers = coordinator.getPartitionConsumers();
-		for(PartitionConsumer consumer: partitionConsumers) {
-			EmitState state = consumer.emit(collector);
-			LOG.debug("====== partition "+ consumer.getPartition() + " emit message state is "+state);
-//			if(state != EmitState.EMIT_MORE) {
-//				currentPartitionIndex  = (currentPartitionIndex+1) % consumerSize;
-//			}
-//			if(state != EmitState.EMIT_NONE) {
-//				break;
-//			}
+		Collection<PartitionConsumer> partitionConsumers = coordinator
+				.getPartitionConsumers();
+		boolean isAllSleeping = true;
+		for (PartitionConsumer consumer : partitionConsumers) {
+			if (!consumer.isSleepingConsumer()) {
+				isAllSleeping = false;
+				EmitState state = consumer.emit(collector);
+				LOG.debug("====== partition " + consumer.getPartition()
+						+ " emit message state is " + state);
+			}
+			// if(state != EmitState.EMIT_MORE) {
+			// currentPartitionIndex = (currentPartitionIndex+1) % consumerSize;
+			// }
+			// if(state != EmitState.EMIT_NONE) {
+			// break;
+			// }
+		}
+		if (isAllSleeping) {
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
 		long now = System.currentTimeMillis();
-        if((now - lastUpdateMs) > config.offsetUpdateIntervalMs) {
-            commitState();
-        }
-        
-		
+		if ((now - lastUpdateMs) > config.offsetUpdateIntervalMs) {
+			commitState();
+		}
+
 	}
-	
+
 	public void commitState() {
-	    lastUpdateMs = System.currentTimeMillis();
-		for(PartitionConsumer consumer: coordinator.getPartitionConsumers()) {
+		lastUpdateMs = System.currentTimeMillis();
+		for (PartitionConsumer consumer : coordinator.getPartitionConsumers()) {
 			consumer.commitState();
-        }
-		
+		}
+
 	}
 
 	@Override
 	public void ack(Object msgId) {
-		KafkaMessageId messageId = (KafkaMessageId)msgId;
-		PartitionConsumer consumer = coordinator.getConsumer(messageId.getPartition());
+		KafkaMessageId messageId = (KafkaMessageId) msgId;
+		PartitionConsumer consumer = coordinator.getConsumer(messageId
+				.getPartition());
 		consumer.ack(messageId.getOffset());
 	}
 
 	@Override
 	public void fail(Object msgId) {
-		KafkaMessageId messageId = (KafkaMessageId)msgId;
-		PartitionConsumer consumer = coordinator.getConsumer(messageId.getPartition());
+		KafkaMessageId messageId = (KafkaMessageId) msgId;
+		PartitionConsumer consumer = coordinator.getConsumer(messageId
+				.getPartition());
 		consumer.fail(messageId.getOffset());
 	}
 
@@ -120,7 +130,5 @@ public class KafkaSpout implements IRichSpout {
 	public Map<String, Object> getComponentConfiguration() {
 		return null;
 	}
-	
-	
 
 }
