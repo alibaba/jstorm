@@ -34,240 +34,217 @@ import kafka.javaapi.message.ByteBufferMessageSet;
  */
 public class KafkaConsumer {
 
-	private static Logger LOG = Logger.getLogger(KafkaConsumer.class);
+    private static Logger LOG = Logger.getLogger(KafkaConsumer.class);
 
-	public static final int NO_OFFSET = -1;
+    public static final int NO_OFFSET = -1;
 
-	private int status;
-	private SimpleConsumer consumer = null;
+    private int status;
+    private SimpleConsumer consumer = null;
 
-	private KafkaSpoutConfig config;
-	private LinkedList<Host> brokerList;
-	private int brokerIndex;
-	private Broker leaderBroker;
-	private short fetchResponseCode = 0;
+    private KafkaSpoutConfig config;
+    private LinkedList<Host> brokerList;
+    private int brokerIndex;
+    private Broker leaderBroker;
+    private short fetchResponseCode = 0;
 
-	public KafkaConsumer(KafkaSpoutConfig config) {
-		this.config = config;
-		this.brokerList = new LinkedList<Host>(config.brokers);
-		this.brokerIndex = 0;
-	}
+    public KafkaConsumer(KafkaSpoutConfig config) {
+        this.config = config;
+        this.brokerList = new LinkedList<Host>(config.brokers);
+        this.brokerIndex = 0;
+    }
 
-	public ByteBufferMessageSet fetchMessages(int partition, long offset)
-			throws IOException {
+    public ByteBufferMessageSet fetchMessages(int partition, long offset) throws IOException {
 
-		String topic = config.topic;
-		FetchRequest req = new FetchRequestBuilder().clientId(config.clientId)
-				.addFetch(topic, partition, offset, config.fetchMaxBytes)
-				.maxWait(config.fetchWaitMaxMs).build();
-		FetchResponse fetchResponse = null;
-		SimpleConsumer simpleConsumer = null;
-		try {
-			simpleConsumer = findLeaderConsumer(partition);
-			if (simpleConsumer == null) {
-				// LOG.error(message);
-				return null;
-			}
-			fetchResponse = simpleConsumer.fetch(req);
-		} catch (Exception e) {
-			if (e instanceof ConnectException
-					|| e instanceof SocketTimeoutException
-					|| e instanceof IOException
-					|| e instanceof UnresolvedAddressException) {
-				LOG.warn("Network error when fetching messages:", e);
-				if (simpleConsumer != null) {
-					String host = simpleConsumer.host();
-					int port = simpleConsumer.port();
-					simpleConsumer = null;
-					throw new KafkaException(
-							"Network error when fetching messages: " + host
-									+ ":" + port + " , " + e.getMessage(), e);
-				}
+        String topic = config.topic;
+        FetchRequest req = new FetchRequestBuilder().clientId(config.clientId).addFetch(topic, partition, offset, config.fetchMaxBytes)
+                .maxWait(config.fetchWaitMaxMs).build();
+        FetchResponse fetchResponse = null;
+        SimpleConsumer simpleConsumer = null;
+        try {
+            simpleConsumer = findLeaderConsumer(partition);
+            if (simpleConsumer == null) {
+                // LOG.error(message);
+                return null;
+            }
+            fetchResponse = simpleConsumer.fetch(req);
+        } catch (Exception e) {
+            if (e instanceof ConnectException || e instanceof SocketTimeoutException || e instanceof IOException
+                    || e instanceof UnresolvedAddressException) {
+                LOG.warn("Network error when fetching messages:", e);
+                if (simpleConsumer != null) {
+                    String host = simpleConsumer.host();
+                    int port = simpleConsumer.port();
+                    simpleConsumer = null;
+                    throw new KafkaException("Network error when fetching messages: " + host + ":" + port + " , " + e.getMessage(), e);
+                }
 
-			} else {
-				throw new RuntimeException(e);
-			}
-		}
-		if (fetchResponse.hasError()) {
-			fetchResponseCode = fetchResponse.errorCode(topic, partition);
-			if (fetchResponseCode == ErrorMapping.OffsetOutOfRangeCode()) {
-			}
-			// if (code == ErrorMapping.OffsetOutOfRangeCode() &&
-			// config.resetOffsetIfOutOfRange) {
-			// long startOffset = getOffset(topic, partition,
-			// config.startOffsetTime);
-			// offset = startOffset;
-			// }
-			if (leaderBroker != null) {
-				LOG.error("fetch data from kafka topic[" + config.topic
-						+ "] host[" + leaderBroker.host() + ":"
-						+ leaderBroker.port() + "] partition[" + partition
-						+ "] error:" + fetchResponseCode);
-			} else {
+            } else {
+                throw new RuntimeException(e);
+            }
+        }
+        if (fetchResponse.hasError()) {
+            fetchResponseCode = fetchResponse.errorCode(topic, partition);
+            if (fetchResponseCode == ErrorMapping.OffsetOutOfRangeCode()) {
+            }
+//            if (code == ErrorMapping.OffsetOutOfRangeCode() && config.resetOffsetIfOutOfRange) {
+//                long startOffset = getOffset(topic, partition, config.startOffsetTime);
+//                offset = startOffset;
+//            }
+            if(leaderBroker != null) {
+                LOG.error("fetch data from kafka topic[" + config.topic + "] host[" + leaderBroker.host() + ":" + leaderBroker.port() + "] partition["
+                    + partition + "] error:" + fetchResponseCode);
+            }else {
+                
+            }
+            return null;
+        } else {
+            ByteBufferMessageSet msgs = fetchResponse.messageSet(topic, partition);
+            return msgs;
+        }
+    }
+    
+    public short getAndResetFetchResponseCode(){
+    	short code = this.fetchResponseCode;
+    	this.fetchResponseCode = 0;
+    	return code;
+    }
 
-			}
-			return null;
-		} else {
-			ByteBufferMessageSet msgs = fetchResponse.messageSet(topic,
-					partition);
-			return msgs;
-		}
-	}
+    private SimpleConsumer findLeaderConsumer(int partition) {
+        try {
+            if (consumer != null) {
+                return consumer;
+            }
+            PartitionMetadata metadata = findLeader(partition);
+            if (metadata == null) {
+                leaderBroker = null;
+                consumer = null;
+                return null;
+            }
+            leaderBroker = metadata.leader();
+            consumer = new SimpleConsumer(leaderBroker.host(), leaderBroker.port(), config.socketTimeoutMs, config.socketReceiveBufferBytes,
+                    config.clientId);
 
-	public short getAndResetFetchResponseCode() {
-		short code = this.fetchResponseCode;
-		this.fetchResponseCode = 0;
-		return code;
-	}
+            return consumer;
+        } catch (Exception e) {
+            LOG.error(e.getMessage(), e);
+        }
+        return null;
+    }
 
-	private SimpleConsumer findLeaderConsumer(int partition) {
-		try {
-			if (consumer != null) {
-				return consumer;
-			}
-			PartitionMetadata metadata = findLeader(partition);
-			if (metadata == null) {
-				leaderBroker = null;
-				consumer = null;
-				return null;
-			}
-			leaderBroker = metadata.leader();
-			consumer = new SimpleConsumer(leaderBroker.host(),
-					leaderBroker.port(), config.socketTimeoutMs,
-					config.socketReceiveBufferBytes, config.clientId);
+    protected PartitionMetadata findLeader(int partition) {
+        PartitionMetadata returnMetaData = null;
+        int errors = 0;
+        int size = brokerList.size();
 
-			return consumer;
-		} catch (Exception e) {
-			LOG.error(e.getMessage(), e);
-		}
-		return null;
-	}
+        Host brokerHost = brokerList.get(brokerIndex);
+        try {
+            if (consumer == null) {
+                consumer = new SimpleConsumer(brokerHost.getHost(), brokerHost.getPort(), config.socketTimeoutMs, config.socketReceiveBufferBytes,
+                        config.clientId);
+            }
+        } catch (Exception e) {
+            LOG.warn(e.getMessage(), e);
+            consumer = null;
+        }
+        int i = brokerIndex;
+        loop: while (i < size && errors < size + 1) {
+            Host host = brokerList.get(i);
+            i = (i + 1) % size;
+            brokerIndex = i; // next index
+            try {
 
-	protected PartitionMetadata findLeader(int partition) {
-		PartitionMetadata returnMetaData = null;
-		int errors = 0;
-		int size = brokerList.size();
+                if (consumer == null) {
+                    consumer = new SimpleConsumer(host.getHost(), host.getPort(), config.socketTimeoutMs, config.socketReceiveBufferBytes,
+                            config.clientId);
+                }
+                List<String> topics = Collections.singletonList(config.topic);
+                TopicMetadataRequest req = new TopicMetadataRequest(topics);
+                kafka.javaapi.TopicMetadataResponse resp = null;
+                try {
+                    resp = consumer.send(req);
+                } catch (Exception e) {
+                    errors += 1;
 
-		Host brokerHost = brokerList.get(brokerIndex);
-		try {
-			if (consumer == null) {
-				consumer = new SimpleConsumer(brokerHost.getHost(),
-						brokerHost.getPort(), config.socketTimeoutMs,
-						config.socketReceiveBufferBytes, config.clientId);
-			}
-		} catch (Exception e) {
-			LOG.warn(e.getMessage(), e);
-			consumer = null;
-		}
-		int i = brokerIndex;
-		loop: while (i < size && errors < size + 1) {
-			Host host = brokerList.get(i);
-			i = (i + 1) % size;
-			brokerIndex = i; // next index
-			try {
+                    LOG.error("findLeader error, broker:" + host.toString() + ", will change to next broker index:" + (i + 1) % size);
+                    if (consumer != null) {
+                        consumer.close();
+                        consumer = null;
+                    }
+                    continue;
+                }
 
-				if (consumer == null) {
-					consumer = new SimpleConsumer(host.getHost(),
-							host.getPort(), config.socketTimeoutMs,
-							config.socketReceiveBufferBytes, config.clientId);
-				}
-				List<String> topics = Collections.singletonList(config.topic);
-				TopicMetadataRequest req = new TopicMetadataRequest(topics);
-				kafka.javaapi.TopicMetadataResponse resp = null;
-				try {
-					resp = consumer.send(req);
-				} catch (Exception e) {
-					errors += 1;
+                List<TopicMetadata> metaData = resp.topicsMetadata();
+                for (TopicMetadata item : metaData) {
+                    for (PartitionMetadata part : item.partitionsMetadata()) {
+                        if (part.partitionId() == partition) {
+                            returnMetaData = part;
+                            break loop;
+                        }
+                    }
+                }
 
-					LOG.error("findLeader error, broker:" + host.toString()
-							+ ", will change to next broker index:" + (i + 1)
-							% size);
-					if (consumer != null) {
-						consumer.close();
-						consumer = null;
-					}
-					continue;
-				}
+            } catch (Exception e) {
+                LOG.error("Error communicating with Broker:" + host.toString() + ", find Leader for partition:" + partition);
+            } finally {
+                if (consumer != null) {
+                    consumer.close();
+                    consumer = null;
+                }
+            }
+        }
 
-				List<TopicMetadata> metaData = resp.topicsMetadata();
-				for (TopicMetadata item : metaData) {
-					for (PartitionMetadata part : item.partitionsMetadata()) {
-						if (part.partitionId() == partition) {
-							returnMetaData = part;
-							break loop;
-						}
-					}
-				}
+        return returnMetaData;
+    }
 
-			} catch (Exception e) {
-				LOG.error("Error communicating with Broker:" + host.toString()
-						+ ", find Leader for partition:" + partition);
-			} finally {
-				if (consumer != null) {
-					consumer.close();
-					consumer = null;
-				}
-			}
-		}
+    public long getOffset(String topic, int partition, long startOffsetTime) {
+        SimpleConsumer simpleConsumer = findLeaderConsumer(partition);
 
-		return returnMetaData;
-	}
+        if (simpleConsumer == null) {
+            LOG.error("Error consumer is null get offset from partition:" + partition);
+            return -1;
+        }
 
-	public long getOffset(String topic, int partition, long startOffsetTime) {
-		SimpleConsumer simpleConsumer = findLeaderConsumer(partition);
+        TopicAndPartition topicAndPartition = new TopicAndPartition(topic, partition);
+        Map<TopicAndPartition, PartitionOffsetRequestInfo> requestInfo = new HashMap<TopicAndPartition, PartitionOffsetRequestInfo>();
+        requestInfo.put(topicAndPartition, new PartitionOffsetRequestInfo(startOffsetTime, 1));
+        OffsetRequest request = new OffsetRequest(requestInfo, kafka.api.OffsetRequest.CurrentVersion(), simpleConsumer.clientId());
 
-		if (simpleConsumer == null) {
-			LOG.error("Error consumer is null get offset from partition:"
-					+ partition);
-			return -1;
-		}
+        long[] offsets = simpleConsumer.getOffsetsBefore(request).offsets(topic, partition);
+        if (offsets.length > 0) {
+            return offsets[0];
+        } else {
+            return NO_OFFSET;
+        }
+    }
 
-		TopicAndPartition topicAndPartition = new TopicAndPartition(topic,
-				partition);
-		Map<TopicAndPartition, PartitionOffsetRequestInfo> requestInfo = new HashMap<TopicAndPartition, PartitionOffsetRequestInfo>();
-		requestInfo.put(topicAndPartition, new PartitionOffsetRequestInfo(
-				startOffsetTime, 1));
-		OffsetRequest request = new OffsetRequest(requestInfo,
-				kafka.api.OffsetRequest.CurrentVersion(),
-				simpleConsumer.clientId());
+    public void close() {
+        if (consumer != null) {
+            consumer.close();
+        }
+    }
 
-		long[] offsets = simpleConsumer.getOffsetsBefore(request).offsets(
-				topic, partition);
-		if (offsets.length > 0) {
-			return offsets[0];
-		} else {
-			return NO_OFFSET;
-		}
-	}
+    public SimpleConsumer getConsumer() {
+        return consumer;
+    }
 
-	public void close() {
-		if (consumer != null) {
-			consumer.close();
-		}
-	}
+    public void setConsumer(SimpleConsumer consumer) {
+        this.consumer = consumer;
+    }
 
-	public SimpleConsumer getConsumer() {
-		return consumer;
-	}
+    public int getStatus() {
+        return status;
+    }
 
-	public void setConsumer(SimpleConsumer consumer) {
-		this.consumer = consumer;
-	}
+    public void setStatus(int status) {
+        this.status = status;
+    }
 
-	public int getStatus() {
-		return status;
-	}
+    public Broker getLeaderBroker() {
+        return leaderBroker;
+    }
 
-	public void setStatus(int status) {
-		this.status = status;
-	}
-
-	public Broker getLeaderBroker() {
-		return leaderBroker;
-	}
-
-	public void setLeaderBroker(Broker leaderBroker) {
-		this.leaderBroker = leaderBroker;
-	}
+    public void setLeaderBroker(Broker leaderBroker) {
+        this.leaderBroker = leaderBroker;
+    }
 
 }

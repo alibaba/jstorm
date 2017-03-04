@@ -2,6 +2,7 @@ package com.alibaba.jstorm.kafka;
 
 
 import java.nio.ByteBuffer;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -70,16 +71,17 @@ public class PartitionConsumer {
         }
 
         try {
-            if (config.fromBeginning) {
-                emittingOffset = consumer.getOffset(config.topic, partition, kafka.api.OffsetRequest.EarliestTime());
-            } else {
-                if (jsonOffset == null) {
-                    lastCommittedOffset = consumer.getOffset(config.topic, partition, kafka.api.OffsetRequest.LatestTime());
+            if (jsonOffset == null) {
+                if (config.fromBeginning) {
+                    emittingOffset = consumer.getOffset(config.topic, partition, kafka.api.OffsetRequest.EarliestTime());
                 } else {
-                    lastCommittedOffset = jsonOffset;
+                    lastCommittedOffset = consumer.getOffset(config.topic, partition, kafka.api.OffsetRequest.LatestTime());
                 }
-                emittingOffset = lastCommittedOffset;
+            } else {
+                 lastCommittedOffset = jsonOffset;
             }
+            emittingOffset = lastCommittedOffset;
+            
         } catch (Exception e) {
             LOG.error(e.getMessage(), e);
         }
@@ -124,20 +126,13 @@ public class PartitionConsumer {
         ByteBufferMessageSet msgs;
         try {
             long start = System.currentTimeMillis();
-            if(config.fromBeginning){
-                msgs = consumer.fetchMessages(partition, emittingOffset);
-            }else {
-                msgs = consumer.fetchMessages(partition, emittingOffset + 1);
-            }
-
+            msgs = consumer.fetchMessages(partition, emittingOffset + 1);
+            
             if (msgs == null) {
             	short fetchResponseCode = consumer.getAndResetFetchResponseCode();
             	if (fetchResponseCode == ErrorMapping.OffsetOutOfRangeCode()) {
                 	this.emittingOffset = consumer.getOffset(config.topic, partition,  kafka.api.OffsetRequest.LatestTime());
                 	LOG.warn("reset kafka offset {}", emittingOffset);
-                }else if(fetchResponseCode == ErrorMapping.NotLeaderForPartitionCode()){
-                	consumer.setConsumer(null);
-                	LOG.warn("current consumer is not leader, reset kafka simpleConsumer");
                 }else{
                 	this.consumerSleepEndTime = System.currentTimeMillis() + 100;
                 	LOG.warn("sleep until {}", consumerSleepEndTime);
@@ -155,10 +150,6 @@ public class PartitionConsumer {
                 LOG.debug("fillmessage fetched a message:{}, offset:{}", msg.message().toString(), msg.offset());
             }
             long end = System.currentTimeMillis();
-            if(count == 0){
-            	this.consumerSleepEndTime = System.currentTimeMillis() + 100;
-            	LOG.warn("sleep until {}", consumerSleepEndTime);
-            }
             LOG.info("fetch message from partition:"+partition+", offset:" + emittingOffset+", size:"+msgs.sizeInBytes()+", count:"+count +", time:"+(end-start));
         } catch (Exception e) {
             e.printStackTrace();
