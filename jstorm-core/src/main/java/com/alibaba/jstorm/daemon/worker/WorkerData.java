@@ -206,7 +206,7 @@ public class WorkerData {
 
         // create zk interface
         this.zkClusterstate = ZkTool.mk_distributed_cluster_state(conf);
-        this.zkCluster = Cluster.mk_storm_cluster_state(zkClusterstate);
+        this.zkCluster = Cluster.mk_storm_cluster_state(zkClusterstate, conf);
 
         Map rawConf = StormConfig.read_supervisor_topology_conf(conf, topology_id);
         this.stormConf = new HashMap<Object, Object>();

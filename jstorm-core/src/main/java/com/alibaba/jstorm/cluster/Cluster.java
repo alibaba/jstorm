@@ -153,11 +153,12 @@ public class Cluster {
 
     @SuppressWarnings("rawtypes")
     public static StormClusterState mk_storm_cluster_state(Map cluster_state_spec) throws Exception {
-        return new StormZkClusterState(cluster_state_spec);
+        return new StormZkClusterState(cluster_state_spec, cluster_state_spec);
     }
 
-    public static StormClusterState mk_storm_cluster_state(ClusterState cluster_state_spec) throws Exception {
-        return new StormZkClusterState(cluster_state_spec);
+    public static StormClusterState mk_storm_cluster_state(ClusterState cluster_state_spec,
+                                                           Map conf) throws Exception {
+        return new StormZkClusterState(cluster_state_spec, conf);
     }
 
     public static Map<Integer, TaskInfo> get_all_taskInfo(StormClusterState zkCluster, String topologyId) throws Exception {
