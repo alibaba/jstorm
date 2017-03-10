@@ -1,7 +1,5 @@
-package com.alibaba.jstorm.yarn.container;
+package com.alibaba.jstorm.yarn.model;
 
-import com.alibaba.jstorm.yarn.appmaster.JstormMaster;
-import org.apache.hadoop.yarn.api.records.Container;
 
 import java.util.Vector;
 
@@ -9,11 +7,9 @@ import java.util.Vector;
  * Created by fengjian on 16/4/19.
  */
 public class ExecutorMeta {
-
-
     private Vector<CharSequence> vargs;
     private String shellCommand;
-    private JstormMaster.STARTType startType;
+    private STARTType startType;
     private String runningContainerId;
     private String localDir;
     private String instanceName;
@@ -29,12 +25,11 @@ public class ExecutorMeta {
     private String supervisorLogviewPort;
     private String nimbusThriftPort;
 
-    public ExecutorMeta(String instanceName, String shellCommand, JstormMaster.STARTType startType, String runningContainer,
+    public ExecutorMeta(String instanceName, String shellCommand, STARTType startType, String runningContainer,
                         String localDir, String deployPath,
                         String hadoopHome, String javaHome, String pythonHome, String dstPath, String portList, String ShellArgs,
                         String ExecShellStringPath, String applicationId, String supervisorLogviewPort, String nimbusThriftPort) {
         this.setInstanceName(instanceName);
-//        this.setVargs(vargs);
         this.setShellCommand(shellCommand);
         this.setStartType(startType);
         this.setRunningContainer(runningContainer);
@@ -70,11 +65,11 @@ public class ExecutorMeta {
         this.shellCommand = shellCommand;
     }
 
-    public JstormMaster.STARTType getStartType() {
+    public STARTType getStartType() {
         return startType;
     }
 
-    public void setStartType(JstormMaster.STARTType startType) {
+    public void setStartType(STARTType startType) {
         this.startType = startType;
     }
 
