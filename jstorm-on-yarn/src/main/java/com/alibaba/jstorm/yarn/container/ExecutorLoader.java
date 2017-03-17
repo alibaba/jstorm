@@ -12,7 +12,7 @@ public class ExecutorLoader {
                                      String ExecShellStringPath, String applicationId, String logviewPort, String nimbusThriftPort) {
         StringBuffer sbCommand = new StringBuffer();
         sbCommand.append(javaHome).append(JOYConstants.JAVA_CP).append(JOYConstants.BLANK);
-        sbCommand.append(classpath).append(JOYConstants.EXECUTOR_CLASS).append(JOYConstants.BLANK);
+        sbCommand.append(classpath).append(JOYConstants.BLANK).append(JOYConstants.EXECUTOR_CLASS).append(JOYConstants.BLANK);
         sbCommand.append(instanceName).append(JOYConstants.BLANK).append(shellCommand).append(JOYConstants.BLANK);
         sbCommand.append(startType).append(JOYConstants.BLANK).append(containerId).append(JOYConstants.BLANK).append(localDir).append(JOYConstants.BLANK);
         sbCommand.append(deployPath).append(JOYConstants.BLANK).append(hadoopHome).append(JOYConstants.BLANK).append(javaHome).append(JOYConstants.BLANK);
