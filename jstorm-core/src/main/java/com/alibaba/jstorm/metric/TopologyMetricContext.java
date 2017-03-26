@@ -4,11 +4,10 @@ import backtype.storm.generated.MetricInfo;
 import backtype.storm.generated.MetricSnapshot;
 import backtype.storm.generated.TopologyMetric;
 import com.alibaba.jstorm.client.ConfigExtension;
+import com.alibaba.jstorm.common.metric.codahale.JAverageSnapshot;
 import com.alibaba.jstorm.schedule.default_assign.ResourceWorkerSlot;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Snapshot;
-import com.codahale.metrics.Timer;
-import org.apache.commons.lang.ArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +25,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @since 2.0.5
  */
 public class TopologyMetricContext {
-    private final Logger LOG = LoggerFactory.getLogger(getClass());
+    public static  final Logger LOG = LoggerFactory.getLogger(TopologyMetricContext.class);
 
     private final ReentrantLock lock = new ReentrantLock();
     private Set<ResourceWorkerSlot> workerSet;
@@ -100,6 +99,10 @@ public class TopologyMetricContext {
     public int getWorkerNum() {
         return workerSet.size();
     }
+    
+    public Set<ResourceWorkerSlot> getWorkerSet() {
+        return workerSet;
+    }
 
     public void setWorkerSet(Set<ResourceWorkerSlot> workerSet) {
         this.workerSet = workerSet;
@@ -168,7 +171,6 @@ public class TopologyMetricContext {
 
             // special for histograms & timers, we merge the points to get a new snapshot data.
             Map<String, Map<Integer, Histogram>> histograms = new HashMap<>();
-            Map<String, Map<Integer, Timer>> timers = new HashMap<>();
 
             // iterate metrics of all workers within the same topology
             for (ConcurrentMap.Entry<String, MetricInfo> metricEntry : workerMetricMap.entrySet()) {
@@ -192,19 +194,16 @@ public class TopologyMetricContext {
                     } else if (metricType == MetricType.HISTOGRAM) {
                         mergeHistograms(getMetricInfoByType(tpMetric, metaType),
                                 metricName, data, metricNameCounters, histograms);
-                    } else if (metricType == MetricType.TIMER) {
-                        mergeTimers(getMetricInfoByType(tpMetric, metaType),
-                                metricName, data, metricNameCounters, timers);
                     }
                 }
             }
-            adjustHistogramTimerMetrics(tpMetric, metricNameCounters, histograms, timers);
+            adjustHistogramTimerMetrics(tpMetric, metricNameCounters, histograms);
             // for counters, we only report delta data every time, need to sum with old data
             //adjustCounterMetrics(tpMetric, oldTpMetric);
 
             LOG.info("merge topology metrics:{}, cost:{}", topologyId, System.currentTimeMillis() - start);
             // debug logs
-            //MetricUtils.printMetricWinSize(componentMetrics);
+            MetricUtils.printMetricInfo(tpMetric.get_topologyMetric());
 
             return tpMetric;
         } finally {
@@ -332,8 +331,14 @@ public class TopologyMetricContext {
                 } else {
                     if (snapshot.get_ts() >= old.get_ts()) {
                         old.set_ts(snapshot.get_ts());
-                        // update points
-                        MetricUtils.updateHistogramPoints(histograms.get(meta).get(win), snapshot.get_points());
+                        Histogram histogram = histograms.get(meta).get(win);
+                        Snapshot updateSnapshot = histogram.getSnapshot();
+                        if (updateSnapshot instanceof JAverageSnapshot){
+                            averageMetricSnapshot(((JAverageSnapshot)updateSnapshot).getMetricSnapshot(), snapshot);
+                        }else {
+                            // update points
+                            MetricUtils.updateHistogramPoints(histogram, snapshot.get_points(), snapshot.get_pointSize());
+                        }
                     }
                 }
             }
@@ -342,42 +347,21 @@ public class TopologyMetricContext {
     }
 
     /**
-     * timers are sampled, we just update points
+     * average histograms 
      */
-    public void mergeTimers(MetricInfo metricInfo, String meta, Map<Integer, MetricSnapshot> data,
-                            Map<String, Integer> metaCounters, Map<String, Map<Integer, Timer>> timers) {
-        Map<Integer, MetricSnapshot> existing = metricInfo.get_metrics().get(meta);
-        if (existing == null) {
-            metricInfo.put_to_metrics(meta, data);
-            Map<Integer, Timer> timerMap = new HashMap<>();
-            for (Map.Entry<Integer, MetricSnapshot> dataEntry : data.entrySet()) {
-                Timer timer = MetricUtils.metricSnapshot2Timer(dataEntry.getValue());
-                timerMap.put(dataEntry.getKey(), timer);
-            }
-            timers.put(meta, timerMap);
-        } else {
-            for (Map.Entry<Integer, MetricSnapshot> dataEntry : data.entrySet()) {
-                Integer win = dataEntry.getKey();
-                MetricSnapshot snapshot = dataEntry.getValue();
-                MetricSnapshot old = existing.get(win);
-                if (old == null) {
-                    existing.put(win, snapshot);
-                    timers.get(meta).put(win, MetricUtils.metricSnapshot2Timer(snapshot));
-                } else {
-                    if (snapshot.get_ts() >= old.get_ts()) {
-                        old.set_ts(snapshot.get_ts());
-                        old.set_m1(old.get_m1() + snapshot.get_m1());
-                        old.set_m5(old.get_m5() + snapshot.get_m5());
-                        old.set_m15(old.get_m15() + snapshot.get_m15());
-
-                        // update points
-                        MetricUtils.updateTimerPoints(timers.get(meta).get(win), snapshot.get_points());
-                    }
-                }
-            }
-        }
-        updateMetricCounters(meta, metaCounters);
+    public void averageMetricSnapshot(MetricSnapshot metricSnapshot, MetricSnapshot snapshot) {
+        metricSnapshot.set_min((metricSnapshot.get_min() + snapshot.get_min()) / 2);
+        metricSnapshot.set_max((metricSnapshot.get_max() + snapshot.get_max()) / 2);
+        metricSnapshot.set_p50((metricSnapshot.get_p50() + snapshot.get_p50()) / 2);
+        metricSnapshot.set_p75((metricSnapshot.get_p75() + snapshot.get_p75()) / 2);
+        metricSnapshot.set_p95((metricSnapshot.get_p95() + snapshot.get_p95()) / 2);
+        metricSnapshot.set_p98((metricSnapshot.get_p98() + snapshot.get_p98()) / 2);
+        metricSnapshot.set_p99((metricSnapshot.get_p99() + snapshot.get_p99()) / 2);
+        metricSnapshot.set_p999((metricSnapshot.get_p999() + snapshot.get_p999()) / 2);
+        metricSnapshot.set_mean((metricSnapshot.get_mean() + snapshot.get_mean()) / 2);
+        metricSnapshot.set_stddev((metricSnapshot.get_stddev() + snapshot.get_stddev()) / 2);
     }
+
 
     /**
      * computes occurrences of specified metric name
@@ -391,8 +375,7 @@ public class TopologyMetricContext {
     }
 
     protected void adjustHistogramTimerMetrics(TopologyMetric tpMetric, Map<String, Integer> metaCounters,
-                                               Map<String, Map<Integer, Histogram>> histograms,
-                                               Map<String, Map<Integer, Timer>> timers) {
+                                               Map<String, Map<Integer, Histogram>> histograms) {
         resetPoints(tpMetric.get_taskMetric().get_metrics());
         resetPoints(tpMetric.get_streamMetric().get_metrics());
         resetPoints(tpMetric.get_nettyMetric().get_metrics());
@@ -403,12 +386,12 @@ public class TopologyMetricContext {
         Map<String, Map<Integer, MetricSnapshot>> topologyMetrics =
                 tpMetric.get_topologyMetric().get_metrics();
 
-        adjustMetrics(compMetrics, metaCounters, histograms, timers);
-        adjustMetrics(topologyMetrics, metaCounters, histograms, timers);
+        adjustMetrics(compMetrics, metaCounters, histograms);
+        adjustMetrics(topologyMetrics, metaCounters, histograms);
     }
 
     private void adjustMetrics(Map<String, Map<Integer, MetricSnapshot>> metrics, Map<String, Integer> metaCounters,
-                               Map<String, Map<Integer, Histogram>> histograms, Map<String, Map<Integer, Timer>> timers) {
+                               Map<String, Map<Integer, Histogram>> histograms) {
         for (Map.Entry<String, Map<Integer, MetricSnapshot>> metricEntry : metrics.entrySet()) {
             String meta = metricEntry.getKey();
             MetricType metricType = MetricUtils.metricType(meta);
@@ -434,34 +417,15 @@ public class TopologyMetricContext {
                         snapshot.set_min(snapshot1.getMin());
                         snapshot.set_max(snapshot1.getMax());
 
-                        if (metaType == MetaType.TOPOLOGY) {
-                            snapshot.set_points(Arrays.asList(ArrayUtils.toObject(snapshot1.getValues())));
+                        if (MetricUtils.metricAccurateCal && metaType == MetaType.TOPOLOGY) {
+                            snapshot.set_points(MetricUtils.longs2bytes(snapshot1.getValues()));
                         }
                     }
-                    if (metaType != MetaType.TOPOLOGY) {
-                        snapshot.set_points(new ArrayList<Long>(0));
+                    if (metaType != MetaType.TOPOLOGY || !MetricUtils.metricAccurateCal) {
+                        snapshot.set_points(new byte[0]);
                     }
                 }
 
-            } else if (metricType == MetricType.TIMER) {
-                for (Map.Entry<Integer, MetricSnapshot> dataEntry : winData.entrySet()) {
-                    MetricSnapshot snapshot = dataEntry.getValue();
-                    Integer cnt = metaCounters.get(meta);
-                    if (cnt != null && cnt > 1) {
-                        Timer timer = timers.get(meta).get(dataEntry.getKey());
-                        Snapshot snapshot1 = timer.getSnapshot();
-                        snapshot.set_p50(snapshot1.getMedian());
-                        snapshot.set_p75(snapshot1.get75thPercentile());
-                        snapshot.set_p95(snapshot1.get95thPercentile());
-                        snapshot.set_p98(snapshot1.get98thPercentile());
-                        snapshot.set_p99(snapshot1.get99thPercentile());
-                        snapshot.set_p999(snapshot1.get999thPercentile());
-                        snapshot.set_stddev(snapshot1.getStdDev());
-                        snapshot.set_min(snapshot1.getMin());
-                        snapshot.set_max(snapshot1.getMax());
-                    }
-                    snapshot.set_points(new ArrayList<Long>(0));
-                }
             }
         }
     }
@@ -472,9 +436,9 @@ public class TopologyMetricContext {
             MetricType metricType = MetricUtils.metricType(meta);
             Map<Integer, MetricSnapshot> winData = metricEntry.getValue();
 
-            if (metricType == MetricType.HISTOGRAM || metricType == MetricType.TIMER) {
+            if (metricType == MetricType.HISTOGRAM) {
                 for (MetricSnapshot snapshot : winData.values()) {
-                    snapshot.set_points(new ArrayList<Long>(0));
+                    snapshot.set_points(new byte[0]);
                 }
             }
         }

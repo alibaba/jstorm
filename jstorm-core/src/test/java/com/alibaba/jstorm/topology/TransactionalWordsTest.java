@@ -17,11 +17,15 @@
  */
 package com.alibaba.jstorm.topology;
 
+import static org.junit.Assert.*;
+
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import junit.framework.Assert;
 
@@ -65,6 +69,10 @@ public class TransactionalWordsTest {
         BigInteger txid;
     }
 
+    public static AtomicBoolean outOfOrder = new AtomicBoolean(false);
+    public static AtomicInteger receiveCounter1 = new AtomicInteger(0);
+    public static AtomicInteger receiveCounter2 = new AtomicInteger(0);
+    
     public static final int BUCKET_SIZE = 10;
 
     public static Map<String, CountValue> COUNT_DATABASE = new HashMap<String, CountValue>();
@@ -132,10 +140,20 @@ public class TransactionalWordsTest {
 
         @Override
         public void finishBatch() {
+            receiveCounter1.incrementAndGet();
             for (String key : _counts.keySet()) {
                 CountValue val = COUNT_DATABASE.get(key);
                 CountValue newVal;
                 if (val == null || !val.txid.equals(_id.getTransactionId())) {
+                    if (val != null) {
+                        if (val.txid.compareTo(_id.getTransactionId()) >= 0) {
+                            System.out.println(
+                                    "!!!!!!!!!!! out of order in KeyedCountUpdater !!!!!!!");
+                            outOfOrder.set(true);
+                        }
+                    }
+                    
+                    
                     newVal = new CountValue();
                     newVal.txid = _id.getTransactionId();
                     if (val != null) {
@@ -209,10 +227,20 @@ public class TransactionalWordsTest {
 
         @Override
         public void finishBatch() {
+            receiveCounter2.incrementAndGet();
             for (Integer bucket : _accum.keySet()) {
                 BucketValue currVal = BUCKET_DATABASE.get(bucket);
                 BucketValue newVal;
                 if (currVal == null || !currVal.txid.equals(_attempt.getTransactionId())) {
+                    if (currVal != null) {
+                        if (currVal.txid
+                                .compareTo(_attempt.getTransactionId()) >= 0) {
+                            System.out.println(
+                                    "!!!!!!!!!!! out of order in BucketCountUpdater !!!!!!!");
+                            outOfOrder.set(true);
+                        }
+                    }
+                    
                     newVal = new BucketValue();
                     newVal.txid = _attempt.getTransactionId();
                     newVal.count = _accum.get(bucket);
@@ -250,8 +278,16 @@ public class TransactionalWordsTest {
             cluster.submitTopology("top-n-topology", config, builder.buildTopology());
 
             JStormUtils.sleepMs(60 * 1000);
-            cluster.shutdown();
+            
+            
+            assertEquals(false, outOfOrder.get() );
+            assertNotSame(0, receiveCounter1.get());
+            assertNotSame(0, receiveCounter2.get());
+            
+            //cluster.killTopology("top-n-topology");
+            //cluster.shutdown();
         } catch (Exception e) {
+            e.printStackTrace();
             Assert.fail("Failed to run simple transaction");
         }
 

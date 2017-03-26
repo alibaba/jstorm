@@ -21,6 +21,7 @@ import backtype.storm.generated.MetricSnapshot;
 import com.alibaba.jstorm.metric.MetricDef;
 import com.alibaba.jstorm.ui.utils.UIMetricUtils;
 
+import java.io.Serializable;
 import java.util.*;
 
 /**

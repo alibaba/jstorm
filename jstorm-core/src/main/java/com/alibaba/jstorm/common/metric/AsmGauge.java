@@ -28,7 +28,7 @@ import java.util.Map;
  */
 public class AsmGauge extends AsmMetric<Gauge> {
 
-    private Gauge gauge;
+    protected Gauge gauge;
 
     public AsmGauge(Gauge<Double> gauge) {
         this.aggregate = false;
@@ -38,6 +38,11 @@ public class AsmGauge extends AsmMetric<Gauge> {
     @Override
     public void update(Number obj) {
         // nothing to do for gauges.
+    }
+
+    @Override
+    public void updateTime(long obj) {
+        throw new RuntimeException("please use update method!");
     }
 
     @Override

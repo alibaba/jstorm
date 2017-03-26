@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 JAVA_HOME=/opt/taobao/java
 export PATH=$PATH:$JAVA_HOME/bin
 

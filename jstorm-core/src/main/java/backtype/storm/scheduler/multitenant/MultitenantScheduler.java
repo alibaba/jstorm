@@ -18,6 +18,7 @@
 
 package backtype.storm.scheduler.multitenant;
 
+import com.alibaba.jstorm.utils.LoadConf;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -29,7 +30,6 @@ import backtype.storm.scheduler.Cluster;
 import backtype.storm.scheduler.IScheduler;
 import backtype.storm.scheduler.Topologies;
 import backtype.storm.scheduler.TopologyDetails;
-import backtype.storm.utils.Utils;
 
 public class MultitenantScheduler implements IScheduler {
     private static final Logger LOG = LoggerFactory.getLogger(MultitenantScheduler.class);
@@ -49,7 +49,7 @@ public class MultitenantScheduler implements IScheduler {
             ret = new HashMap<String, Number>(ret);
         }
 
-        Map fromFile = Utils.findAndReadConfigFile("multitenant-scheduler.yaml", false);
+        Map fromFile = LoadConf.findAndReadYaml("multitenant-scheduler.yaml", false, false);
         Map<String, Number> tmp = (Map<String, Number>) fromFile.get(Config.MULTITENANT_SCHEDULER_USER_POOLS);
         if (tmp != null) {
             ret.putAll(tmp);

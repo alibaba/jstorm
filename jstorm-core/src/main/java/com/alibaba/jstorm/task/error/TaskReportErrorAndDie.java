@@ -45,4 +45,9 @@ public class TaskReportErrorAndDie implements ITaskReportErr {
     public void report(String error) {
         this.reporterror.report(error);
     }
+
+    @Override
+    public void report(String error, String errorLevel, int errorCode, int duration) {
+        this.reporterror.report(error, errorLevel, errorCode, duration);
+    }
 }

@@ -17,7 +17,9 @@
  */
 package com.alibaba.jstorm.message.netty;
 
+import backtype.storm.messaging.ControlMessage;
 import backtype.storm.messaging.TaskMessage;
+
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.common.metric.AsmHistogram;
 import com.alibaba.jstorm.common.metric.AsmMeter;
@@ -28,6 +30,9 @@ import com.alibaba.jstorm.metric.MetricUtils;
 import com.alibaba.jstorm.metric.MetricDef;
 import com.alibaba.jstorm.utils.NetWorkUtils;
 import com.alibaba.jstorm.utils.TimeUtils;
+
+import java.util.concurrent.TimeUnit;
+
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
@@ -38,35 +43,45 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 
 public class MessageDecoder extends FrameDecoder {
     private static final Logger LOG = LoggerFactory.getLogger(MessageDecoder.class);
 
-    // here doesn't use Timer due to competition
+    /**
+     * netty decode timer
+     */
+    private static AsmHistogram msgDecodeTimer;
 
-    private static AsmHistogram msgDecodeTime = (AsmHistogram) JStormMetrics.registerWorkerMetric(
-            MetricUtils.workerMetricName(MetricDef.NETWORK_MSG_DECODE_TIME, MetricType.HISTOGRAM), new AsmHistogram());
-    private static AsmMeter recvSpeed = (AsmMeter) JStormMetrics.registerWorkerMetric(
-            MetricUtils.workerMetricName(MetricDef.NETTY_SRV_RECV_SPEED, MetricType.METER), new AsmMeter());
-
+    /**
+     * netty transmit time map
+     */
     private static Map<Channel, AsmHistogram> networkTransmitTimeMap = new HashMap<Channel, AsmHistogram>();
+
     private static Map<Channel, String> transmitNameMap = new HashMap<Channel, String>();
     private boolean isServer;
     private String localIp;
     private int localPort;
 
-    private boolean enableTransitTimeMetrics;
+    private boolean enableNettyMetrics;
 
     public MessageDecoder(boolean isServer, Map conf) {
         this.isServer = isServer;
         this.localPort = ConfigExtension.getLocalWorkerPort(conf);
         this.localIp = NetWorkUtils.ip();
-        this.enableTransitTimeMetrics = MetricUtils.isEnableNettyMetrics(conf);
+        this.enableNettyMetrics = MetricUtils.isEnableNettyMetrics(conf);
+
+        if (enableNettyMetrics) {
+            // this metric will lose roughly 2~3% performance
+            msgDecodeTimer = (AsmHistogram) JStormMetrics.registerWorkerMetric(
+                    MetricUtils.workerMetricName(MetricDef.NETWORK_MSG_DECODE_TIME, MetricType.HISTOGRAM), new AsmHistogram());
+            msgDecodeTimer.setTimeUnit(TimeUnit.NANOSECONDS);
+        }
+        NettyMetricInstance.register();
     }
 
     /*
-     * Each ControlMessage is encoded as: code (<0) ... short(2) Each TaskMessage is encoded as: task (>=0) ... short(2) len ... int(4) payload ... byte[] *
+     * Each ControlMessage is encoded as: code (<0) ... short(2)
+     * Each TaskMessage is encoded as: task (>=0) ... short(2) len ... int(4) payload ... byte[] *
      */
     protected Object decode(ChannelHandlerContext ctx, Channel channel, ChannelBuffer buf) throws Exception {
         // Make sure that we have received at least a short
@@ -78,9 +93,9 @@ public class MessageDecoder extends FrameDecoder {
             return null;
         }
 
-        Long startTime = null;
-        if (isServer) {
-            startTime = System.nanoTime();
+        long startTime = 0L;
+        if (isServer && enableNettyMetrics) {
+            startTime = msgDecodeTimer.getTime();
         }
         try {
             // Mark the current buffer position before reading task/len field
@@ -105,26 +120,27 @@ public class MessageDecoder extends FrameDecoder {
                 int clientPort = buf.readInt();
                 available -= 12;
                 if (ctrl_msg == ControlMessage.EOB_MESSAGE) {
-
-
                     long interval = System.currentTimeMillis() - timeStamp;
                     if (interval < 0)
                         interval = 0;
 
-                    if(enableTransitTimeMetrics) {
+                    if (enableNettyMetrics) {
                         AsmHistogram netTransTime = getTransmitHistogram(channel, clientPort);
                         if (netTransTime != null) {
                             netTransTime.update(interval * TimeUtils.NS_PER_US);
                         }
                     }
+                    if (MetricUtils.metricAccurateCal)
+                        NettyMetricInstance.networkWorkerTransmitTime.update(interval * TimeUtils.NS_PER_US);
                 }
-
-                recvSpeed.update(ControlMessage.encodeLength());
+                NettyMetricInstance.nettyServerRecvSpeed.update(ctrl_msg.getEncodedLength());
                 return ctrl_msg;
             }
 
             // case 2: task Message
-            short task = code;
+            short type = code;
+            short task = buf.readShort();
+            available -= 2;
 
             // Make sure that we have received at least an integer (length)
             if (available < 4) {
@@ -161,13 +177,12 @@ public class MessageDecoder extends FrameDecoder {
             // LOG.info("Receive task:{}, length: {}, data:{}",
             // task, length, JStormUtils.toPrintableString(rawBytes));
 
-            TaskMessage ret = new TaskMessage(task, rawBytes);
-            recvSpeed.update(rawBytes.length + 6);
+            TaskMessage ret = new TaskMessage(type, task, rawBytes);
+            NettyMetricInstance.nettyServerRecvSpeed.update(rawBytes.length + 8);
             return ret;
         } finally {
-            if (isServer) {
-                Long endTime = System.nanoTime();
-                msgDecodeTime.update((endTime - startTime) / TimeUtils.NS_PER_US);
+            if (isServer && enableNettyMetrics && msgDecodeTimer != null) {
+                msgDecodeTimer.updateTime(startTime);
             }
         }
 
@@ -179,10 +194,9 @@ public class MessageDecoder extends FrameDecoder {
             InetSocketAddress sockAddr = (InetSocketAddress) (channel.getRemoteAddress());
 
             String nettyConnection = NettyConnection.mkString(sockAddr.getAddress().getHostAddress(), clientPort, localIp, localPort);
-            netTransTime =
-                    (AsmHistogram) JStormMetrics.registerNettyMetric(
-                            MetricUtils.nettyMetricName(AsmMetric.mkName(MetricDef.NETTY_SRV_MSG_TRANS_TIME, nettyConnection), MetricType.HISTOGRAM),
-                            new AsmHistogram());
+            netTransTime = (AsmHistogram) JStormMetrics.registerNettyMetric(
+                    MetricUtils.nettyMetricName(AsmMetric.mkName(MetricDef.NETTY_SRV_MSG_TRANS_TIME, nettyConnection), MetricType.HISTOGRAM),
+                    new AsmHistogram());
 
             networkTransmitTimeMap.put(channel, netTransTime);
             transmitNameMap.put(channel, nettyConnection);
@@ -200,17 +214,5 @@ public class MessageDecoder extends FrameDecoder {
                     MetricType.HISTOGRAM));
             LOG.info("Remove Transmit Histogram of {}, channel {}", nettyConnection, channel);
         }
-    }
-
-    public static void removeTransmitHistogram(String nettyConnection) {
-        Channel oldChannel = null;
-
-        for (Entry<Channel, String> entry : transmitNameMap.entrySet()) {
-            if (nettyConnection.equals(entry.getValue())) {
-                oldChannel = entry.getKey();
-            }
-        }
-
-        removeTransmitHistogram(oldChannel);
     }
 }

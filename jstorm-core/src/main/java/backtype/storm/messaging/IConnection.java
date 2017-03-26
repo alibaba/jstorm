@@ -19,6 +19,8 @@ package backtype.storm.messaging;
 
 import java.util.List;
 
+import org.jboss.netty.channel.Channel;
+
 import backtype.storm.utils.DisruptorQueue;
 
 public interface IConnection {
@@ -38,7 +40,7 @@ public interface IConnection {
      */
     public void registerQueue(Integer taskId, DisruptorQueue recvQueu);
 
-    public void enqueue(TaskMessage message);
+    public void enqueue(TaskMessage message, Channel channel);
 
     public void send(List<TaskMessage> messages);
 

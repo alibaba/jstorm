@@ -31,7 +31,7 @@ public class KafkaSpout implements IRichSpout {
 	private ZkState zkState;
 	
 	public KafkaSpout() {
-	    config = new KafkaSpoutConfig();
+	    
 	}
 	
 	public KafkaSpout(KafkaSpoutConfig config) {
@@ -40,8 +40,10 @@ public class KafkaSpout implements IRichSpout {
 	
 	@Override
 	public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
-		// TODO Auto-generated method stub
 		this.collector = collector;
+		if (this.config == null) {
+			config = new KafkaSpoutConfig();
+		}
 		config.configure(conf);
 		zkState = new ZkState(conf, config);
 		coordinator = new PartitionCoordinator(conf, config, context, zkState);

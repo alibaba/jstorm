@@ -9,5 +9,5 @@ import java.util.Map;
  */
 
 public interface IDynamicComponent extends Serializable {
-    public void update(Map conf);
+    void update(Map conf);
 }

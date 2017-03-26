@@ -3,8 +3,9 @@
 *.classpath
 *.prefs
 *.bat
-target/*
-*/target/*
+target
 /bin
 .idea
 *.iml
+jstorm-local/
+dependency-reduced-pom.xml

@@ -1,0 +1,2 @@
+#!/bin/bash
+~/flink/bin/flink run -d -p $1 -c com.alibaba.flink.performance.test.StreamWordCount ~/performance-test-flink-1.0.jar

@@ -39,7 +39,6 @@ public class DisruptorTest {
 
     static {
         DisruptorQueue.setUseSleep(true);
-        DisruptorQueue.setLimited(true);
     }
 
     private int count = 100000000;
@@ -113,7 +112,8 @@ public class DisruptorTest {
     private final static int TIMEOUT = 5; // MS
     private final static int PRODUCER_NUM = 4;
 
-    @Test
+    // Remove the cache in disruptor queue. So comment out this tc.
+/*    @Test
     public void testLaterStartConsumer() throws InterruptedException {
         System.out.println("!!!!!!!!!!!!!!!Begin testLaterStartConsumer!!!!!!!!!!");
         final AtomicBoolean messageConsumed = new AtomicBoolean(false);
@@ -138,7 +138,7 @@ public class DisruptorTest {
         Assert.assertTrue("disruptor message is never consumed due to consumer thread hangs", messageConsumed.get());
 
         System.out.println("!!!!!!!!!!!!!!!!End testLaterStartConsumer!!!!!!!!!!");
-    }
+    }*/
 
     @Test
     public void testBeforeStartConsumer() throws InterruptedException {
@@ -148,7 +148,7 @@ public class DisruptorTest {
         // Set queue length to 1, so that the RingBuffer can be easily full
         // to trigger consumer blocking
         DisruptorQueue queue = createQueue("consumerHang", ProducerType.MULTI, 2);
-        queue.consumerStarted();
+        //queue.consumerStarted();
         push(queue, 1);
         Runnable producer = new Producer(queue);
         Runnable consumer = new Consumer(queue, new EventHandler<Object>() {
@@ -297,7 +297,7 @@ public class DisruptorTest {
         System.out.println("!!!!!! finish testConsumeBatchWhenAvailable test 1");
         resetNum();
 
-        queue.consumerStarted();
+        //queue.consumerStarted();
 
         push(queue, 128);
 
@@ -320,7 +320,7 @@ public class DisruptorTest {
         System.out.println("!!!!!! finish testConsumeBatchWhenAvailable test 3");
         resetNum();
 
-        queue2.consumerStarted();
+        //queue2.consumerStarted();
 
         push(queue2, 128);
 
@@ -349,7 +349,7 @@ public class DisruptorTest {
         System.out.println("!!!!!! finish testTryConsume test 1");
         resetNum();
 
-        queue.consumerStarted();
+        //queue.consumerStarted();
 
         push(queue, 128);
 
@@ -370,7 +370,7 @@ public class DisruptorTest {
         System.out.println("!!!!!! finish testTryConsume test 3");
         resetNum();
 
-        queue2.consumerStarted();
+        //queue2.consumerStarted();
 
         push(queue2, 128);
 
@@ -457,7 +457,7 @@ public class DisruptorTest {
 
         @Override
         public void run() {
-            queue.consumerStarted();
+            //queue.consumerStarted();
             try {
                 while (true) {
                     queue.consumeBatchWhenAvailable(handler);
@@ -499,6 +499,6 @@ public class DisruptorTest {
 
     private static DisruptorQueue createQueue(String name, ProducerType type, int queueSize) {
 
-        return DisruptorQueue.mkInstance(name, type, queueSize, new BlockingWaitStrategy());
+        return DisruptorQueue.mkInstance(name, type, queueSize, new BlockingWaitStrategy(), false, 0 ,0);
     }
 }

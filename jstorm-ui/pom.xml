@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.alibaba.jstorm</groupId>
         <artifactId>jstorm-all</artifactId>
-        <version>2.1.0</version>
+        <version>2.2.1</version>
         <relativePath>..</relativePath>
     </parent>
 
@@ -28,12 +28,6 @@
             <groupId>com.alibaba.jstorm</groupId>
             <artifactId>jstorm-core</artifactId>
             <version>${project.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>ch.qos.logback</groupId>
-                    <artifactId>logback-classic</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
         <!-- Servlet -->
@@ -41,7 +35,21 @@
             <groupId>javax.servlet</groupId>
             <artifactId>servlet-api</artifactId>
             <version>2.5</version>
+            <scope>provided</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.3.3</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>1.11</version>
+        </dependency>
+
         <dependency>
             <groupId>javax.servlet.jsp</groupId>
             <artifactId>jsp-api</artifactId>
@@ -52,6 +60,18 @@
             <groupId>javax.servlet</groupId>
             <artifactId>jstl</artifactId>
             <version>1.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.3.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>2.5</version>
         </dependency>
 
         <!-- Spring -->
@@ -73,13 +93,19 @@
             <version>2.5.1</version>
         </dependency>
 
-        <!-- Logging -->
+        <!-- exclude log4j-slf4j12 since we bridge slf4j to logback -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-log4j12</artifactId>
             <version>${slf4j.version}</version>
+            <scope>provided</scope>
         </dependency>
 
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>16.0.1</version>
+        </dependency>
 
         <!-- Test -->
         <dependency>
@@ -94,8 +120,6 @@
             <version>4.11</version>
             <scope>test</scope>
         </dependency>
-
-
     </dependencies>
 
     <build>

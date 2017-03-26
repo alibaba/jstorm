@@ -28,7 +28,7 @@ public class IndexHashGrouping implements CustomStreamGrouping {
         if (val == null)
             return 0;
         else {
-            return Math.abs(val.hashCode()) % numPartitions;
+            return Math.abs(val.hashCode() % numPartitions);
         }
     }
 

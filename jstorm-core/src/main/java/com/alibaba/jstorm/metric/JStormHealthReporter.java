@@ -3,6 +3,7 @@ package com.alibaba.jstorm.metric;
 import com.alibaba.jstorm.callback.RunnableCallback;
 import com.alibaba.jstorm.cluster.StormClusterState;
 import com.alibaba.jstorm.daemon.worker.WorkerData;
+import com.alibaba.jstorm.task.error.ErrorConstants;
 import com.codahale.metrics.health.HealthCheckRegistry;
 import com.codahale.metrics.health.HealthCheck.Result;
 import org.slf4j.Logger;
@@ -11,7 +12,9 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 
 /**
- * Created by wuchong on 15/9/17.
+ * used for reporting queue full error to zk
+ *
+ * @author Jark Wu (wuchong.wc@alibaba-inc.com)
  */
 public class JStormHealthReporter extends RunnableCallback {
     private static final Logger LOG = LoggerFactory.getLogger(JStormHealthReporter.class);
@@ -36,7 +39,8 @@ public class JStormHealthReporter extends RunnableCallback {
             for (Map.Entry<String, Result> result : results.entrySet()) {
                 if (!result.getValue().isHealthy()) {
                     try {
-                        clusterState.report_task_error(topologyId, taskId, result.getValue().getMessage(), null);
+                        clusterState.report_task_error(topologyId, taskId, result.getValue().getMessage(),
+                                ErrorConstants.WARN, ErrorConstants.CODE_QUEUE_FULL, ErrorConstants.DURATION_SECS_QUEUE_FULL);
                         cnt++;
                     } catch (Exception e) {
                         LOG.error("Failed to update health data in ZK for topo-{} task-{}.", topologyId, taskId, e);
@@ -44,7 +48,10 @@ public class JStormHealthReporter extends RunnableCallback {
                 }
             }
         }
-        LOG.info("Successfully updated {} health data to ZK for topology:{}", cnt, topologyId);
+
+        if (cnt > 0) {
+            LOG.info("Successfully updated {} health data to ZK for topology:{}", cnt, topologyId);
+        }
     }
 
     @Override

@@ -17,21 +17,30 @@
  */
 package com.alibaba.jstorm.common.metric;
 
+import com.alibaba.jstorm.common.metric.codahale.ExponentiallyDecayingReservoir;
+import com.alibaba.jstorm.common.metric.codahale.JHistogram;
+import com.alibaba.jstorm.common.metric.old.operator.convert.AtomicLongToLong;
 import com.alibaba.jstorm.common.metric.snapshot.AsmHistogramSnapshot;
 import com.alibaba.jstorm.common.metric.snapshot.AsmSnapshot;
-import com.codahale.metrics.ExponentiallyDecayingReservoir;
-import com.codahale.metrics.Histogram;
 
+import com.alibaba.jstorm.metric.JStormMetrics;
+import com.alibaba.jstorm.metric.MetricUtils;
+import com.alibaba.jstorm.utils.TimeUtils;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 
 /**
  * each window has a separate histogram, which is recreated after the window cycle.
  */
-public class AsmHistogram extends AsmMetric<Histogram> {
+public class AsmHistogram extends AsmMetric<JHistogram> {
+    private final Map<Integer, JHistogram> histogramMap = new ConcurrentHashMap<>();
+    private JHistogram unFlushed = newHistogram();
+    private TimeUnit timeUnit = TimeUnit.MILLISECONDS;
+    private static volatile long updateInterval = 10;
 
-    private final Map<Integer, Histogram> histogramMap = new ConcurrentHashMap<Integer, Histogram>();
-    private Histogram unFlushed = newHistogram();
+    private volatile long lastUpdateTime = System.currentTimeMillis();
 
     public AsmHistogram() {
         super();
@@ -40,11 +49,78 @@ public class AsmHistogram extends AsmMetric<Histogram> {
         }
     }
 
+    public AsmHistogram(TimeUnit timeUnit) {
+        this();
+        setTimeUnit(timeUnit);
+    }
+
+    public void setTimeUnit(TimeUnit timeUnit) {
+        if (timeUnit != TimeUnit.MILLISECONDS && timeUnit != TimeUnit.NANOSECONDS) {
+            throw new RuntimeException("bad time unit, only ms & ns are supported!");
+        }
+        this.timeUnit = timeUnit;
+    }
+
+    public long getTime() {
+        if (JStormMetrics.enabled) {
+            long now = System.currentTimeMillis();
+            long elapsed = now - lastUpdateTime;
+            if (elapsed >= updateInterval) {
+                lastUpdateTime = now;
+                if (timeUnit == TimeUnit.MILLISECONDS) {
+                    return now;
+                } else {
+                    return System.nanoTime();
+                }
+            }
+        }
+        return -1L;
+    }
+
+    public boolean okToUpdate(long now) {
+        return (now - lastUpdateTime >= updateInterval);
+    }
+
     @Override
     public void update(Number obj) {
-        if (sample()) {
+        if (JStormMetrics.enabled && sample() && enabled.get()) {
             this.unFlushed.update(obj.longValue());
         }
+    }
+
+    @Override
+    public void updateTime(long start) {
+        if (JStormMetrics.enabled) {
+            if (sample() && enabled.get() && start >= 0L) {
+                if (timeUnit == TimeUnit.MILLISECONDS) {
+                    long end = System.currentTimeMillis();
+                    this.unFlushed.update((end - start) * TimeUtils.US_PER_MS);
+                } else {
+                    long end = System.nanoTime();
+                    this.unFlushed.update((end - start) / TimeUtils.NS_PER_US);
+                }
+            }
+        }
+    }
+
+    public void updateTime(long start, int n) {
+        if (JStormMetrics.enabled) {
+            if (sample() && enabled.get() && start >= 0L) {
+                if (timeUnit == TimeUnit.MILLISECONDS) {
+                    long end = System.currentTimeMillis();
+                    long delta = (end - start) / n;
+                    this.unFlushed.update(delta * TimeUtils.US_PER_MS);
+                } else {
+                    long end = System.nanoTime();
+                    long delta = (end - start) / n;
+                    this.unFlushed.update(delta / TimeUtils.NS_PER_US);
+                }
+            }
+        }
+    }
+
+    public void setLastUpdateTime(long time) {
+        lastUpdateTime = time;
     }
 
     @Override
@@ -53,18 +129,18 @@ public class AsmHistogram extends AsmMetric<Histogram> {
     }
 
     @Override
-    public Map<Integer, Histogram> getWindowMetricMap() {
+    public Map<Integer, JHistogram> getWindowMetricMap() {
         return histogramMap;
     }
 
     @Override
-    public Histogram mkInstance() {
+    public JHistogram mkInstance() {
         return newHistogram();
     }
 
     @Override
     protected void updateSnapshot(int window) {
-        Histogram histogram = histogramMap.get(window);
+        JHistogram histogram = histogramMap.get(window);
         if (histogram != null) {
             AsmSnapshot snapshot = new AsmHistogramSnapshot().setSnapshot(histogram.getSnapshot())
                     .setTs(System.currentTimeMillis()).setMetricId(metricId);
@@ -77,14 +153,16 @@ public class AsmHistogram extends AsmMetric<Histogram> {
      */
     protected void doFlush() {
         long[] values = unFlushed.getSnapshot().getValues();
-        for (Histogram histogram : histogramMap.values()) {
+        for (JHistogram histogram : histogramMap.values()) {
             for (long val : values) {
                 histogram.update(val);
             }
         }
-        for (long val : values) {
-            for (AsmMetric metric : this.assocMetrics) {
-                metric.updateDirectly(val);
+        if (MetricUtils.metricAccurateCal){
+            for (long val : values) {
+                for (AsmMetric metric : this.assocMetrics) {
+                    metric.updateDirectly(val);
+                }
             }
         }
         this.unFlushed = newHistogram();
@@ -92,10 +170,21 @@ public class AsmHistogram extends AsmMetric<Histogram> {
 
     @Override
     public AsmMetric clone() {
-        return new AsmHistogram();
+        return new AsmHistogram(timeUnit);
     }
 
-    private Histogram newHistogram() {
-        return new Histogram(new ExponentiallyDecayingReservoir());
+    private JHistogram newHistogram() {
+        return new JHistogram(new ExponentiallyDecayingReservoir());
+    }
+
+    public static void setUpdateInterval(long interval) {
+        if (interval < 0 || interval > TimeUtils.MS_PER_SEC) {
+            throw new RuntimeException("timerUpdateInterval must be between 0~1000");
+        }
+        updateInterval = interval;
+    }
+
+    public static long getUpdateInterval() {
+        return updateInterval;
     }
 }

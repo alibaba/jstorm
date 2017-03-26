@@ -4,15 +4,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.log4j.Logger;
-
 import com.alibaba.jstorm.daemon.worker.WorkerData;
 import com.alibaba.jstorm.utils.IntervalCheck;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.RandomRange;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MkLocalShuffer extends Shuffer {
-    private static final Logger LOG = Logger.getLogger(MkLocalShuffer.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MkLocalShuffer.class);
 
     private List<Integer> outTasks;
     private RandomRange randomrange;
@@ -20,11 +20,13 @@ public class MkLocalShuffer extends Shuffer {
     private IntervalCheck intervalCheck;
     private WorkerData workerData;
     private boolean isLocal;
+    private final List<Integer> allTargetTasks = new ArrayList<Integer>();
 
     public MkLocalShuffer(List<Integer> workerTasks, List<Integer> allOutTasks,
                           WorkerData workerData) {
         super(workerData);
         List<Integer> localOutTasks = new ArrayList<Integer>();
+        allTargetTasks.addAll(allOutTasks);
 
         for (Integer outTask : allOutTasks) {
             if (workerTasks.contains(outTask)) {
@@ -62,7 +64,7 @@ public class MkLocalShuffer extends Shuffer {
 
         List<Integer> localNodeOutTasks = new ArrayList<Integer>();
 
-        for (Integer outTask : outTasks) {
+        for (Integer outTask : allTargetTasks) {
             if (localNodeTasks.contains(outTask)) {
                 localNodeOutTasks.add(outTask);
             }

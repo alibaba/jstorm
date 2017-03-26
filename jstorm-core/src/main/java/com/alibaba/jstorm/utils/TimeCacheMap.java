@@ -23,6 +23,7 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.alibaba.jstorm.callback.AsyncLoopRunnable;
 /**
  * Expires keys that have not been updated in the configured number of seconds. The algorithm used will take between expirationSecs and expirationSecs * (1 + 1
  * / (numBuckets-1)) to actually expire the message.
@@ -56,7 +57,7 @@ public class TimeCacheMap<K, V> implements TimeOutMap<K, V> {
         _cleaner = new Thread(new Runnable() {
             public void run() {
 
-                while (true) {
+                while (AsyncLoopRunnable.getShutdown().get() == false) {
                     Map<K, V> dead = null;
                     JStormUtils.sleepMs(sleepTime);
                     synchronized (_lock) {

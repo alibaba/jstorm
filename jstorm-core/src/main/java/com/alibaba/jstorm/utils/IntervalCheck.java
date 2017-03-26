@@ -22,7 +22,7 @@ import java.io.Serializable;
 public class IntervalCheck implements Serializable {
     private static final long serialVersionUID = 8952971673547362883L;
 
-    long lastCheck = System.currentTimeMillis();
+    long lastCheck = 0;
 
     // default interval is 1 second
     long interval = 1000;
@@ -68,7 +68,15 @@ public class IntervalCheck implements Serializable {
         lastCheck += addTimeMillis;
     }
 
+    public boolean isStart() {
+        return lastCheck != 0;
+    }
+
     public void start() {
         lastCheck = System.currentTimeMillis();
+    }
+
+    public long getLaskCheckTime() {
+        return lastCheck;
     }
 }

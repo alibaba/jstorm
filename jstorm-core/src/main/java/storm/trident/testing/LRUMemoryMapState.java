@@ -103,10 +103,16 @@ public class LRUMemoryMapState<T> implements Snapshottable<T>, ITupleCollection,
         Long currTx;
 
         public LRUMemoryMapStateBacking(int cacheSize, String id) {
-            if (!_dbs.containsKey(id)) {
-                _dbs.put(id, new LRUMap<List<Object>, Object>(cacheSize));
+        	this.db = (Map<List<Object>, T>) _dbs.get(id);
+        	if (db == null) {
+        		db = (Map<List<Object>, T>)new LRUMap<List<Object>, T>(cacheSize);
+        		Map<List<Object>, T> tmp = (Map<List<Object>, T>)
+        				_dbs.putIfAbsent(id, (Map<List<Object>, Object>)db);
+        		if (tmp != null) {
+        			db = tmp;
+        		}
             }
-            this.db = (Map<List<Object>, T>) _dbs.get(id);
+            
         }
 
         @Override
@@ -131,14 +137,14 @@ public class LRUMemoryMapState<T> implements Snapshottable<T>, ITupleCollection,
         public Iterator<List<Object>> getTuples() {
             return new Iterator<List<Object>>() {
 
-                private Iterator<Entry<List<Object>, T>> it = db.entrySet().iterator();
+                private Iterator<Map.Entry<List<Object>, T>> it = db.entrySet().iterator();
 
                 public boolean hasNext() {
                     return it.hasNext();
                 }
 
                 public List<Object> next() {
-                    Entry<List<Object>, T> e = it.next();
+                    Map.Entry<List<Object>, T> e = it.next();
                     List<Object> ret = new ArrayList<Object>();
                     ret.addAll(e.getKey());
                     ret.add(((OpaqueValue)e.getValue()).getCurr());

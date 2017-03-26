@@ -36,9 +36,9 @@ import com.alibaba.jstorm.utils.TimeUtils;
 
 /**
  * storm operation ZK
- * 
+ *
  * @author yannian/longda/zhiyuan.ls
- * 
+ *
  */
 public class Cluster {
 
@@ -61,7 +61,10 @@ public class Cluster {
 
     public static final String LAST_ERROR = "last_error";
     public static final String NIMBUS_SLAVE_DETAIL_ROOT= "nimbus_slave_detail";
-    public static final String BACKPRESSURE_ROOT = "backpressure";
+    public static final String BLOBSTORE_ROOT = "blobstore";
+    public static final String BLACKLIST_ROOT = "blacklist";
+    // stores the latest update sequence for a blob
+    public static final String BLOBSTORE_MAX_KEY_SEQUENCE_NUMBER_ROOT = "blobstoremaxkeysequencenumber";
 
     public static final String ASSIGNMENTS_SUBTREE;
     public static final String ASSIGNMENTS_BAK_SUBTREE;
@@ -74,7 +77,10 @@ public class Cluster {
     public static final String NIMBUS_SLAVE_SUBTREE;
     public static final String METRIC_SUBTREE;
     public static final String NIMBUS_SLAVE_DETAIL_SUBTREE;
-    public static final String BACKPRESSURE_SUBTREE;
+    // Blobstore subtree /storm/blobstore
+    public static final String BLOBSTORE_SUBTREE;
+    public static final String BLOBSTORE_MAX_KEY_SEQUENCE_NUMBER_SUBTREE;
+    public static final String BLACKLIST_SUBTREE;
 
     static {
         ASSIGNMENTS_SUBTREE = ZK_SEPERATOR + ASSIGNMENTS_ROOT;
@@ -88,7 +94,9 @@ public class Cluster {
         NIMBUS_SLAVE_SUBTREE = ZK_SEPERATOR + NIMBUS_SLAVE_ROOT;
         METRIC_SUBTREE = ZK_SEPERATOR + METRIC_ROOT;
         NIMBUS_SLAVE_DETAIL_SUBTREE = ZK_SEPERATOR + NIMBUS_SLAVE_DETAIL_ROOT;
-        BACKPRESSURE_SUBTREE = ZK_SEPERATOR + BACKPRESSURE_ROOT;
+        BLOBSTORE_SUBTREE = ZK_SEPERATOR + BLOBSTORE_ROOT;
+        BLOBSTORE_MAX_KEY_SEQUENCE_NUMBER_SUBTREE = ZK_SEPERATOR + BLOBSTORE_MAX_KEY_SEQUENCE_NUMBER_ROOT;
+        BLACKLIST_SUBTREE = ZK_SEPERATOR + BLACKLIST_ROOT;
     }
 
     public static String supervisor_path(String id) {
@@ -131,8 +139,16 @@ public class Cluster {
         return ASSIGNMENTS_BAK_SUBTREE + ZK_SEPERATOR + id;
     }
 
-    public static String backpressure_path(String topology_id) {
-        return BACKPRESSURE_SUBTREE + ZK_SEPERATOR + topology_id;
+    public static String blobstore_path(String key) {
+        return BLOBSTORE_SUBTREE + ZK_SEPERATOR + key;
+    }
+
+    public static String blob_max_key_sequence_number_path(String key) {
+        return BLOBSTORE_MAX_KEY_SEQUENCE_NUMBER_SUBTREE + ZK_SEPERATOR + key;
+    }
+
+    public static String blacklist_path(String key) {
+        return BLACKLIST_SUBTREE + ZK_SEPERATOR + key;
     }
 
     @SuppressWarnings("rawtypes")
@@ -175,7 +191,7 @@ public class Cluster {
 
     /**
      * if one topology's name equal the input storm_name, then return the topology id, otherwise return null
-     * 
+     *
      * @param zkCluster
      * @param storm_name
      * @return
@@ -203,7 +219,7 @@ public class Cluster {
 
     /**
      * get all topology's StormBase
-     * 
+     *
      * @param zkCluster
      * @return <topology_id, StormBase>
      * @throws Exception
@@ -224,25 +240,29 @@ public class Cluster {
 
     /**
      * get all SupervisorInfo of storm cluster
-     * 
+     *
      * @param stormClusterState
      * @param callback
      * @return Map<String, SupervisorInfo> String: supervisorId SupervisorInfo: [time-secs hostname worker-ports uptime-secs]
      * @throws Exception
      */
     public static Map<String, SupervisorInfo> get_all_SupervisorInfo(StormClusterState stormClusterState, RunnableCallback callback) throws Exception {
-
         Map<String, SupervisorInfo> rtn = new TreeMap<String, SupervisorInfo>();
         // get /ZK/supervisors
         List<String> supervisorIds = stormClusterState.supervisors(callback);
+        // ignore any supervisors in blacklist
+        List<String> blacklist = stormClusterState.get_blacklist();
+
         if (supervisorIds != null) {
-            for (Iterator<String> iter = supervisorIds.iterator(); iter.hasNext();) {
+            for (Iterator<String> iter = supervisorIds.iterator(); iter.hasNext(); ) {
 
                 String supervisorId = iter.next();
                 // get /supervisors/supervisorid
                 SupervisorInfo supervisorInfo = stormClusterState.supervisor_info(supervisorId);
                 if (supervisorInfo == null) {
                     LOG.warn("Failed to get SupervisorInfo of " + supervisorId);
+                } else if (blacklist.contains(supervisorInfo.getHostName())) {
+                    LOG.warn(" hostname:" + supervisorInfo.getHostName() + " is in blacklist");
                 } else {
 
                     rtn.put(supervisorId, supervisorInfo);

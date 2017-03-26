@@ -22,14 +22,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.common.base.Joiner;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 
  * @author yannian
- * 
  */
 public class PathUtils {
     static Logger LOG = LoggerFactory.getLogger(PathUtils.class);
@@ -38,13 +37,13 @@ public class PathUtils {
 
     /**
      * split path as list
-     * 
+     *
      * @param path
      * @return
      */
     public static List<String> tokenize_path(String path) {
         String[] toks = path.split(SEPERATOR);
-        ArrayList<String> rtn = new ArrayList<String>();
+        java.util.ArrayList<String> rtn = new ArrayList<String>();
         for (String str : toks) {
             if (!str.isEmpty()) {
                 rtn.add(str);
@@ -111,7 +110,7 @@ public class PathUtils {
     }
 
     public static void touch(String path) throws IOException {
-        LOG.debug("Touching file at" + path);
+        LOG.debug("Touching file at " + path);
         boolean success = (new File(path)).createNewFile();
         if (!success) {
             throw new RuntimeException("Failed to touch " + path);
@@ -122,6 +121,9 @@ public class PathUtils {
         ArrayList<String> rtn = new ArrayList<String>();
         if (exists_file(dir)) {
             File[] list = (new File(dir)).listFiles();
+            if (list == null) {
+            	return rtn;
+            }
             for (File f : list) {
                 rtn.add(f.getName());
             }
@@ -143,6 +145,17 @@ public class PathUtils {
         }
 
         return ret;
+    }
+
+    public static String join(String... pathList) {
+        return Joiner.on(File.separator).join(pathList);
+    }
+
+    public static void mv(String src, String dest) {
+        try {
+            FileUtils.moveFile(new File(src), new File(dest));
+        } catch (IOException ignored) {
+        }
     }
 
 }

@@ -20,6 +20,7 @@ package com.alibaba.jstorm.ui.controller;
 import com.alibaba.jstorm.ui.model.Response;
 import com.alibaba.jstorm.ui.utils.UIUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -41,7 +42,7 @@ public class JStackController {
                        @RequestParam(value = "port", required = true) String logServerPort,
                        @RequestParam(value = "wport", required = true) String workerPort,
                        ModelMap model) {
-
+        clusterName = StringEscapeUtils.escapeHtml(clusterName);
         int i_logServerPort = JStormUtils.parseInt(logServerPort);
         int i_workerPort = JStormUtils.parseInt(workerPort);
 

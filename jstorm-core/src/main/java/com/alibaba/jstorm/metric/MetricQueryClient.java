@@ -21,6 +21,16 @@ public interface MetricQueryClient {
     void init(Map conf);
 
     /**
+     * return whether the client has been initialized
+     */
+    boolean isInited();
+
+    /**
+     * get identity of this metric query client
+     */
+    String getIdentity(Map conf);
+
+    /**
      * get metric meta with optional meta filter
      *
      * @param clusterName cluster name
@@ -94,6 +104,14 @@ public interface MetricQueryClient {
     /**
      * get metric data
      *
+     * @param key the constructed key
+     * @return metric meta
+     */
+    MetricMeta getMetricMeta(String key);
+
+    /**
+     * get metric data
+     *
      * @param metricId   metric id
      * @param metricType metric type
      * @param win        metric window
@@ -102,6 +120,19 @@ public interface MetricQueryClient {
      * @return metric data objects, depending on metric type, could be CounterData, GaugeData, ... etc.
      */
     List<Object> getMetricData(long metricId, MetricType metricType, int win, long start, long end);
+
+    /**
+     * get metric data
+     *
+     * @param metricId   metric id
+     * @param metricType metric type
+     * @param win        metric window
+     * @param start      start time
+     * @param end        end time
+     * @param size       return size
+     * @return metric data objects, depending on metric type, could be CounterData, GaugeData, ... etc.
+     */
+    List<Object> getMetricData(long metricId, MetricType metricType, int win, long start, long end, int size);
 
     /**
      * get all task track by topology id

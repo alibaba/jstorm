@@ -22,12 +22,14 @@ import backtype.storm.generated.MetricSnapshot;
 import backtype.storm.generated.SupervisorWorkers;
 import backtype.storm.generated.WorkerSummary;
 import backtype.storm.utils.NimbusClient;
+import com.alibaba.jstorm.ui.model.SupervisorEntity;
 import com.alibaba.jstorm.ui.model.UIWorkerMetric;
 import com.alibaba.jstorm.ui.utils.NimbusClientManager;
 import com.alibaba.jstorm.ui.utils.UIMetricUtils;
 import com.alibaba.jstorm.ui.utils.UIUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.NetWorkUtils;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -53,6 +55,7 @@ public class SupervisorController {
                        @RequestParam(value = "host", required = true) String host,
                        @RequestParam(value = "win", required = false) String win,
                        ModelMap model) {
+        clusterName = StringEscapeUtils.escapeHtml(clusterName);
         long start = System.currentTimeMillis();
         host = NetWorkUtils.host2Ip(host);
         int window = UIUtils.parseWindow(win);
@@ -63,15 +66,16 @@ public class SupervisorController {
 
             //get supervisor summary
             SupervisorWorkers supervisorWorkers = client.getClient().getSupervisorWorkers(host);
-            model.addAttribute("supervisor", JStormUtils.thriftToMap(supervisorWorkers.get_supervisor()));
+            model.addAttribute("supervisor", new SupervisorEntity(supervisorWorkers.get_supervisor()));
 
             //get worker summary
             List<WorkerSummary> workerSummaries = supervisorWorkers.get_workers();
-            model.addAttribute("workerSummary", JStormUtils.thriftToMap(workerSummaries));
+            model.addAttribute("workerSummary", UIUtils.getWorkerEntities(workerSummaries));
 
             //get worker metrics
             Map<String, MetricInfo> workerMetricInfo = supervisorWorkers.get_workerMetric();
-            List<UIWorkerMetric> workerMetrics = getWorkerMetrics(workerMetricInfo, workerSummaries, host, window);
+            List<UIWorkerMetric> workerMetrics = UIMetricUtils.getWorkerMetrics(workerMetricInfo,
+                    workerSummaries, host, window);
 //            System.out.println("workerMetricInfo:"+workerMetricInfo);
             model.addAttribute("workerMetrics", workerMetrics);
             model.addAttribute("workerHead", UIMetricUtils.sortHead(workerMetrics, UIWorkerMetric.HEAD));
@@ -94,43 +98,6 @@ public class SupervisorController {
     }
 
 
-    private List<UIWorkerMetric> getWorkerMetrics(Map<String, MetricInfo> workerMetricInfo,
-                                                List<WorkerSummary> workerSummaries, String host, int window) {
-        Map<String, UIWorkerMetric> workerMetrics = new HashMap<>();
-        for (MetricInfo info : workerMetricInfo.values()) {
-            if (info != null) {
-                for (Map.Entry<String, Map<Integer, MetricSnapshot>> metric : info.get_metrics().entrySet()) {
-                    String name = metric.getKey();
-                    String[] split_name = name.split("@");
-                    String _host = UIMetricUtils.extractComponentName(split_name);
-                    if (!host.equals(_host)) continue;
 
-                    //only handle the specific host
-                    String port = UIMetricUtils.extractTaskId(split_name);
-                    String key = host + ":" + port;
-                    String metricName = UIMetricUtils.extractMetricName(split_name);
-                    MetricSnapshot snapshot = metric.getValue().get(window);
-
-                    UIWorkerMetric workerMetric;
-                    if (workerMetrics.containsKey(key)) {
-                        workerMetric = workerMetrics.get(key);
-                    } else {
-                        workerMetric = new UIWorkerMetric(host, port);
-                        workerMetrics.put(key, workerMetric);
-                    }
-                    workerMetric.setMetricValue(snapshot, metricName);
-                }
-            }
-        }
-
-        for (WorkerSummary ws : workerSummaries){
-            String worker = host + ":" + ws.get_port();
-            if (workerMetrics.containsKey(worker)) {
-                workerMetrics.get(worker).setTopology(ws.get_topology());
-            }
-        }
-
-        return new ArrayList<>(workerMetrics.values());
-    }
 
 }

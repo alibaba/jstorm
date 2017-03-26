@@ -28,7 +28,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import backtype.storm.generated.*;
+import com.alibaba.jstorm.ui.model.*;
 import com.alibaba.jstorm.ui.model.graph.*;
+import com.google.common.base.Joiner;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -43,24 +46,12 @@ import org.yaml.snakeyaml.Yaml;
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.metric.AsmWindow;
 import com.alibaba.jstorm.metric.MetricDef;
-import com.alibaba.jstorm.ui.model.ClusterConfig;
-import com.alibaba.jstorm.ui.model.ClusterEntity;
-import com.alibaba.jstorm.ui.model.Response;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.NetWorkUtils;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import backtype.storm.Config;
-import backtype.storm.generated.Bolt;
-import backtype.storm.generated.ClusterSummary;
-import backtype.storm.generated.GlobalStreamId;
-import backtype.storm.generated.Grouping;
-import backtype.storm.generated.MetricInfo;
-import backtype.storm.generated.MetricSnapshot;
-import backtype.storm.generated.NimbusSummary;
-import backtype.storm.generated.SpoutSpec;
-import backtype.storm.generated.StormTopology;
 import backtype.storm.utils.NimbusClient;
 import backtype.storm.utils.Utils;
 
@@ -133,6 +124,8 @@ public class UIUtils {
             flushClusterConfig();
             //flush cluster cache
             flushClusterCache();
+        }else {
+            LOG.error("can not find UI configuration file: {}", confPath);
         }
         return uiConfig;
     }
@@ -153,8 +146,7 @@ public class UIUtils {
         for (String name : UIUtils.clusterConfig.keySet()) {
             try {
                 client = NimbusClientManager.getNimbusClient(name);
-                int port = getNimbusPort(name);
-                clusterEntities.put(name, getClusterEntity(client.getClient().getClusterInfo(), name, port));
+                clusterEntities.put(name, getClusterEntity(client.getClient().getClusterInfo(), name));
             } catch (Exception e) {
                 NimbusClientManager.removeClient(name);
                 LOG.error(e.getMessage(), e);
@@ -163,19 +155,154 @@ public class UIUtils {
         clustersCache = clusterEntities;
     }
 
-    public static ClusterEntity getClusterEntity(ClusterSummary cluster, String cluster_name, int port) {
+    public static ClusterEntity getClusterEntity(ClusterSummary cluster, String cluster_name) {
+        int task_num = 0;
+        for (TopologySummary ts : cluster.get_topologies()) {
+            task_num += ts.get_numTasks();
+        }
         int topology_num = cluster.get_topologies_size();
         NimbusSummary ns = cluster.get_nimbus();
-        return getClusterEntity(ns, topology_num, cluster_name, port);
-    }
-
-    public static ClusterEntity getClusterEntity(NimbusSummary ns, int topology_num, String cluster_name, int port) {
-        String ip = ns.get_nimbusMaster().get_host().split(":")[0];
         ClusterEntity ce = new ClusterEntity(cluster_name, ns.get_supervisorNum(),
-                topology_num, ip, port, ns.get_version(), ns.get_totalPortNum(), ns.get_usedPortNum());
+                topology_num, ns.get_version(), ns.get_totalPortNum(), ns.get_usedPortNum(), task_num);
         return ce;
     }
 
+    public static List<SupervisorEntity> getSupervisorEntities(ClusterSummary cluster){
+        List<SupervisorEntity> ret = new ArrayList<>();
+        for (SupervisorSummary summary : cluster.get_supervisors()){
+            SupervisorEntity entity = new SupervisorEntity(summary.get_supervisorId(), summary.get_host(),
+                    summary.get_uptimeSecs(), summary.get_numWorkers(), summary.get_numUsedWorkers());
+            ret.add(entity);
+        }
+        return ret;
+    }
+
+    public static List<NimbusEntity> getNimbusEntities(ClusterSummary cluster) {
+        List<NimbusEntity> ret = new ArrayList<>();
+
+        NimbusSummary ns = cluster.get_nimbus();
+        NimbusEntity master = new NimbusEntity(ns.get_nimbusMaster().get_host(),
+                ns.get_nimbusMaster().get_uptimeSecs(), ns.get_version());
+        master.setStatus("Master");
+        ret.add(master);
+
+        for (NimbusStat s : ns.get_nimbusSlaves()) {
+            NimbusEntity slave = new NimbusEntity(s.get_host(), s.get_uptimeSecs(), ns.get_version());
+            slave.setStatus("Slave");
+            ret.add(slave);
+        }
+        return ret;
+    }
+
+    public static List<TopologyEntity> getTopologyEntities(ClusterSummary cluster) {
+        List<TopologyEntity> ret = new ArrayList<>();
+        for (TopologySummary summary : cluster.get_topologies()){
+            TopologyEntity entity = new TopologyEntity(summary.get_id(), summary.get_name(), summary.get_status(),
+                    summary.get_uptimeSecs(), summary.get_numTasks(), summary.get_numWorkers(), summary.get_errorInfo());
+            ret.add(entity);
+        }
+        return ret;
+    }
+
+
+    public static List<ZooKeeperEntity> getZooKeeperEntities(String clusterName) {
+        ClusterConfig config = UIUtils.clusterConfig.get(clusterName);
+        List<ZooKeeperEntity> ret = new ArrayList<>();
+        if (config != null) {
+            String zkPort = String.valueOf(config.getZkPort());
+            if (config.getZkServers() != null) {
+                for (String ip : config.getZkServers()) {
+                    ret.add(new ZooKeeperEntity(NetWorkUtils.ip2Host(ip), NetWorkUtils.host2Ip(ip), zkPort));
+                }
+            }
+        }
+        return ret;
+    }
+
+    /**
+     * get all task entities in the specific topology
+     * @param topologyInfo topology info
+     * @return the list of task entities
+     */
+    public static List<TaskEntity> getTaskEntities(TopologyInfo topologyInfo) {
+        Map<Integer, TaskEntity> tasks = new HashMap<>();
+        for (TaskSummary ts : topologyInfo.get_tasks()) {
+            tasks.put(ts.get_taskId(), new TaskEntity(ts));
+        }
+        for (ComponentSummary cs : topologyInfo.get_components()) {
+            String compName = cs.get_name();
+            String type = cs.get_type();
+            for (int id : cs.get_taskIds()) {
+                if (tasks.containsKey(id)) {
+                    tasks.get(id).setComponent(compName);
+                    tasks.get(id).setType(type);
+                } else {
+                    LOG.debug("missing task id:{}", id);
+                }
+            }
+        }
+        return new ArrayList<>(tasks.values());
+    }
+
+    /**
+     * get the task entities in the specific component
+     * @param topologyInfo topology info
+     * @param componentName component name
+     * @return the list of task entities
+     */
+    public static List<TaskEntity> getTaskEntities(TopologyInfo topologyInfo, String componentName) {
+        TreeMap<Integer, TaskEntity> tasks = new TreeMap<>();
+
+        for (ComponentSummary cs : topologyInfo.get_components()) {
+            String compName = cs.get_name();
+            String type = cs.get_type();
+            if (componentName.equals(compName)) {
+                for (int id : cs.get_taskIds()) {
+                    tasks.put(id, new TaskEntity(id, compName, type));
+                }
+            }
+        }
+
+        for (TaskSummary ts : topologyInfo.get_tasks()) {
+            if (tasks.containsKey(ts.get_taskId())) {
+                TaskEntity te = tasks.get(ts.get_taskId());
+                te.setHost(ts.get_host());
+                te.setPort(ts.get_port());
+                te.setStatus(ts.get_status());
+                te.setUptime(ts.get_uptime());
+                te.setErrors(ts.get_errors());
+            }
+        }
+
+        return new ArrayList<>(tasks.values());
+    }
+
+
+    /**
+     * get the specific task entity
+     * @param tasks list of task summaries
+     * @param taskId task id
+     * @return
+     */
+    public static TaskEntity getTaskEntity(List<TaskSummary> tasks, int taskId) {
+        TaskEntity entity = null;
+        for (TaskSummary task : tasks) {
+            if (task.get_taskId() == taskId) {
+                entity = new TaskEntity(task);
+                break;
+            }
+        }
+        return entity;
+    }
+
+
+    public static List<WorkerEntity> getWorkerEntities(List<WorkerSummary> workers){
+        List<WorkerEntity> workerEntities = new ArrayList<>();
+        for (WorkerSummary worker : workers){
+            workerEntities.add(new WorkerEntity(worker));
+        }
+        return workerEntities;
+    }
 
     public static void flushClusterConfig() {
         Map<String, ClusterConfig> configMap = new HashMap<>();
@@ -268,9 +395,7 @@ public class UIUtils {
 
     public static String getPort(String hostPort) {
         if (hostPort.contains(":")) {
-            String lastPart = hostPort.substring(hostPort.indexOf(":"));
-
-            return lastPart;
+            return hostPort.substring(hostPort.indexOf(":")+1);
         } else {
             return null;
         }
@@ -310,7 +435,7 @@ public class UIUtils {
         return null;
     }
 
-    public static Integer getSupervisorPort(String name) {
+    public static int getSupervisorPort(String name) {
         if (clusterConfig.containsKey(name)) {
             Integer port = clusterConfig.get(name).getSupervisorPort();
             if (port == null) {
@@ -320,7 +445,35 @@ public class UIUtils {
             return port;
         }
         LOG.info("can not find the cluster with name:" + name);
-        return null;
+        return 0;
+    }
+
+    /**
+     * seconds to string like '30m 40s' and '1d 20h 30m 40s'
+     *
+     * @param secs
+     * @return
+     */
+    public static String prettyUptime(int secs) {
+        String[][] PRETTYSECDIVIDERS = { new String[] { "s", "60" }, new String[] { "m", "60" }, new String[] { "h", "24" },
+                new String[] { "d", null } };
+        int diversize = PRETTYSECDIVIDERS.length;
+
+        LinkedList<String> tmp = new LinkedList<>();
+        int div = secs;
+        for (int i = 0; i < diversize; i++) {
+            if (PRETTYSECDIVIDERS[i][1] != null) {
+                Integer d = Integer.parseInt(PRETTYSECDIVIDERS[i][1]);
+                tmp.addFirst(div % d + PRETTYSECDIVIDERS[i][0]);
+                div = div / d;
+            } else {
+                tmp.addFirst(div + PRETTYSECDIVIDERS[i][0]);
+            }
+            if (div <= 0 ) break;
+        }
+
+        Joiner joiner = Joiner.on(" ");
+        return joiner.join(tmp);
     }
 
     // change 20150812161819 to 2015-08-12 16:18
@@ -814,5 +967,12 @@ public class UIUtils {
         }
         model.addAttribute("title", displayName);
         model.addAttribute("PAGE_MAX", UIDef.PAGE_MAX);
+    }
+
+    public static Map exceptionJson(Exception ex){
+        Map<String, String> ret = new HashMap<>();
+        ret.put("error", "Internal Server Error");
+        ret.put("errorMessage", JStormUtils.getErrorInfo(ex));
+        return ret;
     }
 }

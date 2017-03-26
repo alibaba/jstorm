@@ -20,6 +20,8 @@ package backtype.storm.serialization;
 import backtype.storm.Config;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Serializer;
+import org.objenesis.strategy.StdInstantiatorStrategy;
+
 import java.util.Map;
 
 public class DefaultKryoFactory implements IKryoFactory {
@@ -45,6 +47,7 @@ public class DefaultKryoFactory implements IKryoFactory {
     public Kryo getKryo(Map conf) {
         KryoSerializableDefault k = new KryoSerializableDefault();
         k.setRegistrationRequired((Boolean) conf.get(Config.TOPOLOGY_KRYO_REGISTER_REQUIRED));
+        k.setInstantiatorStrategy(new Kryo.DefaultInstantiatorStrategy(new StdInstantiatorStrategy()));
         k.setReferences(false);
         return k;
     }

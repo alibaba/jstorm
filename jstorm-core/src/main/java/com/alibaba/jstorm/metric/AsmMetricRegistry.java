@@ -167,25 +167,6 @@ public class AsmMetricRegistry implements AsmMetricSet {
         return getMetrics(AsmMeter.class, filter);
     }
 
-    /**
-     * Returns a map of all the timers in the registry and their names.
-     *
-     * @return all the timers in the registry
-     */
-    public SortedMap<String, AsmTimer> getTimers() {
-        return getTimers(AsmMetricFilter.ALL);
-    }
-
-    /**
-     * Returns a map of all the timers in the registry and their names which match the given filter.
-     *
-     * @param filter the metric filter to match
-     * @return all the timers in the registry
-     */
-    public SortedMap<String, AsmTimer> getTimers(AsmMetricFilter filter) {
-        return getMetrics(AsmTimer.class, filter);
-    }
-
     @SuppressWarnings("unchecked")
     private <T extends AsmMetric> SortedMap<String, T> getMetrics(Class<T> klass, AsmMetricFilter filter) {
         final TreeMap<String, T> timers = new TreeMap<String, T>();

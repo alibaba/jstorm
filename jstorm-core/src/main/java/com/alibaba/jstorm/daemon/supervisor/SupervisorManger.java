@@ -17,6 +17,14 @@
  */
 package com.alibaba.jstorm.daemon.supervisor;
 
+import com.alibaba.jstorm.common.metric.AsmGauge;
+import com.alibaba.jstorm.metric.JStormMetrics;
+import com.alibaba.jstorm.metric.JStormMetricsReporter;
+import com.alibaba.jstorm.metric.MetricDef;
+import com.alibaba.jstorm.metric.MetricType;
+import com.alibaba.jstorm.utils.LinuxResource;
+import com.alibaba.jstorm.utils.Pair;
+import com.codahale.metrics.Gauge;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -39,59 +47,136 @@ import com.alibaba.jstorm.utils.PathUtils;
 
 /**
  * supervisor shutdown manager which can shutdown supervisor
+ *
  * @author Johnfang (xiaojian.fxj@alibaba-inc.com)
  */
 public class SupervisorManger extends ShutdownWork implements SupervisorDaemon, DaemonCommon, Runnable {
 
-    private static Logger LOG = LoggerFactory.getLogger(SupervisorManger.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SupervisorManger.class);
 
     // private Supervisor supervisor;
 
-    private Map conf;
+    private final Map conf;
 
-    private String supervisorId;
+    private final String supervisorId;
 
-    private AtomicBoolean shutdown;
+    private final AtomicBoolean shutdown;
 
-    private Vector<AsyncLoopThread> threads;
+    private final Vector<AsyncLoopThread> threads;
 
-    private EventManager processesEventManager;
+    private final EventManager eventManager;
 
-    private EventManager eventManager;
+    private final Httpserver httpserver;
 
-    private Httpserver httpserver;
+    private final StormClusterState stormClusterState;
 
-    private StormClusterState stormClusterState;
+    private final JStormMetricsReporter metricsReporter;
 
-    private ConcurrentHashMap<String, String> workerThreadPidsAtom;
+    private final ConcurrentHashMap<String, String> workerThreadPidsAtom;
 
     private volatile boolean isFinishShutdown = false;
 
-    public SupervisorManger(Map conf, String supervisorId, Vector<AsyncLoopThread> threads, EventManager processesEventManager, EventManager eventManager,
-            Httpserver httpserver, StormClusterState stormClusterState, ConcurrentHashMap<String, String> workerThreadPidsAtom) {
+    public SupervisorManger(Map conf, String supervisorId, Vector<AsyncLoopThread> threads, EventManager eventManager,
+                            Httpserver httpserver, StormClusterState stormClusterState, ConcurrentHashMap<String, String> workerThreadPidsAtom) {
         this.conf = conf;
         this.supervisorId = supervisorId;
         this.shutdown = new AtomicBoolean(false);
         this.threads = threads;
-        this.processesEventManager = processesEventManager;
         this.eventManager = eventManager;
         this.httpserver = httpserver;
         this.stormClusterState = stormClusterState;
         this.workerThreadPidsAtom = workerThreadPidsAtom;
 
+        this.metricsReporter = new JStormMetricsReporter(this);
+        this.metricsReporter.init();
+
+        registerSupervisorMetrics();
+
         Runtime.getRuntime().addShutdownHook(new Thread(this));
+    }
+
+    private void registerSupervisorMetrics() {
+        JStormMetrics.registerWorkerMetric(
+                JStormMetrics.workerMetricName(MetricDef.CPU_USED_RATIO, MetricType.GAUGE),
+                new AsmGauge(new Gauge<Double>() {
+                    @Override
+                    public Double getValue() {
+                        return JStormUtils.getTotalCpuUsage();
+                    }
+                }));
+
+        JStormMetrics.registerWorkerMetric(
+                JStormMetrics.workerMetricName(MetricDef.DISK_USAGE, MetricType.GAUGE),
+                new AsmGauge(new Gauge<Double>() {
+                    @Override
+                    public Double getValue() {
+                        return JStormUtils.getDiskUsage();
+                    }
+                }));
+
+        JStormMetrics.registerWorkerMetric(
+                JStormMetrics.workerMetricName(MetricDef.MEMORY_USAGE, MetricType.GAUGE),
+                new AsmGauge(new Gauge<Double>() {
+                    @Override
+                    public Double getValue() {
+                        return JStormUtils.getTotalMemUsage();
+                    }
+                }));
+
+        JStormMetrics.registerWorkerMetric(
+                JStormMetrics.workerMetricName(MetricDef.NETRECVSPEED, MetricType.GAUGE),
+                new AsmGauge(new Gauge<Double>() {
+                    Long lastRecvCount = LinuxResource.getNetRevSendCount().getFirst();
+                    Long lastCalTime = System.currentTimeMillis();
+
+                    @Override
+                    public Double getValue() {
+                        Long nowRecvCount = LinuxResource.getNetRevSendCount().getFirst();
+                        Long nowCalTime = System.currentTimeMillis();
+                        long deltaValue = nowRecvCount - lastRecvCount;
+                        long deltaTime = nowCalTime - lastCalTime;
+                        lastRecvCount = nowRecvCount;
+                        lastCalTime = nowCalTime;
+                        double ret = 0.0;
+                        if (deltaTime > 0) {
+                            ret = deltaValue / (double) deltaTime * 1000d;
+                        }
+                        return ret;
+                    }
+                }));
+
+        JStormMetrics.registerWorkerMetric(
+                JStormMetrics.workerMetricName(MetricDef.NETSENDSPEED, MetricType.GAUGE),
+                new AsmGauge(new Gauge<Double>() {
+                    Long lastSendCount = LinuxResource.getNetRevSendCount().getSecond();
+                    Long lastCalTime = System.currentTimeMillis();
+
+                    @Override
+                    public Double getValue() {
+                        Long nowSendCount = LinuxResource.getNetRevSendCount().getSecond();
+                        Long nowCalTime = System.currentTimeMillis();
+                        long deltaValue = nowSendCount - lastSendCount;
+                        long deltaTime = nowCalTime - lastCalTime;
+                        lastSendCount = nowSendCount;
+                        lastCalTime = nowCalTime;
+                        double ret = 0.0;
+                        if (deltaTime > 0) {
+                            ret = deltaValue / (double) deltaTime * 1000d;
+                        }
+                        return ret;
+                    }
+                }));
     }
 
     @Override
     public void shutdown() {
-        if (shutdown.getAndSet(true) == true) {
+        if (shutdown.getAndSet(true)) {
             LOG.info("Supervisor has been shutdown before " + supervisorId);
             return;
         }
         LOG.info("Shutting down supervisor " + supervisorId);
         AsyncLoopRunnable.getShutdown().set(true);
 
-        int size = threads.size();
         for (AsyncLoopThread thread : threads) {
             thread.cleanup();
             JStormUtils.sleepMs(10);
@@ -104,11 +189,9 @@ public class SupervisorManger extends ShutdownWork implements SupervisorDaemon, 
             LOG.info("Successfully shutdown thread:" + thread.getThread().getName());
         }
         eventManager.shutdown();
-        processesEventManager.shutdown();
         try {
             stormClusterState.disconnect();
         } catch (Exception e) {
-            // TODO Auto-generated catch block
             LOG.error("Failed to shutdown ZK client", e);
         }
         if (httpserver != null) {
@@ -119,7 +202,6 @@ public class SupervisorManger extends ShutdownWork implements SupervisorDaemon, 
         // try {
         // this.cgroupManager.close();
         // } catch (IOException e) {
-        // // TODO Auto-generated catch block
         // LOG.error("Fail to close cgroup", e);
         // }
 
@@ -135,7 +217,6 @@ public class SupervisorManger extends ShutdownWork implements SupervisorDaemon, 
         try {
             path = StormConfig.worker_root(conf);
         } catch (IOException e1) {
-            // TODO Auto-generated catch block
             LOG.error("Failed to get Local worker dir", e1);
             return;
         }
@@ -165,17 +246,13 @@ public class SupervisorManger extends ShutdownWork implements SupervisorDaemon, 
             return true;
         }
 
-        Boolean bThread = true;
         int size = threads.size();
         for (int i = 0; i < size; i++) {
-            if (!(Boolean) threads.elementAt(i).isSleeping()) {
-                bThread = false;
+            if (!threads.elementAt(i).isSleeping()) {
                 return false;
             }
         }
-        boolean bManagers = true;
-        if (eventManager.waiting() && processesEventManager.waiting()) {
-            bManagers = false;
+        if (eventManager.waiting()) {
             return false;
         }
         return true;

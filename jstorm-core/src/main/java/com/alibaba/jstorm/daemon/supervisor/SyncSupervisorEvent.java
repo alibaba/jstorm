@@ -18,9 +18,10 @@
 package com.alibaba.jstorm.daemon.supervisor;
 
 import backtype.storm.utils.LocalState;
+import com.alibaba.jstorm.blobstore.BlobStore;
+import com.alibaba.jstorm.blobstore.BlobStoreUtils;
 import com.alibaba.jstorm.callback.RunnableCallback;
 import com.alibaba.jstorm.client.ConfigExtension;
-import com.alibaba.jstorm.cluster.Cluster;
 import com.alibaba.jstorm.cluster.Common;
 import com.alibaba.jstorm.cluster.StormClusterState;
 import com.alibaba.jstorm.cluster.StormConfig;
@@ -40,6 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.util.*;
@@ -48,6 +50,7 @@ import java.util.Map.Entry;
 /**
  * supervisor SynchronizeSupervisor workflow (1) writer local assignment to LocalState (2) download new Assignment's topology (3) remove useless Topology (4)
  * push one SyncProcessEvent to SyncProcessEvent's EventManager
+ * 
  * @author Johnfang (xiaojian.fxj@alibaba-inc.com)
  */
 class SyncSupervisorEvent extends RunnableCallback {
@@ -58,7 +61,6 @@ class SyncSupervisorEvent extends RunnableCallback {
 
     private String supervisorId;
 
-    private EventManager processEventManager;
 
     private EventManager syncSupEventManager;
 
@@ -74,20 +76,19 @@ class SyncSupervisorEvent extends RunnableCallback {
 
     private Heartbeat heartbeat;
 
+
     /**
      * @param conf
-     * @param processEventManager
      * @param syncSupEventManager
      * @param stormClusterState
      * @param supervisorId
      * @param localState
      * @param syncProcesses
      */
-    public SyncSupervisorEvent(String supervisorId, Map conf, EventManager processEventManager, EventManager syncSupEventManager,
+    public SyncSupervisorEvent(String supervisorId, Map conf, EventManager syncSupEventManager,
             StormClusterState stormClusterState, LocalState localState, SyncProcessEvent syncProcesses, Heartbeat heartbeat) {
 
         this.syncProcesses = syncProcesses;
-        this.processEventManager = processEventManager;
         this.syncSupEventManager = syncSupEventManager;
         this.stormClusterState = stormClusterState;
         this.conf = conf;
@@ -100,16 +101,37 @@ class SyncSupervisorEvent extends RunnableCallback {
     public void run() {
         LOG.debug("Synchronizing supervisor, interval seconds:" + TimeUtils.time_delta(lastTime));
         lastTime = TimeUtils.current_time_secs();
+        //In order to ensure that the status is the same for each execution of syncsupervisor
+        MachineCheckStatus checkStatus = new MachineCheckStatus();
+        checkStatus.SetType(heartbeat.getCheckStatus().getType());
 
         try {
-
             RunnableCallback syncCallback = new EventManagerZkPusher(this, syncSupEventManager);
+
+            Map<String, Integer> assignmentVersion = (Map<String, Integer>) localState.get(Common.LS_LOCAL_ZK_ASSIGNMENT_VERSION);
+            if (assignmentVersion == null) {
+                assignmentVersion = new HashMap<String, Integer>();
+            }
+            Map<String, Assignment> assignments = (Map<String, Assignment>) localState.get(Common.LS_LOCAl_ZK_ASSIGNMENTS);
+            if (assignments == null) {
+                assignments = new HashMap<String, Assignment>();
+            }
+            LOG.debug("get local assignments  " + assignments);
+            LOG.debug("get local assignments version " + assignmentVersion);
 
             /**
              * Step 1: get all assignments and register /ZK-dir/assignment and every assignment watch
-             * 
+             *
              */
-            Map<String, Assignment> assignments = Cluster.get_all_assignment(stormClusterState, syncCallback);
+
+            if (checkStatus.getType().equals(MachineCheckStatus.StatusType.panic) || checkStatus.getType().equals(MachineCheckStatus.StatusType.error)){
+                // if statuts is pannic or error, it will clear all assignments and kill all workers;
+                assignmentVersion.clear();
+                assignments.clear();
+                LOG.warn("Supervisor Machine Check Status :" + checkStatus.getType() +", so kill all workers.");
+            } else {
+                getAllAssignments(assignmentVersion, assignments, syncCallback);
+            }
             LOG.debug("Get all assignments " + assignments);
 
             /**
@@ -121,9 +143,10 @@ class SyncSupervisorEvent extends RunnableCallback {
             /**
              * Step 3: get <port,LocalAssignments> from ZK local node's assignment
              */
-            Map<Integer, LocalAssignment> zkAssignment = getLocalAssign(stormClusterState, supervisorId, assignments);
+            Map<Integer, LocalAssignment> zkAssignment;
+            zkAssignment = getLocalAssign(stormClusterState, supervisorId, assignments);
+
             Map<Integer, LocalAssignment> localAssignment;
-            Set<String> updateTopologys;
 
             /**
              * Step 4: writer local assignment to LocalState
@@ -136,31 +159,34 @@ class SyncSupervisorEvent extends RunnableCallback {
                 }
                 localState.put(Common.LS_LOCAL_ASSIGNMENTS, zkAssignment);
 
-                updateTopologys = getUpdateTopologys(localAssignment, zkAssignment, assignments);
-                Set<String> reDownloadTopologys = getNeedReDownloadTopologys(localAssignment);
-                if (reDownloadTopologys != null) {
-                    updateTopologys.addAll(reDownloadTopologys);
-                }
             } catch (IOException e) {
                 LOG.error("put LS_LOCAL_ASSIGNMENTS " + zkAssignment + " of localState failed");
                 throw e;
             }
 
             /**
-             * Step 5: download code from ZK
+             * Step 5: get reloaded topologys
+             */
+            Set<String> updateTopologys;
+            updateTopologys = getUpdateTopologys(localAssignment, zkAssignment, assignments);
+            Set<String> reDownloadTopologys = getNeedReDownloadTopologys(localAssignment);
+            if (reDownloadTopologys != null) {
+                updateTopologys.addAll(reDownloadTopologys);
+            }
+
+            /**
+             * Step 6: download code from ZK
              */
             Map<String, String> topologyCodes = getTopologyCodeLocations(assignments, supervisorId);
-
-            //  downloadFailedTopologyIds which can't finished download binary from nimbus
+            // downloadFailedTopologyIds which can't finished download binary from nimbus
             Set<String> downloadFailedTopologyIds = new HashSet<String>();
 
             downloadTopology(topologyCodes, downloadedTopologyIds, updateTopologys, assignments, downloadFailedTopologyIds);
 
             /**
-             * Step 6: remove any downloaded useless topology
+             * Step 7: remove any downloaded useless topology
              */
             removeUselessTopology(topologyCodes, downloadedTopologyIds);
-
             /**
              * Step 7: push syncProcesses Event
              */
@@ -170,9 +196,23 @@ class SyncSupervisorEvent extends RunnableCallback {
             // If everything is OK, set the trigger to update heartbeat of
             // supervisor
             heartbeat.updateHbTrigger(true);
+
+            try {
+                // update localState
+                localState.put(Common.LS_LOCAL_ZK_ASSIGNMENT_VERSION, assignmentVersion);
+                localState.put(Common.LS_LOCAl_ZK_ASSIGNMENTS, assignments);
+
+            } catch (IOException e) {
+                LOG.error("put LS_LOCAL_ZK_ASSIGNMENT_VERSION&&LS_LOCAl_ZK_ASSIGNMENTS  failed");
+                throw e;
+            }
         } catch (Exception e) {
             LOG.error("Failed to Sync Supervisor", e);
             // throw new RuntimeException(e);
+        }
+        if (checkStatus.getType().equals(MachineCheckStatus.StatusType.panic)){
+            // if statuts is pannic, it will kill supervisor;
+            JStormUtils.halt_process(0, "Supervisor Machine Check Status : Panic , !!!!shutdown!!!!");
         }
 
     }
@@ -197,11 +237,32 @@ class SyncSupervisorEvent extends RunnableCallback {
     }
 
     private void downloadLocalStormCode(Map conf, String topologyId, String masterCodeDir) throws IOException, TException {
+        // STORM_LOCAL_DIR/supervisor/tmp/(UUID)
+        String tmproot = StormConfig.supervisorTmpDir(conf) + File.separator + UUID.randomUUID().toString();
 
         // STORM-LOCAL-DIR/supervisor/stormdist/storm-id
         String stormroot = StormConfig.supervisor_stormdist_root(conf, topologyId);
 
-        FileUtils.copyDirectory(new File(masterCodeDir), new File(stormroot));
+        BlobStore blobStore = null;
+
+        try {
+            blobStore = BlobStoreUtils.getNimbusBlobStore(conf, masterCodeDir, null);
+            FileUtils.forceMkdir(new File(tmproot));
+            blobStore.readBlobTo(StormConfig.master_stormcode_key(topologyId), new FileOutputStream(StormConfig.stormcode_path(tmproot)));
+            blobStore.readBlobTo(StormConfig.master_stormconf_key(topologyId), new FileOutputStream(StormConfig.stormconf_path(tmproot)));
+        } finally {
+            if (blobStore != null)
+                blobStore.shutdown();
+        }
+
+        File srcDir = new File(tmproot);
+        File destDir = new File(stormroot);
+        try {
+            FileUtils.moveDirectory(srcDir, destDir);
+        } catch (FileExistsException e) {
+            FileUtils.copyDirectory(srcDir, destDir);
+            FileUtils.deleteQuietly(srcDir);
+        }
 
         ClassLoader classloader = Thread.currentThread().getContextClassLoader();
 
@@ -215,7 +276,7 @@ class SyncSupervisorEvent extends RunnableCallback {
 
             LOG.info("Extracting resources from jar at " + resourcesJar + " to " + targetDir);
 
-            JStormUtils.extract_dir_from_jar(resourcesJar, StormConfig.RESOURCES_SUBDIR, stormroot);// extract dir
+            JStormUtils.extractDirFromJar(resourcesJar, StormConfig.RESOURCES_SUBDIR, stormroot);// extract dir
             // from jar;;
             // util.clj
         } else if (url != null) {
@@ -237,29 +298,38 @@ class SyncSupervisorEvent extends RunnableCallback {
      * @throws TException
      */
     private void downloadDistributeStormCode(Map conf, String topologyId, String masterCodeDir) throws IOException, TException {
+        String tmproot = null;
+       try {
+           // STORM_LOCAL_DIR/supervisor/tmp/(UUID)
+           tmproot = StormConfig.supervisorTmpDir(conf) + File.separator + UUID.randomUUID().toString();
 
-        // STORM_LOCAL_DIR/supervisor/tmp/(UUID)
-        String tmproot = StormConfig.supervisorTmpDir(conf) + File.separator + UUID.randomUUID().toString();
+           // STORM_LOCAL_DIR/supervisor/stormdist/topologyId
+           String stormroot = StormConfig.supervisor_stormdist_root(conf, topologyId);
 
-        // STORM_LOCAL_DIR/supervisor/stormdist/topologyId
-        String stormroot = StormConfig.supervisor_stormdist_root(conf, topologyId);
+//        JStormServerUtils.downloadCodeFromMaster(conf, tmproot, masterCodeDir, topologyId, true);
+           JStormServerUtils.downloadCodeFromBlobStore(conf, tmproot, topologyId);
 
-        JStormServerUtils.downloadCodeFromMaster(conf, tmproot, masterCodeDir, topologyId, true);
+           // tmproot/stormjar.jar
+           String localFileJarTmp = StormConfig.stormjar_path(tmproot);
 
-        // tmproot/stormjar.jar
-        String localFileJarTmp = StormConfig.stormjar_path(tmproot);
+           // extract dir from jar
+           JStormUtils.extractDirFromJar(localFileJarTmp, StormConfig.RESOURCES_SUBDIR, tmproot);
 
-        // extract dir from jar
-        JStormUtils.extract_dir_from_jar(localFileJarTmp, StormConfig.RESOURCES_SUBDIR, tmproot);
+           File srcDir = new File(tmproot);
+           File destDir = new File(stormroot);
+           try {
+               FileUtils.moveDirectory(srcDir, destDir);
+           } catch (FileExistsException e) {
+               FileUtils.copyDirectory(srcDir, destDir);
+               FileUtils.deleteQuietly(srcDir);
+           }
+       }finally {
+           if (tmproot != null){
+               File srcDir = new File(tmproot);
+               FileUtils.deleteQuietly(srcDir);
+           }
+       }
 
-        File srcDir = new File(tmproot);
-        File destDir = new File(stormroot);
-        try {
-            FileUtils.moveDirectory(srcDir, destDir);
-        } catch (FileExistsException e) {
-            FileUtils.copyDirectory(srcDir, destDir);
-            FileUtils.deleteQuietly(srcDir);
-        }
     }
 
     private String resourcesJar() {
@@ -358,10 +428,8 @@ class SyncSupervisorEvent extends RunnableCallback {
         for (ResourceWorkerSlot worker : workers) {
             if (!supervisorId.equals(worker.getNodeId()))
                 continue;
-            portTasks.put(
-                    worker.getPort(),
-                    new LocalAssignment(topologyId, worker.getTasks(), Common.topologyIdToName(topologyId), worker.getMemSize(), worker.getCpu(), worker
-                            .getJvm(), assignmentInfo.getTimeStamp()));
+            portTasks.put(worker.getPort(), new LocalAssignment(topologyId, worker.getTasks(), Common.topologyIdToName(topologyId), worker.getMemSize(),
+                    worker.getCpu(), worker.getJvm(), assignmentInfo.getTimeStamp()));
         }
 
         return portTasks;
@@ -394,7 +462,7 @@ class SyncSupervisorEvent extends RunnableCallback {
     }
 
     public void downloadTopology(Map<String, String> topologyCodes, List<String> downloadedTopologyIds, Set<String> updateTopologys,
-                                 Map<String, Assignment> assignments, Set<String> downloadFailedTopologyIds) throws Exception {
+            Map<String, Assignment> assignments, Set<String> downloadFailedTopologyIds) throws Exception {
 
         Set<String> downloadTopologys = new HashSet<String>();
 
@@ -415,10 +483,10 @@ class SyncSupervisorEvent extends RunnableCallback {
                         StormConfig.write_supervisor_topology_timestamp(conf, topologyId, assignments.get(topologyId).getTimeStamp());
                         break;
                     } catch (IOException e) {
-                        LOG.error(e + " downloadStormCode failed " + "topologyId:" + topologyId + "masterCodeDir:" + masterCodeDir);
+                        LOG.error(e + " downloadStormCode failed " + "topologyId:" + topologyId + " masterCodeDir:" + masterCodeDir);
 
                     } catch (TException e) {
-                        LOG.error(e + " downloadStormCode failed " + "topologyId:" + topologyId + "masterCodeDir:" + masterCodeDir);
+                        LOG.error(e + " downloadStormCode failed " + "topologyId:" + topologyId + " masterCodeDir:" + masterCodeDir);
                     }
                     retry++;
                 }
@@ -485,7 +553,7 @@ class SyncSupervisorEvent extends RunnableCallback {
                 if (localAssignment.getTopologyId().equals(zkAssignment.getTopologyId()) && assignment != null
                         && assignment.isTopologyChange(localAssignment.getTimeStamp()))
                     if (ret.add(localAssignment.getTopologyId())) {
-                        LOG.info("Topology-" + localAssignment.getTopologyId() + " has been updated. LocalTs=" + localAssignment.getTimeStamp() + ", ZkTs="
+                        LOG.info("Topology " + localAssignment.getTopologyId() + " has been updated. LocalTs=" + localAssignment.getTimeStamp() + ", ZkTs="
                                 + zkAssignment.getTimeStamp());
                     }
             }
@@ -552,4 +620,48 @@ class SyncSupervisorEvent extends RunnableCallback {
             LOG.error("Failed to write local task cleanup timeout map", e);
         }
     }
+
+
+    private void getAllAssignments(Map<String, Integer> assignmentVersion, Map<String, Assignment> localZkAssignments,
+            RunnableCallback callback) throws Exception {
+        Map<String, Assignment> ret = new HashMap<String, Assignment>();
+        Map<String, Integer> updateAssignmentVersion = new HashMap<String, Integer>();
+
+        // get /assignments {topology_id}
+        List<String> assignments = stormClusterState.assignments(callback);
+        if (assignments == null) {
+            assignmentVersion.clear();
+            localZkAssignments.clear();
+            LOG.debug("No assignment of ZK");
+            return;
+        }
+
+        for (String topology_id : assignments) {
+
+            Integer zkVersion = stormClusterState.assignment_version(topology_id, callback);
+            LOG.debug(topology_id + "'s assigment version of zk is :" + zkVersion);
+            Integer recordedVersion = assignmentVersion.get(topology_id);
+            LOG.debug(topology_id + "'s assigment version of local is :" + recordedVersion);
+
+            Assignment assignment = null;
+            if (recordedVersion !=null && zkVersion !=null && recordedVersion.equals(zkVersion)) {
+                assignment = localZkAssignments.get(topology_id);
+            }
+            //because the first version is 0
+            if (assignment == null) {
+                assignment = stormClusterState.assignment_info(topology_id, callback);
+            }
+            if (assignment == null) {
+                LOG.error("Failed to get Assignment of " + topology_id + " from ZK");
+                continue;
+            }
+            updateAssignmentVersion.put(topology_id, zkVersion);
+            ret.put(topology_id, assignment);
+        }
+        assignmentVersion.clear();
+        assignmentVersion.putAll(updateAssignmentVersion);
+        localZkAssignments.clear();
+        localZkAssignments.putAll(ret);
+    }
+
 }

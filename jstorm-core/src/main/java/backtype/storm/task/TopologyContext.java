@@ -26,9 +26,11 @@ import backtype.storm.state.ISubscribedState;
 import backtype.storm.tuple.Fields;
 import backtype.storm.utils.Utils;
 import com.alibaba.jstorm.cluster.StormClusterState;
+import com.alibaba.jstorm.task.Task;
 import org.apache.commons.lang.NotImplementedException;
 import org.json.simple.JSONValue;
 
+import java.lang.reflect.Method;
 import java.util.*;
 
 /**
@@ -49,10 +51,10 @@ public class TopologyContext extends WorkerTopologyContext implements IMetricsCo
     private StormClusterState _zkCluster;
 
     public TopologyContext(StormTopology topology, Map stormConf, Map<Integer, String> taskToComponent, Map<String, List<Integer>> componentToSortedTasks,
-            Map<String, Map<String, Fields>> componentToStreamToFields, String stormId, String codeDir, String pidDir, Integer taskId, Integer workerPort,
+            Map<String, Map<String, Fields>> componentToStreamToFields, String stormId, String codeDir, String workerId, Integer taskId, Integer workerPort,
             List<Integer> workerTasks, Map<String, Object> defaultResources, Map<String, Object> userResources, Map<String, Object> executorData,
             Map registeredMetrics, clojure.lang.Atom openOrPrepareWasCalled, StormClusterState zkCluster) {
-        super(topology, stormConf, taskToComponent, componentToSortedTasks, componentToStreamToFields, stormId, codeDir, pidDir, workerPort, workerTasks,
+        super(topology, stormConf, taskToComponent, componentToSortedTasks, componentToStreamToFields, stormId, codeDir, workerId, workerPort, workerTasks,
                 defaultResources, userResources);
         _taskId = taskId;
         _executorData = executorData;
@@ -185,6 +187,21 @@ public class TopologyContext extends WorkerTopologyContext implements IMetricsCo
         return getSources(getThisComponentId());
     }
 
+    public Map<String, List<Integer>> getThisSourceComponentTasks(){
+        Map<String, List<Integer>> ret = new HashMap<>();
+        Map<GlobalStreamId, Grouping> sources = getThisSources();
+        Set<String> sourceComponents = new HashSet<>();
+        if (sources != null){
+            for (GlobalStreamId globalStreamId : sources.keySet()){
+                sourceComponents.add(globalStreamId.get_componentId());
+            }
+        }
+        for (String component : sourceComponents){
+            ret.put(component, getComponentTasks(component));
+        }
+        return ret;
+    }
+
     /**
      * Gets information about who is consuming the outputs of this component, and how.
      * 
@@ -192,6 +209,21 @@ public class TopologyContext extends WorkerTopologyContext implements IMetricsCo
      */
     public Map<String, Map<String, Grouping>> getThisTargets() {
         return getTargets(getThisComponentId());
+    }
+
+    public Map<String, List<Integer>> getThisTargetComponentTasks() {
+        Map<String, Map<String, Grouping>> outputGroupings = getThisTargets();
+        Map<String, List<Integer>> ret = new HashMap<>();
+        Set<String> targetComponents = new HashSet<>();
+
+        for (Map.Entry<String, Map<String, Grouping>> entry : outputGroupings.entrySet()) {
+            Map<String, Grouping> componentGrouping = entry.getValue();
+            targetComponents.addAll(componentGrouping.keySet());
+        }
+        for (String component : targetComponents) {
+            ret.put(component, getComponentTasks(component));
+        }
+        return ret;
     }
 
     public void setTaskData(String name, Object data) {
@@ -349,7 +381,15 @@ public class TopologyContext extends WorkerTopologyContext implements IMetricsCo
     /*
     * Task error report callback
     * */
-    public void reportError(String errorMsg) throws Exception{
-            _zkCluster.report_task_error(getTopologyId(), _taskId, errorMsg, null);
+    public void reportError(String errorMsg) throws Exception {
+        _zkCluster.report_task_error(getTopologyId(), _taskId, errorMsg);
+    }
+
+    public void applyHooks(String methodName, Object object) throws Exception{
+        for (ITaskHook taskHook : _hooks){
+            Class clazz = taskHook.getClass();
+            Method method = clazz.getDeclaredMethod(methodName, object.getClass());
+            method.invoke(taskHook, object);
+        }
     }
 }

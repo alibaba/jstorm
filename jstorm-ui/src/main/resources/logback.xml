@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <configuration>
-    <property name="LOG_HOME" value="/Users/wuchong/logs/jstorm" />
+
+    <property name="LOG_HOME" value="${catalina.home:-.}/logs/" />
 
     <appender name="PROJECT" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_HOME}/jstorm.ui.log</file>

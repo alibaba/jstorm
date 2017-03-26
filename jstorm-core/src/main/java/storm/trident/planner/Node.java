@@ -23,10 +23,12 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
+import storm.trident.operation.DefaultResourceDeclarer;
 
-public class Node implements Serializable {
-    private static AtomicInteger INDEX = new AtomicInteger(0);
 
+public class Node extends DefaultResourceDeclarer<Node> implements Serializable {
+    private static final AtomicInteger INDEX = new AtomicInteger(0);
+    
     private String nodeId;
 
     public String name = null;
@@ -44,17 +46,38 @@ public class Node implements Serializable {
         this.creationIndex = INDEX.incrementAndGet();
     }
 
-    @Override
-    public boolean equals(Object o) {
-        return nodeId.equals(((Node) o).nodeId);
-    }
+    
 
     @Override
-    public int hashCode() {
-        return nodeId.hashCode();
-    }
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((nodeId == null) ? 0 : nodeId.hashCode());
+		return result;
+	}
 
-    @Override
+
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Node other = (Node) obj;
+		if (nodeId == null) {
+			if (other.nodeId != null)
+				return false;
+		} else if (!nodeId.equals(other.nodeId))
+			return false;
+		return true;
+	}
+
+
+
+	@Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this, ToStringStyle.MULTI_LINE_STYLE);
     }

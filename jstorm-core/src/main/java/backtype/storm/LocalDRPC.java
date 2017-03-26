@@ -17,6 +17,10 @@
  */
 package backtype.storm;
 
+import com.alibaba.jstorm.cluster.StormConfig;
+import com.alibaba.jstorm.utils.JStormServerUtils;
+import com.alibaba.jstorm.utils.JStormUtils;
+import com.alibaba.jstorm.utils.PathUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +30,10 @@ import backtype.storm.utils.ServiceRegistry;
 
 import com.alibaba.jstorm.drpc.Drpc;
 
-public class LocalDRPC implements ILocalDRPC {
+import java.io.File;
+import java.util.Map;
+
+public final class LocalDRPC implements ILocalDRPC {
     private static final Logger LOG = LoggerFactory.getLogger(LocalDRPC.class);
 
     private Drpc handler = new Drpc();
@@ -42,6 +49,7 @@ public class LocalDRPC implements ILocalDRPC {
             public void run() {
                 LOG.info("Begin to init local Drpc");
                 try {
+                    killOldDrpcPids();
                     handler.init();
                 } catch (Exception e) {
                     LOG.info("Failed to  start local drpc");
@@ -53,6 +61,30 @@ public class LocalDRPC implements ILocalDRPC {
         thread.start();
 
         serviceId = ServiceRegistry.registerService(handler);
+    }
+
+    public void killOldDrpcPids() throws Exception{
+        Map conf = StormConfig.read_storm_config();
+        LOG.info("Configuration is \n" + conf);
+        String pidDir = StormConfig.drpcPids(conf);
+        File file = new File(pidDir);
+
+        if (file.exists() == false)
+            return ;
+
+
+        String[] existPids = file.list();
+        if (existPids == null) {
+        	return ;
+        }
+
+        for (String existPid : existPids) {
+            try {
+                PathUtils.rmpath(pidDir + File.separator + existPid);
+            } catch (Exception e) {
+                LOG.warn(e.getMessage(), e);
+            }
+        }
     }
 
     @Override

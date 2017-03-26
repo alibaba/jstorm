@@ -52,7 +52,7 @@ public class ClustersController {
     private int getNodeCount(Collection<ClusterEntity> clusterEntities){
         int count = 0;
         for (ClusterEntity c : clusterEntities){
-            count += c.getSupervisor_num();
+            count += c.getSupervisors();
         }
         return count;
     }

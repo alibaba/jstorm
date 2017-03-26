@@ -53,7 +53,7 @@ public class JStormUtilsTest {
                 while (forkTimes < RESTART_TIMES) {
 
                     try {
-                        JStormUtils.launch_process(cmd + " " + forkTimes, environment, true);
+                        JStormUtils.launchProcess(cmd + " " + forkTimes, environment, true);
                     } catch (IOException e) {
                         // TODO Auto-generated catch block
                         LOG.error("Failed to fork process " + cmd + forkTimes, e);

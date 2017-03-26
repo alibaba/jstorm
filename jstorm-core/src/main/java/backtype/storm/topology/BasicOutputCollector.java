@@ -58,4 +58,8 @@ public class BasicOutputCollector implements IBasicOutputCollector {
     public void reportError(Throwable t) {
         out.reportError(t);
     }
+
+    public Tuple getInputTuple() {
+        return inputTuple;
+    }
 }

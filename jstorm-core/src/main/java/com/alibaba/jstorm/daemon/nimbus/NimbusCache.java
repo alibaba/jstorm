@@ -37,6 +37,8 @@ public class NimbusCache {
     public static final String TIMEOUT_MEM_CACHE_CLASS = TimeoutMemCache.class.getName();
     public static final String ROCKS_DB_CACHE_CLASS = RocksDBCache.class.getName();
 
+    public static final String SUPERVISORS_INFO = "__supervisors_info";
+
     protected JStormCache memCache;
     protected JStormCache dbCache;
     protected StormClusterState zkCluster;
@@ -85,7 +87,7 @@ public class NimbusCache {
                 memCache = new TimeoutMemCache();
                 memCache.init(conf);
             }
-        } catch (UnsupportedClassVersionError e) {
+        } catch (java.lang.UnsupportedClassVersionError e) {
 
             if (e.getMessage().indexOf("Unsupported major.minor version") >= 0) {
                 LOG.error("!!!Please update jdk version to 7 or higher!!!");

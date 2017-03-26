@@ -29,12 +29,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Created by xiaojian.fxj on 2015/10/13.
+ * @author xiaojian.fxj
+ * @since 2.1.0
  */
 public class update_topology {
-    public static final String UPDATE_CONF = "-conf";
-
-    public static final String UPDATE_JAR = "-jar";
 
     public static void usage() {
         System.out.println("update topology config, please do as following:");
@@ -45,6 +43,7 @@ public class update_topology {
 
         System.out.println("update topology jar and conf, please do as following:");
         System.out.println("update_topology topologyName -jar jarFile -conf configFile");
+
     }
 
     private static Options buildGeneralOptions(Options opts) {
@@ -54,21 +53,22 @@ public class update_topology {
             r.addOption((Option) o);
 
         Option jar = OptionBuilder.withArgName("path").hasArg()
-                .withDescription("comma  jar of the submitted topology")
+                .withDescription("topology jar of the submitted topology")
                 .create("jar");
         r.addOption(jar);
 
         Option conf = OptionBuilder.withArgName("configuration file").hasArg()
                 .withDescription("an application configuration file")
                 .create("conf");
+
         r.addOption(conf);
+
         return r;
     }
 
-    private static void updateTopology(String topologyName, String pathJar,
-            String pathConf) {
-        NimbusClient client = null;
-        Map loadMap = null;
+    private static void updateTopology(String topologyName, String pathJar, String pathConf) {
+        NimbusClient client;
+        Map loadMap;
         if (pathConf != null) {
             loadMap = Utils.loadConf(pathConf);
         } else {
@@ -82,13 +82,13 @@ public class update_topology {
         try {
             // update jar
             String uploadLocation = null;
+            String path = client.getClient().beginFileUpload();
             if (pathJar != null) {
                 System.out.println("Jar update to master yet. Submitting jar of " + pathJar);
-                String path = client.getClient().beginFileUpload();
                 String[] pathCache = path.split("/");
                 uploadLocation = path + "/stormjar-" + pathCache[pathCache.length - 1] + ".jar";
-                List<String> lib = (List<String>) conf .get(GenericOptionsParser.TOPOLOGY_LIB_NAME);
-                Map<String, String> libPath = (Map<String, String>) conf .get(GenericOptionsParser.TOPOLOGY_LIB_PATH);
+                List<String> lib = (List<String>) conf.get(GenericOptionsParser.TOPOLOGY_LIB_NAME);
+                Map<String, String> libPath = (Map<String, String>) conf.get(GenericOptionsParser.TOPOLOGY_LIB_PATH);
                 if (lib != null && lib.size() != 0) {
                     for (String libName : lib) {
                         String jarPath = path + "/lib/" + libName;
@@ -96,27 +96,15 @@ public class update_topology {
                         StormSubmitter.submitJar(conf, libPath.get(libName), jarPath, client);
                     }
 
-                } else {
-                    if (pathJar == null) {
-                        // no lib, no client jar
-                        throw new RuntimeException( "No client app jar, please upload it");
-                    }
                 }
-
-                if (pathJar != null) {
-                    StormSubmitter.submitJar(conf, pathJar, uploadLocation, client);
-                } else {
-                    // no client jar, but with lib jar
-                    client.getClient().finishFileUpload(uploadLocation);
-                }
+                StormSubmitter.submitJar(conf, pathJar, uploadLocation, client);
             }
 
             // update topology
             String jsonConf = Utils.to_json(loadMap);
             System.out.println("New configuration:\n" + jsonConf);
 
-            client.getClient().updateTopology(topologyName, uploadLocation,
-                    jsonConf);
+            client.getClient().updateTopology(topologyName, path, jsonConf);
 
             System.out.println("Successfully submit command update " + topologyName);
 
@@ -131,9 +119,6 @@ public class update_topology {
 
     }
 
-    /**
-     * @param args
-     */
     public static void main(String[] args) {
         if (args == null || args.length < 3) {
             System.out.println("Invalid parameter");

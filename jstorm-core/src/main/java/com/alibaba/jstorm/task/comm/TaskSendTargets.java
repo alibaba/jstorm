@@ -17,18 +17,18 @@
  */
 package com.alibaba.jstorm.task.comm;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 
+import backtype.storm.tuple.Tuple;
+import com.alibaba.jstorm.daemon.worker.JStormDebugger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import backtype.storm.Config;
 import backtype.storm.task.TopologyContext;
 
 import com.alibaba.jstorm.task.TaskBaseMetric;
+import com.alibaba.jstorm.task.execute.MsgInfo;
 import com.alibaba.jstorm.task.group.GrouperType;
 import com.alibaba.jstorm.task.group.MkGrouper;
 import com.alibaba.jstorm.utils.JStormUtils;
@@ -54,7 +54,6 @@ public class TaskSendTargets {
 
     private String componentId;
     private int taskId;
-    private boolean isDebuging = false;
     private String debugIdStr;
 
     public TaskSendTargets(Map<Object, Object> _storm_conf, String _component, Map<String, Map<String, MkGrouper>> _stream_component_grouper,
@@ -65,14 +64,13 @@ public class TaskSendTargets {
         this.topologyContext = _topology_context;
         this.taskStats = _task_stats;
 
-        isDebuging = JStormUtils.parseBoolean(stormConf.get(Config.TOPOLOGY_DEBUG), false);
 
         taskId = topologyContext.getThisTaskId();
-        debugIdStr = " Emit from " + componentId + ":" + taskId + " ";
+        debugIdStr = " emit from " + componentId + ":" + taskId + " ";
     }
 
     // direct send tuple to special task
-    public List<Integer> get(Integer out_task_id, String stream, List<Object> tuple) {
+    public List<Integer> get(Integer out_task_id, String stream, List<Object> tuple, Collection<Tuple> anchors, Object root_id) {
 
         // in order to improve acker's speed, skip checking
         // String target_component =
@@ -86,7 +84,7 @@ public class TaskSendTargets {
         // "Cannot emitDirect to a task expecting a regular grouping");
         // }
 
-        if (isDebuging) {
+        if (isDebug(anchors, root_id)) {
             LOG.info(debugIdStr + stream + " to " + out_task_id + ":" + tuple.toString());
         }
 
@@ -98,7 +96,7 @@ public class TaskSendTargets {
     }
 
     // send tuple according to grouping
-    public List<Integer> get(String stream, List<Object> tuple) {
+    public List<Integer> get(String stream, List<Object> tuple, Collection<Tuple> anchors, Object root_id) {
         List<Integer> out_tasks = new ArrayList<Integer>();
 
         // get grouper, then get which task should tuple be sent to.
@@ -106,7 +104,7 @@ public class TaskSendTargets {
         if (componentCrouping == null) {
             // if the target component's parallelism is 0, don't need send to
             // them
-            LOG.debug("Failed to get Grouper of " + stream + " in " + debugIdStr);
+            LOG.debug("Failed to get Grouper of " + stream + " when " + debugIdStr);
             return out_tasks;
         }
 
@@ -122,8 +120,7 @@ public class TaskSendTargets {
 
         }
 
-        if (isDebuging) {
-
+        if (isDebug(anchors, root_id)) {
             LOG.info(debugIdStr + stream + " to " + out_tasks + ":" + tuple.toString());
         }
 
@@ -134,7 +131,67 @@ public class TaskSendTargets {
         return out_tasks;
     }
 
+    public Map<Object, List<MsgInfo>> getBatch(Integer outTaskId, String stream, List<MsgInfo> batch) {
+        Map<Object, List<MsgInfo>> outTasks = new HashMap<Object, List<MsgInfo>>();
+        outTasks.put(outTaskId, batch);
+
+        taskStats.send_tuple(stream, batch.size());
+
+        return outTasks;
+    }
+
+    public Map<Object, List<MsgInfo>> getBatch(String stream, List<MsgInfo> batch) {
+        Map<Object, List<MsgInfo>> outTasks = new HashMap<Object, List<MsgInfo>>();
+
+        // get grouper, then get which task should tuple be sent to.
+        Map<String, MkGrouper> componentCrouping = streamComponentgrouper.get(stream);
+        if (componentCrouping == null) {
+            // if the target component's parallelism is 0, don't need send to
+            // them
+            LOG.debug("Failed to get Grouper of " + stream + " in " + debugIdStr);
+            return outTasks;
+        }
+
+        for (Entry<String, MkGrouper> ee : componentCrouping.entrySet()) {
+            MkGrouper g = ee.getValue();
+
+            if (GrouperType.direct.equals(g.gettype())) {
+                throw new IllegalArgumentException("Cannot do regular emit to direct stream");
+            }
+
+            outTasks.putAll(g.grouperBatch(batch));
+        }
+
+        /*
+        if (isDebug(anchors, root_id)) {
+
+            LOG.info(debugIdStr + stream + " to " + out_tasks);
+        }*/
+
+        int num_out_tasks = 0;
+        for (Entry<Object, List<MsgInfo>> entry : outTasks.entrySet()) {
+            if (entry.getKey() instanceof Integer) {
+            	num_out_tasks += entry.getValue().size();
+            } else {
+                num_out_tasks += ((List<Integer>) entry.getKey()).size() * entry.getValue().size();
+            }
+        }
+        taskStats.send_tuple(stream, num_out_tasks);
+
+        return outTasks;
+    }
+    
     public void updateStreamCompGrouper(Map<String, Map<String, MkGrouper>> streamComponentgrouper) {
         this.streamComponentgrouper = streamComponentgrouper;
+    }
+
+    private boolean isDebug(Collection<Tuple> anchors, Object root_id) {
+        if (root_id != null) {
+            return JStormDebugger.isDebug(root_id);
+        }
+        if (anchors != null) {
+            return JStormDebugger.isDebug(anchors);
+        }
+        return false;
     }
 }

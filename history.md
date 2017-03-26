@@ -1,12 +1,147 @@
 [JStorm English introduction](http://42.121.19.155/jstorm/JStorm-introduce-en.pptx)
 [JStorm Chinese introduction](http://42.121.19.155/jstorm/JStorm-introduce.pptx)
 
+# Release 2.2.1
+
+## New features
+* Performance is improved by 200%~300%, compared to Release 2.1.1 and 0.9.8.1 in several testing scenarios, while 
+120%~200% compared to Flink and 300%~400% compared to Storm.
+	1. Restructure the batch solution
+	2. Improve serialization and deserialization to reduce the cost of cpu and network
+	3. Improve the cost of cpu on critical path and metrics
+	4. Improve the strategy of netty client and netty server 
+	5. Support consume and publish of disruptor queue under batch mode
+* Introduce snapshot exactly once framework
+	1. Compared to Trident solution, the performance of new framework is increased by several times. Besides it. 
+	2. The new framework also support "at least once" mode. Compared to the acker mechanism，it will reduce the cost 
+	of relative calculation in acker, and the cost of network, which will improve the performance singificantly.
+* Support JStorm on yarn。
+	1. Currently, jstorm cluster is capable of fast deployments，and fast scale-in/scale-out. It will improve the utility of resource.
+* Re-design the solution of backpressure. Currently, the flow control is stage by stage。
+	1. The solution is simple and effective now. The  response is much more faster when the exchange of switch on/off
+	 of backpressure. 
+	2. The performance and stability is improved significantly, compared to the original solution.
+* Introduce Window API
+	1. Support tumbling window，sliding window
+	2. window support two collection mode, count and duration. 
+	3. Support watermark mechanism
+* Introduce the support of Flux
+	1. Flux is a programing framework or component which is aim to help create and deploy the topology of jstorm 
+	quickly.
+* Isolate the dependencies of jstorm and user topology by maven shade plugin to fix the conflict problem.
+* Improve Shuffle grouping solution
+	1. Integrate shuffle， localOrShuffle and localFirst. The grouping solution will be auto adapted according to the assignment of topology.
+	2. Introduce load aware in shuffle to ensure the load balance of downstreams.
+* Support to configure blacklist in Nimbus to exclude some problematic nodes
+* Support batch mode in trident
+* Support the push of configuration of cluster
+* Add buildTs to supervisor info and heartbeats
+* Add ext module for nimbus and supervisor to support external plugins
+* Add jstorm-elasticsearch support, thanks to @elloray for your contribution
+
+
+## Improvements
+* Restructure nimbus metrics implementation. Currently, the topology metrics runnable is event-drive.
+* Restructure topology master. Currently, the processor in TM is event-drive.
+* Add some examples to cover more scenarios
+* Disable stream metrics to reduce the cost of sending metrics to Nimbus
+* Support metrics in local mode
+* Improve the implementation of gauge by changing the instantaneous value of each minute，to the average value of some sample values in each minute.
+* Introduce an approximate histogram calculation to reduce memory usage of histogram metrics
+* Add Full GC and supervisor network related metrics 
+
+
+## Bug Fix
+* Fix message disorder bug
+* Fix the bug that some connections to zookeeper are not closed by expected when encountering exception in supervisor.
+* The deactivate might be called by mistake when task init
+* The rootId might be duplicated occasionally. It will cause the unexpected message failure.
+* Fix the bug when local mode
+* Fix logwriter's bug
+* Some task metrics(RecvTps ProcessLatency) might not be aggregated correctly.
+* Fix the racing condition of AsmCounter during flushing
+
+
+# Release 2.1.1
+
+## New features
+1. 1.5~6X performance boost from worst to best scenarios compared to JStorm-2.1.0
+1. Add application-level auto-batch
+1. Add independent control channel to separate control msgs from biz msgs to guarantee high priority for control msgs
+1. Dramatic performance boost in metrics, see "Improvements" section
+1. Support jdk1.8
+1. Add Nimbus hook and topology hook
+1. Metrics system:
+    1. Support disable/enable metrics on the fly
+    1. Add jstorm metrics design docs, see JSTORM-METRICS.md
+1. JStorm web UI:
+    1. Add zookeeper viewer in web UI, thanks to @dingjun84
+    1. Add log search and deep log search, support both backward search and forward search
+    1. Support log file download
+1. Support changing log level on the fly
+1. Change error structure in zk, add errorLevel, errorCode and duration.
+1. Add supervisor health check
+1. Add -Dexclude.jars option to enable filtering jars manually
+
+## Improvements
+1. Metrics:
+    1. use JHistogram/JMeter instead of Histogram/Meter, change internal Clock.tick to System.currentTimeMillis to improve performance (50+% boost in Meter and 25%+ boost in Histogram)
+    1. add TupleLifeCycle metric
+    1. add supervisor metrics: total_cpu_usage, total_mem_usage, disk_usage
+    1. remove some unnecessary metrics like emitTime, etc.
+    1. Use HeapByteBuffer instead of List<Long> to transmit metric data points, reduce 60+% metrics memory usage 
+    1. Change sample rate from 10% to 5% by default
+    1. Remove AsmTimer and related code
+1. Log related:
+    1. Use logback by default instead of log4j, exclude slf4j-log4j12 dependency
+    1. Use jstorm.log.dir property instead of ${jstorm.home}/logs, see jstorm.logback.xml 
+    1. Change all log4j Logger's to slf4j Logger's
+    1. Set default log page size(log.page.size) in defaults.yaml to 128KB (web UI)
+    1. Change topology log structure, add ${topology.name} directory, see jstorm.logback.xml
+    1. Add timestamp in supervisor/nimbus gc log files; backup worker gc log before launching a new worker;
+    1. Set logback/log4j file encoding to UTF-8
+1. Refine backpressure stragety to avoid over-backpressure
+1. Change acker pending rotating map to single thread to improve performance
+1. Update RefreshConnections to avoid downloading assignments from zk frequently
+1. Change default memory of Supervisor to 1G (previous 512MB)
+1. Use ProcessLauncher to launch processes
+1. Add DefaultUncaughtExceptionHandler for supervisor and nimbus
+1. Change local ports to be different from 0.9.x versions (supervisor.slots.ports.base, nimbus.thrift.port, 
+ nimbus.deamon.logview.port, supervisor.deamon.logview.port)
+1. Change highcharts to echarts to avoid potential license violation
+1. Dependency upgrades:
+    1. Upgrade kryo to 2.23.0
+    1. Upgrade disruptor to 3.2.2
+
+## Bug fix
+1. Fix deadlock when starting workers
+1. Fix the bug that when localstate file is empty, supervisor can't start
+1. Fix kryo serialization for HeapByteBuffer in metrics
+1. Fix total memory usage calculation
+1. Fix the bug that empty worker is assigned when configured worker number is bigger than the actual number for user defined scheduler
+1. Fix UI log home directory 
+1. Fix XSS security bug in web UI
+1. Don't start TopologyMetricsRunnable thread in local mode, thanks to @L-Donne
+1. Fix JSTORM-141, JSTORM-188 that TopologyMetricsRunnable consumes too much CPU
+1. Remove MaxTenuringThreshold JVM option support jdk1.8, thanks to @249550148
+1. Fix possible NPE in MkLocalShuffer
+
+## Deploy and scripts
+1. Add cleanup for core dumps
+1. Add supervisor health check in healthCheck.sh
+1. Change jstorm.py to terminate the original python process when starting nimbus/supervisor
+
+## Upgrade guide
+1. JStorm 2.1.1 is mostly compatible with 2.1.0, but it's better to restart your topologies to finish the upgrade.
+1. If you're using log4j, be cautious that we have switched default logging system to logback, if you still want to use log4j, please add "user.defined.log4j.conf: jstorm.log4j.properties" to your conf/storm.yaml.
+
+
 # Release 2.1.0
 
 ## New features
 
 1. Totally redesign Web UI
-	1.	Make the UI more beatiful
+	1.	Make the UI more beautiful
 	1.	Improve Web UI speed much.
 	1.	Add Cluster/Topology Level Summarized Metrics in recent 30 minutes.
 	1.	Add DAG in the Web UI, support Uer Interaction to get key information such as emit, tuple lifecycle, tps
@@ -64,6 +199,8 @@
 1. For drpc single instance under one configuration
 1. In the client topologyNameExists interface，directly use trhift api
 1. Fix failed to restart due to topology cleanup thread's competition
+1. Fix the bug that backpressure might be lost when trigger bolt was failed.
+1. Fixed the bug that DefaultMetricUploader doesn't delete metrics data in rocksdb, causing new metrics data cannot be appended.
 
 ## Deploy and scripts
 1. Optimize cleandisk.sh, avoid delete useful worker log
@@ -477,12 +614,6 @@ on storm 0.9.0 can run in jstorm 0.9.0 without any change.
 3. Application can use user-define resource.
 4. Task can apply extra cpu slot or memory slot.
 4. Application can force tasks run on different supervisor or the same supervisor
-
-
-
-
-
-
 
 
 # Release 0.7.1

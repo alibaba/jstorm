@@ -17,6 +17,8 @@
  */
 package com.alibaba.jstorm.callback.impl;
 
+import com.alibaba.jstorm.blobstore.BlobStoreUtils;
+import com.alibaba.jstorm.blobstore.LocalFsBlobStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +26,8 @@ import com.alibaba.jstorm.callback.BaseCallback;
 import com.alibaba.jstorm.cluster.StormBase;
 import com.alibaba.jstorm.daemon.nimbus.NimbusData;
 import com.alibaba.jstorm.daemon.nimbus.NimbusUtils;
+
+import java.util.List;
 
 /**
  * Remove topology /ZK-DIR/topology data
@@ -37,8 +41,8 @@ public class RemoveTransitionCallback extends BaseCallback {
 
     private static Logger LOG = LoggerFactory.getLogger(RemoveTransitionCallback.class);
 
-    private NimbusData data;
-    private String topologyid;
+    protected NimbusData data;
+    protected String topologyid;
 
     public RemoveTransitionCallback(NimbusData data, String topologyid) {
         this.data = data;
@@ -57,7 +61,13 @@ public class RemoveTransitionCallback extends BaseCallback {
             }
             data.getStormClusterState().remove_storm(topologyid);
             data.getTasksHeartbeat().remove(topologyid);
+            data.getTaskHeartbeatsCache().remove(topologyid);
             NimbusUtils.removeTopologyTaskTimeout(data, topologyid);
+
+            // delete topology files in blobstore
+            List<String> deleteKeys = BlobStoreUtils.getKeyListFromId(data, topologyid);
+            BlobStoreUtils.cleanup_keys(deleteKeys, data.getBlobStore(), data.getStormClusterState());
+
             LOG.info("Successfully removed ZK items topology: " + topologyid);
 
         } catch (Exception e) {

@@ -19,30 +19,34 @@ package com.alibaba.jstorm.ui.model;
 
 import backtype.storm.generated.ErrorInfo;
 import backtype.storm.generated.TaskSummary;
+import com.alibaba.jstorm.ui.utils.UIUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * @author Jark (wuchong.wc@alibaba-inc.com)
  */
 public class TaskEntity {
-    private int task_id;
+    private int id;
     private String component;
     private String type;
-    private int uptime;
+    private String uptime;
+    private int uptimeSeconds;
     private String status;
     private String host;
     private int port;
-    private List<ErrorInfo> errors;
+    private List<ErrorEntity> errors;
 
-    public TaskEntity(int task_id, int uptime, String status, String host,
+    public TaskEntity(int task_id, int uptimeSeconds, String status, String host,
                       int port, List<ErrorInfo> errors) {
-        this.task_id = task_id;
-        this.uptime = uptime;
+        this.id = task_id;
+        this.uptime = UIUtils.prettyUptime(uptimeSeconds);
+        this.uptimeSeconds = uptimeSeconds;
         this.status = status;
         this.host = host;
         this.port = port;
-        this.errors = errors;
+        setErrors(errors);
     }
 
     public TaskEntity(TaskSummary ts) {
@@ -50,7 +54,7 @@ public class TaskEntity {
     }
 
     public TaskEntity(int task_id, String component, String type) {
-        this.task_id = task_id;
+        this.id = task_id;
         this.component = component;
         this.type = type;
     }
@@ -63,12 +67,12 @@ public class TaskEntity {
         this.type = type;
     }
 
-    public int getTask_id() {
-        return task_id;
+    public int getId() {
+        return id;
     }
 
-    public void setTask_id(int task_id) {
-        this.task_id = task_id;
+    public void setId(int id) {
+        this.id = id;
     }
 
     public String getComponent() {
@@ -77,14 +81,6 @@ public class TaskEntity {
 
     public void setComponent(String component) {
         this.component = component;
-    }
-
-    public int getUptime() {
-        return uptime;
-    }
-
-    public void setUptime(int uptime) {
-        this.uptime = uptime;
     }
 
     public String getStatus() {
@@ -111,11 +107,36 @@ public class TaskEntity {
         this.port = port;
     }
 
-    public List<ErrorInfo> getErrors() {
+    public List<ErrorEntity> getErrors() {
         return errors;
     }
 
     public void setErrors(List<ErrorInfo> errors) {
-        this.errors = errors;
+        if (errors == null){
+            this.errors = null;
+            return;
+        }
+        this.errors = new ArrayList<>();
+        for (ErrorInfo info : errors){
+            ErrorEntity err = new ErrorEntity(info.get_errorTimeSecs(), info.get_error());
+            this.errors.add(err);
+        }
+    }
+
+    public String getUptime() {
+        return uptime;
+    }
+
+    public void setUptime(int uptimeSeconds) {
+        this.uptimeSeconds = uptimeSeconds;
+        this.uptime = UIUtils.prettyUptime(uptimeSeconds);
+    }
+
+    public int getUptimeSeconds() {
+        return uptimeSeconds;
+    }
+
+    public void setUptimeSeconds(int uptimeSeconds) {
+        this.uptimeSeconds = uptimeSeconds;
     }
 }

@@ -38,22 +38,19 @@ public class QueueGauge extends HealthCheck implements Gauge<Double> {
     public QueueGauge(DisruptorQueue queue, String... names) {
         this.queue = queue;
         this.name = Joiner.on("-").join(names);
-        this.healthy = Result.healthy();
+        this.healthy = HealthCheck.Result.healthy();
     }
 
     @Override
     public Double getValue() {
-        Double ret = (double) queue.pctFull();
-
-        return ret;
+        return (double) queue.pctFull();
     }
 
     @Override
     protected Result check() throws Exception {
-        // TODO Auto-generated method stub
         Double ret = (double) queue.pctFull();
         if (ret > 0.9) {
-            return Result.unhealthy(name + QUEUE_IS_FULL);
+            return HealthCheck.Result.unhealthy(name + QUEUE_IS_FULL);
         } else {
             return healthy;
         }

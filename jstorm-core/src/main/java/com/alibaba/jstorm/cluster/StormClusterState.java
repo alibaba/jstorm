@@ -21,14 +21,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import backtype.storm.nimbus.NimbusInfo;
 import com.alibaba.jstorm.callback.RunnableCallback;
 import com.alibaba.jstorm.daemon.supervisor.SupervisorInfo;
 import com.alibaba.jstorm.schedule.Assignment;
 import com.alibaba.jstorm.schedule.AssignmentBak;
 import com.alibaba.jstorm.task.TaskInfo;
 import com.alibaba.jstorm.task.error.TaskError;
-import com.alibaba.jstorm.task.backpressure.SourceBackpressureInfo;
-import com.alibaba.jstorm.utils.Pair;
+
 
 import backtype.storm.generated.TopologyTaskHbInfo;
 
@@ -45,6 +45,8 @@ public interface StormClusterState {
     public List<String> assignments(RunnableCallback callback) throws Exception;
 
     public Assignment assignment_info(String topology_id, RunnableCallback callback) throws Exception;
+
+    public Integer assignment_version(String topology_id, RunnableCallback callback) throws Exception;
 
     public void set_assignment(String topology_id, Assignment info) throws Exception;
 
@@ -92,7 +94,13 @@ public interface StormClusterState {
 
     public void report_task_error(String topology_id, int task_id, Throwable error) throws Exception;
 
-    public void report_task_error(String topology_id, int task_id, String error, String tag) throws Exception;
+    public void report_task_error(String topology_id, int task_id, String error) throws Exception;
+
+    public void report_task_error(String topology_id, int task_id, String error, String error_level, int error_code) throws Exception;
+
+    public void report_task_error(String topology_id, int task_id, String error, String error_level, int error_code, int duration) throws Exception;
+
+    public void report_task_error(String topology_id, int task_id, String error, String error_level, int error_code, int duration, String tag) throws Exception;
 
     public Map<Integer, String> topo_lastErr_time(String topologyId) throws Exception;
 
@@ -104,7 +112,7 @@ public interface StormClusterState {
 
     public List<String> task_error_time(String topologyId, int taskId) throws Exception;
 
-    public String task_error_info(String topologyId, int taskId, long timeStamp) throws Exception;
+    public TaskError task_error_info(String topologyId, int taskId, long timeStamp) throws Exception;
 
     public void teardown_task_errors(String topology_id) throws Exception;
 
@@ -142,11 +150,25 @@ public interface StormClusterState {
 
     public List<String> list_dirs(String path, boolean watch) throws  Exception;
 
-    public List<String> backpressureInfos() throws Exception;
+    // sets up information related to key consisting of nimbus
+    // host:port and version info of the blob
+    public void setup_blobstore(String key, NimbusInfo nimbusInfo, int versionInfo) throws Exception;
+    public List<String> active_keys() throws Exception;
+    public List<String> blobstore(RunnableCallback callback) throws Exception;
+    public List<String> blobstoreInfo(String blobKey) throws Exception;
+    /**
+     * Deletes the state inside the zookeeper for a key,
+     * for which the contents of the key starts with nimbus host port information
+     */
+    public void delete_node_blobstore(String parentPath, String hostPortInfo) throws Exception;
+    public void remove_blobstore_key(String blobKey) throws Exception;
+    public void remove_key_version(String blobKey) throws Exception;
+    public void mkdir(String path);
 
-    public void set_backpressure_info(String topologyId, Map<String, SourceBackpressureInfo> sourceToBackpressureInfo) throws Exception;
-    
-    public Map<String, SourceBackpressureInfo> get_backpressure_info(String topologyId) throws Exception;
+    public void set_in_blacklist(String host) throws Exception;
 
-    public void teardown_backpressure(String topologyId) throws Exception;
+    void remove_from_blacklist(String host) throws Exception;
+
+    public List<String> get_blacklist() throws Exception;
+
 }

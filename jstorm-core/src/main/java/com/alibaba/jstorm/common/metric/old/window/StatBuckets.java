@@ -140,32 +140,6 @@ public class StatBuckets {
     }
 
     /**
-     * seconds to string like '30m 40s' and '1d 20h 30m 40s'
-     *
-     * @param secs
-     * @return
-     */
-    public static String prettyUptime(int secs) {
-        int diversize = PRETTYSECDIVIDERS.length;
-
-        LinkedList<String> tmp = new LinkedList<>();
-        int div = secs;
-        for (int i = 0; i < diversize; i++) {
-            if (PRETTYSECDIVIDERS[i][1] != null) {
-                Integer d = Integer.parseInt(PRETTYSECDIVIDERS[i][1]);
-                tmp.addFirst(div % d + PRETTYSECDIVIDERS[i][0]);
-                div = div / d;
-            } else {
-                tmp.addFirst(div + PRETTYSECDIVIDERS[i][0]);
-            }
-            if (div <= 0 ) break;
-        }
-
-        Joiner joiner = Joiner.on(" ");
-        return joiner.join(tmp);
-    }
-
-    /**
      * @param args
      */
     public static void main(String[] args) {

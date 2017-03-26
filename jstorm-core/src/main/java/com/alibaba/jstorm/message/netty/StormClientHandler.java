@@ -60,19 +60,20 @@ public class StormClientHandler extends SimpleChannelUpstreamHandler {
         Channel channel = event.getChannel();
         LOG.info("connection established to :{}, local port:{}", client.getRemoteAddr(), channel.getLocalAddress());
 
-        client.handleResponse();
+        client.connectChannel(ctx.getChannel());
+        client.handleResponse(ctx.getChannel(), null);
     }
 
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent event) {
-        client.handleResponse();
+        client.handleResponse(ctx.getChannel(), event.getMessage());
 
     }
 
     /**
      * 
-     * @see SimpleChannelUpstreamHandler#exceptionCaught(ChannelHandlerContext,
-     *      ExceptionEvent)
+     * @see org.jboss.netty.channel.SimpleChannelUpstreamHandler#exceptionCaught(org.jboss.netty.channel.ChannelHandlerContext,
+     *      org.jboss.netty.channel.ExceptionEvent)
      */
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent event) {
@@ -90,8 +91,8 @@ public class StormClientHandler extends SimpleChannelUpstreamHandler {
     /**
      * Attention please,
      * 
-     * @see SimpleChannelUpstreamHandler#channelDisconnected(ChannelHandlerContext,
-     *      ChannelStateEvent)
+     * @see org.jboss.netty.channel.SimpleChannelUpstreamHandler#channelDisconnected(org.jboss.netty.channel.ChannelHandlerContext,
+     *      org.jboss.netty.channel.ChannelStateEvent)
      */
     @Override
     public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
@@ -108,4 +109,8 @@ public class StormClientHandler extends SimpleChannelUpstreamHandler {
         super.channelClosed(ctx, e);
     }
 
+    @Override
+    public void channelInterestChanged(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        client.notifyInterestChanged(e.getChannel());
+    }
 }

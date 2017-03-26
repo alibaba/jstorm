@@ -21,6 +21,7 @@ import backtype.storm.Config;
 import backtype.storm.generated.Grouping;
 import backtype.storm.spout.ISpoutOutputCollector;
 import backtype.storm.spout.SpoutOutputCollector;
+import backtype.storm.task.ICollectorCallback;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.IRichSpout;
 import backtype.storm.topology.OutputFieldsDeclarer;
@@ -55,8 +56,10 @@ public class RichSpoutBatchTriggerer implements IRichSpout {
     @Override
     public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
         _delegate.open(conf, context, new SpoutOutputCollector(new StreamOverrideCollector(collector)));
-        _outputTasks = new ArrayList<Integer>();
-        for (String component : Utils.get(context.getThisTargets(), _coordStream, new HashMap<String, Grouping>()).keySet()) {
+        _outputTasks = new ArrayList<>();
+        for(String component: Utils.get(context.getThisTargets(),
+                                        _coordStream,
+                                        new HashMap<String, Grouping>()).keySet()) {
             _outputTasks.addAll(context.getComponentTasks(component));
         }
         _rand = new Random(Utils.secureRandomLong());
@@ -116,27 +119,41 @@ public class RichSpoutBatchTriggerer implements IRichSpout {
     @Override
     public Map<String, Object> getComponentConfiguration() {
         Map<String, Object> conf = _delegate.getComponentConfiguration();
-        if (conf == null)
-            conf = new HashMap();
-        else
-            conf = new HashMap(conf);
+        if(conf==null) conf = new HashMap<>();
+        else conf = new HashMap<>(conf);
         Config.registerSerialization(conf, RichSpoutBatchId.class, RichSpoutBatchIdSerializer.class);
         return conf;
     }
-
+    
     static class FinishCondition {
-        Set<Long> vals = new HashSet<Long>();
+        Set<Long> vals = new HashSet<>();
         Object msgId;
     }
+    
+    Map<Long, Long> _msgIdToBatchId = new HashMap<>();
+    
+    Map<Long, FinishCondition> _finishConditions = new HashMap<>();
 
-    Map<Long, Long> _msgIdToBatchId = new HashMap();
-
-    Map<Long, FinishCondition> _finishConditions = new HashMap();
-
+    
     class StreamOverrideCollector implements ISpoutOutputCollector {
-
+        
         SpoutOutputCollector _collector;
 
+        class CollectorCb implements ICollectorCallback {
+
+            List<Integer> tasks;
+
+            public CollectorCb(List<Integer> tasks) {
+                this.tasks = tasks;
+            }
+
+            @Override
+            public void execute(String stream, List<Integer> outTasks, List values) {
+                // TODO Auto-generated method stub
+                tasks.addAll(outTasks);
+            }
+        }
+        
         public StreamOverrideCollector(SpoutOutputCollector collector) {
             _collector = collector;
         }
@@ -147,11 +164,13 @@ public class RichSpoutBatchTriggerer implements IRichSpout {
             Object batchId = new RichSpoutBatchId(batchIdVal);
             FinishCondition finish = new FinishCondition();
             finish.msgId = msgId;
-            List<Integer> tasks = _collector.emit(_stream, new ConsList(batchId, values));
-            Set<Integer> outTasksSet = new HashSet<Integer>(tasks);
-            for (Integer t : _outputTasks) {
+            List<Integer> tasks = new ArrayList<>();
+            _collector.emit(_stream, new ConsList(batchId, values), new CollectorCb(tasks));
+            _collector.flush();
+            Set<Integer> outTasksSet = new HashSet<>(tasks);
+            for(Integer t: _outputTasks) {
                 int count = 0;
-                if (outTasksSet.contains(t)) {
+                if(outTasksSet.contains(t)) {
                     count = 1;
                 }
                 long r = _rand.nextLong();
@@ -172,6 +191,11 @@ public class RichSpoutBatchTriggerer implements IRichSpout {
         public void reportError(Throwable t) {
             _collector.reportError(t);
         }
-
+        
+        
+        public long getPendingCount() {
+            //return _collector.getPendingCount();
+        	return 0l;
+        }
     }
 }

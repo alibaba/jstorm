@@ -17,31 +17,20 @@
  */
 package backtype.storm.command;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
 import java.security.InvalidParameterException;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
-
-import org.yaml.snakeyaml.Yaml;
 
 import backtype.storm.utils.NimbusClient;
 import backtype.storm.utils.Utils;
 
 /**
  * Active topology
- * 
+ *
  * @author basti
- * 
  */
 public class restart {
-    /**
-     * @param args
-     */
+
     public static void main(String[] args) {
-        // TODO Auto-generated method stub
         if (args == null || args.length == 0) {
             throw new InvalidParameterException("Should input topology name");
         }

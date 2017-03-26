@@ -1,4 +1,4 @@
-#!/usr/local/bin/thrift --gen java:beans,nocamel,hashcode
+#!/usr/local/bin/thrift --gen java:beans,nocamel,hashcode --gen py:utf8strings
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -140,6 +140,14 @@ exception TopologyAssignException {
   1: required string msg;
 }
 
+exception KeyNotFoundException {
+  1: required string msg;
+}
+
+exception KeyAlreadyExistsException {
+  1: required string msg;
+}
+
 struct TopologySummary {
   1: required string id;
   2: required string name;
@@ -156,6 +164,9 @@ struct SupervisorSummary {
   3: required i32 uptimeSecs;
   4: required i32 numWorkers;
   5: required i32 numUsedWorkers;
+  6: optional string version;
+  7: optional string buildTs;
+  8: optional i32 port;
 }
 
 struct NimbusStat {
@@ -216,7 +227,8 @@ struct MetricSnapshot {
   16: optional double p99;
   17: optional double p999;
   18: optional double stddev;
-  19: optional list<i64> points;
+  19: optional binary points;
+  20: optional i32 pointSize;
 }
 
 struct MetricInfo {
@@ -233,6 +245,8 @@ struct SupervisorWorkers {
 struct ErrorInfo {
   1: required string error;
   2: required i32 errorTimeSecs;
+  3: required string errorLevel;
+  4: required i32 errorCode;
 }
 
 struct ComponentSummary {
@@ -324,9 +338,34 @@ struct TopologyTaskHbInfo {
     3: optional map<i32, TaskHeartbeat> taskHbs;
 }
 
+
+struct SettableBlobMeta {
+  // we remove acl in jstorm
+  1: optional i32 replication_factor
+}
+
+struct ReadableBlobMeta {
+  1: required SettableBlobMeta settable;
+  //This is some indication of a version of a BLOB.  The only guarantee is
+  // if the data changed in the blob the version will be different.
+  2: required i64 version;
+}
+
+struct ListBlobsResult {
+  1: required list<string> keys;
+  2: required string session;
+}
+
+struct BeginDownloadResult {
+  //Same version as in ReadableBlobMeta
+  1: required i64 version;
+  2: required string session;
+  3: optional i64 data_size;
+}
+
 service Nimbus {
-  void submitTopology(1: string name, 2: string uploadedJarLocation, 3: string jsonConf, 4: StormTopology topology) throws (1: AlreadyAliveException e, 2: InvalidTopologyException ite, 3: TopologyAssignException tae);
-  void submitTopologyWithOpts(1: string name, 2: string uploadedJarLocation, 3: string jsonConf, 4: StormTopology topology, 5: SubmitOptions options) throws (1: AlreadyAliveException e, 2: InvalidTopologyException ite, 3:TopologyAssignException tae);
+  string submitTopology(1: string name, 2: string uploadedJarLocation, 3: string jsonConf, 4: StormTopology topology) throws (1: AlreadyAliveException e, 2: InvalidTopologyException ite, 3: TopologyAssignException tae);
+  string submitTopologyWithOpts(1: string name, 2: string uploadedJarLocation, 3: string jsonConf, 4: StormTopology topology, 5: SubmitOptions options) throws (1: AlreadyAliveException e, 2: InvalidTopologyException ite, 3:TopologyAssignException tae);
   void killTopology(1: string name) throws (1: NotAliveException e);
   void killTopologyWithOpts(1: string name, 2: KillOptions options) throws (1: NotAliveException e);
   void activate(1: string name) throws (1: NotAliveException e);
@@ -335,8 +374,24 @@ service Nimbus {
   void metricMonitor(1: string name, 2: MonitorOptions options) throws (1: NotAliveException e);
   void restart(1: string name, 2: string jsonConf) throws (1: NotAliveException e, 2: InvalidTopologyException ite, 3: TopologyAssignException tae);
 
+  string beginCreateBlob(1: string key, 2: SettableBlobMeta meta) throws (1: KeyAlreadyExistsException kae);
+  string beginUpdateBlob(1: string key) throws (1: KeyNotFoundException knf);
+  void uploadBlobChunk(1: string session, 2: binary chunk);
+  void finishBlobUpload(1: string session);
+  void cancelBlobUpload(1: string session);
+  ReadableBlobMeta getBlobMeta(1: string key) throws (1: KeyNotFoundException knf);
+  void setBlobMeta(1: string key, 2: SettableBlobMeta meta) throws (1: KeyNotFoundException knf);
+  BeginDownloadResult beginBlobDownload(1: string key) throws (1: KeyNotFoundException knf);
+  binary downloadBlobChunk(1: string session);
+  void deleteBlob(1: string key) throws (1: KeyNotFoundException knf);
+  ListBlobsResult listBlobs(1: string session); //empty string "" means start at the beginning
+  i32 getBlobReplication(1: string key) throws (1: KeyNotFoundException knf);
+  i32 updateBlobReplication(1: string key, 2: i32 replication) throws (1: KeyNotFoundException knf);
+  void createStateInZookeeper(1: string key); // creates state in zookeeper when blob is uploaded through command line
+
   // need to add functions for asking about status of storms, what nodes they're running on, looking at task logs
 
+  //@deprecated blobstore does these
   void beginLibUpload(1: string libName);
   string beginFileUpload();
   void uploadChunk(1: string location, 2: binary chunk);
@@ -349,6 +404,9 @@ service Nimbus {
 
   // returns json
   string getNimbusConf();
+  string getStormRawConf();
+  string getSupervisorConf(1: string id);
+
   //returns json
   string getTopologyConf(1: string id) throws (1: NotAliveException e);
   string getTopologyId(1: string topologyName) throws (1: NotAliveException e);
@@ -356,11 +414,15 @@ service Nimbus {
   // stats functions
   ClusterSummary getClusterInfo();
   SupervisorWorkers getSupervisorWorkers(1: string host) throws (1: NotAliveException e);
+  SupervisorWorkers getSupervisorWorkersById(1: string id) throws (1: NotAliveException e);
+
   TopologyInfo getTopologyInfo(1: string id) throws (1: NotAliveException e);
   TopologyInfo getTopologyInfoByName(1: string topologyName) throws (1: NotAliveException e);
+  map<i32, string> getTopologyTasksToSupervisorIds(1: string topologyName) throws (1: NotAliveException e);
 
   StormTopology getTopology(1: string id) throws (1: NotAliveException e);
   StormTopology getUserTopology(1: string id) throws (1: NotAliveException e);
+  void notifyThisTopologyTasksIsDead(1: string topologyId);
 
   // relate metric
   void uploadTopologyMetrics(1: string topologyId, 2: TopologyMetric topologyMetrics);
@@ -386,6 +448,9 @@ service Nimbus {
   void updateTopology(1: string name, 2: string uploadedLocation, 3: string updateConf) throws (1: NotAliveException e, 2: InvalidTopologyException ite);
 
   void updateTaskHeartbeat(1: TopologyTaskHbInfo taskHbs);
+
+  void setHostInBlackList(1: string host);
+  void removeHostOutBlackList(1: string host);
 }
 
 struct DRPCRequest {

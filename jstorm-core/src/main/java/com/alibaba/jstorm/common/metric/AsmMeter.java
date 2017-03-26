@@ -17,32 +17,53 @@
  */
 package com.alibaba.jstorm.common.metric;
 
+import com.alibaba.jstorm.common.metric.codahale.JMeter;
 import com.alibaba.jstorm.common.metric.snapshot.AsmMeterSnapshot;
-import com.alibaba.jstorm.common.metric.snapshot.AsmSnapshot;
+import com.alibaba.jstorm.metric.MetricUtils;
 import com.codahale.metrics.Meter;
 
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * one meter & one snapshot for all windows. since meter is window-sliding, there's no need to recreate new ones.
  */
 public class AsmMeter extends AsmMetric<Meter> {
-    private final Meter meter = new Meter();
+    private static final long UPDATE_INTERVAL_MS = 3000L;
+    private final JMeter meter = new JMeter();
+    private final AtomicLong unflushed = new AtomicLong(0l);
+    private volatile long lastUpdateTime = System.currentTimeMillis();
 
     public void mark() {
-        meter.mark(1l);
+        unflushed.addAndGet(1L);
+//        meter.mark(1l);
     }
 
     @Override
     public void update(Number obj) {
-        meter.mark(obj.longValue());
-        for (AsmMetric metric : this.assocMetrics) {
-            metric.update(obj);
+        if (enabled.get()) {
+            unflushed.addAndGet(obj.longValue());
+
+            // do flush every updateInterval, make sure meter count rightly
+            long now = System.currentTimeMillis();
+            long elapsed = now - lastUpdateTime;
+            if (elapsed >= UPDATE_INTERVAL_MS) {
+                lastUpdateTime = now;
+                // here maybe not thread safe, but that's ok
+                // because doFlush is thread safe
+                doFlush();
+            }
+//            meter.mark(obj.longValue());
+//            for (AsmMetric metric : this.assocMetrics) {
+//                metric.update(obj);
+//            }
         }
     }
 
+    @Override
+    public void updateTime(long obj) {
+        throw new RuntimeException("please use update method!");
+    }
 
     @Override
     public AsmMetric clone() {
@@ -56,13 +77,20 @@ public class AsmMeter extends AsmMetric<Meter> {
 
     @Override
     protected void doFlush() {
-        // nothing to do for meters.
+        long v = unflushed.getAndSet(0l);
+        meter.mark(v);
+        if (MetricUtils.metricAccurateCal){
+            for (AsmMetric metric : this.assocMetrics) {
+                metric.update(v);
+            }
+        }
     }
 
     @Override
     protected void updateSnapshot(int window) {
         AsmMeterSnapshot meterSnapshot = new AsmMeterSnapshot();
-        meterSnapshot.setM1(meter.getOneMinuteRate()).setM5(meter.getFiveMinuteRate()).setM15(meter.getFifteenMinuteRate()).setMean(meter.getMeanRate())
+        meterSnapshot.setM1(meter.getOneMinuteRate()).setM5(meter.getFiveMinuteRate())
+                .setM15(meter.getFifteenMinuteRate()).setMean(meter.getMeanRate())
                 .setTs(System.currentTimeMillis()).setMetricId(metricId);
         snapshots.put(window, meterSnapshot);
     }

@@ -57,7 +57,7 @@ public class Acker implements IBolt {
         this.collector = collector;
         // pending = new TimeCacheMap<Object, AckObject>(timeoutSec,
         // TIMEOUT_BUCKET_NUM);
-        this.pending = new RotatingMap<Object, AckObject>(TIMEOUT_BUCKET_NUM);
+        this.pending = new RotatingMap<Object, AckObject>(TIMEOUT_BUCKET_NUM, true);
         this.rotateTime = 1000L * JStormUtils.parseInt(stormConf.get(Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS), 30) / (TIMEOUT_BUCKET_NUM - 1);
     }
 
@@ -99,7 +99,7 @@ public class Acker implements IBolt {
             }
             curr.failed = true;
         } else {
-            LOG.info("Unknow source stream");
+            LOG.info("Unknow source stream, " + stream_id + " from task-" + input.getSourceTask());
             return;
         }
 

@@ -1,0 +1,111 @@
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<!--
+{% capture Example %}{{site.baseurl}}/Example{% endcapture %}
+{% capture setup %}{{site.baseurl}}/setup{% endcapture %}
+{% capture apis %}{{site.baseurl}}/apis{% endcapture %}
+{% capture libs %}{{site.baseurl}}/libs{% endcapture %}
+{% capture internals %}{{site.baseurl}}/internals{% endcapture %}-->
+    <!-- Top navbar. -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <!-- The logo. -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <div class="navbar-logo">
+            <a href="{{ site.baseurl}}/"><img alt="jstorm" src="{{ site.baseurl }}/img/jstorm-logo.png"></a>
+          </div>
+        </div><!-- /.navbar-header -->
+
+        <!-- The navigation links. -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            <!-- Downloads -->
+            <li class="hidden-sm {% if page.url contains '/Downloads'/ %}active{% endif %}"><a href="{{ site.baseurl}}/Downloads.html">Downloads</a></li>
+
+            <!-- Performance -->
+            <li class="hidden-sm {% if page.url contains '/Performance_cn'/ %}active{% endif %}"><a href="{{ site.baseurl}}/Performance_cn">Performance</a></li>
+
+            <!-- QuickStart -->
+            <li class="dropdown{% if page.url contains '/QuickStart_cn/' %} active{% endif %}">
+              <a href="{{ QuickStart_cn }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">QuickStart <span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                {% assign QuickStart_cn_group = (site.pages | where: "top-nav-group" , "QuickStart_cn" | sort: "top-nav-pos") %}
+                {% for QuickStart_cn_page in QuickStart_cn_group %}
+                <li class="{% if page.url contains QuickStart_cn_page.url %}active{% endif %}"><a href="{{ site.baseurl }}{{ QuickStart_cn_page.url }}">{% if QuickStart_cn_page.top-nav-title %}{{ QuickStart_cn_page.top-nav-title }}{% else %}{{ QuickStart_cn_page.title }}{% endif %}</a></li>
+                {% endfor %}
+              </ul>
+            </li>
+
+            <!-- ProgrammingGuide -->
+            <li class="dropdown{% if page.url contains '/ProgrammingGuide_cn/' %} active{% endif %}">
+              <a href="{{ ProgrammingGuide_cn }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">ProgrammingGuide <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  {% assign ProgrammingGuide_cn_group = (site.pages | where: "top-nav-group" , "ProgrammingGuide_cn" | sort: "top-nav-pos") %}
+                  {% for ProgrammingGuide_cn_page in ProgrammingGuide_cn_group %}
+                  <li class="{% if page.url contains ProgrammingGuide_cn_page.url %}active{% endif %}"><a href="{{ site.baseurl }}{{ ProgrammingGuide_cn_page.url }}">{% if ProgrammingGuide_cn_page.top-nav-title %}{{ ProgrammingGuide_cn_page.top-nav-title }}{% else %}{{ ProgrammingGuide_cn_page.title }}{% endif %}</a></li>
+                  {% endfor %}
+              </ul>
+            </li>
+
+            <!-- Maintenance -->
+            <li class="dropdown{% if page.url contains '/Maintenance_cn/' %} active{% endif %}">
+              <a href="{{ Maintenance_cn }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">运维 <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  {% assign Maintenance_cn_group = (site.pages | where: "top-nav-group" , "Maintenance_cn" | sort: "top-nav-pos") %}
+                  {% for Maintenance_cn_page in Maintenance_cn_group %}
+                  <li class="{% if page.url contains Maintenance_cn_page.url %}active{% endif %}"><a href="{{ site.baseurl }}{{ Maintenance_cn_page.url }}">{% if Maintenance_cn_page.top-nav-title %}{{ Maintenance_cn_page.top-nav-title }}{% else %}{{ Maintenance_cn_page.title }}{% endif %}</a></li>
+                  {% endfor %}
+              </ul>
+            </li>
+
+            <!-- FAQ -->
+            <li class="hidden-sm {% if page.url contains '/FAQ_cn'/ %}active{% endif %}"><a href="{{ site.baseurl}}/FAQ_cn/">FAQ</a></li>
+
+
+
+            <!-- Community -->
+            <li class="dropdown{% if page.url contains '/Community/' %} active{% endif %}">
+              <a href="{{ Community }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">社区 <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  {% assign Community_group = (site.pages | where: "top-nav-group" , "Community" | sort: "top-nav-pos") %}
+                  {% for Community_page in Community_group %}
+                  <li class="{% if page.url contains Community_page.url %}active{% endif %}"><a href="{{ site.baseurl }}{{ Community_page.url }}">{% if Community_page.top-nav-title %}{{ Community.top-nav-title }}{% else %}{{ Community_page.title }}{% endif %}</a></li>
+                  {% endfor %}
+              </ul>
+            </li>
+
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+              <a href="{{ language }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Language <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class="{% if page.url contains libs_page.url %}active{% endif %}"><a href="{{ site.baseurl }}/index.html">English</a></li>
+                  <li class="{% if page.url contains libs_page.url %}active{% endif %}"><a href="{{ site.baseurl }}/index_cn.html">中文</a></li>
+
+              </ul>
+            </li>
+          </ul>          
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container -->
+    </nav>

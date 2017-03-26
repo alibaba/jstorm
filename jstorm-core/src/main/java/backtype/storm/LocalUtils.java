@@ -35,6 +35,7 @@ import com.alibaba.jstorm.daemon.nimbus.DefaultInimbus;
 import com.alibaba.jstorm.daemon.nimbus.NimbusServer;
 import com.alibaba.jstorm.daemon.supervisor.Supervisor;
 import com.alibaba.jstorm.message.netty.NettyContext;
+import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.zk.Factory;
 import com.alibaba.jstorm.zk.Zookeeper;
 
@@ -80,7 +81,7 @@ public class LocalUtils {
         return null;
     }
 
-    private static Factory startLocalZookeeper(String tmpDir) {
+    public static Factory startLocalZookeeper(String tmpDir) {
         for (int i = 2000; i < 65535; i++) {
             try {
                 return Zookeeper.mkInprocessZookeeper(tmpDir, i);
@@ -91,23 +92,44 @@ public class LocalUtils {
         throw new RuntimeException("No port is available to launch an inprocess zookeeper.");
     }
 
-    private static String getTmpDir() {
+    public static String getTmpDir() {
         return System.getProperty("java.io.tmpdir") + File.separator + UUID.randomUUID();
     }
+    
+    public static Map getLocalBaseConf() {
 
-    private static Map getLocalConf(int port) {
-        List<String> zkServers = new ArrayList<String>(1);
-        zkServers.add("localhost");
-        Map conf = Utils.readStormConfig();
+        JStormUtils.setLocalMode(true);
+        
+        Map conf = new HashMap();
+        
         conf.put(Config.STORM_CLUSTER_MODE, "local");
-        conf.put(Config.STORM_ZOOKEEPER_SERVERS, zkServers);
-        conf.put(Config.STORM_ZOOKEEPER_PORT, port);
+        
         conf.put(Config.TOPOLOGY_SKIP_MISSING_KRYO_REGISTRATIONS, true);
         conf.put(Config.ZMQ_LINGER_MILLIS, 0);
         conf.put(Config.TOPOLOGY_ENABLE_MESSAGE_TIMEOUTS, false);
         conf.put(Config.TOPOLOGY_TRIDENT_BATCH_EMIT_INTERVAL_MILLIS, 50);
         ConfigExtension.setSpoutDelayRunSeconds(conf, 0);
         ConfigExtension.setTaskCleanupTimeoutSec(conf, 0);
+        
+        
+        return conf;
+    }
+
+    public static Map getLocalConf(int port) {
+        Map conf = Utils.readStormConfig();
+        conf.putAll(getLocalBaseConf());
+        
+        List<String> zkServers = new ArrayList<String>(1);
+        zkServers.add("localhost");
+        
+        conf.put(Config.STORM_ZOOKEEPER_SERVERS, zkServers);
+        conf.put(Config.STORM_ZOOKEEPER_PORT, port);
+        
+        ConfigExtension.setTopologyDebugRecvTuple(conf, true);
+        conf.put(Config.TOPOLOGY_DEBUG, true);
+        
+        conf.put(ConfigExtension.TOPOLOGY_BACKPRESSURE_ENABLE, false);
+        
         return conf;
     }
 

@@ -122,20 +122,22 @@ public class MasterBatchCoordinator extends BaseRichSpout {
     }
 
     @Override
-    public void nextTuple() {
+    public synchronized void nextTuple() {
         sync();
     }
 
     @Override
-    public void ack(Object msgId) {
+    public synchronized void ack(Object msgId) {
         TransactionAttempt tx = (TransactionAttempt) msgId;
         TransactionStatus status = _activeTx.get(tx.getTransactionId());
         if(status!=null && tx.equals(status.attempt)) {
             if(status.status==AttemptStatus.PROCESSING) {
+                LOG.debug("acker batch stream {}", tx);
                 status.status = AttemptStatus.PROCESSED;
             } else if(status.status==AttemptStatus.COMMITTING) {
                 _activeTx.remove(tx.getTransactionId());
                 _attemptIds.remove(tx.getTransactionId());
+                LOG.debug("acker commit stream {}", tx);
                 _collector.emit(SUCCESS_STREAM_ID, new Values(tx));
                 _currTransaction = nextTransactionId(tx.getTransactionId());
                 for(TransactionalState state: _states) {
@@ -147,7 +149,7 @@ public class MasterBatchCoordinator extends BaseRichSpout {
     }
 
     @Override
-    public void fail(Object msgId) {
+    public synchronized void fail(Object msgId) {
         TransactionAttempt tx = (TransactionAttempt) msgId;
         TransactionStatus stored = _activeTx.remove(tx.getTransactionId());
         if(stored!=null && tx.equals(stored.attempt)) {
@@ -173,6 +175,7 @@ public class MasterBatchCoordinator extends BaseRichSpout {
         TransactionStatus maybeCommit = _activeTx.get(_currTransaction);
         if(maybeCommit!=null && maybeCommit.status == AttemptStatus.PROCESSED) {
             maybeCommit.status = AttemptStatus.COMMITTING;
+            LOG.debug("send commit stream {}", maybeCommit);
             _collector.emit(COMMIT_STREAM_ID, new Values(maybeCommit.attempt), maybeCommit.attempt);
         }
         
@@ -197,6 +200,7 @@ public class MasterBatchCoordinator extends BaseRichSpout {
                         
                         TransactionAttempt attempt = new TransactionAttempt(curr, attemptId);
                         _activeTx.put(curr, new TransactionStatus(attempt));
+                        LOG.debug("send batch stream {}", attempt);
                         _collector.emit(BATCH_STREAM_ID, new Values(attempt), attempt);
                         _throttler.markEvent();
                     }

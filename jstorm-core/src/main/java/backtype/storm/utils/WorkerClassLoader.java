@@ -17,22 +17,27 @@
  */
 package backtype.storm.utils;
 
+
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.misc.CompoundEnumeration;
+
 
 public class WorkerClassLoader extends URLClassLoader {
 
     public static Logger LOG = LoggerFactory.getLogger(WorkerClassLoader.class);
 
     private ClassLoader defaultClassLoader;
-
     private ClassLoader JDKClassLoader;
 
     private boolean isDebug;
@@ -48,32 +53,15 @@ public class WorkerClassLoader extends URLClassLoader {
         this.defaultClassLoader = defaultClassLoader;
         this.JDKClassLoader = JDKClassLoader;
         this.isDebug = isDebug;
-
-        // TODO Auto-generated constructor stub
     }
 
     // for all log go through logback when enable classloader
     protected boolean isLogByDefault(String name) {
-        if (name.startsWith("org.apache.log4j")) {
-            return true;
-        } else if (name.startsWith("org.slf4j")) {
-            return true;
-        }
-
-        return false;
-
+        return name.startsWith("org.apache.log4j") || name.startsWith("org.slf4j");
     }
 
     protected boolean isLoadByDefault(String name) {
-        if (name.startsWith("backtype.storm") == true) {
-            return true;
-        } else if (name.startsWith("com.alibaba.jstorm")) {
-            return true;
-        } else if (isLogByDefault(name)) {
-            return true;
-        } else {
-            return false;
-        }
+        return name.startsWith("backtype.storm") || name.startsWith("com.alibaba.jstorm") || isLogByDefault(name);
     }
 
     @Override
@@ -95,7 +83,7 @@ public class WorkerClassLoader extends URLClassLoader {
             }
 
             try {
-                if (isLoadByDefault(name) == false) {
+                if (!isLoadByDefault(name)) {
                     result = findClass(name);
 
                     if (result != null) {
@@ -126,9 +114,10 @@ public class WorkerClassLoader extends URLClassLoader {
 
     }
 
-    public static WorkerClassLoader mkInstance(URL[] urls, ClassLoader DefaultClassLoader, ClassLoader JDKClassLoader, boolean enable, boolean isDebug) {
+    public static WorkerClassLoader mkInstance(URL[] urls, ClassLoader DefaultClassLoader, ClassLoader JDKClassLoader,
+                                               boolean enable, boolean isDebug) {
         WorkerClassLoader.enable = enable;
-        if (enable == false) {
+        if (!enable) {
             LOG.info("Don't enable UserDefine ClassLoader");
             return null;
         }
@@ -155,7 +144,7 @@ public class WorkerClassLoader extends URLClassLoader {
     }
 
     public static void switchThreadContext() {
-        if (enable == false) {
+        if (!enable) {
             return;
         }
 
@@ -166,7 +155,7 @@ public class WorkerClassLoader extends URLClassLoader {
     }
 
     public static void restoreThreadContext() {
-        if (enable == false) {
+        if (!enable) {
             return;
         }
 
@@ -185,5 +174,20 @@ public class WorkerClassLoader extends URLClassLoader {
             rtn.add(o);
         }
         return rtn;
+    }
+
+    public Enumeration<URL> getResources(String name) throws IOException {
+        Enumeration<URL>[] tmp = (Enumeration<URL>[]) new Enumeration<?>[2];
+        tmp[0] = super.getResources(name);
+        tmp[1] = defaultClassLoader.getResources(name);
+        return new CompoundEnumeration<>(tmp);
+    }
+
+    public InputStream getResourceAsStream(String name) {
+        InputStream is = super.getResourceAsStream(name);
+        if (is == null){
+            is = defaultClassLoader.getResourceAsStream(name);
+        }
+        return is;
     }
 }

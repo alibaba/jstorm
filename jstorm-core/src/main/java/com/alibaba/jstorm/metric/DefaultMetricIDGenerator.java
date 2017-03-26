@@ -10,6 +10,6 @@ public class DefaultMetricIDGenerator implements MetricIDGenerator {
 
     @Override
     public long genMetricId(String metricName) {
-        return UUID.randomUUID().getLeastSignificantBits();
+        return UUID.randomUUID().getMostSignificantBits();
     }
 }

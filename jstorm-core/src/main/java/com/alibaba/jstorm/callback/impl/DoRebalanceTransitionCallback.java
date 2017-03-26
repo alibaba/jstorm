@@ -77,8 +77,8 @@ public class DoRebalanceTransitionCallback extends BaseCallback {
                 Map stormConf = data.getConf();
 
                 // Update topology code
-                Map topoConf = StormConfig.read_nimbus_topology_conf(stormConf, topologyid);
-                StormTopology rawOldTopology = StormConfig.read_nimbus_topology_code(stormConf, topologyid);
+                Map topoConf = StormConfig.read_nimbus_topology_conf(topologyid, data.getBlobStore());
+                StormTopology rawOldTopology = StormConfig.read_nimbus_topology_code(topologyid, data.getBlobStore());
                 StormTopology rawNewTopology = NimbusUtils.normalizeTopology(conf, rawOldTopology, true);
                 StormTopology sysOldTopology = rawOldTopology.deepCopy();
                 StormTopology sysNewTopology = rawNewTopology.deepCopy();
@@ -97,7 +97,7 @@ public class DoRebalanceTransitionCallback extends BaseCallback {
                 isSetTaskInfo = true;
 
                 // If everything is OK, write topology code into disk
-                StormConfig.write_nimbus_topology_code(stormConf, topologyid, Utils.serialize(rawNewTopology));
+                StormConfig.write_nimbus_topology_code(topologyid, Utils.serialize(rawNewTopology), data);
 
                 // Update topology conf if worker num has been updated
                 Set<Object> keys = conf.keySet();
@@ -115,7 +115,7 @@ public class DoRebalanceTransitionCallback extends BaseCallback {
                 }
 
                 if (isConfUpdate) {
-                    StormConfig.write_nimbus_topology_conf(stormConf, topologyid, topoConf);
+                    StormConfig.write_nimbus_topology_conf(topologyid, topoConf, data);
                 }
             }
 

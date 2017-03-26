@@ -1,0 +1,75 @@
+---
+title: Blog
+layout: base
+---
+
+<div class="row">
+  <div class="col-sm-12"><h1>Blog</h1></div>
+</div>
+
+<div class="row">
+  <div class="col-sm-8">
+    <!-- Blog posts -->
+    {% for post in paginator.posts %}
+    <article>
+      <h2 class="blog-title"><a href="{{ site.baseurl }}{{ post.url }}">{{ post.title }}</a></h2>
+      <p>{{ post.date | date_to_string }}{% if post.author %} by {{ post.author }}{% if post.author-twitter %} (<a href="https://twitter.com/{{ post.author-twitter }}">@{{ post.author-twitter }}</a>){% endif %}{% endif %}</p>
+
+      <p>{{ post.excerpt }}</p>
+
+      <p><a href="{{ site.baseurl }}{{ post.url }}">Continue reading &raquo;</a></p>
+    </article>
+
+    <hr>
+    {% endfor %}
+
+    <!-- Pagination links -->
+    {% if paginator.total_pages > 1 %}
+    <ul class="pager">
+      <li>
+      {% if paginator.previous_page %}
+        <a href="{{ site.baseurl }}/blog{% if paginator.previous_page > 1%}/page{{ paginator.previous_page }}{% endif %}" class="previous">Previous</a>
+      {% else %}
+        <span>Previous</span>
+      {% endif %}
+      </li>
+      <li>
+        <span class="page_number ">Page: {{ paginator.page }} of {{ paginator.total_pages }}</span>
+      </li>
+      <li>
+      {% if paginator.next_page %}
+        <a href="{{ site.baseurl }}/blog/page{{ paginator.next_page }}" class="next">Next</a>
+      {% else %}
+        <span>Next</span>
+      {% endif %}
+      </li>
+    </ul>
+    {% endif %}
+  </div>
+
+  <div class="col-sm-4" markdown="1">
+    <!-- Blog posts by YEAR -->
+    {% for post in site.posts  %}
+      {% capture this_year %}{{ post.date | date: "%Y" }}{% endcapture %}
+      {% capture next_year %}{{ post.previous.date | date: "%Y" }}{% endcapture %}
+
+      {% if forloop.first %}
+    <h2>{{this_year}}</h2>
+
+    <ul id="markdown-toc">
+      {% endif %}
+      <li><a href="{{ site.baseurl }}{{ post.url }}">{{ post.title }}</a></li>
+      
+      {% if forloop.last %}
+    </ul>
+      {% else %}
+        {% if this_year != next_year %}
+    </ul>
+        <hr>
+        <h2>{{next_year}}</h2>
+    <ul id="markdown-toc">
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+  </div>
+</div>

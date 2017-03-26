@@ -354,6 +354,7 @@ public class RocksDBTest {
         final LinkedBlockingDeque<String> rmQueue = new LinkedBlockingDeque<String>();
 
         final int TIMES = 10000000;
+        final String END_TAG = "end";
 
         Thread putThread = new Thread(new Runnable() {
             RunCounter runCounter = new RunCounter("Put");
@@ -371,7 +372,7 @@ public class RocksDBTest {
                     getQueue.offer(key);
                 }
 
-                getQueue.offer(null);
+                getQueue.offer(END_TAG);
 
                 System.out.println("Shutdown ");
             }
@@ -391,7 +392,7 @@ public class RocksDBTest {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
                     }
-                    if (key == null) {
+                    if (key == null || key.equals(END_TAG)) {
                         break;
                     }
 

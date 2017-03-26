@@ -17,11 +17,13 @@
  */
 package storm.trident.planner.processor;
 
-import backtype.storm.task.TopologyContext;
-import backtype.storm.tuple.Fields;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+
+import backtype.storm.task.TopologyContext;
+import backtype.storm.tuple.Fields;
 import storm.trident.operation.TridentOperationContext;
 import storm.trident.planner.ProcessorContext;
 import storm.trident.planner.TridentProcessor;
@@ -79,16 +81,16 @@ public class StateQueryProcessor implements TridentProcessor {
     @Override
     public void finishBatch(ProcessorContext processorContext) {
         BatchState state = (BatchState) processorContext.state[_context.getStateIndex()];
-        if (!state.tuples.isEmpty()) {
-            List<Object> results = _function.batchRetrieve(_state, state.args);
-            if (results.size() != state.tuples.size()) {
+        if(!state.tuples.isEmpty()) {
+            List<Object> results = _function.batchRetrieve(_state, Collections.unmodifiableList(state.args));
+            if(results.size()!=state.tuples.size()) {
                 throw new RuntimeException("Results size is different than argument size: " + results.size() + " vs " + state.tuples.size());
             }
             for (int i = 0; i < state.tuples.size(); i++) {
                 TridentTuple tuple = state.tuples.get(i);
                 Object result = results.get(i);
                 _collector.setContext(processorContext, tuple);
-                _function.execute(_projection.create(tuple), result, _collector);
+                _function.execute(state.args.get(i), result, _collector);
             }
         }
     }

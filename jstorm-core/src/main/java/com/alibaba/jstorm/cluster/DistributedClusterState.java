@@ -148,6 +148,19 @@ public class DistributedClusterState implements ClusterState {
         return ret;
     }
 
+    /**
+     * warning, get_version don't use zkCache avoid to conflict with get_data
+     * @param path
+     * @param watch
+     * @return
+     * @throws Exception
+     */
+    @Override
+    public Integer get_version(String path, boolean watch) throws Exception {
+        Integer ret = zkobj.getVersion(zk, path, watch);
+        return ret;
+    }
+
     @Override
     public byte[] get_data_sync(String path, boolean watch) throws Exception {
         byte[] ret = null;
@@ -156,6 +169,11 @@ public class DistributedClusterState implements ClusterState {
             zkCache.put(path, ret);
         }
         return ret;
+    }
+
+    @Override
+    public void sync_path(String path) throws Exception {
+        zkobj.syncPath(zk, path);
     }
 
     @Override

@@ -17,8 +17,10 @@
  */
 package com.alibaba.jstorm.ui.model.graph;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.commons.lang.StringUtils;
 
+import java.beans.Transient;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -124,6 +126,7 @@ public class TopologyEdge {
         this.isHidden = isHidden;
     }
 
+    @JsonIgnore
     public String getKey(){
         return from + ":" + to;
     }

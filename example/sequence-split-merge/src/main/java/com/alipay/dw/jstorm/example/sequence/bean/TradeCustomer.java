@@ -18,19 +18,26 @@
 package com.alipay.dw.jstorm.example.sequence.bean;
 
 import java.io.Serializable;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
 public class TradeCustomer implements Serializable {
-    /**
-     * 
-     */
     private static final long serialVersionUID = 1294530416638900059L;
-    protected final long      timestamp        = System.currentTimeMillis();
+    protected final long      timestamp;
     protected Pair            trade;
     protected Pair            customer;
     protected String          buffer;
+    
+    public TradeCustomer() {
+        timestamp = System.currentTimeMillis();
+    }
+    
+    public TradeCustomer(long timestamp, Pair trade, Pair customer, String str) {
+        this.timestamp = timestamp;
+        this.trade = trade;
+        this.customer = customer;
+        this.buffer = str;
+    }
     
     public Pair getTrade() {
         return trade;
@@ -53,17 +60,16 @@ public class TradeCustomer implements Serializable {
     }
     
     public String getBuffer() {
-		return buffer;
-	}
-
-	public void setBuffer(String buffer) {
-		this.buffer = buffer;
-	}
-
-	@Override
+        return buffer;
+    }
+    
+    public void setBuffer(String buffer) {
+        this.buffer = buffer;
+    }
+    
+    @Override
     public String toString() {
-        return ToStringBuilder.reflectionToString(this,
-                ToStringStyle.SHORT_PREFIX_STYLE);
+        return ToStringBuilder.reflectionToString(this, ToStringStyle.SHORT_PREFIX_STYLE);
     }
     
 }

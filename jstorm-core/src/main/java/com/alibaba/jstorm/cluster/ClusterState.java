@@ -39,6 +39,8 @@ public interface ClusterState {
 
     public byte[] get_data_sync(String path, boolean watch) throws Exception;
 
+    public void sync_path(String path) throws Exception;
+
     public List<String> get_children(String path, boolean watch) throws Exception;
 
     public void mkdirs(String path) throws Exception;
@@ -52,4 +54,6 @@ public interface ClusterState {
     public ClusterStateCallback unregister(UUID id);
 
     public boolean node_existed(String path, boolean watch) throws Exception;
+
+    public Integer get_version(String path, boolean watch) throws Exception;
 }

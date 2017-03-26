@@ -20,6 +20,7 @@ package com.alibaba.jstorm.ui.model;
 import com.alibaba.jstorm.metric.MetricDef;
 import com.alibaba.jstorm.ui.utils.UIMetricUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.*;
 
@@ -31,14 +32,14 @@ public class UITaskMetric extends UIComponentMetric {
     private String taskId;
 
     private static List<String> METRIC_QUEUE = Arrays.asList(MetricDef.EXECUTE_QUEUE,
-            MetricDef.DESERIALIZE_QUEUE, MetricDef.SERIALIZE_QUEUE);
+            MetricDef.DESERIALIZE_QUEUE, MetricDef.SERIALIZE_QUEUE, MetricDef.CONTROL_QUEUE);
 
     private static final String FORMAT = "##0.00";
 
     public static final String[] HEAD = {MetricDef.EMMITTED_NUM, MetricDef.ACKED_NUM, MetricDef.FAILED_NUM, MetricDef.SEND_TPS,
             MetricDef.RECV_TPS, MetricDef.PROCESS_LATENCY,  MetricDef.DESERIALIZE_TIME, MetricDef.SERIALIZE_TIME, MetricDef.EXECUTE_TIME,
             MetricDef.COLLECTOR_EMIT_TIME, MetricDef.ACKER_TIME, MetricDef.DESERIALIZE_QUEUE, MetricDef.SERIALIZE_QUEUE,
-            MetricDef.EXECUTE_QUEUE };
+            MetricDef.EXECUTE_QUEUE, MetricDef.CONTROL_QUEUE};
 
     public UITaskMetric(String componentName, int taskId) {
         super(componentName);
@@ -51,14 +52,14 @@ public class UITaskMetric extends UIComponentMetric {
         // the queue value should be displayed in percent
         for (String q : METRIC_QUEUE){
             if (metrics.containsKey(q)){
-                metrics.put(q, UIMetricUtils.format(JStormUtils.parseDouble(metrics.get(q)) * 100, FORMAT));
+                metrics.put(q, UIMetricUtils.format(JStormUtils.parseDouble(metrics.get(q), 0) * 100, FORMAT));
             }
         }
         for (Map.Entry<String,String> entry : subMetrics.entrySet()){
             String metricName = entry.getKey().split("@")[0];
             String value = entry.getValue();
             if(METRIC_QUEUE.contains(metricName)){
-                String v = UIMetricUtils.format(JStormUtils.parseDouble(value)*100,FORMAT);
+                String v = UIMetricUtils.format(JStormUtils.parseDouble(value, 0)*100,FORMAT);
                 subMetrics.put(entry.getKey(), v);
             }
         }
@@ -68,5 +69,27 @@ public class UITaskMetric extends UIComponentMetric {
         return taskId;
     }
 
+    @JsonIgnore
+    @Override
+    public List<ErrorEntity> getErrors() {
+        return super.getErrors();
+    }
 
+    @JsonIgnore
+    @Override
+    public String getType() {
+        return super.getType();
+    }
+
+    @JsonIgnore
+    @Override
+    public int getParallel() {
+        return super.getParallel();
+    }
+
+    @JsonIgnore
+    @Override
+    public String getComponentName() {
+        return super.getComponentName();
+    }
 }

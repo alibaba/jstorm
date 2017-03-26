@@ -26,6 +26,7 @@ import backtype.storm.generated.StormTopology;
 import backtype.storm.tuple.Fields;
 import backtype.storm.utils.ThriftTopologyUtils;
 import backtype.storm.utils.Utils;
+import com.alibaba.jstorm.cluster.StormConfig;
 import org.json.simple.JSONAware;
 
 import java.util.*;
@@ -37,21 +38,27 @@ public class GeneralTopologyContext implements JSONAware {
     private Map<String, Map<String, Fields>> _componentToStreamToFields;
     private String _topologyId;
     protected Map _stormConf;
+    protected int _topologyMasterId;
 
     // pass in componentToSortedTasks for the case of running tons of tasks in single executor
     public GeneralTopologyContext(StormTopology topology, Map stormConf, Map<Integer, String> taskToComponent,
-            Map<String, List<Integer>> componentToSortedTasks, Map<String, Map<String, Fields>> componentToStreamToFields, String topologyId) {
+                                  Map<String, List<Integer>> componentToSortedTasks, Map<String, Map<String, Fields>> componentToStreamToFields, String topologyId) {
         _topology = topology;
         _stormConf = stormConf;
         _taskToComponent = taskToComponent;
         _topologyId = topologyId;
         _componentToTasks = componentToSortedTasks;
         _componentToStreamToFields = componentToStreamToFields;
+        if (!StormConfig.local_mode(stormConf)) {
+            _topologyMasterId = _componentToTasks.get("__topology_master").get(0);
+        } else {
+            _topologyMasterId = 0;
+        }
     }
 
     /**
      * Gets the unique id assigned to this topology. The id is the storm name with a unique nonce appended to it.
-     * 
+     *
      * @return the topology id
      */
     public String getTopologyId() {
@@ -60,7 +67,7 @@ public class GeneralTopologyContext implements JSONAware {
 
     /**
      * Please use the getTopologId() instead.
-     * 
+     *
      * @return the topology id
      */
     @Deprecated
@@ -70,7 +77,7 @@ public class GeneralTopologyContext implements JSONAware {
 
     /**
      * Gets the Thrift object representing the topology.
-     * 
+     *
      * @return the Thrift definition representing the topology
      */
     public StormTopology getRawTopology() {
@@ -79,7 +86,7 @@ public class GeneralTopologyContext implements JSONAware {
 
     /**
      * Gets the component id for the specified task id. The component id maps to a component id specified for a Spout or Bolt in the topology definition.
-     * 
+     *
      * @param taskId the task id
      * @return the component id for the input task id
      */
@@ -109,6 +116,17 @@ public class GeneralTopologyContext implements JSONAware {
             return new ArrayList<Integer>(ret);
     }
 
+    public List<Integer> getComponentsTasks(Set<String> componentIds) {
+        List<Integer> ret = new ArrayList<Integer>();
+        for (String componentId : componentIds) {
+            List<Integer> tasks = _componentToTasks.get(componentId);
+            if (tasks != null) {
+                ret.addAll(tasks);
+            }
+        }
+        return ret;
+    }
+
     /**
      * Gets the declared output fields for the specified component/stream.
      */
@@ -129,7 +147,7 @@ public class GeneralTopologyContext implements JSONAware {
 
     /**
      * Gets the declared inputs to the specified component.
-     * 
+     *
      * @return A map from subscribed component/stream to the grouping subscribed with.
      */
     public Map<GlobalStreamId, Grouping> getSources(String componentId) {
@@ -138,7 +156,7 @@ public class GeneralTopologyContext implements JSONAware {
 
     /**
      * Gets information about who is consuming the outputs of the specified component, and how.
-     * 
+     *
      * @return Map from stream id to component id to the Grouping used.
      */
     public Map<String, Map<String, Grouping>> getTargets(String componentId) {
@@ -203,5 +221,9 @@ public class GeneralTopologyContext implements JSONAware {
 
     public Map getStormConf() {
         return _stormConf;
+    }
+
+    public int getTopologyMasterId() {
+        return _topologyMasterId;
     }
 }

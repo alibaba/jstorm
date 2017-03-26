@@ -33,8 +33,6 @@ import com.lmax.disruptor.SequenceBarrier;
 import com.lmax.disruptor.Sequencer;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
-import backtype.storm.utils.disruptor.MultiProducerSequencer;
-import backtype.storm.utils.disruptor.SingleProducerSequencer;
 
 /**
  * Ring based store of reusable entries containing the data representing an event being exchanged between event producer and {@link EventProcessor}s.
@@ -568,7 +566,7 @@ public class RingBuffer<E> implements Cursored, DataProvider<E> {
      * 
      * @param translator The user specified translation for the event
      * @param arg0 A user supplied argument.
-     * @see #publishEvents(EventTranslator[])
+     * @see #publishEvents(com.lmax.disruptor.EventTranslator[])
      */
     public <A> void publishEvents(EventTranslatorOneArg<E, A> translator, A[] arg0) {
         publishEvents(translator, 0, arg0.length, arg0);
@@ -595,7 +593,7 @@ public class RingBuffer<E> implements Cursored, DataProvider<E> {
      * @param translator The user specified translation for each event
      * @param arg0 An array of user supplied arguments, one element per event.
      * @return true if the value was published, false if there was insufficient capacity.
-     * @see #tryPublishEvents(EventTranslator[])
+     * @see #tryPublishEvents(com.lmax.disruptor.EventTranslator[])
      */
     public <A> boolean tryPublishEvents(EventTranslatorOneArg<E, A> translator, A[] arg0) {
         return tryPublishEvents(translator, 0, arg0.length, arg0);
@@ -628,7 +626,7 @@ public class RingBuffer<E> implements Cursored, DataProvider<E> {
      * @param translator The user specified translation for the event
      * @param arg0 An array of user supplied arguments, one element per event.
      * @param arg1 An array of user supplied arguments, one element per event.
-     * @see #publishEvents(EventTranslator[])
+     * @see #publishEvents(com.lmax.disruptor.EventTranslator[])
      */
     public <A, B> void publishEvents(EventTranslatorTwoArg<E, A, B> translator, A[] arg0, B[] arg1) {
         publishEvents(translator, 0, arg0.length, arg0, arg1);
@@ -657,7 +655,7 @@ public class RingBuffer<E> implements Cursored, DataProvider<E> {
      * @param arg0 An array of user supplied arguments, one element per event.
      * @param arg1 An array of user supplied arguments, one element per event.
      * @return true if the value was published, false if there was insufficient capacity.
-     * @see #tryPublishEvents(EventTranslator[])
+     * @see #tryPublishEvents(com.lmax.disruptor.EventTranslator[])
      */
     public <A, B> boolean tryPublishEvents(EventTranslatorTwoArg<E, A, B> translator, A[] arg0, B[] arg1) {
         return tryPublishEvents(translator, 0, arg0.length, arg0, arg1);
@@ -692,7 +690,7 @@ public class RingBuffer<E> implements Cursored, DataProvider<E> {
      * @param arg0 An array of user supplied arguments, one element per event.
      * @param arg1 An array of user supplied arguments, one element per event.
      * @param arg2 An array of user supplied arguments, one element per event.
-     * @see #publishEvents(EventTranslator[])
+     * @see #publishEvents(com.lmax.disruptor.EventTranslator[])
      */
     public <A, B, C> void publishEvents(EventTranslatorThreeArg<E, A, B, C> translator, A[] arg0, B[] arg1, C[] arg2) {
         publishEvents(translator, 0, arg0.length, arg0, arg1, arg2);
@@ -723,7 +721,7 @@ public class RingBuffer<E> implements Cursored, DataProvider<E> {
      * @param arg1 An array of user supplied arguments, one element per event.
      * @param arg2 An array of user supplied arguments, one element per event.
      * @return true if the value was published, false if there was insufficient capacity.
-     * @see #publishEvents(EventTranslator[])
+     * @see #publishEvents(com.lmax.disruptor.EventTranslator[])
      */
     public <A, B, C> boolean tryPublishEvents(EventTranslatorThreeArg<E, A, B, C> translator, A[] arg0, B[] arg1, C[] arg2) {
         return tryPublishEvents(translator, 0, arg0.length, arg0, arg1, arg2);
@@ -757,7 +755,7 @@ public class RingBuffer<E> implements Cursored, DataProvider<E> {
      * 
      * @param translator The user specified translation for the event
      * @param args User supplied arguments, one Object[] per event.
-     * @see #publishEvents(EventTranslator[])
+     * @see #publishEvents(com.lmax.disruptor.EventTranslator[])
      */
     public void publishEvents(EventTranslatorVararg<E> translator, Object[]... args) {
         publishEvents(translator, 0, args.length, args);
@@ -784,7 +782,7 @@ public class RingBuffer<E> implements Cursored, DataProvider<E> {
      * @param translator The user specified translation for the event
      * @param args User supplied arguments, one Object[] per event.
      * @return true if the value was published, false if there was insufficient capacity.
-     * @see #publishEvents(EventTranslator[])
+     * @see #publishEvents(com.lmax.disruptor.EventTranslator[])
      */
     public boolean tryPublishEvents(EventTranslatorVararg<E> translator, Object[]... args) {
         return tryPublishEvents(translator, 0, args.length, args);
@@ -812,23 +810,23 @@ public class RingBuffer<E> implements Cursored, DataProvider<E> {
     }
 
     /**
-     * Publish the specified sequence. This action marks this particular message as being available to be read.
-     * 
-     * @param sequence the sequence to publish.
-     */
-    public void publish(long sequence) {
-        sequencer.publish(sequence);
-    }
-
-    /**
      * Publish the specified sequences. This action marks these particular messages as being available to be read.
-     * 
+     *
      * @see Sequencer#next(int)
      * @param lo the lowest sequence number to be published
      * @param hi the highest sequence number to be published
      */
     public void publish(long lo, long hi) {
         sequencer.publish(lo, hi);
+    }
+
+    /**
+     * Publish the specified sequence. This action marks this particular message as being available to be read.
+     *
+     * @param sequence the sequence to publish.
+     */
+    public void publish(long sequence) {
+        sequencer.publish(sequence);
     }
 
     /**

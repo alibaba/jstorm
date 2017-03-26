@@ -1,6 +1,134 @@
 [JStorm English introduction](http://42.121.19.155/jstorm/JStorm-introduce-en.pptx)
 [JStorm Chinese introduction](http://42.121.19.155/jstorm/JStorm-introduce.pptx)
 
+# Release 2.2.1
+
+## New features
+* 性能优化:对比2.1.1和去年的双十一版本0.9.8.1有200%~300%的提升。在高并发和低并发的多个测试场景(word count)中，是Flink性能的120%~200%，是Storm的300%~400%。
+	1. 重构batch的实现方案
+	2. 优化序列化和反序列过程，减少cpu和网络消耗
+	3. 优化消息关键路径和metrics的cpu开销
+	4. 优化网络接收和发送端的处理策略
+	5. 增加disruptorQueue的异步batch操作
+* 加入新的snapshot exactly once(只处理一次)框架。
+	1. 对比原有的Trident解决方案有着数倍的性能提升。同时可以减少用户在回滚的过程中的处理逻辑。
+	2. 同时支持at least once(至少处理一次场景)。对比原有的acker机制，可以减少acker的消息处理开销，同时在高吞吐的场景中可以大量的减少acker消息占用的网络带宽。以提高任务性能。
+* 完成JStorm on yarn支持。
+	1. 现在JStorm可以实现快速的集群部署，以及集群的扩容和缩容。有效的提高集群资源的弹性和利用率。
+* 重构backpressure设计，支持stage by stage的流控模式。
+	1. 当前的设计更加轻量，让backpressure在流控开启和关闭时更加高效。
+	2. 性能和稳定性对比原因的方案有着很大的提升。
+* 引入Window API。
+	1. 支持tumbling window，sliding window
+	2. 对应的window支持count和duration 模式
+	3. 支持window的watermark机制
+* 引入对Flux的支持
+	1. Flux是帮助创建和部署storm拓扑的编程框架及通用组件。帮助用户更方便创建及部署JStorm流式计算拓扑的编程框架
+* 通过maven shade的方式，对一些容易冲突的依赖包做shade。以解决jstorm依赖和用户依赖之前的冲突问题。
+* 优化Shuffle grouping方案
+	1. 合并shuffle， localOrShuffle和localFirst。根据任务情况自动适配。
+	2. shuffle时会根据下游节点的负载情况，做shuffle。以达到负载均衡。
+* 增加Nimbus的黑名单机制。
+* 增加Trident对消息batch模式的支持
+* 支持集群的全局配置推送
+* supervisor info和心跳中增加了buildTs，便于区分出集群中是否存在不同版本的supervisor
+* nimbus和supervisor通过ext模块来支持外部插件
+* 添加elastic search 5.11的支持, 感谢 @elloray 的PR
+
+## Improvements
+* 重构nimbus metrics 框架，将原TopologyMetricsRunnable打散成事件驱动
+* 重构Topology master的处理逻辑。改为事件驱动。提高Topology的处理性能。
+* 重构example 代码， 增加大量example和测试用例
+* 默认禁用stream metrics以及其他特定metrics，以减少发送的数据量
+* 本地模式下启用metrics
+* gauge的实现，由每分钟单值，改为每分钟采样多次计算平均值
+* 引入了一种近似计算的方式来计算histogram的值，以减少内存开销
+* 增加了Full GC以及supervisor中网络相关的metrics
+
+## Bug Fix
+* Fix 消息的乱序问题
+* Fix supervisor上有大量的zookeeper连接的问题
+* Fix task初始化时，deactivate的错误调用
+* Fix spout并发高时，少量消息rootid重复，导致消息失败的问题。
+* Fix 本地模式的一些bug
+* Fix logwriter的bug
+* 修复了task metrics中RecvTps, ProcessLatency没有合并到task的bug
+* 修复了AsmCounter在flush时的线程同步问题
+
+
+# Release 2.1.1
+
+## New features
+* 相比2.1.0有1.5～6倍的性能提升
+* 添加了应用层的自动batch
+* 增加了独立的控制消息通道，将控制消息与业务消息分开，保证控制消息有较高的优先级被处理
+* 支持jdk1.8
+* 添加了nimbus hook和topology hook
+* Metrics系统:
+    * 支持动态开关特定的metrics
+    * 添加了metrics的设计文档，见JSTORM-METRICS.md
+* JStorm web UI相关:
+    * 添加了zk节点的查看功能，感谢@dingjun84的PR
+    * 添加了普通日志搜索以及topology日志搜索功能，支持正向和反向搜索
+    * 支持日志的下载
+* 支持动态修改日志级别
+* 修改了zk中ErrorInfo的结构，增加了errorLevel, errorCode和duration
+* 增加了supervisor的健康检查
+* 增加了-Dexclude.jars选项以手动排除特定的jar包
+
+## Improvements
+* Metrics相关：
+    * 使用JHistogram/JMeter代替codahale的Histogram/Meter, 把内部的Clock.tick改为System.currentTimeMillis，Meter和Histogram分别有50%和25%+的性能提升
+    * 添加了TupleLifeCycle指标，用于统计消息从当前component发出来到下一个component被处理的总耗时
+    * 添加了supervisor的指标: total_cpu_usage, total_mem_usage, disk_usage
+    * 删除了一些不必要的指标，如emitTime等
+    * 使用HeapByteBuffer代替List<Long>来发送histogram中的点数据，节省60+%的metrics内存使用 
+    * 将metrics采样率从10%调为5%
+    * 删除AsmTimer及相关代码
+* 日志相关：
+    * 默认不再使用log4j，而是使用logback，除非slf4j-log4j12依赖
+    * 使用jstorm.log.dir配置取代原来的${jstorm.home}/logs, 详见jstorm.logback.xml 
+    * 将logback/log4j中日志文件的默认编码改为UTF-8
+    * 修改日志目录结构，添加了${topology.name}目录, 详见jstorm.logback.xml
+    * 将代码中所有log4j的Logger改为slf4j的Logger
+    * 将defaults.yaml中默认的日志page size(log.page.size)由32K调整为128K
+    * 将supervisor/nimbus的gc日志文件加上时间戳，防止重启后被覆盖; 重启worker前备份worker之前的gc日志
+* 优化反压策略，防止过度反压
+* 将acker中的pending map改为单线程，以提高性能
+* 修改RefreshConnections逻辑，防止频繁地从zk中下载assignments
+* 将Supervisor的默认内存由512MB调到1GB
+* 统一使用ProcessLauncher来起进程
+* 为supervisor和nimbus添加DefaultUncaughtExceptionHandler
+* 与0.9.x系列错开端口配置，见supervisor.slots.ports.base, nimbus.thrift.port, nimbus.deamon.logview.port, supervisor.deamon.logview.port配置
+* 将web UI的前端库highcharts改为echarts，防止潜在的版权冲突
+* 依赖升级
+    * 升级kryo至2.23.0
+    * 升级disruptor至3.2.2
+
+## Bug fix
+* 修复了起worker时可能的死锁
+* 修复了当localstate文件为空时，supervisor无法启动的问题
+* 修复了开启kryo时metrics中HeapByteBuffer无法被注册的bug
+* 修复了内存使用率计算不准确的bug
+* 修复了当用户自定义调度中分配的worker大于真实worker数时会创建空worker的bug
+* 修复web UI的日志目录设置错误的问题 
+* 修复了web UI中的XSS bug
+* 在local mode的时候，TopologyMetricsRunnable线程不运行，感谢@L-Donne的PR
+* 修复JSTORM-141, JSTORM-188：TopologyMetricsRunnable消耗CPU过多的bug
+* 删除MaxTenuringThreshold JVM参数
+* 修复MkLocalShuffer中outTasks可能为null的bug
+
+## Deploy and scripts
+* 增加了对core dump文件的清理
+* 增加了supervisor的健康检测，见healthCheck.sh
+* 修改了jstorm.py，起进程后结束父python进程
+
+## 升级指南
+* JStorm2.1.1基本与JStorm2.1.0保持兼容，但是为了保险起见，建议重启topology
+* 如果你的topology原先使用log4j，请在你的conf或者storm.yaml中加入"user.defined.log4j.conf: jstorm.log4j.properties"配置，以保证JStorm框架使用log4j
+* 如果你使用slf4j-api + log4j，请在你的应用中添加slf4j-log4j12的依赖
+
+
 # Release 2.1.0
 
 ## New features
@@ -66,6 +194,8 @@
 * Fix 使drpc 单例模式
 * 客户端topologyNameExists改进，直接使用trhift api
 * Fix restart 过程中， 因定时清理线程清理导致的restart失败
+* Fix 当trigger bolt失败时,反压可能丢失
+* Fix DefaultMetricUploader没有删除rocksdb中的数据,导致新的metrics数据无法添加
 
 
 ## 运维和脚本

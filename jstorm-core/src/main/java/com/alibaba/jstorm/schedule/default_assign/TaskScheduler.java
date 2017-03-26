@@ -96,13 +96,18 @@ public class TaskScheduler {
         // Check the worker assignment status of pre-assigned workers, e.g user defined or old assignment workers.
         // Remove the workers which have been assigned with enough workers.
         for (ResourceWorkerSlot worker : preAssignWorkers) {
-            Set<ResourceWorkerSlot> doneWorkers = removeWorkerFromSrcPool(taskContext.getWorkerToTaskNum().get(worker), worker);
-            if (doneWorkers != null) {
-                for (ResourceWorkerSlot doneWorker : doneWorkers) {
-                    taskNum -= doneWorker.getTasks().size();
-                    workerNum--;
+            if (taskContext.getWorkerToTaskNum().keySet().contains(worker)){
+
+                Set<ResourceWorkerSlot> doneWorkers = removeWorkerFromSrcPool(taskContext.getWorkerToTaskNum().get(worker), worker);
+                if (doneWorkers != null) {
+                    for (ResourceWorkerSlot doneWorker : doneWorkers) {
+                        taskNum -= doneWorker.getTasks().size();
+                        workerNum--;
+                    }
                 }
+
             }
+
         }
         setTaskNum(taskNum, workerNum);
 
@@ -357,7 +362,7 @@ public class TaskScheduler {
             if (leftTaskNum <= 0) {
                 List<ResourceWorkerSlot> needDelete = new ArrayList<ResourceWorkerSlot>();
                 for (Entry<ResourceWorkerSlot, Integer> entry : taskContext.getWorkerToTaskNum().entrySet()) {
-                    if (entry.getValue() == avgTaskNum)
+                    if (avgTaskNum != 0 && entry.getValue() == avgTaskNum)
                         needDelete.add(entry.getKey());
                 }
                 for (ResourceWorkerSlot workerToDelete : needDelete) {
@@ -390,7 +395,7 @@ public class TaskScheduler {
             this.leftTaskNum = taskNum % workerNum;
             LOG.debug("avgTaskNum=" + avgTaskNum + ", leftTaskNum=" + leftTaskNum);
         } else {
-            LOG.debug("Illegal parameters, taskNum=" + taskNum + ", workerNum=" + workerNum);
+            LOG.warn("Illegal parameters, taskNum=" + taskNum + ", workerNum=" + workerNum);
         }
     }
 

@@ -17,11 +17,15 @@
  */
 package com.alibaba.jstorm.daemon.supervisor;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.io.IOException;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import backtype.storm.utils.LocalState;
+import backtype.storm.utils.Utils;
+import com.alibaba.jstorm.client.ConfigExtension;
+import com.alibaba.jstorm.cluster.Common;
+import com.alibaba.jstorm.daemon.worker.LocalAssignment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +40,7 @@ import com.alibaba.jstorm.utils.TimeUtils;
 
 /**
  * supervisor Heartbeat, just write SupervisorInfo to ZK
+ *
  * @author Johnfang (xiaojian.fxj@alibaba-inc.com)
  */
 class Heartbeat extends RunnableCallback {
@@ -60,15 +65,23 @@ class Heartbeat extends RunnableCallback {
     private SupervisorInfo supervisorInfo;
 
     private AtomicBoolean hbUpdateTrigger;
+    //protected HealthStatus oldHealthStatus;
+    //protected  volatile HealthStatus healthStatus;
+    protected MachineCheckStatus oldCheckStatus;
+
+    protected volatile MachineCheckStatus checkStatus;
+
+    private LocalState localState;
 
     /**
      * @param conf
      * @param stormClusterState
      * @param supervisorId
-     * @param myHostName
+     * @param status
      */
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    public Heartbeat(Map conf, StormClusterState stormClusterState, String supervisorId) {
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public Heartbeat(Map conf, StormClusterState stormClusterState, String supervisorId, LocalState localState,
+                     MachineCheckStatus status) {
 
         String myHostName = JStormServerUtils.getHostName(conf);
 
@@ -79,6 +92,10 @@ class Heartbeat extends RunnableCallback {
         this.startTime = TimeUtils.current_time_secs();
         this.frequence = JStormUtils.parseInt(conf.get(Config.SUPERVISOR_HEARTBEAT_FREQUENCY_SECS));
         this.hbUpdateTrigger = new AtomicBoolean(true);
+        this.localState = localState;
+        this.checkStatus = status;
+        oldCheckStatus = new MachineCheckStatus();
+        oldCheckStatus.SetType(this.checkStatus.getType());
 
         initSupervisorInfo(conf);
 
@@ -91,34 +108,63 @@ class Heartbeat extends RunnableCallback {
         if (!StormConfig.local_mode(conf)) {
             try {
 
-                boolean isLocaliP = false;
-                isLocaliP = myHostName.equals("127.0.0.1");
-                if (isLocaliP) {
+                boolean isLocalIP = myHostName.equals("127.0.0.1") || myHostName.equals("localhost");
+                if (isLocalIP) {
                     throw new Exception("the hostname which  supervisor get is localhost");
                 }
+
             } catch (Exception e1) {
                 LOG.error("get supervisor host error!", e1);
                 throw new RuntimeException(e1);
             }
             Set<Integer> ports = JStormUtils.listToSet(portList);
-            supervisorInfo = new SupervisorInfo(myHostName, supervisorId, ports);
+            supervisorInfo = new SupervisorInfo(myHostName, supervisorId, ports, conf);
         } else {
             Set<Integer> ports = JStormUtils.listToSet(portList);
-            supervisorInfo = new SupervisorInfo(myHostName, supervisorId, ports);
+            supervisorInfo = new SupervisorInfo(myHostName, supervisorId, ports, conf);
         }
+
+        supervisorInfo.setVersion(Utils.getVersion());
+        String buildTs = Utils.getBuildTime();
+        supervisorInfo.setBuildTs(buildTs);
+        LOG.info("jstorm version:{}, build ts:{}", supervisorInfo.getVersion(), supervisorInfo.getBuildTs());
     }
 
     @SuppressWarnings("unchecked")
     public void update() {
         supervisorInfo.setTimeSecs(TimeUtils.current_time_secs());
-        supervisorInfo.setUptimeSecs((int) (TimeUtils.current_time_secs() - startTime));
+        supervisorInfo.setUptimeSecs(TimeUtils.current_time_secs() - startTime);
+
+        updateSupervisorInfo();
+
+        if (checkStatus.getType() == MachineCheckStatus.StatusType.warning
+                || checkStatus.getType() == MachineCheckStatus.StatusType.error
+                || checkStatus.getType() == MachineCheckStatus.StatusType.panic) {
+            Set<Integer> ports = new HashSet<Integer>();
+            supervisorInfo.setWorkerPorts(ports);
+            if (!checkStatus.equals(oldCheckStatus)) {
+                LOG.warn("due to no enough resource, limit supervisor's ports and block scheduling");
+                oldCheckStatus.SetType(checkStatus.getType());
+            }
+        }
 
         try {
             stormClusterState.supervisor_heartbeat(supervisorId, supervisorInfo);
         } catch (Exception e) {
-            LOG.error("Failed to update SupervisorInfo to ZK");
+            LOG.error("Failed to update SupervisorInfo to ZK", e);
 
         }
+    }
+
+    private void updateSupervisorInfo() {
+        List<Integer> portList = calculatorAvailablePorts();
+        LOG.debug("portList : {}", portList);
+        Set<Integer> ports = JStormUtils.listToSet(portList);
+        supervisorInfo.setWorkerPorts(ports);
+    }
+
+    public MachineCheckStatus getCheckStatus() {
+        return checkStatus;
     }
 
     @Override
@@ -144,5 +190,92 @@ class Heartbeat extends RunnableCallback {
 
     public void updateHbTrigger(boolean update) {
         hbUpdateTrigger.set(update);
+    }
+
+    private List<Integer> calculatorAvailablePorts() {
+
+        List<Integer> defaultPortList = JStormUtils.getSupervisorPortList(conf);
+
+        double cpuUsage = JStormUtils.getTotalCpuUsage();
+        int reserveCpuUsage = ConfigExtension.getStormMachineReserveCpuPercent(conf);
+
+        if (cpuUsage <= 0.0 || !ConfigExtension.isSupervisorEnableAutoAdjustSlots(conf)) {
+            return defaultPortList;
+        }
+        long freeMemory = JStormUtils.getFreePhysicalMem() * 1024L;
+
+        long reserveMemory = ConfigExtension.getStormMachineReserveMem(conf);
+
+        if (freeMemory < reserveMemory) {
+            List<Integer> list = null;
+            try {
+                list = getLocalAssignmentPortList();
+            } catch (IOException e) {
+                return defaultPortList;
+            }
+            if (list == null)
+                return new ArrayList<Integer>();
+            return list;
+        }
+
+
+        if (cpuUsage > (100D - reserveCpuUsage)) {
+            List<Integer> list = null;
+            try {
+                list = getLocalAssignmentPortList();
+            } catch (IOException e) {
+                return defaultPortList;
+            }
+            if (list == null)
+                return new ArrayList<Integer>();
+            return list;
+        }
+
+        Long conversionAvailableCpuNum = Math.round((100 - cpuUsage) / 100 * JStormUtils.getNumProcessors());
+
+        Long availablePhysicalMemorySize = freeMemory - reserveMemory;
+
+        int portNum = JStormUtils.getSupervisorPortNum(
+                conf, conversionAvailableCpuNum.intValue(), availablePhysicalMemorySize, true);
+
+        List<Integer> portList = new ArrayList<>();
+        portList.addAll(defaultPortList);
+
+        List<Integer> usedList = null;
+        try {
+            usedList = getLocalAssignmentPortList();
+        } catch (Exception e) {
+            return defaultPortList;
+        }
+        portList.removeAll(usedList);
+
+        Collections.sort(portList);
+        //Collections.sort(usedList);
+
+        if (portNum >= portList.size()) {
+            return defaultPortList;
+        } else {
+            List<Integer> reportPortList = new ArrayList<Integer>();
+            reportPortList.addAll(usedList);
+            for (int i = 1; i <= portNum; i++) {
+                reportPortList.add(portList.get(i));
+            }
+            return reportPortList;
+        }
+    }
+
+    private List<Integer> getLocalAssignmentPortList() throws IOException {
+
+        Map<Integer, LocalAssignment> localAssignment = null;
+        try {
+            localAssignment = (Map<Integer, LocalAssignment>) localState.get(Common.LS_LOCAL_ASSIGNMENTS);
+        } catch (IOException e) {
+            LOG.error("get LS_LOCAL_ASSIGNMENTS of localState failed .");
+            throw e;
+        }
+        if (localAssignment == null) {
+            return null;
+        }
+        return JStormUtils.mk_list(localAssignment.keySet());
     }
 }

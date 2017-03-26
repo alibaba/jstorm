@@ -17,13 +17,6 @@
  */
 package com.alipay.dw.jstorm.example.sequence.bolt;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.IRichBolt;
@@ -32,34 +25,32 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
-import com.alipay.dw.jstorm.example.TpsCounter;
+import com.alibaba.starter.utils.TpsCounter;
 import com.alipay.dw.jstorm.example.sequence.SequenceTopologyDef;
 import com.alipay.dw.jstorm.example.sequence.bean.Pair;
 import com.alipay.dw.jstorm.example.sequence.bean.TradeCustomer;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MergeRecord implements IRichBolt {
-    /**
-     * 
-     */
     private static final long serialVersionUID = -5984311734042330577L;
-
-    public static Logger     LOG         = LoggerFactory.getLogger(MergeRecord.class);
+    
+    public static Logger LOG = LoggerFactory.getLogger(MergeRecord.class);
     
     private Map<Long, Tuple> tradeMap    = new HashMap<Long, Tuple>();
     private Map<Long, Tuple> customerMap = new HashMap<Long, Tuple>();
     
-    private TpsCounter          tpsCounter;
-    
-    private OutputCollector  collector;
+    private TpsCounter      tpsCounter;
+    private OutputCollector collector;
     
     @Override
-    public void prepare(Map stormConf, TopologyContext context,
-            OutputCollector collector) {
-        // TODO Auto-generated method stub
+    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
         
-        tpsCounter = new TpsCounter(context.getThisComponentId() + 
-                ":" + context.getThisTaskId());
+        tpsCounter = new TpsCounter(context.getThisComponentId() + ":" + context.getThisTaskId());
         
         LOG.info("Finished preparation");
     }
@@ -81,7 +72,7 @@ public class MergeRecord implements IRichBolt {
         Tuple tradeTuple = null;
         Tuple customerTuple = null;
         
-        if (input.getSourceComponent().equals(SequenceTopologyDef.CUSTOMER_BOLT_NAME) ) {
+        if (input.getSourceComponent().equals(SequenceTopologyDef.CUSTOMER_BOLT_NAME)) {
             customer = pair;
             customerTuple = input;
             
@@ -129,12 +120,10 @@ public class MergeRecord implements IRichBolt {
     }
     
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-    	declarer.declare(new Fields("ID", "RECORD"));
+        declarer.declare(new Fields("ID", "RECORD"));
     }
     
     public Map<String, Object> getComponentConfiguration() {
-        // TODO Auto-generated method stub
         return null;
     }
-    
 }

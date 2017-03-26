@@ -20,8 +20,8 @@ public class AsmWindow {
     public static final String H2_WINDOW_STR = "0d2h0m0s";
     public static final String D1_WINDOW_STR = "1d0h0m0s";
 
-    public static final Set<Integer> TIME_WINDOWS = new TreeSet<Integer>();
-    private static final Map<Integer, String> WIN_TO_STR = new HashMap<Integer, String>();
+    public static final Set<Integer> TIME_WINDOWS = new TreeSet<>();
+    private static final Map<Integer, String> WIN_TO_STR = new HashMap<>();
 
     static {
         TIME_WINDOWS.add(M1_WINDOW);
