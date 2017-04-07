@@ -35,7 +35,6 @@ public class ProducerFactory {
 		producer = ONSFactory.createProducer(properties);
 		producer.start();
 
-
 		producers.put(producerId, producer);
 		LOG.info("Successfully create " + producerId + " producer");
 

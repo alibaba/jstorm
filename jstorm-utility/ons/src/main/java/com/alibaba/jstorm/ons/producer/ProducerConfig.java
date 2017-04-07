@@ -18,7 +18,7 @@ public class ProducerConfig extends OnsConfig{
 		if (producerId == null) {
 			throw new RuntimeException(PropertyKeyConst.ProducerId + " hasn't been set");
 		}
-		
+
 		
 	}
 

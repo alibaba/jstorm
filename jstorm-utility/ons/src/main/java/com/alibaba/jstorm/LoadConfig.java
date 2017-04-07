@@ -11,7 +11,7 @@ import java.util.Properties;
 
 public class LoadConfig {
 	public static final String TOPOLOGY_TYPE = "topology.type";
-	
+
 	private static Map LoadProperty(String prop) {
 		Map ret = null;
 		Properties properties = new Properties();
