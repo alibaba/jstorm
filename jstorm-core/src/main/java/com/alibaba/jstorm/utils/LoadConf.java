@@ -49,10 +49,9 @@ public class LoadConf {
      * @return
      */
     public static Map findAndReadYaml(String name, boolean mustExist, boolean canMultiple) {
-        InputStream in = null;
+
         boolean confFileEmpty = false;
-        try {
-            in = getConfigFileInputStream(name, canMultiple);
+        try(InputStream in = getConfigFileInputStream(name, canMultiple)) {
             if (null != in) {
                 Yaml yaml = new Yaml(new SafeConstructor());
                 Map ret = (Map) yaml.load(new InputStreamReader(in));
@@ -75,14 +74,6 @@ public class LoadConf {
             StringBuilder sb = new StringBuilder();
             sb.append("Invalid configuration ").append(name).append(":").append(e.getMessage());
             throw new RuntimeException(sb.toString(), e);
-        } finally {
-            if (null != in) {
-                try {
-                    in.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
         }
     }
 
@@ -120,24 +111,14 @@ public class LoadConf {
 
     public static Map LoadProperty(String prop) {
 
-        InputStream in = null;
         Properties properties = new Properties();
 
-        try {
-            in = getConfigFileInputStream(prop);
+        try(InputStream in = getConfigFileInputStream(prop)) {
             properties.load(in);
         } catch (FileNotFoundException e) {
             throw new RuntimeException("No such file " + prop);
         } catch (Exception e1) {
             throw new RuntimeException("Failed to read config file");
-        } finally {
-            if (null != in) {
-                try {
-                    in.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
         }
 
         Map ret = new HashMap();
