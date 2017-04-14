@@ -14,7 +14,7 @@ public class ConsumerConfig extends OnsConfig{
 	private final String consumerId;
 	private final int    consumerThreadNum;
 	
-	
+
 	private final String nameServer;
 	
 	

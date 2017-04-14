@@ -17,7 +17,7 @@ public class ConsumerFactory {
 	public static Map<String, Consumer> consumers = new HashMap<String, Consumer>();
 
 	public static synchronized Consumer mkInstance(ConsumerConfig consumerConfig, MessageListener listener) throws Exception {
-		
+	    
 
 		String consumerId = consumerConfig.getConsumerId();
 		Consumer consumer = consumers.get(consumerId);
