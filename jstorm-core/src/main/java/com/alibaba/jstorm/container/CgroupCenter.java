@@ -72,8 +72,7 @@ public class CgroupCenter implements CgroupOperation {
                 String name = strSplit[0];
                 String type = strSplit[3];
                 String dir = strSplit[1];
-                Hierarchy h = hierarchies.get(type);
-                h = new Hierarchy(name, CgroupUtils.analyse(type), dir);
+                Hierarchy h = new Hierarchy(name, CgroupUtils.analyse(type), dir);
                 hierarchies.put(type, h);
             }
             return new ArrayList<Hierarchy>(hierarchies.values());
