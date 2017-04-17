@@ -1,7 +1,7 @@
 ---
 title:  "Dynamic Adjust Application"
 
-#sub-nav-parent: AdvancedUsage
+# sub-nav-parent: AdvancedUsage
 sub-nav-group: AdvancedUsage
 sub-nav-id: DynamicAdjust
 sub-nav-pos: 6

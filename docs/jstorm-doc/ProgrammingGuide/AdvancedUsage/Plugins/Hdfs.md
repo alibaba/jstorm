@@ -6,7 +6,7 @@ title: "HDFS Plugin"
 sub-nav-parent: Plugins
 sub-nav-group: AdvancedUsage
 sub-nav-id: HDFS
-#sub-nav-pos: 1
+# sub-nav-pos: 1
 sub-nav-title: HDFS Plugin
 ---
 

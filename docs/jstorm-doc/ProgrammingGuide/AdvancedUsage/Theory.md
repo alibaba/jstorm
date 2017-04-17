@@ -1,7 +1,7 @@
 ---
 title:  "Run mechanism & Theory"
 
-#sub-nav-parent: AdvancedUsage
+# sub-nav-parent: AdvancedUsage
 sub-nav-group: AdvancedUsage
 sub-nav-id: Theory
 sub-nav-pos: 3

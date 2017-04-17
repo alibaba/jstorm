@@ -2,7 +2,7 @@
 title:  "How to use Window Framework?"
 layout: plain_cn
 
-#sub-nav-parent: AdvancedUsage
+# sub-nav-parent: AdvancedUsage
 sub-nav-group: AdvancedUsage_cn
 sub-nav-id: Window_cn
 sub-nav-pos: 9
