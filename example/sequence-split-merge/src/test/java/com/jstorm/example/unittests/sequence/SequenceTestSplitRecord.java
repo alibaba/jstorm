@@ -16,7 +16,7 @@ import com.alipay.dw.jstorm.example.sequence.bean.TradeCustomer;
 import java.util.Map;
 
 /**
- * Created by binyang.dby on 2016/7/8.
+ * @author binyang.dby on 2016/7/8.
  */
 public class SequenceTestSplitRecord implements IBasicBolt
 {

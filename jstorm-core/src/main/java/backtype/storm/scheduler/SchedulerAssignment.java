@@ -22,41 +22,29 @@ import java.util.Set;
 
 public interface SchedulerAssignment {
     /**
-     * Does this slot occupied by this assignment?
-     * 
-     * @param slot
-     * @return
+     * Is this slot occupied by an assignment?
      */
-    public boolean isSlotOccupied(WorkerSlot slot);
+    boolean isSlotOccupied(WorkerSlot slot);
 
     /**
      * is the executor assigned?
-     * 
-     * @param executor
-     * @return
      */
-    public boolean isExecutorAssigned(ExecutorDetails executor);
+    boolean isExecutorAssigned(ExecutorDetails executor);
 
     /**
      * get the topology-id this assignment is for.
-     * 
-     * @return
      */
-    public String getTopologyId();
+    String getTopologyId();
 
     /**
      * get the executor -> slot map.
-     * 
-     * @return
      */
-    public Map<ExecutorDetails, WorkerSlot> getExecutorToSlot();
+    Map<ExecutorDetails, WorkerSlot> getExecutorToSlot();
 
     /**
      * Return the executors covered by this assignments
-     * 
-     * @return
      */
-    public Set<ExecutorDetails> getExecutors();
+    Set<ExecutorDetails> getExecutors();
 
-    public Set<WorkerSlot> getSlots();
+    Set<WorkerSlot> getSlots();
 }

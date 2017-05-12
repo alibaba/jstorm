@@ -26,8 +26,8 @@ import java.util.Map;
 public interface ICredentialsListener {
     /**
      * Called when the credentials of a topology have changed.
-     * 
+     *
      * @param credentials the new credentials, could be null.
      */
-    public void setCredentials(Map<String, String> credentials);
+    void setCredentials(Map<String, String> credentials);
 }

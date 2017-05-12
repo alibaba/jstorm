@@ -111,10 +111,11 @@ public class DRPCSpout extends BaseRichSpout {
     @Override
     public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
         _collector = collector;
-        _clients = new ArrayList<DRPCInvocationsClient>();
+        _clients = new ArrayList<>();
         if (_local_drpc_id == null) {
-            _backround = new ExtendedThreadPoolExecutor(0, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS, new SynchronousQueue<Runnable>());
-            _futures = new LinkedList<Future<?>>();
+            _backround = new ExtendedThreadPoolExecutor(0, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS,
+                    new SynchronousQueue<Runnable>());
+            _futures = new LinkedList<>();
 
             int numTasks = context.getComponentTasks(context.getThisComponentId()).size();
             int index = context.getThisTaskIndex();
@@ -194,10 +195,9 @@ public class DRPCSpout extends BaseRichSpout {
                         returnInfo.put("host", _local_drpc_id);
                         returnInfo.put("port", 0);
                         gotRequest = true;
-                        _collector.emit(new Values(req.get_func_args(), JSONValue.toJSONString(returnInfo)), new DRPCMessageId(req.get_request_id(), 0));
+                        _collector.emit(new Values(req.get_func_args(), JSONValue.toJSONString(returnInfo)),
+                                new DRPCMessageId(req.get_request_id(), 0));
                     }
-                } catch (AuthorizationException aze) {
-                    throw new RuntimeException(aze);
                 } catch (TException e) {
                     throw new RuntimeException(e);
                 }

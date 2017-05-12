@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 
 /**
- * Created by binyang.dby on 2016/7/20.
+ * @author binyang.dby on 2016/7/20.
  */
 public class SimpleBatchTestBolt implements IBasicBolt, ICommitter
 {

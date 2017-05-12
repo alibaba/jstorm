@@ -47,7 +47,6 @@ public class MemoryCore implements CgroupCore {
 
     @Override
     public SubSystemType getType() {
-        // TODO Auto-generated method stub
         return SubSystemType.memory;
     }
 
@@ -112,8 +111,7 @@ public class MemoryCore implements CgroupCore {
 
     public Stat getStat() throws IOException {
         String output = CgroupUtils.readFileByLine(Constants.getDir(this.dir, MEMORY_STAT)).get(0);
-        Stat stat = new Stat(output);
-        return stat;
+        return new Stat(output);
     }
 
     public long getPhysicalUsage() throws IOException {

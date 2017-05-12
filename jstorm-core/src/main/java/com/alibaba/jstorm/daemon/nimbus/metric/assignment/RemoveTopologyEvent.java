@@ -12,7 +12,6 @@ public class RemoveTopologyEvent extends MetricEvent {
     public void removeTopology(String topologyId) {
         context.getMetricCache().removeTopology(topologyId);
         context.getMetricCache().removeSampleRate(topologyId);
-        
         context.getTopologyMetricContexts().remove(topologyId);
     }
     
@@ -33,6 +32,5 @@ public class RemoveTopologyEvent extends MetricEvent {
         
         // directly remove event, skip issue remove event
         event.run();
-        
     }
 }

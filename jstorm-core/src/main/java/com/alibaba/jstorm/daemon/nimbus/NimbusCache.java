@@ -31,13 +31,16 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
+/**
+ * In the old design, DBCache will cache all taskInfo/taskErrors, this will be useful for huge topology
+ * But the latest zk design, taskInfo is only one znode, taskErros has few znode
+ * So remove them from DBCache Skip timely refresh taskInfo/taskErrors
+ */
 public class NimbusCache {
     private static final Logger LOG = LoggerFactory.getLogger(NimbusCache.class);
 
     public static final String TIMEOUT_MEM_CACHE_CLASS = TimeoutMemCache.class.getName();
     public static final String ROCKS_DB_CACHE_CLASS = RocksDBCache.class.getName();
-
-    public static final String SUPERVISORS_INFO = "__supervisors_info";
 
     protected JStormCache memCache;
     protected JStormCache dbCache;
@@ -48,39 +51,36 @@ public class NimbusCache {
         boolean isMac = OSInfo.isMac();
         boolean isLocal = StormConfig.local_mode(conf);
 
-        if (isLocal == true) {
+        if (isLocal) {
             return TIMEOUT_MEM_CACHE_CLASS;
         }
 
-        if (isLinux == false && isMac == false) {
+        if (!isLinux && !isMac) {
             return TIMEOUT_MEM_CACHE_CLASS;
         }
 
         String nimbusCacheClass = ConfigExtension.getNimbusCacheClass(conf);
-        if (StringUtils.isBlank(nimbusCacheClass) == false) {
+        if (!StringUtils.isBlank(nimbusCacheClass)) {
             return nimbusCacheClass;
         }
 
         return ROCKS_DB_CACHE_CLASS;
-
     }
 
     public NimbusCache(Map conf, StormClusterState zkCluster) {
         super();
 
         String dbCacheClass = getNimbusCacheClass(conf);
-        LOG.info("NimbusCache db Cache will use {}", dbCacheClass);
+        LOG.info("NimbusCache db cache will use {}", dbCacheClass);
 
         try {
             dbCache = (JStormCache) Utils.newInstance(dbCacheClass);
 
             String dbDir = StormConfig.masterDbDir(conf);
             conf.put(RocksDBCache.ROCKSDB_ROOT_DIR, dbDir);
-
             conf.put(RocksDBCache.ROCKSDB_RESET, ConfigExtension.getNimbusCacheReset(conf));
 
             dbCache.init(conf);
-
             if (dbCache instanceof TimeoutMemCache) {
                 memCache = dbCache;
             } else {
@@ -88,10 +88,8 @@ public class NimbusCache {
                 memCache.init(conf);
             }
         } catch (java.lang.UnsupportedClassVersionError e) {
-
-            if (e.getMessage().indexOf("Unsupported major.minor version") >= 0) {
+            if (e.getMessage().contains("Unsupported major.minor version")) {
                 LOG.error("!!!Please update jdk version to 7 or higher!!!");
-
             }
             LOG.error("Failed to create NimbusCache!", e);
             throw new RuntimeException(e);
@@ -115,13 +113,4 @@ public class NimbusCache {
         dbCache.cleanup();
 
     }
-
-    /**
-     * 
-     * In the old design, DBCache will cache all taskInfo/taskErrors, this will be useful for huge topology
-     * 
-     * But the latest zk design, taskInfo is only one znode, taskErros has few znode So remove them from DBCache Skip timely refresh taskInfo/taskErrors
-     * 
-     */
-
 }

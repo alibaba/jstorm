@@ -1,30 +1,28 @@
 package com.alibaba.jstorm.transactional;
 
 import java.io.Serializable;
-import java.util.Map;
 
 public class BatchSnapshot implements Serializable {
     private static final long serialVersionUID = -8237016732140138121L;
 
-    private BatchGroupId batchGroupId = new BatchGroupId();
+    private long batchId;
     // count of the tuples sent to target task
     private int tupleCount;
 
     public BatchSnapshot() {
-        
     }
 
-    public BatchSnapshot(BatchGroupId id, int tupleCount) {
-        this.batchGroupId.setBatchGroupId(id);
+    public BatchSnapshot(long batchId, int tupleCount) {
+        this.batchId = batchId;
         this.tupleCount = tupleCount;
     }
 
-    public BatchGroupId getBatchGroupId() {
-        return batchGroupId;
+    public long getBatchId() {
+        return batchId;
     }
 
-    public void setBatchGroupId(BatchGroupId id) {
-        this.batchGroupId.setBatchGroupId(id);
+    public void setBatchId(long id) {
+        this.batchId = id;
     }
 
     public int getTupleCount() {
@@ -37,6 +35,6 @@ public class BatchSnapshot implements Serializable {
 
     @Override
     public String toString() {
-        return "[" + batchGroupId + ", tupleCount:" + tupleCount + "]";
+        return "[batchId-" + batchId + ", tupleCount:" + tupleCount + "]";
     }
 }

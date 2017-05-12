@@ -8,7 +8,7 @@ import java.util.Map;
  * @since 2.0.5
  */
 public enum MetricType {
-    COUNTER("C", 1), GAUGE("G", 2), METER("M", 3), HISTOGRAM("H", 4), TIMER("T", 5);
+    COUNTER("C", 1), GAUGE("G", 2), METER("M", 3), HISTOGRAM("H", 4);
 
     private String v;
     private int t;

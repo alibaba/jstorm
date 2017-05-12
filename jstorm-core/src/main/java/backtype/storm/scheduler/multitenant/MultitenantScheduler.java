@@ -18,18 +18,16 @@
 
 package backtype.storm.scheduler.multitenant;
 
-import com.alibaba.jstorm.utils.LoadConf;
-import java.util.HashMap;
-import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import backtype.storm.Config;
 import backtype.storm.scheduler.Cluster;
 import backtype.storm.scheduler.IScheduler;
 import backtype.storm.scheduler.Topologies;
 import backtype.storm.scheduler.TopologyDetails;
+import com.alibaba.jstorm.utils.LoadConf;
+import java.util.HashMap;
+import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MultitenantScheduler implements IScheduler {
     private static final Logger LOG = LoggerFactory.getLogger(MultitenantScheduler.class);
@@ -44,9 +42,9 @@ public class MultitenantScheduler implements IScheduler {
     private Map<String, Number> getUserConf() {
         Map<String, Number> ret = (Map<String, Number>) _conf.get(Config.MULTITENANT_SCHEDULER_USER_POOLS);
         if (ret == null) {
-            ret = new HashMap<String, Number>();
+            ret = new HashMap<>();
         } else {
-            ret = new HashMap<String, Number>(ret);
+            ret = new HashMap<>(ret);
         }
 
         Map fromFile = LoadConf.findAndReadYaml("multitenant-scheduler.yaml", false, false);
@@ -64,7 +62,7 @@ public class MultitenantScheduler implements IScheduler {
 
         Map<String, Number> userConf = getUserConf();
 
-        Map<String, IsolatedPool> userPools = new HashMap<String, IsolatedPool>();
+        Map<String, IsolatedPool> userPools = new HashMap<>();
         for (Map.Entry<String, Number> entry : userConf.entrySet()) {
             userPools.put(entry.getKey(), new IsolatedPool(entry.getValue().intValue()));
         }

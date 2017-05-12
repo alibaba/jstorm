@@ -14,7 +14,7 @@ import static org.junit.Assert.*;
 import java.util.Map;
 
 /**
- * Created by binyang.dby on 2016/7/26.
+ * @author binyang.dby on 2016/7/26.
  */
 public class ManualDRPCTest {
     @Test

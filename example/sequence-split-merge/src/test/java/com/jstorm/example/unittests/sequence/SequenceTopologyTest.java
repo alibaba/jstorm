@@ -19,7 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Created by binyang.dby on 2016/7/8.
+ * @author binyang.dby on 2016/7/8.
  *
  * basically the unit test for SequenceTopology. I just add some metrics to get some parameter
  * and make some assert.This can also be an example to show how to get metric data that user has

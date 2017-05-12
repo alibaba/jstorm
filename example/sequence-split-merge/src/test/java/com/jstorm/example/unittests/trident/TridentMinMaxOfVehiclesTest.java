@@ -15,7 +15,7 @@ import java.io.Serializable;
 import java.util.*;
 
 /**
- * Created by binyang.dby on 2016/7/26.
+ * @author binyang.dby on 2016/7/26.
  *
  * basically the unit test of TridentMinMaxOfVehiclesTopology, I change the origin spout
  * to a spout which can emit 2 fields in a shuffle order of 2 input contents. Here I

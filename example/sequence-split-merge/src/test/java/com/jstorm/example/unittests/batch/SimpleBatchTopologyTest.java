@@ -6,7 +6,7 @@ import com.jstorm.example.unittests.utils.JStormUnitTestRunner;
 import org.junit.Test;
 
 /**
- * Created by binyang.dby on 2016/7/20.
+ * @author binyang.dby on 2016/7/20.
  */
 public class SimpleBatchTopologyTest
 {

@@ -4,7 +4,7 @@ import com.codahale.metrics.Snapshot;
 
 /**
  * @author wange
- * @since 15/6/5
+ * @since 2.0.5
  */
 public class AsmHistogramSnapshot extends AsmSnapshot {
     private static final long serialVersionUID = 7284437562594156565L;

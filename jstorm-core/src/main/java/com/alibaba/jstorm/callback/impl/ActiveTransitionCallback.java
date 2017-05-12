@@ -20,20 +20,14 @@ package com.alibaba.jstorm.callback.impl;
 import com.alibaba.jstorm.callback.BaseCallback;
 import com.alibaba.jstorm.cluster.StormStatus;
 import com.alibaba.jstorm.daemon.nimbus.StatusType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Set the topology status as Active
- * 
  */
 public class ActiveTransitionCallback extends BaseCallback {
 
-    private static Logger LOG = LoggerFactory.getLogger(ActiveTransitionCallback.class);
-
     @Override
     public <T> Object execute(T... args) {
-
         return new StormStatus(StatusType.active);
     }
 

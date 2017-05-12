@@ -15,7 +15,7 @@ import com.alipay.dw.jstorm.example.sequence.bean.Pair;
 import java.util.Map;
 
 /**
- * Created by binyang.dby on 2016/7/8.
+ * @author binyang.dby on 2016/7/8.
  */
 public class SequenceTestPairCount implements IBasicBolt
 {

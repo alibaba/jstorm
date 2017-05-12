@@ -30,7 +30,7 @@ public class MetricRegister implements TMHandler {
     private StormClusterState zkCluster;
     private TopologyContext context;
     private final AtomicBoolean pending = new AtomicBoolean(false);
-    private final AtomicReference<Set<String>> metricNames = new AtomicReference<Set<String>>();
+    private final AtomicReference<Set<String>> metricNames = new AtomicReference<>();
 
     @Override
     public void init(TopologyMasterContext tmContext) {
@@ -48,7 +48,8 @@ public class MetricRegister implements TMHandler {
         } else if (event instanceof MetricsMetaBroadcastEvent) {
             broadcast();
         } else {
-            zkCluster.report_task_error(context.getTopologyId(), context.getThisTaskId(), "Unknown event", ErrorConstants.WARN, ErrorConstants.CODE_USER);
+            zkCluster.report_task_error(context.getTopologyId(), context.getThisTaskId(),
+                    "Unknown event", ErrorConstants.WARN, ErrorConstants.CODE_USER);
             throw new RuntimeException("Unknown event");
         }
     }

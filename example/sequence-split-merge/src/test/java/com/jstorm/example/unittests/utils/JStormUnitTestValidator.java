@@ -3,7 +3,7 @@ package com.jstorm.example.unittests.utils;
 import java.util.Map;
 
 /**
- * Created by binyang.dby on 2016/7/8.
+ * @author binyang.dby on 2016/7/8.
  *
  * This interface is used for check if a unit test should pass after running. The abstract classes which
  * implements this interface (like JStormUnitTestMetricValidator etc.) is recommended.

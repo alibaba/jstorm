@@ -26,7 +26,6 @@ import java.util.Map;
 public final class TupleUtils {
 
     private TupleUtils() {
-        // No instantiation
     }
 
     public static boolean isTick(Tuple tuple) {

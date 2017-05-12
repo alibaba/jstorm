@@ -7,9 +7,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Created by binyang.dby on 2016/7/11.
+ * @author binyang.dby on 2016/7/11.
  */
-public class WindowTestIntermediateRankingBolt extends WindowTestAbstractRankingBolt{
+public class WindowTestIntermediateRankingBolt extends WindowTestAbstractRankingBolt {
     private static final Logger LOG = LoggerFactory.getLogger(WindowTestIntermediateRankingBolt.class);
 
     public WindowTestIntermediateRankingBolt(int topN) {

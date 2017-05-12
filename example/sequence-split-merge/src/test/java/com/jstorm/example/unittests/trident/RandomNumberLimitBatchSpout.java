@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Created by binyang.dby on 2016/7/9.
+ * @author binyang.dby on 2016/7/9.
  *
  * This is a finite version of the RandomNumberGeneratorSpout class.
  */

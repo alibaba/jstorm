@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Created by binyang.dby on 2016/7/21.
+ * @author binyang.dby on 2016/7/21.
  */
 public class SlidingWindowTestAvgBolt extends BaseWindowedBolt {
     private MetricClient metricClient;

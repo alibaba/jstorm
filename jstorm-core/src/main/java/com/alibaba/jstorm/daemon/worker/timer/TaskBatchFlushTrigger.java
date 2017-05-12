@@ -29,29 +29,27 @@ public class TaskBatchFlushTrigger extends Flusher {
 
     private BatchCollector batchCollector;
     private String name;
-    private AtomicBoolean _isFlushing = new AtomicBoolean(false);
+    private AtomicBoolean isFlushing = new AtomicBoolean(false);
 
-    public TaskBatchFlushTrigger(int frequence, String name, BatchCollector batchCollector) {
-        if (frequence <= 0) {
-            LOG.warn(" The frequence of " + name + " is invalid");
-            frequence = 1;
+    public TaskBatchFlushTrigger(int frequency, String name, BatchCollector batchCollector) {
+        if (frequency <= 0) {
+            LOG.warn(" The frequency of " + name + " is invalid");
+            frequency = 1;
         }
         this.name = name;
-        this._flushIntervalMs = frequence;
+        this.flushIntervalMs = frequency;
         this.batchCollector = batchCollector;
     }
 
     @Override
     public void run() {
         try {
-            if (_isFlushing.compareAndSet(false, true)) {
+            if (isFlushing.compareAndSet(false, true)) {
                 batchCollector.flush();
-                _isFlushing.set(false);
+                isFlushing.set(false);
             }
         } catch (Exception e) {
             LOG.warn("Failed to public timer event to " + name, e);
-            return;
         }
     }
-
 }

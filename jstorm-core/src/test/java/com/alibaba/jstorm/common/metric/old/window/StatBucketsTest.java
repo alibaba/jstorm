@@ -3,7 +3,7 @@ package com.alibaba.jstorm.common.metric.old.window;
 import junit.framework.TestCase;
 
 /**
- * Created by wuchong on 15/8/11.
+ * @author wuchong on 15/8/11.
  */
 public class StatBucketsTest extends TestCase {
 

@@ -34,19 +34,17 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author version1: lixin version2: Longda
  */
 public class StatusTransition {
-
     private final static Logger LOG = LoggerFactory.getLogger(StatusTransition.class);
 
     private NimbusData data;
-
-    private Map<String, Object> topologyLocks = new ConcurrentHashMap<String, Object>();
+    private Map<String, Object> topologyLocks = new ConcurrentHashMap<>();
 
     public StatusTransition(NimbusData data) {
         this.data = data;
-
     }
 
-    public <T> void transition(String topologyId, boolean errorOnNoTransition, StatusType changeStatus, T... args) throws Exception {
+    public <T> void transition(String topologyId, boolean errorOnNoTransition, StatusType changeStatus, T... args)
+            throws Exception {
         // lock outside
         Object lock = topologyLocks.get(topologyId);
         if (lock == null) {
@@ -61,7 +59,6 @@ public class StatusTransition {
 
         synchronized (lock) {
             transitionLock(topologyId, errorOnNoTransition, changeStatus, args);
-
             // update the lock times
             topologyLocks.put(topologyId, lock);
         }
@@ -72,7 +69,8 @@ public class StatusTransition {
      *
      * @param args -- will be used in the status changing callback
      */
-    public <T> void transitionLock(String topologyId, boolean errorOnNoTransition, StatusType changeStatus, T... args) throws Exception {
+    public <T> void transitionLock(String topologyId, boolean errorOnNoTransition, StatusType changeStatus, T... args)
+            throws Exception {
         // get ZK's topology node's data, which is StormBase
         StormBase stormbase = data.getStormClusterState().storm_base(topologyId, null);
         if (stormbase == null) {
@@ -194,7 +192,7 @@ public class StatusTransition {
         StatusType rebalanceOldStatus = StatusType.active;
         if (currentStatus.getOldStatus() != null) {
             rebalanceOldStatus = currentStatus.getOldStatus().getStatusType();
-            // fix double rebalance, make the status always as rebalacing
+            // fix double rebalance, make the status always as rebalancing
             if (rebalanceOldStatus == StatusType.rebalancing) {
                 rebalanceOldStatus = StatusType.active;
             }
@@ -212,9 +210,19 @@ public class StatusTransition {
         rebalancingMap.put(StatusType.update_topology, null);
         rtn.put(StatusType.rebalancing, rebalancingMap);
 
-        /**
-         * @@@ just handling 4 kind of status, maybe add later
-         */
+        Map<StatusType, Callback> upgradingMap = new HashMap<>();
+        upgradingMap.put(StatusType.monitor, new RollbackTransitionCallback(data, topologyId));
+        upgradingMap.put(StatusType.inactivate, null);
+        upgradingMap.put(StatusType.startup, null);
+        upgradingMap.put(StatusType.activate, null);
+        upgradingMap.put(StatusType.kill, new KillTransitionCallback(data, topologyId));
+        upgradingMap.put(StatusType.remove, new RemoveTransitionCallback(data, topologyId));
+        upgradingMap.put(StatusType.rebalance, null);
+        upgradingMap.put(StatusType.do_rebalance, null);
+        upgradingMap.put(StatusType.done_rebalance, null);
+        upgradingMap.put(StatusType.update_topology, null);
+        upgradingMap.put(StatusType.upgrading, null);
+        rtn.put(StatusType.upgrading, upgradingMap);
 
         return rtn;
     }

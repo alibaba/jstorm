@@ -20,9 +20,6 @@ package storm.trident.windowing.strategy;
 
 import storm.trident.windowing.config.WindowConfig;
 
-/**
- *
- */
 public abstract class BaseWindowStrategy<T> implements WindowStrategy<T> {
     protected final WindowConfig windowConfig;
 

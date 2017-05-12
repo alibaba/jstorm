@@ -30,21 +30,22 @@ import backtype.storm.messaging.ControlMessage;
 import backtype.storm.messaging.NettyMessage;
 import backtype.storm.messaging.TaskMessage;
 
-class MessageBatch implements NettyMessage{
+class MessageBatch implements NettyMessage {
     private static final Logger LOG = LoggerFactory.getLogger(MessageBatch.class);
+
     private int buffer_size;
     private ArrayList<Object> msgs;
     private int encodedLength;
 
     MessageBatch(int buffer_size) {
         this.buffer_size = buffer_size;
-        msgs = new ArrayList<Object>();
+        msgs = new ArrayList<>();
         encodedLength = ControlMessage.EOB_MESSAGE.getEncodedLength();
     }
 
     void add(NettyMessage obj) {
         if (obj == null)
-            throw new RuntimeException("null object forbidded in message batch");
+            throw new RuntimeException("null object is forbidden in message batch");
 
         if (obj instanceof TaskMessage) {
             TaskMessage msg = (TaskMessage) obj;
@@ -53,9 +54,12 @@ class MessageBatch implements NettyMessage{
             return;
         }
 
-        if (obj instanceof MessageBatch){
+        if (obj instanceof MessageBatch) {
             MessageBatch batch = (MessageBatch) obj;
-            add(batch);
+            if (batch.size() >= 0) {
+                msgs.addAll(batch.getMessages());
+                encodedLength += batch.getEncodedLength();
+            }
             return;
         }
 
@@ -66,12 +70,12 @@ class MessageBatch implements NettyMessage{
             return;
         }
 
-        throw new RuntimeException("Unsuppoted object type " + obj.getClass().getName());
+        throw new RuntimeException("Unsupported object type " + obj.getClass().getName());
     }
 
     void add(List objs) {
         if (objs == null || objs.size() == 0)
-            throw new RuntimeException("null object forbidded in message batch");
+            throw new RuntimeException("null object is forbidden in message batch");
 
         if (objs.get(0) instanceof TaskMessage) {
             for (Object obj : objs) {
@@ -91,14 +95,7 @@ class MessageBatch implements NettyMessage{
             return;
         }
 
-        throw new RuntimeException("Unsuppoted object type " + objs.get(0).getClass().getName());
-    }
-
-    public void add(MessageBatch batch) {
-    	if (batch != null && batch.size() >= 0) {
-            msgs.addAll(batch.getMessages());
-            encodedLength += batch.getEncodedLength();
-    	}
+        throw new RuntimeException("Unsupported object type " + objs.get(0).getClass().getName());
     }
 
     void remove(Object obj) {
@@ -116,7 +113,6 @@ class MessageBatch implements NettyMessage{
             ControlMessage msg = (ControlMessage) obj;
             msgs.remove(msg);
             encodedLength -= msg.getEncodedLength();
-            return;
         }
     }
 
@@ -127,7 +123,7 @@ class MessageBatch implements NettyMessage{
     /**
      * try to add a TaskMessage to a batch
      *
-     * @param taskMsg
+     * @param taskMsg task message
      * @return false if the msg could not be added due to buffer size limit; true otherwise
      */
     boolean tryAdd(TaskMessage taskMsg) {
@@ -149,8 +145,6 @@ class MessageBatch implements NettyMessage{
 
     /**
      * Has this batch used up allowed buffer size
-     *
-     * @return
      */
     boolean isFull() {
         return encodedLength >= buffer_size;
@@ -158,8 +152,6 @@ class MessageBatch implements NettyMessage{
 
     /**
      * true if this batch doesn't have any messages
-     *
-     * @return
      */
     @Override
     public boolean isEmpty() {
@@ -168,8 +160,6 @@ class MessageBatch implements NettyMessage{
 
     /**
      * # of msgs in this batch
-     *
-     * @return
      */
     int size() {
         return msgs.size();
@@ -180,7 +170,7 @@ class MessageBatch implements NettyMessage{
     }
 
     public List<Object> getMessages() {
-    	return msgs;
+        return msgs;
     }
 
     /**
@@ -229,13 +219,12 @@ class MessageBatch implements NettyMessage{
         if (payload_len > 0)
             bout.write(message.message());
 
-        // @@@ TESTING CODE
-        // LOG.info("Write one message taskid:{}, len:{}, data:{}", task_id
+        // LOG.info("Write one message taskid:{}, len:{}, data:{}", taskId
         // , payload_len, JStormUtils.toPrintableString(message.message()) );
     }
 
     @Override
     public String toString() {
-    	return "bufferSize=" + buffer_size + ", messageSize=" + msgs.size();
+        return "bufferSize=" + buffer_size + ", messageSize=" + msgs.size();
     }
 }

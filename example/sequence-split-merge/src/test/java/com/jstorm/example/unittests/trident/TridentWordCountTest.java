@@ -27,7 +27,7 @@ import java.util.Map;
 import static org.junit.Assert.*;
 
 /**
- * Created by binyang.dby on 2016/7/8.
+ * @author binyang.dby on 2016/7/8.
  *
  * basically the unit test version of TridentWordCount. But this test runs only in local cluster mode.
  *

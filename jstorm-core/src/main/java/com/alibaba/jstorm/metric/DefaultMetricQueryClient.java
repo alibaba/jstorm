@@ -60,7 +60,7 @@ public class DefaultMetricQueryClient implements MetricQueryClient {
     }
 
     @Override
-    public MetricMeta getMetricMeta(String clusterName, String topologyId, MetaType metaType, long metricId) {
+    public MetricMeta getMetricMeta(String clusterName, String topologyId, MetaType metaType, String metricId) {
         return new MetricMeta();
     }
 
@@ -70,12 +70,12 @@ public class DefaultMetricQueryClient implements MetricQueryClient {
     }
 
     @Override
-    public List<Object> getMetricData(long metricId, MetricType metricType, int win, long start, long end) {
+    public List<Object> getMetricData(String metricId, MetricType metricType, int win, long start, long end) {
         return Lists.newArrayList();
     }
 
     @Override
-    public List<Object> getMetricData(long metricId, MetricType metricType, int win, long start, long end, int size) {
+    public List<Object> getMetricData(String metricId, MetricType metricType, int win, long start, long end, int size) {
         return Lists.newArrayList();
     }
 

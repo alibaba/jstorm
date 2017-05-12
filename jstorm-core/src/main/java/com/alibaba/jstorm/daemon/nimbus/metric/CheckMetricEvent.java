@@ -32,9 +32,9 @@ public class CheckMetricEvent extends MetricEvent {
 
                 Long id1 = meta.getId();
                 Long id2 = pair.getSecond();
-                List<Object> data1 = metricQueryClient.getMetricData(id1,
+                List<Object> data1 = metricQueryClient.getMetricData(id1 + "",
                         metricType, AsmWindow.M1_WINDOW, start, end, batch);
-                List<Object> data2 = metricQueryClient.getMetricData(id2,
+                List<Object> data2 = metricQueryClient.getMetricData(id2 + "",
                         metricType, AsmWindow.M1_WINDOW, start, end, batch);
 
                 int size1 = data1 != null ? data1.size() : 0;

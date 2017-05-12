@@ -40,7 +40,7 @@ class StormServerHandler extends SimpleChannelUpstreamHandler {
 
     StormServerHandler(NettyServer server) {
         this.server = server;
-        failureCounters = new ConcurrentHashMap<Channel, Integer>();
+        failureCounters = new ConcurrentHashMap<>();
     }
 
     protected int getFailureCounter(Channel channel) {
@@ -48,14 +48,13 @@ class StormServerHandler extends SimpleChannelUpstreamHandler {
         if (num == null) {
             return 0;
         }
-
         return num;
     }
 
     protected void incFailureCounter(Channel channel) {
         Integer num = failureCounters.get(channel);
         if (num == null) {
-            num = Integer.valueOf(0);
+            num = 0;
         }
         num = num + 1;
 
@@ -87,7 +86,7 @@ class StormServerHandler extends SimpleChannelUpstreamHandler {
 
         MessageDecoder.removeTransmitHistogram(e.getChannel());
         server.getChannelGroup().remove(e.getChannel());
-    };
+    }
 
     @Override
     public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
@@ -95,7 +94,7 @@ class StormServerHandler extends SimpleChannelUpstreamHandler {
         LOG.info("Connection channelClosed {}", e.getChannel().getRemoteAddress());
 
         MessageDecoder.removeTransmitHistogram(e.getChannel());
-    };
+    }
 
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) {

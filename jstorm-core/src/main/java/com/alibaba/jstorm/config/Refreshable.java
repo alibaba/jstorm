@@ -4,7 +4,7 @@ import java.util.Map;
 
 /**
  * @author wange
- * @since 16/5/9
+ * @since 2.1.1
  */
 public interface Refreshable {
     void refresh(Map conf);

@@ -18,10 +18,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Created by binyang.dby on 2016/7/11.
+ * @author binyang.dby on 2016/7/11.
  */
-public class WindowTestRollingCountBolt extends BaseRichBolt
-{
+public class WindowTestRollingCountBolt extends BaseRichBolt {
     private static Logger LOG = LoggerFactory.getLogger("WindowTestRollingCountBolt");
 
     private SlidingWindowCounter<Object> counter;
@@ -31,14 +30,13 @@ public class WindowTestRollingCountBolt extends BaseRichBolt
     private OutputCollector collector;
     private NthLastModifiedTimeTracker lastModifiedTracker;
 
-    public WindowTestRollingCountBolt(int windowLengthInSeconds, int emitFrequencyInSeconds)
-    {
+    public WindowTestRollingCountBolt(int windowLengthInSeconds, int emitFrequencyInSeconds) {
         this.windowLengthInSeconds = windowLengthInSeconds;
         this.emitFrequencyInSeconds = emitFrequencyInSeconds;
 
-        if(windowLengthInSeconds % emitFrequencyInSeconds != 0)
+        if (windowLengthInSeconds % emitFrequencyInSeconds != 0)
             throw new IllegalArgumentException("WindowLengthInSeconds should be times of EmitFrequencyInSeconds!");
-        this.slots = windowLengthInSeconds/emitFrequencyInSeconds;
+        this.slots = windowLengthInSeconds / emitFrequencyInSeconds;
         this.counter = new SlidingWindowCounter<Object>(slots);
     }
 
@@ -51,7 +49,7 @@ public class WindowTestRollingCountBolt extends BaseRichBolt
     @Override
     public void execute(Tuple input) {
         if (TupleUtils.isTick(input)) {
-            System.out.println("### tuple = isTick" );
+            System.out.println("### tuple = isTick");
             emitCurrentWindowCounts();
         } else {
             countObjAndAck(input);

@@ -9,9 +9,9 @@ public interface KVSerializable {
     int LONG_SIZE = 8;
     int INT_SIZE = 4;
 
-    public byte[] getKey();
+    byte[] getKey();
 
-    public byte[] getValue();
+    byte[] getValue();
 
-    public Object fromKV(byte[] key, byte[] value);
+    Object fromKV(byte[] key, byte[] value);
 }

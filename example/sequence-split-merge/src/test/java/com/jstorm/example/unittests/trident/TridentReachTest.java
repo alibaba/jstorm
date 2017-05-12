@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Created by binyang.dby on 2016/7/22.
+ * @author binyang.dby on 2016/7/22.
  */
 public class TridentReachTest {
     public static Map<String, List<String>> TWEETERS = new HashMap<String, List<String>>() {

@@ -25,12 +25,11 @@ import com.alibaba.jstorm.metric.MetricDef;
 import com.alibaba.jstorm.metric.MetricType;
 import com.alibaba.jstorm.metric.MetricUtils;
 import com.alibaba.jstorm.utils.TimeUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.Serializable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TaskBaseMetric implements Serializable {
     private static final Logger logger = LoggerFactory.getLogger(JStormMetrics.class);
@@ -43,7 +42,7 @@ public class TaskBaseMetric implements Serializable {
     /**
      * local metric name cache to avoid frequent metric name concatenation taskId + streamId + name ==> full metric name
      */
-    private final ConcurrentMap<String, AsmMetric> metricCache = new ConcurrentHashMap<String, AsmMetric>();
+    private final ConcurrentMap<String, AsmMetric> metricCache = new ConcurrentHashMap<>();
 
     public TaskBaseMetric(String topologyId, String componentId, int taskId) {
         this.topologyId = topologyId;
@@ -86,7 +85,7 @@ public class TaskBaseMetric implements Serializable {
      * almost the same implementation of above update, but improves performance for histograms
      */
     public void updateTime(String streamId, String name, long start, long end, int count, boolean mergeTopology) {
-        if (start > 0) {
+        if (start > 0 && count > 0) {
             AsmMetric existingMetric = findMetric(streamId, name, MetricType.HISTOGRAM, mergeTopology);
 
             if (existingMetric instanceof AsmHistogram) {
@@ -106,6 +105,11 @@ public class TaskBaseMetric implements Serializable {
         update(streamId, name, value, metricType, true);
     }
 
+    public void update(final String streamId, final String name, final int count, final MetricType metricType) {
+        if (count > 0)
+            update(streamId, name, count, metricType, true);
+    }
+
     public void send_tuple(String stream, int num_out_tasks) {
         if (JStormMetrics.enabled && num_out_tasks > 0) {
             update(stream, MetricDef.EMMITTED_NUM, num_out_tasks, MetricType.COUNTER);
@@ -123,8 +127,10 @@ public class TaskBaseMetric implements Serializable {
         }
     }
 
-    public void tupleLifeCycle(String component, String stream, long lifeCycleStart, long endTime) {
-        updateTime(stream, fastConcat(component, MetricDef.TUPLE_LIEF_CYCLE), lifeCycleStart, endTime, false);
+    public void tupleLifeCycle(String component, String stream, long lifeCycleStart, long endTime, int count) {
+        if (count > 0) {
+            updateTime(stream, fastConcat(component, MetricDef.TUPLE_LIEF_CYCLE), lifeCycleStart, endTime, count, false);
+        }
     }
 
     public void bolt_acked_tuple(String component, String stream) {
@@ -147,11 +153,16 @@ public class TaskBaseMetric implements Serializable {
         }
     }
 
-
     @SuppressWarnings("unused")
     public void bolt_failed_tuple(String component, String stream) {
         if (JStormMetrics.enabled) {
             update(stream, MetricDef.FAILED_NUM, 1, MetricType.COUNTER);
+        }
+    }
+
+    public void boltFailedTuple(String component, String stream, int count) {
+        if (JStormMetrics.enabled) {
+            update(stream, MetricDef.FAILED_NUM, count, MetricType.COUNTER);
         }
     }
 
@@ -160,6 +171,12 @@ public class TaskBaseMetric implements Serializable {
             update(stream, MetricDef.ACKED_NUM, 1, MetricType.COUNTER);
             updateTime(stream, MetricDef.PROCESS_LATENCY, latencyStart, endTime, false);
             updateTime(stream, fastConcat(Common.ACKER_COMPONENT_ID, MetricDef.TUPLE_LIEF_CYCLE), lifeCycleStart, endTime, false);
+        }
+    }
+
+    public void spoutAckedTuple(String stream, int count) {
+        if (JStormMetrics.enabled) {
+            update(stream, MetricDef.ACKED_NUM, count, MetricType.COUNTER);
         }
     }
 
@@ -174,8 +191,14 @@ public class TaskBaseMetric implements Serializable {
         }
     }
 
-    public static void main(String[] args) {
-        TaskBaseMetric taskBaseMetric = new TaskBaseMetric("topo1", "spout", 1);
-        taskBaseMetric.update("_topology_master", "RecvTps", 1, MetricType.METER, true);
+    public void spoutFailedTuple(String stream, int count) {
+        if (JStormMetrics.enabled) {
+            update(stream, MetricDef.FAILED_NUM, count, MetricType.COUNTER);
+        }
+    }
+
+    public void spoutProcessLatency(String stream, long startTime, long endTime, int count) {
+        if (JStormMetrics.enabled)
+            updateTime(stream, MetricDef.PROCESS_LATENCY, startTime, endTime, count, false);
     }
 }

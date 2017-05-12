@@ -9,7 +9,7 @@ import storm.trident.spout.IBatchSpout;
 import java.util.*;
 
 /**
- * Created by binyang.dby on 2016/7/22.
+ * @author binyang.dby on 2016/7/22.
  */
 public class ShuffleValuesBatchSpout implements IBatchSpout {
     private Fields fields;

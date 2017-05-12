@@ -36,7 +36,7 @@
     
   <groupId>com.alibaba.jstorm</groupId>
   <artifactId>jstorm-all</artifactId>
-  <version>2.2.1</version>
+  <version>2.4.0</version>
   <packaging>pom</packaging>
   <name>jstorm-all</name>
   <description>Distributed and fault-tolerant realtime computation</description>
@@ -145,6 +145,7 @@
 
     <!-- dependency versions -->
     <powermock.version>1.4.11</powermock.version>
+    <hadoop.version>2.6.2</hadoop.version>
   </properties>
   <modules>
     <module>jstorm-core</module>
@@ -156,6 +157,8 @@
     <module>jstorm-utility/jstorm-flux</module>
     <module>jstorm-utility/jstorm-elasticsearch</module>
     <module>jstorm-on-yarn</module>
+    <module>jstorm-hbase-metrics-plugin</module>
+    <module>jstorm-hdfs</module>
   </modules>
 
   <profiles>

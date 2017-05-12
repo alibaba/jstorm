@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Set;
 
 public class Cluster {
-
     /**
      * key: supervisor id, value: supervisor details
      */
@@ -45,17 +44,17 @@ public class Cluster {
      */
     private Map<String, List<String>> hostToId;
 
-    private Set<String> blackListedHosts = new HashSet<String>();
+    private Set<String> blackListedHosts = new HashSet<>();
     private INimbus inimbus;
 
     public Cluster(INimbus nimbus, Map<String, SupervisorDetails> supervisors, Map<String, SchedulerAssignmentImpl> assignments) {
         this.inimbus = nimbus;
-        this.supervisors = new HashMap<String, SupervisorDetails>(supervisors.size());
+        this.supervisors = new HashMap<>(supervisors.size());
         this.supervisors.putAll(supervisors);
-        this.assignments = new HashMap<String, SchedulerAssignmentImpl>(assignments.size());
+        this.assignments = new HashMap<>(assignments.size());
         this.assignments.putAll(assignments);
-        this.status = new HashMap<String, String>();
-        this.hostToId = new HashMap<String, List<String>>();
+        this.status = new HashMap<>();
+        this.hostToId = new HashMap<>();
         for (String nodeId : supervisors.keySet()) {
             SupervisorDetails supervisor = supervisors.get(nodeId);
             String host = supervisor.getHost();
@@ -77,9 +76,9 @@ public class Cluster {
     public void blacklistHost(String host) {
         // this is so it plays well with setting blackListedHosts to an immutable list
         if (blackListedHosts == null)
-            blackListedHosts = new HashSet<String>();
+            blackListedHosts = new HashSet<>();
         if (!(blackListedHosts instanceof HashSet))
-            blackListedHosts = new HashSet<String>(blackListedHosts);
+            blackListedHosts = new HashSet<>(blackListedHosts);
         blackListedHosts.add(host);
     }
 
@@ -97,12 +96,9 @@ public class Cluster {
 
     /**
      * Gets all the topologies which needs scheduling.
-     * 
-     * @param topologies
-     * @return
      */
     public List<TopologyDetails> needsSchedulingTopologies(Topologies topologies) {
-        List<TopologyDetails> ret = new ArrayList<TopologyDetails>();
+        List<TopologyDetails> ret = new ArrayList<>();
         for (TopologyDetails topology : topologies.getTopologies()) {
             if (needsScheduling(topology)) {
                 ret.add(topology);
@@ -114,7 +110,7 @@ public class Cluster {
 
     /**
      * Does the topology need scheduling?
-     * 
+     *
      * A topology needs scheduling if one of the following conditions holds:
      * <ul>
      * <li>Although the topology is assigned slots, but is squeezed. i.e. the topology is assigned less slots than desired.</li>
@@ -128,18 +124,14 @@ public class Cluster {
         if (desiredNumWorkers > assignedNumWorkers) {
             return true;
         }
-
         return this.getUnassignedExecutors(topology).size() > 0;
     }
 
     /**
      * Gets a executor -> component-id map which needs scheduling in this topology.
-     * 
-     * @param topology
-     * @return
      */
     public Map<ExecutorDetails, String> getNeedsSchedulingExecutorToComponents(TopologyDetails topology) {
-        Collection<ExecutorDetails> allExecutors = new HashSet(topology.getExecutors());
+        Collection<ExecutorDetails> allExecutors = new HashSet<>(topology.getExecutors());
 
         SchedulerAssignment assignment = this.assignments.get(topology.getId());
         if (assignment != null) {
@@ -152,13 +144,10 @@ public class Cluster {
 
     /**
      * Gets a component-id -> executors map which needs scheduling in this topology.
-     * 
-     * @param topology
-     * @return
      */
     public Map<String, List<ExecutorDetails>> getNeedsSchedulingComponentToExecutors(TopologyDetails topology) {
         Map<ExecutorDetails, String> executorToComponents = this.getNeedsSchedulingExecutorToComponents(topology);
-        Map<String, List<ExecutorDetails>> componentToExecutors = new HashMap<String, List<ExecutorDetails>>();
+        Map<String, List<ExecutorDetails>> componentToExecutors = new HashMap<>();
         for (ExecutorDetails executor : executorToComponents.keySet()) {
             String component = executorToComponents.get(executor);
             if (!componentToExecutors.containsKey(component)) {
@@ -173,13 +162,10 @@ public class Cluster {
 
     /**
      * Get all the used ports of this supervisor.
-     * 
-     * @param cluster
-     * @return
      */
     public Set<Integer> getUsedPorts(SupervisorDetails supervisor) {
         Map<String, SchedulerAssignment> assignments = this.getAssignments();
-        Set<Integer> usedPorts = new HashSet<Integer>();
+        Set<Integer> usedPorts = new HashSet<>();
 
         for (SchedulerAssignment assignment : assignments.values()) {
             for (WorkerSlot slot : assignment.getExecutorToSlot().values()) {
@@ -194,14 +180,11 @@ public class Cluster {
 
     /**
      * Return the available ports of this supervisor.
-     * 
-     * @param cluster
-     * @return
      */
     public Set<Integer> getAvailablePorts(SupervisorDetails supervisor) {
         Set<Integer> usedPorts = this.getUsedPorts(supervisor);
 
-        Set<Integer> ret = new HashSet();
+        Set<Integer> ret = new HashSet<>();
         ret.addAll(getAssignablePorts(supervisor));
         ret.removeAll(usedPorts);
 
@@ -210,19 +193,16 @@ public class Cluster {
 
     public Set<Integer> getAssignablePorts(SupervisorDetails supervisor) {
         if (isBlackListed(supervisor.id))
-            return new HashSet();
+            return new HashSet<>();
         return supervisor.allPorts;
     }
 
     /**
      * Return all the available slots on this supervisor.
-     * 
-     * @param cluster
-     * @return
      */
     public List<WorkerSlot> getAvailableSlots(SupervisorDetails supervisor) {
         Set<Integer> ports = this.getAvailablePorts(supervisor);
-        List<WorkerSlot> slots = new ArrayList<WorkerSlot>(ports.size());
+        List<WorkerSlot> slots = new ArrayList<>(ports.size());
 
         for (Integer port : ports) {
             slots.add(new WorkerSlot(supervisor.getId(), port));
@@ -233,7 +213,7 @@ public class Cluster {
 
     public List<WorkerSlot> getAssignableSlots(SupervisorDetails supervisor) {
         Set<Integer> ports = this.getAssignablePorts(supervisor);
-        List<WorkerSlot> slots = new ArrayList<WorkerSlot>(ports.size());
+        List<WorkerSlot> slots = new ArrayList<>(ports.size());
 
         for (Integer port : ports) {
             slots.add(new WorkerSlot(supervisor.getId(), port));
@@ -247,10 +227,10 @@ public class Cluster {
      */
     public Collection<ExecutorDetails> getUnassignedExecutors(TopologyDetails topology) {
         if (topology == null) {
-            return new ArrayList<ExecutorDetails>(0);
+            return new ArrayList<>(0);
         }
 
-        Collection<ExecutorDetails> ret = new HashSet(topology.getExecutors());
+        Collection<ExecutorDetails> ret = new HashSet<>(topology.getExecutors());
 
         SchedulerAssignment assignment = this.getAssignmentById(topology.getId());
         if (assignment != null) {
@@ -263,17 +243,14 @@ public class Cluster {
 
     /**
      * Gets the number of workers assigned to this topology.
-     * 
-     * @param topology
-     * @return
      */
     public int getAssignedNumWorkers(TopologyDetails topology) {
         SchedulerAssignment assignment = this.getAssignmentById(topology.getId());
-        if (topology == null || assignment == null) {
+        if (assignment == null) {
             return 0;
         }
 
-        Set<WorkerSlot> slots = new HashSet<WorkerSlot>();
+        Set<WorkerSlot> slots = new HashSet<>();
         slots.addAll(assignment.getExecutorToSlot().values());
 
         return slots.size();
@@ -281,7 +258,7 @@ public class Cluster {
 
     /**
      * Assign the slot to the executors for this topology.
-     * 
+     *
      * @throws RuntimeException if the specified slot is already occupied.
      */
     public void assign(WorkerSlot slot, String topologyId, Collection<ExecutorDetails> executors) {
@@ -296,21 +273,19 @@ public class Cluster {
         } else {
             for (ExecutorDetails executor : executors) {
                 if (assignment.isExecutorAssigned(executor)) {
-                    throw new RuntimeException("the executor is already assigned, you should unassign it before assign it to another slot.");
+                    throw new RuntimeException("the executor is already assigned, you should un-assign it first " +
+                            "before assign it to another slot.");
                 }
             }
         }
-
         assignment.assign(slot, executors);
     }
 
     /**
      * Gets all the available slots in the cluster.
-     * 
-     * @return
      */
     public List<WorkerSlot> getAvailableSlots() {
-        List<WorkerSlot> slots = new ArrayList<WorkerSlot>();
+        List<WorkerSlot> slots = new ArrayList<>();
         for (SupervisorDetails supervisor : this.supervisors.values()) {
             slots.addAll(this.getAvailableSlots(supervisor));
         }
@@ -319,7 +294,7 @@ public class Cluster {
     }
 
     public List<WorkerSlot> getAssignableSlots() {
-        List<WorkerSlot> slots = new ArrayList<WorkerSlot>();
+        List<WorkerSlot> slots = new ArrayList<>();
         for (SupervisorDetails supervisor : this.supervisors.values()) {
             slots.addAll(this.getAssignableSlots(supervisor));
         }
@@ -329,8 +304,6 @@ public class Cluster {
 
     /**
      * Free the specified slot.
-     * 
-     * @param slot
      */
     public void freeSlot(WorkerSlot slot) {
         // remove the slot from the existing assignments
@@ -343,8 +316,6 @@ public class Cluster {
 
     /**
      * free the slots.
-     * 
-     * @param slots
      */
     public void freeSlots(Collection<WorkerSlot> slots) {
         if (slots != null) {
@@ -356,9 +327,8 @@ public class Cluster {
 
     /**
      * Checks the specified slot is occupied.
-     * 
+     *
      * @param slot the slot be to checked.
-     * @return
      */
     public boolean isSlotOccupied(WorkerSlot slot) {
         for (SchedulerAssignment assignment : this.assignments.values()) {
@@ -377,7 +347,6 @@ public class Cluster {
         if (this.assignments.containsKey(topologyId)) {
             return this.assignments.get(topologyId);
         }
-
         return null;
     }
 
@@ -393,7 +362,7 @@ public class Cluster {
     }
 
     public Collection<WorkerSlot> getUsedSlots() {
-        Set<WorkerSlot> ret = new HashSet();
+        Set<WorkerSlot> ret = new HashSet<>();
         for (SchedulerAssignmentImpl s : assignments.values()) {
             ret.addAll(s.getExecutorToSlot().values());
         }
@@ -402,13 +371,13 @@ public class Cluster {
 
     /**
      * Get all the supervisors on the specified <code>host</code>.
-     * 
+     *
      * @param host hostname of the supervisor
      * @return the <code>SupervisorDetails</code> object.
      */
     public List<SupervisorDetails> getSupervisorsByHost(String host) {
         List<String> nodeIds = this.hostToId.get(host);
-        List<SupervisorDetails> ret = new ArrayList<SupervisorDetails>();
+        List<SupervisorDetails> ret = new ArrayList<>();
 
         if (nodeIds != null) {
             for (String nodeId : nodeIds) {
@@ -423,7 +392,7 @@ public class Cluster {
      * Get all the assignments.
      */
     public Map<String, SchedulerAssignment> getAssignments() {
-        Map<String, SchedulerAssignment> ret = new HashMap<String, SchedulerAssignment>(this.assignments.size());
+        Map<String, SchedulerAssignment> ret = new HashMap<>(this.assignments.size());
 
         for (String topologyId : this.assignments.keySet()) {
             ret.put(topologyId, this.assignments.get(topologyId));

@@ -14,16 +14,14 @@ public class UploadEvent extends MetricEvent {
     public void run() {
         AtomicBoolean isShutdown = context.getNimbusData().getIsShutdown();
         while (isShutdown != null && !isShutdown.get()) {
-            if (!context.getNimbusData().isLeader() || context.getMetricUploader() == null) {
+            if (!context.getNimbusData().isLeader() || !context.isReadyToUpload()) {
                 JStormUtils.sleepMs(10);
                 continue;
             }
             try {
                 final int idx = context.getFirstPendingUploadIndex();
                 if (idx >= 0) {
-                    MetricUploader uploader = context.getMetricUploader();
-                    if (!(uploader instanceof BaseMetricUploaderWithFlowControl) ||
-                            ((BaseMetricUploaderWithFlowControl) uploader).syncToUpload()) {
+                    if (!context.getMetricUploaderDelegate().isUnderFlowControl()) {
                         context.markUploading(idx);
                         upload(idx);
                     }
@@ -42,20 +40,20 @@ public class UploadEvent extends MetricEvent {
 
         if (summary == null) {
             LOG.warn("metric summary is null from cache idx:{}", idx);
-            context.markUploaded(idx);
+            context.forceMarkUploaded(idx);
             return true;
         }
 
         final String topologyId = summary.topologyId;
         if (!context.isTopologyAlive(topologyId)) {
             LOG.warn("topology {} is not alive, skip sending metrics.", topologyId);
-            context.markUploaded(idx);
+            context.forceMarkUploaded(idx);
             return true;
         }
 
         // NOTE that metric uploader must be sync so it can safely decrement uploading num
         // otherwise the uploading num will be inaccurate
-        return context.getMetricUploader().upload(clusterName, topologyId, idx, summary.toMap());
+        return context.getMetricUploaderDelegate().upload(clusterName, topologyId, idx, summary.toMap());
         //context.markUploaded(idx);
     }
 

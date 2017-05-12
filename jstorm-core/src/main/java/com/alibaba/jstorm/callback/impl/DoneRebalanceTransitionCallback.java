@@ -7,12 +7,8 @@ import com.alibaba.jstorm.daemon.nimbus.StatusType;
 
 public class DoneRebalanceTransitionCallback extends BaseCallback {
 
-    private NimbusData data;
-    private String topologyId;
-
+    @SuppressWarnings("unused")
     public DoneRebalanceTransitionCallback(NimbusData data, String topologyId) {
-        this.data = data;
-        this.topologyId = topologyId;
     }
 
     @Override

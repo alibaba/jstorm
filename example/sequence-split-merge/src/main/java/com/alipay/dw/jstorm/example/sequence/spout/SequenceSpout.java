@@ -26,6 +26,8 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Values;
 import backtype.storm.utils.Utils;
 import com.alibaba.jstorm.client.ConfigExtension;
+import com.alibaba.jstorm.common.metric.AsmCounter;
+import com.alibaba.jstorm.metric.MetricClient;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.starter.utils.TpsCounter;
 import com.alipay.dw.jstorm.example.sequence.SequenceTopologyDef;
@@ -45,13 +47,14 @@ public class SequenceSpout implements IRichSpout {
     
     SpoutOutputCollector collector;
     
-    // I special use long not AtomicLong to check competition
+    // use long instead of AtomicLong to check competition
     private long tupleId;
     private long succeedCount;
     private long failedCount;
     
     private AtomicLong handleCounter = new AtomicLong(0);
-    
+    private AsmCounter tpCounter;
+
     private Long MAX_PENDING_COUNTER;
     
     private TpsCounter tpsCounter;
@@ -112,7 +115,9 @@ public class SequenceSpout implements IRichSpout {
         isFinished = false;
         
         tpsCounter = new TpsCounter(context.getThisComponentId() + ":" + context.getThisTaskId());
-        
+        MetricClient metricClient = new MetricClient(context);
+        this.tpCounter = metricClient.registerTopologyCounter("TpCounter");
+
         MAX_PENDING_COUNTER = getMaxPending(conf);
         
         bufferLen = JStormUtils.parseInt(conf.get("byte.buffer.len"), 0);
@@ -121,7 +126,7 @@ public class SequenceSpout implements IRichSpout {
         random.setSeed(System.currentTimeMillis());
 
         idGenerate = new Random(Utils.secureRandomLong());
-        
+
         JStormUtils.sleepMs(20 * 1000);
         
         LOG.info("Finish open, buffer Len:" + bufferLen);
@@ -155,6 +160,7 @@ public class SequenceSpout implements IRichSpout {
         collector.emit(new Values(idGenerate.nextLong(), tradeCustomer), tupleId);
         tupleId++;
         handleCounter.incrementAndGet();
+        tpCounter.inc();
         while (handleCounter.get() >= MAX_PENDING_COUNTER - 1) {
             try {
                 Thread.sleep(1);

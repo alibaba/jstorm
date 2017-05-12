@@ -28,7 +28,7 @@ import com.alibaba.jstorm.callback.RunnableCallback;
 public class ReconnectRunnable extends RunnableCallback {
     private static final Logger LOG = LoggerFactory.getLogger(ReconnectRunnable.class);
 
-    private BlockingQueue<NettyClient> queue = new LinkedBlockingDeque<NettyClient>();
+    private BlockingQueue<NettyClient> queue = new LinkedBlockingDeque<>();
 
     public void pushEvent(NettyClient client) {
         queue.offer(client);
@@ -41,8 +41,8 @@ public class ReconnectRunnable extends RunnableCallback {
     public void run() {
         LOG.info("Successfully start reconnect thread");
         thread = Thread.currentThread();
-        while (closed == false) {
-            NettyClient client = null;
+        while (!closed) {
+            NettyClient client;
             try {
                 client = queue.take();
             } catch (InterruptedException e) {
@@ -51,9 +51,7 @@ public class ReconnectRunnable extends RunnableCallback {
             if (client != null) {
                 client.doReconnect();
             }
-
         }
-
         LOG.info("Successfully shutdown reconnect thread");
     }
 

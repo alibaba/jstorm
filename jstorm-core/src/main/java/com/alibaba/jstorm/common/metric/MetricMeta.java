@@ -47,6 +47,10 @@ public class MetricMeta implements KVSerializable {
         return sid;
     }
 
+    public void setSid(String sid) {
+        this.sid = sid;
+    }
+
     public String getClusterName() {
         return clusterName;
     }

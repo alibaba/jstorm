@@ -29,11 +29,13 @@ public class WorkerReportError {
             Date now = new Date();
             String nowStr = TimeFormat.getSecond(now);
             String errorInfo = error + "on " + this.hostName + ":" + workerPort + "," + nowStr;
+            //we only report one task
             for (Integer task : tasks) {
                 zkCluster.report_task_error(topologyId, task, errorInfo, ErrorConstants.FATAL, errorCode);
+                break;
             }
         } catch (Exception e) {
-            LOG.error("Failed to update errors of port " + workerPort + " to ZK.", e);
+            LOG.error("Failed to update errors of port " + workerPort + " to zk.", e);
         }
     }
 }

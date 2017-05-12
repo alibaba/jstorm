@@ -24,8 +24,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class RunCounter implements Serializable {
-
     private static final long serialVersionUID = 2177944366059817622L;
+
     private static final Logger LOG = LoggerFactory.getLogger(RunCounter.class);
     private AtomicLong total = new AtomicLong(0);
     private AtomicLong times = new AtomicLong(0);
@@ -81,7 +81,6 @@ public class RunCounter implements Serializable {
     }
 
     public void cleanup() {
-
         LOG.info(id + ", total:" + total);
     }
 
@@ -89,12 +88,7 @@ public class RunCounter implements Serializable {
         return intervalCheck;
     }
 
-    /**
-     * @param args
-     */
     public static void main(String[] args) {
-        // TODO Auto-generated method stub
-
     }
 
 }

@@ -17,11 +17,10 @@ import java.util.Map;
 public class TopologyNettyMgr {
     private static Logger LOG = LoggerFactory.getLogger(TopologyNettyMgr.class);
     private Map nimbusConf;
-    private ConcurrentHashMap<String, Boolean> setting = new ConcurrentHashMap<String, Boolean>();
+    private ConcurrentHashMap<String, Boolean> setting = new ConcurrentHashMap<>();
 
     public TopologyNettyMgr(Map conf) {
         nimbusConf = conf;
-
     }
 
     protected boolean getTopology(Map conf) {
@@ -32,7 +31,6 @@ public class TopologyNettyMgr {
         BlobStore blobStore = null;
         try {
             String topologyName = Common.topologyIdToName(topologyId);
-
             Boolean isEnable = setting.get(topologyName);
             if (isEnable != null) {
                 return isEnable;
@@ -49,14 +47,12 @@ public class TopologyNettyMgr {
         } catch (Exception e) {
             LOG.info("Failed to get {} netty metrics setting ", topologyId);
             return true;
-        }finally {
-            if (blobStore != null){
+        } finally {
+            if (blobStore != null) {
                 blobStore.shutdown();
                 blobStore = null;
             }
-
         }
-
     }
 
     public void setTopology(Map conf) {
@@ -65,14 +61,10 @@ public class TopologyNettyMgr {
             LOG.info("No topologyName setting");
             return;
         }
-
         boolean isEnable = getTopology(conf);
-
         setting.put(topologyName, isEnable);
 
         LOG.info("{} netty metrics setting is {}", topologyName, isEnable);
-        return;
-
     }
 
     public void rmTopology(String topologyId) {
@@ -83,7 +75,5 @@ public class TopologyNettyMgr {
             LOG.info("Remove {} netty metrics setting ", topologyName);
         } catch (InvalidTopologyException ignored) {
         }
-
     }
-
 }

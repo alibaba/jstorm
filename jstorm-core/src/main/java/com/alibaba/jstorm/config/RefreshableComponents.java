@@ -6,7 +6,7 @@ import java.util.Map;
 
 /**
  * @author wange
- * @since 16/5/9
+ * @since 2.1.1
  */
 public class RefreshableComponents {
     private static final List<Refreshable> refreshableList = new ArrayList<>();

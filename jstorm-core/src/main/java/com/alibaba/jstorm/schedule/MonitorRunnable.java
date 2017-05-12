@@ -42,8 +42,8 @@ import backtype.storm.generated.TaskHeartbeat;
 import backtype.storm.generated.TopologyTaskHbInfo;
 
 /**
- * Scan all task's heartbeat, if task isn't alive, DO NimbusUtils.transition(monitor)
- * 
+ * Scan all task's heartbeat, if a task isn't alive, do NimbusUtils.transition(monitor)
+ *
  * @author Longda
  */
 public class MonitorRunnable implements Runnable {
@@ -56,49 +56,47 @@ public class MonitorRunnable implements Runnable {
     }
 
     /**
-     * @@@ Todo when one topology is being reassigned, the topology should skip check
+     * Todo: when one topology is being reassigned, the topology should skip check
      */
     @Override
     public void run() {
         StormClusterState clusterState = data.getStormClusterState();
 
         try {
-            // Attetion, need first check Assignments
-            List<String> active_topologys = clusterState.assignments(null);
+            // Note: need first check Assignments
+            List<String> activeTopologies = clusterState.assignments(null);
 
-            if (active_topologys == null) {
+            if (activeTopologies == null) {
                 LOG.info("Failed to get active topologies");
                 return;
             }
 
-            for (String topologyid : active_topologys) {
-                if (clusterState.storm_base(topologyid, null) == null) {
+            for (String topologyId : activeTopologies) {
+                if (clusterState.storm_base(topologyId, null) == null) {
                     continue;
                 }
 
-                LOG.debug("Check tasks " + topologyid);
+                LOG.debug("Check tasks of topology " + topologyId);
 
-                // Attention, here don't check /ZK-dir/taskbeats/topologyid to
-                // get task ids
-                Set<Integer> taskIds = clusterState.task_ids(topologyid);
+                // Note that we don't check /ZK-dir/taskbeats/topologyId to get task ids
+                Set<Integer> taskIds = clusterState.task_ids(topologyId);
                 if (taskIds == null) {
-                    LOG.info("Failed to get task ids of " + topologyid);
+                    LOG.info("Failed to get task ids of " + topologyId);
                     continue;
                 }
-                Assignment assignment = clusterState.assignment_info(topologyid, null);
+                Assignment assignment = clusterState.assignment_info(topologyId, null);
 
-                Set<Integer> deadTasks = new HashSet<Integer>();
+                Set<Integer> deadTasks = new HashSet<>();
                 boolean needReassign = false;
                 for (Integer task : taskIds) {
-                    boolean isTaskDead = NimbusUtils.isTaskDead(data, topologyid, task);
+                    boolean isTaskDead = NimbusUtils.isTaskDead(data, topologyId, task);
                     if (isTaskDead) {
                         deadTasks.add(task);
                         needReassign = true;
                     }
                 }
 
-
-                TopologyTaskHbInfo topologyHbInfo = data.getTasksHeartbeat().get(topologyid);
+                TopologyTaskHbInfo topologyHbInfo = data.getTasksHeartbeat().get(topologyId);
                 if (needReassign) {
                     if (topologyHbInfo != null) {
                         int topologyMasterId = topologyHbInfo.get_topologyMasterId();
@@ -114,46 +112,55 @@ public class MonitorRunnable implements Runnable {
                         } else {
                             Map<Integer, TaskHeartbeat> taskHbs = topologyHbInfo.get_taskHbs();
                             int launchTime = JStormUtils.parseInt(data.getConf().get(Config.NIMBUS_TASK_LAUNCH_SECS));
-                            if (taskHbs == null || taskHbs.get(topologyMasterId) == null || taskHbs.get(topologyMasterId).get_uptime() < launchTime) {
+                            if (taskHbs == null || taskHbs.get(topologyMasterId) == null ||
+                                    taskHbs.get(topologyMasterId).get_uptime() < launchTime) {
                                 /*try {
-                                    clusterState.topology_heartbeat(topologyid, topologyHbInfo);
+                                    clusterState.topology_heartbeat(topologyId, topologyHbInfo);
                                 } catch (Exception e) {
-                                    LOG.error("Failed to update task heartbeat info to ZK for " + topologyid, e);
+                                    LOG.error("Failed to update task heartbeat info to ZK for " + topologyId, e);
                                 }*/
                                 return;
                             }
                         }
                         Map<Integer, ResourceWorkerSlot> deadTaskWorkers = new HashMap<>();
                         for (Integer task : deadTasks) {
-                            LOG.info("Found " + topologyid + ",taskid:" + task + " is dead");
+                            LOG.info("Found " + topologyId + ", taskId:" + task + " is dead");
 
                             ResourceWorkerSlot resource = null;
                             if (assignment != null)
                                 resource = assignment.getWorkerByTaskId(task);
                             if (resource != null) {
                                 deadTaskWorkers.put(task, resource);
-                                Date now = new Date();
-                                String nowStr = TimeFormat.getSecond(now);
-                                String errorInfo = "Task-" + task + " is dead on " + resource.getHostname() + ":" + resource.getPort() + ", " + nowStr;
-                                LOG.info(errorInfo);
-                                clusterState.report_task_error(topologyid, task, errorInfo, ErrorConstants.ERROR,
-                                        ErrorConstants.CODE_TASK_DEAD, ErrorConstants.DURATION_SECS_TASK_DEAD);
                             }
                         }
-
+                        Map<ResourceWorkerSlot, List<Integer>> workersDeadTasks = JStormUtils.reverse_map(deadTaskWorkers);
+                        for (Map.Entry<ResourceWorkerSlot, List<Integer>> entry : workersDeadTasks.entrySet()) {
+                            ResourceWorkerSlot resource = entry.getKey();
+                            //we only report one task
+                            for (Integer task : entry.getValue()) {
+                                Date now = new Date();
+                                String nowStr = TimeFormat.getSecond(now);
+                                String errorInfo = "Task-" + entry.getValue().toString() + " is dead on " +
+                                        resource.getHostname() + ":" + resource.getPort() + ", " + nowStr;
+                                LOG.info(errorInfo);
+                                clusterState.report_task_error(topologyId, task, errorInfo, ErrorConstants.ERROR,
+                                        ErrorConstants.CODE_TASK_DEAD, ErrorConstants.DURATION_SECS_TASK_DEAD);
+                                break;
+                            }
+                        }
                         if (deadTaskWorkers.size() > 0) {
                             // notify jstorm monitor
-                            TaskDeadEvent.pushEvent(topologyid, deadTaskWorkers);
+                            TaskDeadEvent.pushEvent(topologyId, deadTaskWorkers);
                         }
                     }
-                    NimbusUtils.transition(data, topologyid, false, StatusType.monitor);
+                    NimbusUtils.transition(data, topologyId, false, StatusType.monitor);
                 }
-                
+
                 if (topologyHbInfo != null) {
                     try {
-                        clusterState.topology_heartbeat(topologyid, topologyHbInfo);
+                        clusterState.topology_heartbeat(topologyId, topologyHbInfo);
                     } catch (Exception e) {
-                        LOG.error("Failed to update task heartbeat info to ZK for " + topologyid, e);
+                        LOG.error("Failed to update task heartbeat info to ZK for " + topologyId, e);
                     }
                 }
             }
@@ -162,5 +169,4 @@ public class MonitorRunnable implements Runnable {
             LOG.error(e.getMessage(), e);
         }
     }
-
 }

@@ -1,6 +1,5 @@
 package com.alibaba.jstorm.common.metric.codahale;
 
-import com.alibaba.jstorm.metric.MetricUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.codahale.metrics.Metered;
 import java.util.concurrent.TimeUnit;
@@ -8,7 +7,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author wange
- * @since 15/12/15
+ * @since 2.1.1
  */
 public class JMeter implements Metered {
     private static final long TICK_INTERVAL = TimeUnit.SECONDS.toMillis(5);

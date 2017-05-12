@@ -10,18 +10,17 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Created by binyang.dby on 2016/7/22.
+ * @author binyang.dby on 2016/7/22.
  *
- * basically the same as SkewedRollingTopWords. Just like in the unit test RollingTopWordsTest, I really don't
- * know how to validate if the result is right since the tick time is not precise. It makes the output after
- * passing a window is unpredictable. Now I just let it pass all the time.
+ *         basically the same as SkewedRollingTopWords. Just like in the unit test RollingTopWordsTest, I really don't
+ *         know how to validate if the result is right since the tick time is not precise. It makes the output after
+ *         passing a window is unpredictable. Now I just let it pass all the time.
  */
 public class SkewedRollingTopWordsTest {
     public final static int DEFAULT_COUNT = 5;
 
     @Test
-    public void testSkewedRollingTopWords()
-    {
+    public void testSkewedRollingTopWords() {
         TopologyBuilder topologyBuilder = new TopologyBuilder();
         topologyBuilder.setSpout("windowTestWordSpout", new WindowTestWordSpout(), 5);
         topologyBuilder.setBolt("windowTestRollingCountBolt", new WindowTestRollingCountBolt(9, 3), 4)

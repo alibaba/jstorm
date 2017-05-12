@@ -19,18 +19,28 @@ package com.alibaba.jstorm.task.comm;
 
 import java.io.Serializable;
 import java.util.List;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
 public class TupleInfo implements Serializable {
-
     private static final long serialVersionUID = -3348670497595864118L;
 
     private Object messageId;
     private String stream;
     private List<Object> values;
     private long timestamp;
+
+    public static TupleInfo buildTupleInfo(String stream, Object messageId, List<Object> values, long timeStamp, boolean isCacheTuple) {
+        TupleInfo tupleInfo = new TupleInfo();
+        tupleInfo.setStream(stream);
+        tupleInfo.setMessageId(messageId);
+        tupleInfo.setTimestamp(timeStamp);
+        if (isCacheTuple)
+            tupleInfo.setValues(values);
+        else
+            tupleInfo.setValues(null);
+        return tupleInfo;
+    }
 
     public Object getMessageId() {
         return messageId;

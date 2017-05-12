@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,86 +37,73 @@ import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.TimeUtils;
 
 /**
- * worker Heartbeat
- * 
+ * worker heartbeat thread
+ *
  * @author yannian/Longda
- * 
  */
 public class WorkerHeartbeatRunable extends RunnableCallback {
     private static Logger LOG = LoggerFactory.getLogger(WorkerHeartbeatRunable.class);
 
+    @SuppressWarnings("unused")
     private WorkerData workerData;
 
-    private AtomicBoolean shutdown;
     private Map<Object, Object> conf;
-    private String worker_id;
+    private String workerId;
     private Integer port;
     private String topologyId;
-    private CopyOnWriteArraySet<Integer> task_ids;
-    // private Object lock = new Object();
-
-    private Integer frequence;
-
+    private CopyOnWriteArraySet<Integer> taskIds;
+    private Integer frequency;
     private Map<String, LocalState> workerStates;
 
     public WorkerHeartbeatRunable(WorkerData workerData) {
-
         this.workerData = workerData;
 
         this.conf = workerData.getStormConf();
-        this.worker_id = workerData.getWorkerId();
+        this.workerId = workerData.getWorkerId();
         this.port = workerData.getPort();
         this.topologyId = workerData.getTopologyId();
-        this.task_ids = new CopyOnWriteArraySet<Integer>(workerData.getTaskids());
-        this.shutdown = workerData.getShutdown();
+        this.taskIds = new CopyOnWriteArraySet<>(workerData.getTaskIds());
 
         String key = Config.WORKER_HEARTBEAT_FREQUENCY_SECS;
-        frequence = JStormUtils.parseInt(conf.get(key), 10);
+        frequency = JStormUtils.parseInt(conf.get(key), 10);
 
-        this.workerStates = new HashMap<String, LocalState>();
+        this.workerStates = new HashMap<>();
     }
 
     private LocalState getWorkerState() throws IOException {
-        LocalState state = workerStates.get(worker_id);
+        LocalState state = workerStates.get(workerId);
         if (state == null) {
-            state = StormConfig.worker_state(conf, worker_id);
-            workerStates.put(worker_id, state);
+            state = StormConfig.worker_state(conf, workerId);
+            workerStates.put(workerId, state);
         }
         return state;
     }
 
     /**
-     * do hearbeat, update LocalState
-     * 
-     * @throws IOException
+     * do heartbeat and update LocalState
      */
 
     public void doHeartbeat() throws IOException {
+        int curTime = TimeUtils.current_time_secs();
+        WorkerHeartbeat hb = new WorkerHeartbeat(curTime, topologyId, taskIds, port);
 
-        int currtime = TimeUtils.current_time_secs();
-        WorkerHeartbeat hb = new WorkerHeartbeat(currtime, topologyId, task_ids, port);
-
-        LOG.debug("Doing heartbeat:" + worker_id + ",port:" + port + ",hb" + hb.toString());
-
+        LOG.debug("Doing heartbeat:" + workerId + ",port:" + port + ",hb" + hb.toString());
         LocalState state = getWorkerState();
         state.put(Common.LS_WORKER_HEARTBEAT, hb);
-
     }
 
     @Override
     public void run() {
-
         try {
             doHeartbeat();
         } catch (IOException e) {
-            LOG.error("work_heart_beat_fn fail", e);
+            LOG.error("worker heartbeat failed", e);
             throw new RuntimeException(e);
         }
-
     }
 
     @Override
     public Object getResult() {
-        return frequence;
+        return frequency;
     }
 }

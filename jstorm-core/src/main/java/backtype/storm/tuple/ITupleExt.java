@@ -1,29 +1,28 @@
 package backtype.storm.tuple;
 
+import java.util.Iterator;
+import java.util.List;
+
 public interface ITupleExt {
-    
-    /**
-     * Get Target TaskId
-     * 
-     * @return
-     */
+
     int getTargetTaskId();
 
     void setTargetTaskId(int targetTaskId);
 
     /**
-     * Get the timeStamp of creating tuple
-     * 
-     * @return
+     * Get creating timestamp of a tuple
      */
     long getCreationTimeStamp();
 
-    /*
-     * set ms
-     */
     void setCreationTimeStamp(long timeStamp);
 
     boolean isBatchTuple();
-    
+
     void setBatchTuple(boolean isBatchTuple);
+
+    long getBatchId();
+
+    void setBatchId(long batchId);
+
+    public Iterator<List<Object>> valueIterator();
 }

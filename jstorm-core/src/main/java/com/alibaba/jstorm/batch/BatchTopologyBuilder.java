@@ -44,18 +44,17 @@ public class BatchTopologyBuilder {
         spoutDeclarer = topologyBuilder.setSpout(BatchDef.SPOUT_TRIGGER, new BatchSpoutTrigger(), 1);
     }
 
-    public BoltDeclarer setSpout(String id, IBatchSpout spout, int paralel) {
-
-        BoltDeclarer boltDeclarer = this.setBolt(id, (IBatchSpout) spout, paralel);
+    public BoltDeclarer setSpout(String id, IBatchSpout spout, int parallel) {
+        BoltDeclarer boltDeclarer = this.setBolt(id, spout, parallel);
         boltDeclarer.allGrouping(BatchDef.SPOUT_TRIGGER, BatchDef.COMPUTING_STREAM_ID);
 
         return boltDeclarer;
     }
 
-    public BoltDeclarer setBolt(String id, IBasicBolt bolt, int paralel) {
+    public BoltDeclarer setBolt(String id, IBasicBolt bolt, int parallel) {
         CoordinatedBolt coordinatedBolt = new CoordinatedBolt(bolt);
 
-        BoltDeclarer boltDeclarer = topologyBuilder.setBolt(id, coordinatedBolt, paralel);
+        BoltDeclarer boltDeclarer = topologyBuilder.setBolt(id, coordinatedBolt, parallel);
 
         if (bolt instanceof IPrepareCommit) {
             boltDeclarer.allGrouping(BatchDef.SPOUT_TRIGGER, BatchDef.PREPARE_STREAM_ID);

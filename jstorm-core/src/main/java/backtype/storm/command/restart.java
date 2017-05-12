@@ -24,7 +24,7 @@ import backtype.storm.utils.NimbusClient;
 import backtype.storm.utils.Utils;
 
 /**
- * Active topology
+ * restart a topology
  *
  * @author basti
  */
@@ -32,7 +32,7 @@ public class restart {
 
     public static void main(String[] args) {
         if (args == null || args.length == 0) {
-            throw new InvalidParameterException("Should input topology name");
+            throw new InvalidParameterException("Please input topology name!");
         }
 
         String topologyName = args[0];

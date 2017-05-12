@@ -23,8 +23,7 @@ import org.slf4j.LoggerFactory;
 import com.lmax.disruptor.EventHandler;
 
 public class JstormEventHandler implements EventHandler {
-
-    Logger logger = LoggerFactory.getLogger(JstormEventHandler.class);
+    private final Logger logger = LoggerFactory.getLogger(JstormEventHandler.class);
 
     private int count;
 

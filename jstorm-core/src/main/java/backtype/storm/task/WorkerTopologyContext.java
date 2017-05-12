@@ -40,8 +40,10 @@ public class WorkerTopologyContext extends GeneralTopologyContext {
     Map<String, Object> _defaultResources;
 
     public WorkerTopologyContext(StormTopology topology, Map stormConf, Map<Integer, String> taskToComponent,
-            Map<String, List<Integer>> componentToSortedTasks, Map<String, Map<String, Fields>> componentToStreamToFields, String stormId, String codeDir,
-            String workerId, Integer workerPort, List<Integer> workerTasks, Map<String, Object> defaultResources, Map<String, Object> userResources) {
+                                 Map<String, List<Integer>> componentToSortedTasks,
+                                 Map<String, Map<String, Fields>> componentToStreamToFields, String stormId, String codeDir,
+                                 String workerId, Integer workerPort, List<Integer> workerTasks,
+                                 Map<String, Object> defaultResources, Map<String, Object> userResources) {
         super(topology, stormConf, taskToComponent, componentToSortedTasks, componentToStreamToFields, stormId);
         _codeDir = codeDir;
         _defaultResources = defaultResources;
@@ -76,16 +78,16 @@ public class WorkerTopologyContext extends GeneralTopologyContext {
     }
 
     /**
-     * Gets the location of the external resources for this worker on the local filesystem. These external resources typically include bolts implemented in
-     * other languages, such as Ruby or Python.
+     * Gets the location of the external resources for this worker on the local filesystem.
+     * These external resources typically include bolts implemented in other languages, such as Ruby or Python.
      */
     public String getCodeDir() {
         return _codeDir;
     }
 
     /**
-     * If this task spawns any subprocesses, those subprocesses must immediately write their PID to this directory on the local filesystem to ensure that Storm
-     * properly destroys that process when the worker is shutdown.
+     * If this task spawns any subprocesses, those subprocesses must immediately write their PID to this directory
+     * on the local filesystem to ensure that Storm properly destroys that process when the worker is shutdown.
      */
     public String getPIDDir() {
         return _pidDir;

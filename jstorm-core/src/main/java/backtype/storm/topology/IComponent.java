@@ -27,7 +27,7 @@ public interface IComponent extends Serializable {
 
     /**
      * Declare the output schema for all the streams of this topology.
-     * 
+     *
      * @param declarer this is used to declare output stream ids, output fields, and whether or not each output stream is a direct stream
      */
     void declareOutputFields(OutputFieldsDeclarer declarer);
@@ -35,7 +35,6 @@ public interface IComponent extends Serializable {
     /**
      * Declare configuration specific to this component. Only a subset of the "topology.*" configs can be overridden. The component configuration can be further
      * overridden when constructing the topology using {@link TopologyBuilder}
-     * 
      */
     Map<String, Object> getComponentConfiguration();
 

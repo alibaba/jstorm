@@ -26,8 +26,6 @@ import com.alibaba.jstorm.batch.BatchId;
 import com.alibaba.jstorm.batch.util.BatchStatus;
 
 public class BatchSpoutMsgId implements Serializable {
-
-    /**  */
     private static final long serialVersionUID = 2899009971479957517L;
 
     private final BatchId batchId;

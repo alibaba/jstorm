@@ -19,8 +19,6 @@ package backtype.storm;
 
 import java.util.Map;
 
-import java.util.Map;
-
 /**
  * Provides functionality for validating configuration fields.
  */
@@ -29,15 +27,15 @@ public class ConfigValidation {
     /**
      * Declares methods for validating configuration values.
      */
-    public static interface FieldValidator {
+    public interface FieldValidator {
         /**
          * Validates the given field.
-         * 
-         * @param name the name of the field.
+         *
+         * @param name  the name of the field.
          * @param field The field to be validated.
          * @throws IllegalArgumentException if the field fails validation.
          */
-        public void validateField(String name, Object field) throws IllegalArgumentException;
+        void validateField(String name, Object field) throws IllegalArgumentException;
     }
 
     /**
@@ -51,9 +49,9 @@ public class ConfigValidation {
 
         /**
          * Validates the given field.
-         * 
-         * @param pd describes the parent wrapping this validator.
-         * @param name the name of the field.
+         *
+         * @param pd    describes the parent wrapping this validator.
+         * @param name  the name of the field.
          * @param field The field to be validated.
          * @throws IllegalArgumentException if the field fails validation.
          */
@@ -62,8 +60,8 @@ public class ConfigValidation {
 
     /**
      * Returns a new NestableFieldValidator for a given class.
-     * 
-     * @param cls the Class the field should be a type of
+     *
+     * @param cls         the Class the field should be a type of
      * @param nullAllowed whether or not a value of null is valid
      * @return a NestableFieldValidator for that class
      */
@@ -83,8 +81,8 @@ public class ConfigValidation {
 
     /**
      * Returns a new NestableFieldValidator for a List of the given Class.
-     * 
-     * @param cls the Class of elements composing the list
+     *
+     * @param cls         the Class of elements composing the list
      * @param nullAllowed whether or not a value of null is valid
      * @return a NestableFieldValidator for a list of the given class
      */
@@ -94,8 +92,8 @@ public class ConfigValidation {
 
     /**
      * Returns a new NestableFieldValidator for a List where each item is validated by validator.
-     * 
-     * @param validator used to validate each item in the list
+     *
+     * @param validator   used to validate each item in the list
      * @param nullAllowed whether or not a value of null is valid
      * @return a NestableFieldValidator for a list with each item validated by a different validator.
      */
@@ -119,9 +117,9 @@ public class ConfigValidation {
 
     /**
      * Returns a new NestableFieldValidator for a Map of key to val.
-     * 
-     * @param key the Class of keys in the map
-     * @param val the Class of values in the map
+     *
+     * @param key         the Class of keys in the map
+     * @param val         the Class of values in the map
      * @param nullAllowed whether or not a value of null is valid
      * @return a NestableFieldValidator for a Map of key to val
      */
@@ -131,13 +129,14 @@ public class ConfigValidation {
 
     /**
      * Returns a new NestableFieldValidator for a Map.
-     * 
-     * @param key a validator for the keys in the map
-     * @param val a validator for the values in the map
+     *
+     * @param key         a validator for the keys in the map
+     * @param val         a validator for the values in the map
      * @param nullAllowed whether or not a value of null is valid
      * @return a NestableFieldValidator for a Map
      */
-    public static NestableFieldValidator mapFv(final NestableFieldValidator key, final NestableFieldValidator val, final boolean nullAllowed) {
+    public static NestableFieldValidator mapFv(final NestableFieldValidator key,
+                                               final NestableFieldValidator val, final boolean nullAllowed) {
         return new NestableFieldValidator() {
             @SuppressWarnings("unchecked")
             @Override
@@ -220,10 +219,10 @@ public class ConfigValidation {
                             && (i <= Integer.MAX_VALUE && i >= Integer.MIN_VALUE)) {
                         // pass the test
                     } else {
-                        throw new IllegalArgumentException("Each element of the list " + name + " must be an Integer within type range.");
+                        throw new IllegalArgumentException("Each element of the list " + name +
+                                " must be an Integer within type range.");
                     }
                 }
-                return;
             }
         }
     };
@@ -304,11 +303,13 @@ public class ConfigValidation {
                     if (e instanceof Map) {
                         for (Map.Entry<Object, Object> entry : ((Map<Object, Object>) e).entrySet()) {
                             if (!(entry.getKey() instanceof String) || !(entry.getValue() instanceof String)) {
-                                throw new IllegalArgumentException("Each element of the list " + name + " must be a String or a Map of Strings");
+                                throw new IllegalArgumentException("Each element of the list " + name +
+                                        " must be a String or a Map of Strings");
                             }
                         }
                     } else if (!(e instanceof String)) {
-                        throw new IllegalArgumentException("Each element of the list " + name + " must be a String or a Map of Strings");
+                        throw new IllegalArgumentException("Each element of the list " + name +
+                                " must be a String or a Map of Strings");
                     }
                 }
                 return;

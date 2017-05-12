@@ -17,38 +17,32 @@
  */
 package com.alibaba.jstorm.daemon.supervisor;
 
-import com.alibaba.jstorm.config.SupervisorRefreshConfig;
-import com.alibaba.jstorm.metric.JStormMetricsReporter;
-import java.io.File;
-import java.util.Map;
-import java.util.UUID;
-import java.util.Vector;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import com.alibaba.jstorm.daemon.worker.WorkerReportError;
-import com.alibaba.jstorm.utils.DefaultUncaughtExceptionHandler;
-import org.apache.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import backtype.storm.Config;
 import backtype.storm.messaging.IContext;
 import backtype.storm.utils.LocalState;
 import backtype.storm.utils.Utils;
-
-import com.alibaba.jstorm.callback.AsyncLoopRunnable;
 import com.alibaba.jstorm.callback.AsyncLoopThread;
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.cluster.Cluster;
 import com.alibaba.jstorm.cluster.Common;
 import com.alibaba.jstorm.cluster.StormClusterState;
 import com.alibaba.jstorm.cluster.StormConfig;
+import com.alibaba.jstorm.config.SupervisorRefreshConfig;
+import com.alibaba.jstorm.daemon.worker.WorkerReportError;
 import com.alibaba.jstorm.daemon.worker.hearbeat.SyncContainerHb;
 import com.alibaba.jstorm.event.EventManagerImp;
 import com.alibaba.jstorm.event.EventManagerPusher;
+import com.alibaba.jstorm.utils.DefaultUncaughtExceptionHandler;
 import com.alibaba.jstorm.utils.JStormServerUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
+import java.io.File;
+import java.util.Map;
+import java.util.UUID;
+import java.util.Vector;
+import java.util.concurrent.ConcurrentHashMap;
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Supervisor workflow
@@ -74,9 +68,6 @@ import com.alibaba.jstorm.utils.JStormUtils;
 public class Supervisor {
 
     private static Logger LOG = LoggerFactory.getLogger(Supervisor.class);
-
-    volatile MachineCheckStatus checkStatus = new MachineCheckStatus();
-    //volatile HealthStatus healthStatus = new HealthStatus();
 
     /**
      * create and start a supervisor
@@ -127,7 +118,7 @@ public class Supervisor {
         // Step 4 create HeartBeat
         // every supervisor.heartbeat.frequency.secs, write SupervisorInfo to ZK
         // sync heartbeat to nimbus
-        Heartbeat hb = new Heartbeat(conf, stormClusterState, supervisorId, localState, checkStatus);
+        Heartbeat hb = new Heartbeat(conf, stormClusterState, supervisorId, localState);
         hb.update();
 
         AsyncLoopThread heartbeat = new AsyncLoopThread(hb, false, null, Thread.MIN_PRIORITY, true);
@@ -143,7 +134,7 @@ public class Supervisor {
         // every supervisor.monitor.frequency.secs second run SyncSupervisor
         ConcurrentHashMap<String, String> workerThreadPids = new ConcurrentHashMap<>();
         SyncProcessEvent syncProcessEvent = new SyncProcessEvent(
-                supervisorId, conf, localState, workerThreadPids, sharedContext, workerReportError);
+                supervisorId, conf, localState, workerThreadPids, sharedContext, workerReportError, stormClusterState);
 
         EventManagerImp syncSupEventManager = new EventManagerImp();
         AsyncLoopThread syncSupEventThread = new AsyncLoopThread(syncSupEventManager);
@@ -169,7 +160,7 @@ public class Supervisor {
         //Step 7 check supervisor
         if (!StormConfig.local_mode(conf)) {
             if (ConfigExtension.isEnableCheckSupervisor(conf)) {
-                SupervisorHealth supervisorHealth = new SupervisorHealth(conf, checkStatus, supervisorId);
+                SupervisorHealth supervisorHealth = new SupervisorHealth(conf, hb, supervisorId);
                 AsyncLoopThread healthThread = new AsyncLoopThread(supervisorHealth, false, null, Thread.MIN_PRIORITY, true);
                 threads.add(healthThread);
             }
@@ -229,7 +220,7 @@ public class Supervisor {
 
         } catch (Throwable e) {
             if (e instanceof OutOfMemoryError) {
-                LOG.error("Halting due to Out Of Memory Error...");
+                LOG.error("Halting due to out of memory error...");
             }
             LOG.error("Fail to run supervisor ", e);
             System.exit(1);
@@ -243,14 +234,9 @@ public class Supervisor {
      * start supervisor daemon
      */
     public static void main(String[] args) {
-
         Thread.setDefaultUncaughtExceptionHandler(new DefaultUncaughtExceptionHandler());
-
         JStormServerUtils.startTaobaoJvmMonitor();
-
         Supervisor instance = new Supervisor();
-
         instance.run();
-
     }
 }

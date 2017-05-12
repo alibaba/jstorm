@@ -15,7 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Created by binyang.dby on 2016/7/11.
+ * @author binyang.dby on 2016/7/11.
  */
 public abstract class WindowTestAbstractRankingBolt extends BaseBasicBolt {
 

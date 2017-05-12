@@ -305,6 +305,13 @@ class Iface:
     """
     pass
 
+  def getTopologyWorkersToSupervisorIds(self, topologyName):
+    """
+    Parameters:
+     - topologyName
+    """
+    pass
+
   def getTopology(self, id):
     """
     Parameters:
@@ -442,6 +449,39 @@ class Iface:
     """
     Parameters:
      - host
+    """
+    pass
+
+  def deleteMetricMeta(self, topologyId, metaType, idList):
+    """
+    Parameters:
+     - topologyId
+     - metaType
+     - idList
+    """
+    pass
+
+  def grayUpgrade(self, topologyName, component, workers, workerNum):
+    """
+    Parameters:
+     - topologyName
+     - component
+     - workers
+     - workerNum
+    """
+    pass
+
+  def rollbackTopology(self, topologyName):
+    """
+    Parameters:
+     - topologyName
+    """
+    pass
+
+  def completeUpgrade(self, topologyName):
+    """
+    Parameters:
+     - topologyName
     """
     pass
 
@@ -1764,6 +1804,39 @@ class Client(Iface):
       raise result.e
     raise TApplicationException(TApplicationException.MISSING_RESULT, "getTopologyTasksToSupervisorIds failed: unknown result");
 
+  def getTopologyWorkersToSupervisorIds(self, topologyName):
+    """
+    Parameters:
+     - topologyName
+    """
+    self.send_getTopologyWorkersToSupervisorIds(topologyName)
+    return self.recv_getTopologyWorkersToSupervisorIds()
+
+  def send_getTopologyWorkersToSupervisorIds(self, topologyName):
+    self._oprot.writeMessageBegin('getTopologyWorkersToSupervisorIds', TMessageType.CALL, self._seqid)
+    args = getTopologyWorkersToSupervisorIds_args()
+    args.topologyName = topologyName
+    args.write(self._oprot)
+    self._oprot.writeMessageEnd()
+    self._oprot.trans.flush()
+
+  def recv_getTopologyWorkersToSupervisorIds(self):
+    iprot = self._iprot
+    (fname, mtype, rseqid) = iprot.readMessageBegin()
+    if mtype == TMessageType.EXCEPTION:
+      x = TApplicationException()
+      x.read(iprot)
+      iprot.readMessageEnd()
+      raise x
+    result = getTopologyWorkersToSupervisorIds_result()
+    result.read(iprot)
+    iprot.readMessageEnd()
+    if result.success is not None:
+      return result.success
+    if result.e is not None:
+      raise result.e
+    raise TApplicationException(TApplicationException.MISSING_RESULT, "getTopologyWorkersToSupervisorIds failed: unknown result");
+
   def getTopology(self, id):
     """
     Parameters:
@@ -2366,6 +2439,132 @@ class Client(Iface):
     iprot.readMessageEnd()
     return
 
+  def deleteMetricMeta(self, topologyId, metaType, idList):
+    """
+    Parameters:
+     - topologyId
+     - metaType
+     - idList
+    """
+    self.send_deleteMetricMeta(topologyId, metaType, idList)
+    self.recv_deleteMetricMeta()
+
+  def send_deleteMetricMeta(self, topologyId, metaType, idList):
+    self._oprot.writeMessageBegin('deleteMetricMeta', TMessageType.CALL, self._seqid)
+    args = deleteMetricMeta_args()
+    args.topologyId = topologyId
+    args.metaType = metaType
+    args.idList = idList
+    args.write(self._oprot)
+    self._oprot.writeMessageEnd()
+    self._oprot.trans.flush()
+
+  def recv_deleteMetricMeta(self):
+    iprot = self._iprot
+    (fname, mtype, rseqid) = iprot.readMessageBegin()
+    if mtype == TMessageType.EXCEPTION:
+      x = TApplicationException()
+      x.read(iprot)
+      iprot.readMessageEnd()
+      raise x
+    result = deleteMetricMeta_result()
+    result.read(iprot)
+    iprot.readMessageEnd()
+    return
+
+  def grayUpgrade(self, topologyName, component, workers, workerNum):
+    """
+    Parameters:
+     - topologyName
+     - component
+     - workers
+     - workerNum
+    """
+    self.send_grayUpgrade(topologyName, component, workers, workerNum)
+    self.recv_grayUpgrade()
+
+  def send_grayUpgrade(self, topologyName, component, workers, workerNum):
+    self._oprot.writeMessageBegin('grayUpgrade', TMessageType.CALL, self._seqid)
+    args = grayUpgrade_args()
+    args.topologyName = topologyName
+    args.component = component
+    args.workers = workers
+    args.workerNum = workerNum
+    args.write(self._oprot)
+    self._oprot.writeMessageEnd()
+    self._oprot.trans.flush()
+
+  def recv_grayUpgrade(self):
+    iprot = self._iprot
+    (fname, mtype, rseqid) = iprot.readMessageBegin()
+    if mtype == TMessageType.EXCEPTION:
+      x = TApplicationException()
+      x.read(iprot)
+      iprot.readMessageEnd()
+      raise x
+    result = grayUpgrade_result()
+    result.read(iprot)
+    iprot.readMessageEnd()
+    return
+
+  def rollbackTopology(self, topologyName):
+    """
+    Parameters:
+     - topologyName
+    """
+    self.send_rollbackTopology(topologyName)
+    self.recv_rollbackTopology()
+
+  def send_rollbackTopology(self, topologyName):
+    self._oprot.writeMessageBegin('rollbackTopology', TMessageType.CALL, self._seqid)
+    args = rollbackTopology_args()
+    args.topologyName = topologyName
+    args.write(self._oprot)
+    self._oprot.writeMessageEnd()
+    self._oprot.trans.flush()
+
+  def recv_rollbackTopology(self):
+    iprot = self._iprot
+    (fname, mtype, rseqid) = iprot.readMessageBegin()
+    if mtype == TMessageType.EXCEPTION:
+      x = TApplicationException()
+      x.read(iprot)
+      iprot.readMessageEnd()
+      raise x
+    result = rollbackTopology_result()
+    result.read(iprot)
+    iprot.readMessageEnd()
+    return
+
+  def completeUpgrade(self, topologyName):
+    """
+    Parameters:
+     - topologyName
+    """
+    self.send_completeUpgrade(topologyName)
+    self.recv_completeUpgrade()
+
+  def send_completeUpgrade(self, topologyName):
+    self._oprot.writeMessageBegin('completeUpgrade', TMessageType.CALL, self._seqid)
+    args = completeUpgrade_args()
+    args.topologyName = topologyName
+    args.write(self._oprot)
+    self._oprot.writeMessageEnd()
+    self._oprot.trans.flush()
+
+  def recv_completeUpgrade(self):
+    iprot = self._iprot
+    (fname, mtype, rseqid) = iprot.readMessageBegin()
+    if mtype == TMessageType.EXCEPTION:
+      x = TApplicationException()
+      x.read(iprot)
+      iprot.readMessageEnd()
+      raise x
+    result = completeUpgrade_result()
+    result.read(iprot)
+    iprot.readMessageEnd()
+    return
+
 
 class Processor(Iface, TProcessor):
   def __init__(self, handler):
@@ -2412,6 +2611,7 @@ class Processor(Iface, TProcessor):
     self._processMap["getTopologyInfo"] = Processor.process_getTopologyInfo
     self._processMap["getTopologyInfoByName"] = Processor.process_getTopologyInfoByName
     self._processMap["getTopologyTasksToSupervisorIds"] = Processor.process_getTopologyTasksToSupervisorIds
+    self._processMap["getTopologyWorkersToSupervisorIds"] = Processor.process_getTopologyWorkersToSupervisorIds
     self._processMap["getTopology"] = Processor.process_getTopology
     self._processMap["getUserTopology"] = Processor.process_getUserTopology
     self._processMap["notifyThisTopologyTasksIsDead"] = Processor.process_notifyThisTopologyTasksIsDead
@@ -2431,6 +2631,10 @@ class Processor(Iface, TProcessor):
     self._processMap["updateTaskHeartbeat"] = Processor.process_updateTaskHeartbeat
     self._processMap["setHostInBlackList"] = Processor.process_setHostInBlackList
     self._processMap["removeHostOutBlackList"] = Processor.process_removeHostOutBlackList
+    self._processMap["deleteMetricMeta"] = Processor.process_deleteMetricMeta
+    self._processMap["grayUpgrade"] = Processor.process_grayUpgrade
+    self._processMap["rollbackTopology"] = Processor.process_rollbackTopology
+    self._processMap["completeUpgrade"] = Processor.process_completeUpgrade
 
   def process(self, iprot, oprot):
     (name, type, seqid) = iprot.readMessageBegin()
@@ -2984,6 +3188,20 @@ class Processor(Iface, TProcessor):
     oprot.writeMessageEnd()
     oprot.trans.flush()
 
+  def process_getTopologyWorkersToSupervisorIds(self, seqid, iprot, oprot):
+    args = getTopologyWorkersToSupervisorIds_args()
+    args.read(iprot)
+    iprot.readMessageEnd()
+    result = getTopologyWorkersToSupervisorIds_result()
+    try:
+      result.success = self._handler.getTopologyWorkersToSupervisorIds(args.topologyName)
+    except NotAliveException, e:
+      result.e = e
+    oprot.writeMessageBegin("getTopologyWorkersToSupervisorIds", TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()
+
   def process_getTopology(self, seqid, iprot, oprot):
     args = getTopology_args()
     args.read(iprot)
@@ -3200,6 +3418,50 @@ class Processor(Iface, TProcessor):
     result = removeHostOutBlackList_result()
     self._handler.removeHostOutBlackList(args.host)
     oprot.writeMessageBegin("removeHostOutBlackList", TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()
+
+  def process_deleteMetricMeta(self, seqid, iprot, oprot):
+    args = deleteMetricMeta_args()
+    args.read(iprot)
+    iprot.readMessageEnd()
+    result = deleteMetricMeta_result()
+    self._handler.deleteMetricMeta(args.topologyId, args.metaType, args.idList)
+    oprot.writeMessageBegin("deleteMetricMeta", TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()
+
+  def process_grayUpgrade(self, seqid, iprot, oprot):
+    args = grayUpgrade_args()
+    args.read(iprot)
+    iprot.readMessageEnd()
+    result = grayUpgrade_result()
+    self._handler.grayUpgrade(args.topologyName, args.component, args.workers, args.workerNum)
+    oprot.writeMessageBegin("grayUpgrade", TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()
+
+  def process_rollbackTopology(self, seqid, iprot, oprot):
+    args = rollbackTopology_args()
+    args.read(iprot)
+    iprot.readMessageEnd()
+    result = rollbackTopology_result()
+    self._handler.rollbackTopology(args.topologyName)
+    oprot.writeMessageBegin("rollbackTopology", TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()
+
+  def process_completeUpgrade(self, seqid, iprot, oprot):
+    args = completeUpgrade_args()
+    args.read(iprot)
+    iprot.readMessageEnd()
+    result = completeUpgrade_result()
+    self._handler.completeUpgrade(args.topologyName)
+    oprot.writeMessageBegin("completeUpgrade", TMessageType.REPLY, seqid)
     result.write(oprot)
     oprot.writeMessageEnd()
     oprot.trans.flush()
@@ -8836,6 +9098,169 @@ class getTopologyTasksToSupervisorIds_result:
   def __ne__(self, other):
     return not (self == other)
 
+class getTopologyWorkersToSupervisorIds_args:
+  """
+  Attributes:
+   - topologyName
+  """
+
+  thrift_spec = (
+    None, # 0
+    (1, TType.STRING, 'topologyName', None, None, ), # 1
+  )
+
+  def __init__(self, topologyName=None,):
+    self.topologyName = topologyName
+
+  def read(self, iprot):
+    if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
+      fastbinary.decode_binary(self, iprot.trans, (self.__class__, self.thrift_spec))
+      return
+    iprot.readStructBegin()
+    while True:
+      (fname, ftype, fid) = iprot.readFieldBegin()
+      if ftype == TType.STOP:
+        break
+      if fid == 1:
+        if ftype == TType.STRING:
+          self.topologyName = iprot.readString().decode('utf-8')
+        else:
+          iprot.skip(ftype)
+      else:
+        iprot.skip(ftype)
+      iprot.readFieldEnd()
+    iprot.readStructEnd()
+
+  def write(self, oprot):
+    if oprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and self.thrift_spec is not None and fastbinary is not None:
+      oprot.trans.write(fastbinary.encode_binary(self, (self.__class__, self.thrift_spec)))
+      return
+    oprot.writeStructBegin('getTopologyWorkersToSupervisorIds_args')
+    if self.topologyName is not None:
+      oprot.writeFieldBegin('topologyName', TType.STRING, 1)
+      oprot.writeString(self.topologyName.encode('utf-8'))
+      oprot.writeFieldEnd()
+    oprot.writeFieldStop()
+    oprot.writeStructEnd()
+
+  def validate(self):
+    return
+
+
+  def __hash__(self):
+    value = 17
+    value = (value * 31) ^ hash(self.topologyName)
+    return value
+
+  def __repr__(self):
+    L = ['%s=%r' % (key, value)
+      for key, value in self.__dict__.iteritems()]
+    return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+  def __eq__(self, other):
+    return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+  def __ne__(self, other):
+    return not (self == other)
+
+class getTopologyWorkersToSupervisorIds_result:
+  """
+  Attributes:
+   - success
+   - e
+  """
+
+  thrift_spec = (
+    (0, TType.MAP, 'success', (TType.STRING,None,TType.MAP,(TType.STRING,None,TType.STRING,None)), None, ), # 0
+    (1, TType.STRUCT, 'e', (NotAliveException, NotAliveException.thrift_spec), None, ), # 1
+  )
+
+  def __init__(self, success=None, e=None,):
+    self.success = success
+    self.e = e
+
+  def read(self, iprot):
+    if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
+      fastbinary.decode_binary(self, iprot.trans, (self.__class__, self.thrift_spec))
+      return
+    iprot.readStructBegin()
+    while True:
+      (fname, ftype, fid) = iprot.readFieldBegin()
+      if ftype == TType.STOP:
+        break
+      if fid == 0:
+        if ftype == TType.MAP:
+          self.success = {}
+          (_ktype216, _vtype217, _size215 ) = iprot.readMapBegin()
+          for _i219 in xrange(_size215):
+            _key220 = iprot.readString().decode('utf-8')
+            _val221 = {}
+            (_ktype223, _vtype224, _size222 ) = iprot.readMapBegin()
+            for _i226 in xrange(_size222):
+              _key227 = iprot.readString().decode('utf-8')
+              _val228 = iprot.readString().decode('utf-8')
+              _val221[_key227] = _val228
+            iprot.readMapEnd()
+            self.success[_key220] = _val221
+          iprot.readMapEnd()
+        else:
+          iprot.skip(ftype)
+      elif fid == 1:
+        if ftype == TType.STRUCT:
+          self.e = NotAliveException()
+          self.e.read(iprot)
+        else:
+          iprot.skip(ftype)
+      else:
+        iprot.skip(ftype)
+      iprot.readFieldEnd()
+    iprot.readStructEnd()
+
+  def write(self, oprot):
+    if oprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and self.thrift_spec is not None and fastbinary is not None:
+      oprot.trans.write(fastbinary.encode_binary(self, (self.__class__, self.thrift_spec)))
+      return
+    oprot.writeStructBegin('getTopologyWorkersToSupervisorIds_result')
+    if self.success is not None:
+      oprot.writeFieldBegin('success', TType.MAP, 0)
+      oprot.writeMapBegin(TType.STRING, TType.MAP, len(self.success))
+      for kiter229,viter230 in self.success.items():
+        oprot.writeString(kiter229.encode('utf-8'))
+        oprot.writeMapBegin(TType.STRING, TType.STRING, len(viter230))
+        for kiter231,viter232 in viter230.items():
+          oprot.writeString(kiter231.encode('utf-8'))
+          oprot.writeString(viter232.encode('utf-8'))
+        oprot.writeMapEnd()
+      oprot.writeMapEnd()
+      oprot.writeFieldEnd()
+    if self.e is not None:
+      oprot.writeFieldBegin('e', TType.STRUCT, 1)
+      self.e.write(oprot)
+      oprot.writeFieldEnd()
+    oprot.writeFieldStop()
+    oprot.writeStructEnd()
+
+  def validate(self):
+    return
+
+
+  def __hash__(self):
+    value = 17
+    value = (value * 31) ^ hash(self.success)
+    value = (value * 31) ^ hash(self.e)
+    return value
+
+  def __repr__(self):
+    L = ['%s=%r' % (key, value)
+      for key, value in self.__dict__.iteritems()]
+    return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+  def __eq__(self, other):
+    return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+  def __ne__(self, other):
+    return not (self == other)
+
 class getTopology_args:
   """
   Attributes:
@@ -9394,10 +9819,10 @@ class registerMetrics_args:
       elif fid == 2:
         if ftype == TType.SET:
           self.metrics = set()
-          (_etype218, _size215) = iprot.readSetBegin()
-          for _i219 in xrange(_size215):
-            _elem220 = iprot.readString().decode('utf-8')
-            self.metrics.add(_elem220)
+          (_etype236, _size233) = iprot.readSetBegin()
+          for _i237 in xrange(_size233):
+            _elem238 = iprot.readString().decode('utf-8')
+            self.metrics.add(_elem238)
           iprot.readSetEnd()
         else:
           iprot.skip(ftype)
@@ -9418,8 +9843,8 @@ class registerMetrics_args:
     if self.metrics is not None:
       oprot.writeFieldBegin('metrics', TType.SET, 2)
       oprot.writeSetBegin(TType.STRING, len(self.metrics))
-      for iter221 in self.metrics:
-        oprot.writeString(iter221.encode('utf-8'))
+      for iter239 in self.metrics:
+        oprot.writeString(iter239.encode('utf-8'))
       oprot.writeSetEnd()
       oprot.writeFieldEnd()
     oprot.writeFieldStop()
@@ -9471,11 +9896,11 @@ class registerMetrics_result:
       if fid == 0:
         if ftype == TType.MAP:
           self.success = {}
-          (_ktype223, _vtype224, _size222 ) = iprot.readMapBegin()
-          for _i226 in xrange(_size222):
-            _key227 = iprot.readString().decode('utf-8')
-            _val228 = iprot.readI64();
-            self.success[_key227] = _val228
+          (_ktype241, _vtype242, _size240 ) = iprot.readMapBegin()
+          for _i244 in xrange(_size240):
+            _key245 = iprot.readString().decode('utf-8')
+            _val246 = iprot.readI64();
+            self.success[_key245] = _val246
           iprot.readMapEnd()
         else:
           iprot.skip(ftype)
@@ -9492,9 +9917,9 @@ class registerMetrics_result:
     if self.success is not None:
       oprot.writeFieldBegin('success', TType.MAP, 0)
       oprot.writeMapBegin(TType.STRING, TType.I64, len(self.success))
-      for kiter229,viter230 in self.success.items():
-        oprot.writeString(kiter229.encode('utf-8'))
-        oprot.writeI64(viter230)
+      for kiter247,viter248 in self.success.items():
+        oprot.writeString(kiter247.encode('utf-8'))
+        oprot.writeI64(viter248)
       oprot.writeMapEnd()
       oprot.writeFieldEnd()
     oprot.writeFieldStop()
@@ -9753,11 +10178,11 @@ class getMetrics_result:
       if fid == 0:
         if ftype == TType.LIST:
           self.success = []
-          (_etype234, _size231) = iprot.readListBegin()
-          for _i235 in xrange(_size231):
-            _elem236 = MetricInfo()
-            _elem236.read(iprot)
-            self.success.append(_elem236)
+          (_etype252, _size249) = iprot.readListBegin()
+          for _i253 in xrange(_size249):
+            _elem254 = MetricInfo()
+            _elem254.read(iprot)
+            self.success.append(_elem254)
           iprot.readListEnd()
         else:
           iprot.skip(ftype)
@@ -9774,8 +10199,8 @@ class getMetrics_result:
     if self.success is not None:
       oprot.writeFieldBegin('success', TType.LIST, 0)
       oprot.writeListBegin(TType.STRUCT, len(self.success))
-      for iter237 in self.success:
-        iter237.write(oprot)
+      for iter255 in self.success:
+        iter255.write(oprot)
       oprot.writeListEnd()
       oprot.writeFieldEnd()
     oprot.writeFieldStop()
@@ -10618,11 +11043,11 @@ class getTaskAndStreamMetrics_result:
       if fid == 0:
         if ftype == TType.LIST:
           self.success = []
-          (_etype241, _size238) = iprot.readListBegin()
-          for _i242 in xrange(_size238):
-            _elem243 = MetricInfo()
-            _elem243.read(iprot)
-            self.success.append(_elem243)
+          (_etype259, _size256) = iprot.readListBegin()
+          for _i260 in xrange(_size256):
+            _elem261 = MetricInfo()
+            _elem261.read(iprot)
+            self.success.append(_elem261)
           iprot.readListEnd()
         else:
           iprot.skip(ftype)
@@ -10639,8 +11064,8 @@ class getTaskAndStreamMetrics_result:
     if self.success is not None:
       oprot.writeFieldBegin('success', TType.LIST, 0)
       oprot.writeListBegin(TType.STRUCT, len(self.success))
-      for iter244 in self.success:
-        iter244.write(oprot)
+      for iter262 in self.success:
+        iter262.write(oprot)
       oprot.writeListEnd()
       oprot.writeFieldEnd()
     oprot.writeFieldStop()
@@ -10756,11 +11181,11 @@ class getSummarizedTopologyMetrics_result:
       if fid == 0:
         if ftype == TType.LIST:
           self.success = []
-          (_etype248, _size245) = iprot.readListBegin()
-          for _i249 in xrange(_size245):
-            _elem250 = MetricInfo()
-            _elem250.read(iprot)
-            self.success.append(_elem250)
+          (_etype266, _size263) = iprot.readListBegin()
+          for _i267 in xrange(_size263):
+            _elem268 = MetricInfo()
+            _elem268.read(iprot)
+            self.success.append(_elem268)
           iprot.readListEnd()
         else:
           iprot.skip(ftype)
@@ -10777,8 +11202,8 @@ class getSummarizedTopologyMetrics_result:
     if self.success is not None:
       oprot.writeFieldBegin('success', TType.LIST, 0)
       oprot.writeListBegin(TType.STRUCT, len(self.success))
-      for iter251 in self.success:
-        iter251.write(oprot)
+      for iter269 in self.success:
+        iter269.write(oprot)
       oprot.writeListEnd()
       oprot.writeFieldEnd()
     oprot.writeFieldStop()
@@ -11397,6 +11822,531 @@ class removeHostOutBlackList_result:
       oprot.trans.write(fastbinary.encode_binary(self, (self.__class__, self.thrift_spec)))
       return
     oprot.writeStructBegin('removeHostOutBlackList_result')
+    oprot.writeFieldStop()
+    oprot.writeStructEnd()
+
+  def validate(self):
+    return
+
+
+  def __hash__(self):
+    value = 17
+    return value
+
+  def __repr__(self):
+    L = ['%s=%r' % (key, value)
+      for key, value in self.__dict__.iteritems()]
+    return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+  def __eq__(self, other):
+    return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+  def __ne__(self, other):
+    return not (self == other)
+
+class deleteMetricMeta_args:
+  """
+  Attributes:
+   - topologyId
+   - metaType
+   - idList
+  """
+
+  thrift_spec = (
+    None, # 0
+    (1, TType.STRING, 'topologyId', None, None, ), # 1
+    (2, TType.I32, 'metaType', None, None, ), # 2
+    (3, TType.LIST, 'idList', (TType.STRING,None), None, ), # 3
+  )
+
+  def __init__(self, topologyId=None, metaType=None, idList=None,):
+    self.topologyId = topologyId
+    self.metaType = metaType
+    self.idList = idList
+
+  def read(self, iprot):
+    if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
+      fastbinary.decode_binary(self, iprot.trans, (self.__class__, self.thrift_spec))
+      return
+    iprot.readStructBegin()
+    while True:
+      (fname, ftype, fid) = iprot.readFieldBegin()
+      if ftype == TType.STOP:
+        break
+      if fid == 1:
+        if ftype == TType.STRING:
+          self.topologyId = iprot.readString().decode('utf-8')
+        else:
+          iprot.skip(ftype)
+      elif fid == 2:
+        if ftype == TType.I32:
+          self.metaType = iprot.readI32();
+        else:
+          iprot.skip(ftype)
+      elif fid == 3:
+        if ftype == TType.LIST:
+          self.idList = []
+          (_etype273, _size270) = iprot.readListBegin()
+          for _i274 in xrange(_size270):
+            _elem275 = iprot.readString().decode('utf-8')
+            self.idList.append(_elem275)
+          iprot.readListEnd()
+        else:
+          iprot.skip(ftype)
+      else:
+        iprot.skip(ftype)
+      iprot.readFieldEnd()
+    iprot.readStructEnd()
+
+  def write(self, oprot):
+    if oprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and self.thrift_spec is not None and fastbinary is not None:
+      oprot.trans.write(fastbinary.encode_binary(self, (self.__class__, self.thrift_spec)))
+      return
+    oprot.writeStructBegin('deleteMetricMeta_args')
+    if self.topologyId is not None:
+      oprot.writeFieldBegin('topologyId', TType.STRING, 1)
+      oprot.writeString(self.topologyId.encode('utf-8'))
+      oprot.writeFieldEnd()
+    if self.metaType is not None:
+      oprot.writeFieldBegin('metaType', TType.I32, 2)
+      oprot.writeI32(self.metaType)
+      oprot.writeFieldEnd()
+    if self.idList is not None:
+      oprot.writeFieldBegin('idList', TType.LIST, 3)
+      oprot.writeListBegin(TType.STRING, len(self.idList))
+      for iter276 in self.idList:
+        oprot.writeString(iter276.encode('utf-8'))
+      oprot.writeListEnd()
+      oprot.writeFieldEnd()
+    oprot.writeFieldStop()
+    oprot.writeStructEnd()
+
+  def validate(self):
+    return
+
+
+  def __hash__(self):
+    value = 17
+    value = (value * 31) ^ hash(self.topologyId)
+    value = (value * 31) ^ hash(self.metaType)
+    value = (value * 31) ^ hash(self.idList)
+    return value
+
+  def __repr__(self):
+    L = ['%s=%r' % (key, value)
+      for key, value in self.__dict__.iteritems()]
+    return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+  def __eq__(self, other):
+    return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+  def __ne__(self, other):
+    return not (self == other)
+
+class deleteMetricMeta_result:
+
+  thrift_spec = (
+  )
+
+  def read(self, iprot):
+    if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
+      fastbinary.decode_binary(self, iprot.trans, (self.__class__, self.thrift_spec))
+      return
+    iprot.readStructBegin()
+    while True:
+      (fname, ftype, fid) = iprot.readFieldBegin()
+      if ftype == TType.STOP:
+        break
+      else:
+        iprot.skip(ftype)
+      iprot.readFieldEnd()
+    iprot.readStructEnd()
+
+  def write(self, oprot):
+    if oprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and self.thrift_spec is not None and fastbinary is not None:
+      oprot.trans.write(fastbinary.encode_binary(self, (self.__class__, self.thrift_spec)))
+      return
+    oprot.writeStructBegin('deleteMetricMeta_result')
+    oprot.writeFieldStop()
+    oprot.writeStructEnd()
+
+  def validate(self):
+    return
+
+
+  def __hash__(self):
+    value = 17
+    return value
+
+  def __repr__(self):
+    L = ['%s=%r' % (key, value)
+      for key, value in self.__dict__.iteritems()]
+    return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+  def __eq__(self, other):
+    return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+  def __ne__(self, other):
+    return not (self == other)
+
+class grayUpgrade_args:
+  """
+  Attributes:
+   - topologyName
+   - component
+   - workers
+   - workerNum
+  """
+
+  thrift_spec = (
+    None, # 0
+    (1, TType.STRING, 'topologyName', None, None, ), # 1
+    (2, TType.STRING, 'component', None, None, ), # 2
+    (3, TType.LIST, 'workers', (TType.STRING,None), None, ), # 3
+    (4, TType.I32, 'workerNum', None, None, ), # 4
+  )
+
+  def __init__(self, topologyName=None, component=None, workers=None, workerNum=None,):
+    self.topologyName = topologyName
+    self.component = component
+    self.workers = workers
+    self.workerNum = workerNum
+
+  def read(self, iprot):
+    if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
+      fastbinary.decode_binary(self, iprot.trans, (self.__class__, self.thrift_spec))
+      return
+    iprot.readStructBegin()
+    while True:
+      (fname, ftype, fid) = iprot.readFieldBegin()
+      if ftype == TType.STOP:
+        break
+      if fid == 1:
+        if ftype == TType.STRING:
+          self.topologyName = iprot.readString().decode('utf-8')
+        else:
+          iprot.skip(ftype)
+      elif fid == 2:
+        if ftype == TType.STRING:
+          self.component = iprot.readString().decode('utf-8')
+        else:
+          iprot.skip(ftype)
+      elif fid == 3:
+        if ftype == TType.LIST:
+          self.workers = []
+          (_etype280, _size277) = iprot.readListBegin()
+          for _i281 in xrange(_size277):
+            _elem282 = iprot.readString().decode('utf-8')
+            self.workers.append(_elem282)
+          iprot.readListEnd()
+        else:
+          iprot.skip(ftype)
+      elif fid == 4:
+        if ftype == TType.I32:
+          self.workerNum = iprot.readI32();
+        else:
+          iprot.skip(ftype)
+      else:
+        iprot.skip(ftype)
+      iprot.readFieldEnd()
+    iprot.readStructEnd()
+
+  def write(self, oprot):
+    if oprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and self.thrift_spec is not None and fastbinary is not None:
+      oprot.trans.write(fastbinary.encode_binary(self, (self.__class__, self.thrift_spec)))
+      return
+    oprot.writeStructBegin('grayUpgrade_args')
+    if self.topologyName is not None:
+      oprot.writeFieldBegin('topologyName', TType.STRING, 1)
+      oprot.writeString(self.topologyName.encode('utf-8'))
+      oprot.writeFieldEnd()
+    if self.component is not None:
+      oprot.writeFieldBegin('component', TType.STRING, 2)
+      oprot.writeString(self.component.encode('utf-8'))
+      oprot.writeFieldEnd()
+    if self.workers is not None:
+      oprot.writeFieldBegin('workers', TType.LIST, 3)
+      oprot.writeListBegin(TType.STRING, len(self.workers))
+      for iter283 in self.workers:
+        oprot.writeString(iter283.encode('utf-8'))
+      oprot.writeListEnd()
+      oprot.writeFieldEnd()
+    if self.workerNum is not None:
+      oprot.writeFieldBegin('workerNum', TType.I32, 4)
+      oprot.writeI32(self.workerNum)
+      oprot.writeFieldEnd()
+    oprot.writeFieldStop()
+    oprot.writeStructEnd()
+
+  def validate(self):
+    return
+
+
+  def __hash__(self):
+    value = 17
+    value = (value * 31) ^ hash(self.topologyName)
+    value = (value * 31) ^ hash(self.component)
+    value = (value * 31) ^ hash(self.workers)
+    value = (value * 31) ^ hash(self.workerNum)
+    return value
+
+  def __repr__(self):
+    L = ['%s=%r' % (key, value)
+      for key, value in self.__dict__.iteritems()]
+    return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+  def __eq__(self, other):
+    return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+  def __ne__(self, other):
+    return not (self == other)
+
+class grayUpgrade_result:
+
+  thrift_spec = (
+  )
+
+  def read(self, iprot):
+    if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
+      fastbinary.decode_binary(self, iprot.trans, (self.__class__, self.thrift_spec))
+      return
+    iprot.readStructBegin()
+    while True:
+      (fname, ftype, fid) = iprot.readFieldBegin()
+      if ftype == TType.STOP:
+        break
+      else:
+        iprot.skip(ftype)
+      iprot.readFieldEnd()
+    iprot.readStructEnd()
+
+  def write(self, oprot):
+    if oprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and self.thrift_spec is not None and fastbinary is not None:
+      oprot.trans.write(fastbinary.encode_binary(self, (self.__class__, self.thrift_spec)))
+      return
+    oprot.writeStructBegin('grayUpgrade_result')
+    oprot.writeFieldStop()
+    oprot.writeStructEnd()
+
+  def validate(self):
+    return
+
+
+  def __hash__(self):
+    value = 17
+    return value
+
+  def __repr__(self):
+    L = ['%s=%r' % (key, value)
+      for key, value in self.__dict__.iteritems()]
+    return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+  def __eq__(self, other):
+    return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+  def __ne__(self, other):
+    return not (self == other)
+
+class rollbackTopology_args:
+  """
+  Attributes:
+   - topologyName
+  """
+
+  thrift_spec = (
+    None, # 0
+    (1, TType.STRING, 'topologyName', None, None, ), # 1
+  )
+
+  def __init__(self, topologyName=None,):
+    self.topologyName = topologyName
+
+  def read(self, iprot):
+    if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
+      fastbinary.decode_binary(self, iprot.trans, (self.__class__, self.thrift_spec))
+      return
+    iprot.readStructBegin()
+    while True:
+      (fname, ftype, fid) = iprot.readFieldBegin()
+      if ftype == TType.STOP:
+        break
+      if fid == 1:
+        if ftype == TType.STRING:
+          self.topologyName = iprot.readString().decode('utf-8')
+        else:
+          iprot.skip(ftype)
+      else:
+        iprot.skip(ftype)
+      iprot.readFieldEnd()
+    iprot.readStructEnd()
+
+  def write(self, oprot):
+    if oprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and self.thrift_spec is not None and fastbinary is not None:
+      oprot.trans.write(fastbinary.encode_binary(self, (self.__class__, self.thrift_spec)))
+      return
+    oprot.writeStructBegin('rollbackTopology_args')
+    if self.topologyName is not None:
+      oprot.writeFieldBegin('topologyName', TType.STRING, 1)
+      oprot.writeString(self.topologyName.encode('utf-8'))
+      oprot.writeFieldEnd()
+    oprot.writeFieldStop()
+    oprot.writeStructEnd()
+
+  def validate(self):
+    return
+
+
+  def __hash__(self):
+    value = 17
+    value = (value * 31) ^ hash(self.topologyName)
+    return value
+
+  def __repr__(self):
+    L = ['%s=%r' % (key, value)
+      for key, value in self.__dict__.iteritems()]
+    return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+  def __eq__(self, other):
+    return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+  def __ne__(self, other):
+    return not (self == other)
+
+class rollbackTopology_result:
+
+  thrift_spec = (
+  )
+
+  def read(self, iprot):
+    if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
+      fastbinary.decode_binary(self, iprot.trans, (self.__class__, self.thrift_spec))
+      return
+    iprot.readStructBegin()
+    while True:
+      (fname, ftype, fid) = iprot.readFieldBegin()
+      if ftype == TType.STOP:
+        break
+      else:
+        iprot.skip(ftype)
+      iprot.readFieldEnd()
+    iprot.readStructEnd()
+
+  def write(self, oprot):
+    if oprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and self.thrift_spec is not None and fastbinary is not None:
+      oprot.trans.write(fastbinary.encode_binary(self, (self.__class__, self.thrift_spec)))
+      return
+    oprot.writeStructBegin('rollbackTopology_result')
+    oprot.writeFieldStop()
+    oprot.writeStructEnd()
+
+  def validate(self):
+    return
+
+
+  def __hash__(self):
+    value = 17
+    return value
+
+  def __repr__(self):
+    L = ['%s=%r' % (key, value)
+      for key, value in self.__dict__.iteritems()]
+    return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+  def __eq__(self, other):
+    return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+  def __ne__(self, other):
+    return not (self == other)
+
+class completeUpgrade_args:
+  """
+  Attributes:
+   - topologyName
+  """
+
+  thrift_spec = (
+    None, # 0
+    (1, TType.STRING, 'topologyName', None, None, ), # 1
+  )
+
+  def __init__(self, topologyName=None,):
+    self.topologyName = topologyName
+
+  def read(self, iprot):
+    if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
+      fastbinary.decode_binary(self, iprot.trans, (self.__class__, self.thrift_spec))
+      return
+    iprot.readStructBegin()
+    while True:
+      (fname, ftype, fid) = iprot.readFieldBegin()
+      if ftype == TType.STOP:
+        break
+      if fid == 1:
+        if ftype == TType.STRING:
+          self.topologyName = iprot.readString().decode('utf-8')
+        else:
+          iprot.skip(ftype)
+      else:
+        iprot.skip(ftype)
+      iprot.readFieldEnd()
+    iprot.readStructEnd()
+
+  def write(self, oprot):
+    if oprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and self.thrift_spec is not None and fastbinary is not None:
+      oprot.trans.write(fastbinary.encode_binary(self, (self.__class__, self.thrift_spec)))
+      return
+    oprot.writeStructBegin('completeUpgrade_args')
+    if self.topologyName is not None:
+      oprot.writeFieldBegin('topologyName', TType.STRING, 1)
+      oprot.writeString(self.topologyName.encode('utf-8'))
+      oprot.writeFieldEnd()
+    oprot.writeFieldStop()
+    oprot.writeStructEnd()
+
+  def validate(self):
+    return
+
+
+  def __hash__(self):
+    value = 17
+    value = (value * 31) ^ hash(self.topologyName)
+    return value
+
+  def __repr__(self):
+    L = ['%s=%r' % (key, value)
+      for key, value in self.__dict__.iteritems()]
+    return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+  def __eq__(self, other):
+    return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+  def __ne__(self, other):
+    return not (self == other)
+
+class completeUpgrade_result:
+
+  thrift_spec = (
+  )
+
+  def read(self, iprot):
+    if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
+      fastbinary.decode_binary(self, iprot.trans, (self.__class__, self.thrift_spec))
+      return
+    iprot.readStructBegin()
+    while True:
+      (fname, ftype, fid) = iprot.readFieldBegin()
+      if ftype == TType.STOP:
+        break
+      else:
+        iprot.skip(ftype)
+      iprot.readFieldEnd()
+    iprot.readStructEnd()
+
+  def write(self, oprot):
+    if oprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and self.thrift_spec is not None and fastbinary is not None:
+      oprot.trans.write(fastbinary.encode_binary(self, (self.__class__, self.thrift_spec)))
+      return
+    oprot.writeStructBegin('completeUpgrade_result')
     oprot.writeFieldStop()
     oprot.writeStructEnd()
 

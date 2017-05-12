@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 public class StormChannelGroup extends DefaultChannelGroup {
     private static final Logger LOG = LoggerFactory.getLogger(StormChannelGroup.class);
 
-    private Map<String, Channel> channelMap = new ConcurrentHashMap<String, Channel>();
+    private Map<String, Channel> channelMap = new ConcurrentHashMap<>();
 
     public StormChannelGroup() {
         super();

@@ -990,6 +990,7 @@ public class Config extends HashMap<String, Object> {
      */
     public static final String TOPOLOGY_WORKERS = "topology.workers";
     public static final Object TOPOLOGY_WORKERS_SCHEMA = ConfigValidation.IntegerValidator;
+    public static final String RESERVE_WORKERS = "jstorm.reserve.workers";
 
     /**
      * How many instances to create for a spout/bolt. A task runs on a thread with zero or more other tasks for the same spout/bolt. The number of tasks for a
@@ -1296,12 +1297,6 @@ public class Config extends HashMap<String, Object> {
     public static final Object TOPOLOGY_EXECUTOR_SEND_BUFFER_SIZE_SCHEMA = ConfigValidation.PowerOf2Validator;
 
     /**
-     * The size of the Disruptor transfer queue for each worker.
-     */
-    public static final String TOPOLOGY_TRANSFER_BUFFER_SIZE = "topology.transfer.buffer.size";
-    public static final Object TOPOLOGY_TRANSFER_BUFFER_SIZE_SCHEMA = ConfigValidation.IntegerValidator;
-
-    /**
      * How often a tick tuple from the "__system" component and "__tick" stream should be sent to tasks. Meant to be used as a component-specific configuration.
      */
     public static final String TOPOLOGY_TICK_TUPLE_FREQ_SECS = "topology.tick.tuple.freq.secs";
@@ -1504,6 +1499,8 @@ public class Config extends HashMap<String, Object> {
     public static final String BLOBSTORE_HDFS_HOSTNAME = "blobstore.hdfs.hostname";
 
     public static final String BLOBSTORE_HDFS_PORT = "blobstore.hdfs.port";
+
+    public static final String BLOBSTORE_HDFS_DEFAULT_FS = "blobstore.hdfs.defaultFS";
 
     /**
      *  Set replication factor for a blob in HDFS Blobstore Implementation

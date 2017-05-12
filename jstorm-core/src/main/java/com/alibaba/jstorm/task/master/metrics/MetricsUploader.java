@@ -115,25 +115,30 @@ public class MetricsUploader implements TMHandler {
             MetricInfo streamMetrics = tpMetric.get_streamMetric();
             MetricInfo workerMetrics = tpMetric.get_workerMetric();
             MetricInfo nettyMetrics = tpMetric.get_nettyMetric();
+            MetricInfo compStreamMetrics = tpMetric.get_compStreamMetric();
 
             int totalSize = topologyMetrics.get_metrics_size()
                     + componentMetrics.get_metrics_size()
                     + taskMetrics.get_metrics_size()
                     + streamMetrics.get_metrics_size()
                     + workerMetrics.get_metrics_size()
-                    + nettyMetrics.get_metrics_size();
+                    + nettyMetrics.get_metrics_size()
+                    + compStreamMetrics.get_metrics_size();
 
             // for small topologies, send all metrics together to ease the
             // pressure of nimbus
             if (totalSize < MAX_BATCH_SIZE) {
-                client.getClient().uploadTopologyMetrics(topologyId,
-                        new TopologyMetric(topologyMetrics, componentMetrics,
-                                workerMetrics, taskMetrics, streamMetrics,
-                                nettyMetrics));
+                TopologyMetric allMetrics = new TopologyMetric(
+                        topologyMetrics, componentMetrics, workerMetrics, taskMetrics, streamMetrics, nettyMetrics);
+                allMetrics.set_compStreamMetric(compStreamMetrics);
+
+                client.getClient().uploadTopologyMetrics(topologyId, allMetrics);
             } else {
-                client.getClient().uploadTopologyMetrics(topologyId,
-                        new TopologyMetric(topologyMetrics, componentMetrics,
-                                dummy, dummy, dummy, dummy));
+                TopologyMetric partialMetrics = new TopologyMetric(topologyMetrics, componentMetrics,
+                        dummy, dummy, dummy, dummy);
+                partialMetrics.set_compStreamMetric(compStreamMetrics);
+                client.getClient().uploadTopologyMetrics(topologyId, partialMetrics);
+
                 batchUploadMetrics(workerMetrics, MetaType.WORKER);
                 batchUploadMetrics(taskMetrics, MetaType.TASK);
                 batchUploadMetrics(streamMetrics, MetaType.STREAM);
@@ -141,7 +146,7 @@ public class MetricsUploader implements TMHandler {
             }
         } catch (Exception e) {
             String errorInfo = "Failed to upload worker metrics";
-            LOG.error("Failed to upload worker metrics ", e);
+            LOG.error(errorInfo, e);
             if (client != null) {
                 client.cleanup();
             }

@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.Random;
 
 /**
- * Created by binyang.dby on 2016/7/21.
+ * @author binyang.dby on 2016/7/21.
  *
  * A little bit similar to SlidingWindowTestRandomSpout. But there is still some
  * difference between them.The SlidingWindowTestRandomSpout is used for window

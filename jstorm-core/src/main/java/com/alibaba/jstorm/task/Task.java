@@ -22,7 +22,6 @@ import backtype.storm.hooks.ITaskHook;
 import backtype.storm.messaging.IConnection;
 import backtype.storm.messaging.IContext;
 import backtype.storm.scheduler.WorkerSlot;
-import backtype.storm.serialization.KryoTupleDeserializer;
 import backtype.storm.serialization.KryoTupleSerializer;
 import backtype.storm.spout.ISpout;
 import backtype.storm.task.IBolt;
@@ -31,6 +30,7 @@ import backtype.storm.utils.DisruptorQueue;
 import backtype.storm.utils.Utils;
 import backtype.storm.utils.WorkerClassLoader;
 import clojure.lang.Atom;
+
 import com.alibaba.jstorm.callback.AsyncLoopDefaultKill;
 import com.alibaba.jstorm.callback.AsyncLoopThread;
 import com.alibaba.jstorm.callback.RunnableCallback;
@@ -47,12 +47,14 @@ import com.alibaba.jstorm.task.error.TaskReportError;
 import com.alibaba.jstorm.task.error.TaskReportErrorAndDie;
 import com.alibaba.jstorm.task.execute.BaseExecutors;
 import com.alibaba.jstorm.task.execute.BoltExecutors;
+import com.alibaba.jstorm.task.execute.TopologyMasterBoltExecutors;
 import com.alibaba.jstorm.task.execute.spout.MultipleThreadSpoutExecutors;
 import com.alibaba.jstorm.task.execute.spout.SingleThreadSpoutExecutors;
 import com.alibaba.jstorm.task.execute.spout.SpoutExecutors;
 import com.alibaba.jstorm.task.group.MkGrouper;
 import com.alibaba.jstorm.utils.JStormServerUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,8 +64,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Task instance
- *
  * @author yannian/Longda
  */
 public class Task implements Runnable {
@@ -87,8 +87,6 @@ public class Task implements Runnable {
     private String componentId;
     private volatile TaskStatus taskStatus;
     private Atom openOrPrepareWasCalled;
-    // running time counter
-    private UptimeComputer uptime = new UptimeComputer();
 
     private StormClusterState zkCluster;
     private Object taskObj;
@@ -100,8 +98,8 @@ public class Task implements Runnable {
 
     private boolean isTaskBatchTuple;
     private TaskShutdownDameon taskShutdownDameon;
-    private ConcurrentHashMap<WorkerSlot, IConnection> nodeportSocket;
-    private ConcurrentHashMap<Integer, WorkerSlot> taskNodeport;
+    private ConcurrentHashMap<WorkerSlot, IConnection> nodePortToSocket;
+    private ConcurrentHashMap<Integer, WorkerSlot> taskToNodePort;
 
     private BaseExecutors baseExecutors;
 
@@ -110,11 +108,14 @@ public class Task implements Runnable {
         openOrPrepareWasCalled = new Atom(false);
 
         this.workerData = workerData;
-        this.topologyContext = workerData.getContextMaker().makeTopologyContext(workerData.getSysTopology(), taskId, openOrPrepareWasCalled);
-        this.userContext = workerData.getContextMaker().makeTopologyContext(workerData.getRawTopology(), taskId, openOrPrepareWasCalled);
+        this.topologyContext = workerData.getContextMaker().makeTopologyContext(
+                workerData.getSysTopology(), taskId, openOrPrepareWasCalled);
+        this.userContext = workerData.getContextMaker().makeTopologyContext(
+                workerData.getRawTopology(), taskId, openOrPrepareWasCalled);
         this.taskId = taskId;
         this.componentId = topologyContext.getThisComponentId();
-        this.stormConf = Common.component_conf(workerData.getStormConf(), topologyContext, componentId);
+        topologyContext.getStormConf().putAll(Common.component_conf(topologyContext, componentId));
+        this.stormConf = topologyContext.getStormConf();
 
         this.taskStatus = new TaskStatus();
 
@@ -125,8 +126,8 @@ public class Task implements Runnable {
         this.context = workerData.getContext();
         this.workHalt = workerData.getWorkHalt();
         this.zkCluster = workerData.getZkCluster();
-        this.nodeportSocket = workerData.getNodeportSocket();
-        this.taskNodeport = workerData.getTaskNodeport();
+        this.nodePortToSocket = workerData.getNodePortToSocket();
+        this.taskToNodePort = workerData.getTaskToNodePort();
         // create report error callback,
         // in fact it is storm_cluster.report-task-error
         ITaskReportErr reportError = new TaskReportError(zkCluster, topologyId, taskId);
@@ -145,7 +146,8 @@ public class Task implements Runnable {
 
         try {
             WorkerClassLoader.switchThreadContext();
-            this.taskObj = Common.get_task_object(topologyContext.getRawTopology(), componentId, WorkerClassLoader.getInstance());
+            this.taskObj = Common.get_task_object(
+                    topologyContext.getRawTopology(), componentId, WorkerClassLoader.getInstance());
             WorkerClassLoader.restoreThreadContext();
         } catch (Exception e) {
             if (reportErrorDie != null) {
@@ -165,23 +167,25 @@ public class Task implements Runnable {
 
         // get current task's output
         // <Stream_id,<component, Grouping>>
-        Map<String, Map<String, MkGrouper>> streamComponentGrouper = Common.outbound_components(topologyContext, workerData);
+        Map<String, Map<String, MkGrouper>> streamComponentGrouper =
+                Common.outbound_components(topologyContext, workerData);
 
         return new TaskSendTargets(stormConf, component, streamComponentGrouper, topologyContext, taskStats);
     }
 
     private void updateSendTargets() {
         if (taskSendTargets != null) {
-            Map<String, Map<String, MkGrouper>> streamComponentGrouper = Common.outbound_components(topologyContext, workerData);
+            Map<String, Map<String, MkGrouper>> streamComponentGrouper =
+                    Common.outbound_components(topologyContext, workerData);
             taskSendTargets.updateStreamCompGrouper(streamComponentGrouper);
         } else {
-            LOG.error("taskSendTargets is null when trying to update it.");
+            LOG.error("taskSendTargets is null!");
         }
     }
 
     public TaskSendTargets echoToSystemBolt() {
         // send "startup" tuple to system bolt
-        List<Object> msg = new ArrayList<Object>();
+        List<Object> msg = new ArrayList<>();
         msg.add("startup");
 
         // create task receive object
@@ -193,19 +197,19 @@ public class Task implements Runnable {
 
     public boolean isSingleThread(Map conf) {
         boolean isOnePending = JStormServerUtils.isOnePending(conf);
-        if (isOnePending == true) {
-            return true;
-        }
-        return ConfigExtension.isSpoutSingleThread(conf);
+        return isOnePending || ConfigExtension.isSpoutSingleThread(conf);
     }
 
     public BaseExecutors mkExecutor() {
         BaseExecutors baseExecutor = null;
 
         if (taskObj instanceof IBolt) {
-            baseExecutor = new BoltExecutors(this);
+            if (taskId == topologyContext.getTopologyMasterId())
+                baseExecutor = new TopologyMasterBoltExecutors(this);
+            else
+                baseExecutor = new BoltExecutors(this);
         } else if (taskObj instanceof ISpout) {
-            if (isSingleThread(stormConf) == true) {
+            if (isSingleThread(stormConf)) {
                 baseExecutor = new SingleThreadSpoutExecutors(this);
             } else {
                 baseExecutor = new MultipleThreadSpoutExecutors(this);
@@ -219,10 +223,7 @@ public class Task implements Runnable {
      * create executor to receive tuples and run bolt/spout execute function
      */
     private RunnableCallback prepareExecutor() {
-
-        final BaseExecutors baseExecutor = mkExecutor();
-
-        return baseExecutor;
+        return mkExecutor();
     }
 
     public TaskReceiver mkTaskReceiver() {
@@ -237,7 +238,6 @@ public class Task implements Runnable {
     }
 
     public TaskShutdownDameon execute() throws Exception {
-
         taskSendTargets = echoToSystemBolt();
 
         // create thread to get tuple from zeroMQ,
@@ -245,12 +245,12 @@ public class Task implements Runnable {
         taskTransfer = mkTaskSending(workerData);
         RunnableCallback baseExecutor = prepareExecutor();
         //set baseExecutors for update
-        setBaseExecutors((BaseExecutors)baseExecutor);
+        setBaseExecutors((BaseExecutors) baseExecutor);
 
         AsyncLoopThread executor_threads = new AsyncLoopThread(baseExecutor, false, Thread.MAX_PRIORITY, true);
         taskReceiver = mkTaskReceiver();
 
-        List<AsyncLoopThread> allThreads = new ArrayList<AsyncLoopThread>();
+        List<AsyncLoopThread> allThreads = new ArrayList<>();
         allThreads.add(executor_threads);
 
         LOG.info("Finished loading task " + componentId + ":" + taskId);
@@ -261,16 +261,15 @@ public class Task implements Runnable {
 
     private TaskTransfer mkTaskSending(WorkerData workerData) {
         // sending tuple's serializer
-        KryoTupleSerializer serializer = new KryoTupleSerializer(workerData.getStormConf(), topologyContext.getRawTopology());
+        KryoTupleSerializer serializer = new KryoTupleSerializer(
+                workerData.getStormConf(), topologyContext.getRawTopology());
         String taskName = JStormServerUtils.getName(componentId, taskId);
         // Task sending all tuples through this Object
-        TaskTransfer taskTransfer;
-        taskTransfer = new TaskTransfer(this, taskName, serializer, taskStatus, workerData, topologyContext);
-        return taskTransfer;
+        return new TaskTransfer(this, taskName, serializer, taskStatus, workerData, topologyContext);
     }
 
     public TaskShutdownDameon getShutdown(List<AsyncLoopThread> allThreads, RunnableCallback baseExecutor) {
-        AsyncLoopThread ackerThread = null;
+        AsyncLoopThread ackerThread;
         if (baseExecutor instanceof SpoutExecutors) {
             ackerThread = ((SpoutExecutors) baseExecutor).getAckerRunnableThread();
 
@@ -287,9 +286,8 @@ public class Task implements Runnable {
         allThreads.addAll(serializeThreads);
         TaskHeartbeatTrigger taskHeartbeatTrigger = ((BaseExecutors) baseExecutor).getTaskHbTrigger();
 
-        TaskShutdownDameon shutdown = new TaskShutdownDameon(taskStatus, topologyId, taskId, allThreads, zkCluster, taskObj, this, taskHeartbeatTrigger);
-
-        return shutdown;
+        return new TaskShutdownDameon(
+                taskStatus, topologyId, taskId, allThreads, zkCluster, taskObj, this, taskHeartbeatTrigger);
     }
 
     public TaskShutdownDameon getTaskShutdownDameon() {
@@ -300,13 +298,12 @@ public class Task implements Runnable {
         try {
             taskShutdownDameon = this.execute();
         } catch (Throwable e) {
-            LOG.error("init task take error", e);
+            LOG.error("init task error", e);
             if (reportErrorDie != null) {
                 reportErrorDie.report(e);
             } else {
                 throw new RuntimeException(e);
             }
-
         }
     }
 
@@ -316,14 +313,14 @@ public class Task implements Runnable {
     }
 
     /**
-     * Update the data which can be changed dynamically e.g. when scale-out of a task parallelism
+     * Update task data which can be changed dynamically e.g. when scale-out of a task parallelism
      */
     public void updateTaskData() {
         // Only update the local task list of topologyContext here. Because
         // other
         // relative parts in context shall be updated while the updating of
         // WorkerData (Task2Component and Component2Task map)
-        List<Integer> localTasks = JStormUtils.mk_list(workerData.getTaskids());
+        List<Integer> localTasks = JStormUtils.mk_list(workerData.getTaskIds());
         topologyContext.setThisWorkerTasks(localTasks);
         userContext.setThisWorkerTasks(localTasks);
 
@@ -427,12 +424,12 @@ public class Task implements Runnable {
         return isTaskBatchTuple;
     }
 
-    public ConcurrentHashMap<WorkerSlot, IConnection> getNodeportSocket() {
-        return nodeportSocket;
+    public ConcurrentHashMap<WorkerSlot, IConnection> getNodePortToSocket() {
+        return nodePortToSocket;
     }
 
-    public ConcurrentHashMap<Integer, WorkerSlot> getTaskNodeport() {
-        return taskNodeport;
+    public ConcurrentHashMap<Integer, WorkerSlot> getTaskToNodePort() {
+        return taskToNodePort;
     }
 
     public BaseExecutors getBaseExecutors() {

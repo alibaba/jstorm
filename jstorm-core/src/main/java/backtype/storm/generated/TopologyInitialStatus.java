@@ -7,8 +7,6 @@
 package backtype.storm.generated;
 
 
-import java.util.Map;
-import java.util.HashMap;
 import org.apache.thrift.TEnum;
 
 public enum TopologyInitialStatus implements org.apache.thrift.TEnum {

@@ -34,7 +34,7 @@ public class TimeoutMemCache implements JStormCache {
     private static Logger LOG = LoggerFactory.getLogger(TimeoutMemCache.class);
 
     protected int defaultTimeout;
-    protected final TreeMap<Integer, TimeCacheMap<String, Object>> cacheWindows = new TreeMap<Integer, TimeCacheMap<String, Object>>();
+    protected final TreeMap<Integer, TimeCacheMap<String, Object>> cacheWindows = new TreeMap<>();
 
     public TimeoutMemCache() {
     }
@@ -42,7 +42,7 @@ public class TimeoutMemCache implements JStormCache {
     protected void registerCacheWindow(int timeoutSecond) {
         synchronized (this) {
             if (cacheWindows.get(timeoutSecond) == null) {
-                TimeCacheMap<String, Object> cacheWindow = new TimeCacheMap<String, Object>(timeoutSecond);
+                TimeCacheMap<String, Object> cacheWindow = new TimeCacheMap<>(timeoutSecond);
                 cacheWindows.put(timeoutSecond, cacheWindow);
 
                 LOG.info("Successfully register CacheWindow: " + timeoutSecond);
@@ -75,8 +75,7 @@ public class TimeoutMemCache implements JStormCache {
 
     @Override
     public Object get(String key) {
-        // @@@ TODO
-        // in order to improve performance, it can be query from defaultWindow firstly, then others
+        // TODO: in order to improve performance, it can be query from defaultWindow first, then other windows
         for (TimeCacheMap<String, Object> cacheWindow : cacheWindows.values()) {
             Object ret = cacheWindow.get(key);
             if (ret != null) {

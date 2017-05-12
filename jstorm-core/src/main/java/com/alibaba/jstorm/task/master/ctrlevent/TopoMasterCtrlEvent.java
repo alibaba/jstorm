@@ -22,17 +22,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Definition of control event which is used for the control purpose in
- * topology, e.g. back pressure
- * 
- * @author Basti Liu 
+ * Definition of control event which is used for the control purpose in topology, e.g. back pressure
+ *
+ * @author Basti Liu
  */
 
 public class TopoMasterCtrlEvent implements Serializable {
 
     private static final long serialVersionUID = 5929540385279089750L;
 
-    public enum EventType {topologyFinishInit, transactionInitState, transactionCommit, transactionRollback,
+    public enum EventType {
+        topologyFinishInit, transactionInitState, transactionCommit, transactionRollback,
         transactionAck, transactionStop, transactionStart, defaultType
     }
 
@@ -75,19 +75,19 @@ public class TopoMasterCtrlEvent implements Serializable {
 
     public void addEventValue(Object value) {
         if (eventValue == null) {
-            eventValue = new ArrayList<Object>();
+            eventValue = new ArrayList<>();
         }
 
         eventValue.add(value);
     }
 
-    public boolean isFinishInitEvent(){
+    public boolean isFinishInitEvent() {
         return eventType.equals(EventType.topologyFinishInit);
     }
 
     public boolean isTransactionEvent() {
-        return eventType.equals(EventType.transactionInitState) || eventType.equals(EventType.transactionCommit) || 
-                eventType.equals(EventType.transactionRollback) || eventType.equals(EventType.transactionAck) || 
+        return eventType.equals(EventType.transactionInitState) || eventType.equals(EventType.transactionCommit) ||
+                eventType.equals(EventType.transactionRollback) || eventType.equals(EventType.transactionAck) ||
                 eventType.equals(EventType.transactionStop) || eventType.equals(EventType.transactionStart);
     }
 

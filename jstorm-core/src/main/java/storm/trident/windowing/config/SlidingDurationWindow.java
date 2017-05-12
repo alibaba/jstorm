@@ -25,7 +25,6 @@ import storm.trident.windowing.strategy.WindowStrategy;
 /**
  * Represents configuration of sliding window based on duration. Window duration of {@code windowLength} slides
  * at every {@code slideLength} interval.
- *
  */
 public final class SlidingDurationWindow extends BaseWindowConfig {
 

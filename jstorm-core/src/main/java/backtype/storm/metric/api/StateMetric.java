@@ -17,6 +17,7 @@
  */
 package backtype.storm.metric.api;
 
+@Deprecated
 public class StateMetric implements IMetric {
     private IStatefulObject _obj;
 

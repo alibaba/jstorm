@@ -1,8 +1,6 @@
 package backtype.storm.task;
 
-import backtype.storm.topology.IControlOutputCollector;
 import backtype.storm.tuple.Tuple;
-
 import java.util.Collection;
 import java.util.List;
 
@@ -13,7 +11,6 @@ public abstract class OutputCollectorCb implements IOutputCollector {
     protected IOutputCollector delegate;
 
     public OutputCollectorCb() {
-
     }
 
     public OutputCollectorCb(IOutputCollector delegate) {
@@ -22,10 +19,17 @@ public abstract class OutputCollectorCb implements IOutputCollector {
 
     public abstract List<Integer> emit(String streamId, Collection<Tuple> anchors, List<Object> tuple, ICollectorCallback callback);
 
-    public abstract void emitDirect(int taskId, String streamId, Collection<Tuple> anchors,List<Object> tuple, ICollectorCallback callback);
+    public abstract void emitDirect(int taskId, String streamId, Collection<Tuple> anchors, List<Object> tuple, ICollectorCallback callback);
+
+    public abstract List<Integer> emitCtrl(String streamId, Collection<Tuple> anchors, List<Object> tuple);
+
+    public abstract void emitDirectCtrl(int taskId, String streamId, Collection<Tuple> anchors, List<Object> tuple);
 
     public void flush() {
 
     }
-}
 
+    public void setBatchId(long batchId) {
+
+    }
+}

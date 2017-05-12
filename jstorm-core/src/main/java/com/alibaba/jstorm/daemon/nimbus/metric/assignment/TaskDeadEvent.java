@@ -13,8 +13,7 @@ public class TaskDeadEvent extends MetricEvent {
     
     @Override
     public void run() {
-        // TODO Auto-generated method stub
-        context.getMetricUploader().sendEvent(context.getClusterName(), this);
+        context.getMetricUploaderDelegate().sendEvent(context.getClusterName(), this);
         
         // unregister dead workers
         Set<ResourceWorkerSlot> workers = new HashSet<>();

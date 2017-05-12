@@ -26,11 +26,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.json.simple.JSONAware;
 
-//import com.alibaba.fastjson.JSONAware;
-
 public class FileAttribute implements Serializable, JSONAware {
-
-    /**  */
     private static final long serialVersionUID = -5131640995402822835L;
 
     private String fileName;
@@ -82,7 +78,7 @@ public class FileAttribute implements Serializable, JSONAware {
 
     @Override
     public String toJSONString() {
-        Map<String, String> map = new HashMap<String, String>();
+        Map<String, String> map = new HashMap<>();
 
         map.put(FILE_NAME_FIELD, fileName);
         map.put(IS_DIR_FIELD, isDir);
@@ -107,7 +103,7 @@ public class FileAttribute implements Serializable, JSONAware {
     }
 
     public static void main(String[] args) {
-        Map<String, FileAttribute> map = new HashMap<String, FileAttribute>();
+        Map<String, FileAttribute> map = new HashMap<>();
 
         FileAttribute attribute = new FileAttribute();
         attribute.setFileName("test");

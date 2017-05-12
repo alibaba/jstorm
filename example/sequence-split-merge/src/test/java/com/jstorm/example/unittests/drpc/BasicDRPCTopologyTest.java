@@ -12,7 +12,7 @@ import static org.junit.Assert.*;
 import java.util.Map;
 
 /**
- * Created by binyang.dby on 2016/7/22.
+ * @author binyang.dby on 2016/7/22.
  */
 public class BasicDRPCTopologyTest {
     @Test

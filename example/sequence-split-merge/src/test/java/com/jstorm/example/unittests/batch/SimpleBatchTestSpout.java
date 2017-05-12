@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Random;
 
 /**
- * Created by binyang.dby on 2016/7/20.
+ * @author binyang.dby on 2016/7/20.
  */
 public class SimpleBatchTestSpout implements IBatchSpout
 {

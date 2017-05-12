@@ -2,53 +2,46 @@ package com.alibaba.jstorm.transactional.state;
 
 import java.io.Serializable;
 
-import com.alibaba.jstorm.transactional.BatchGroupId;
-
 public class TransactionState implements Serializable {
     private static final long serialVersionUID = 1124196216381387618L;
 
-    public static enum State {
+    public enum State {
         INIT, ACTIVE, INACTIVE, ROLLBACK
     }
 
-    protected BatchGroupId batchGroupId;
-    protected Object systemCheckpoint;
-    protected Object userCheckpoint;
+    protected long batchId;
+    protected Object systemCheckpoint = null;
+    protected Object userCheckpoint = null;
 
     public TransactionState() {
-    	
     }
 
-    public TransactionState(int groupId, long batchId, Object sysCheckpoint, Object userCheckpoint) {
-        this.batchGroupId = new BatchGroupId(groupId, batchId);
+    public TransactionState(long batchId) {
+        this.batchId = batchId;
+    }
+
+    public TransactionState(long batchId, Object sysCheckpoint, Object userCheckpoint) {
+        this.batchId = batchId;
         this.systemCheckpoint = sysCheckpoint;
         this.userCheckpoint = userCheckpoint;
     }
 
     public TransactionState(TransactionState state) {
-        this.batchGroupId = new BatchGroupId(state.getCurrBatchGroupId());
+        this.batchId = state.getCurrBatchId();
         this.systemCheckpoint = state.getsysCheckpoint();
         this.userCheckpoint = state.getUserCheckpoint();
     }
 
-    public void setCurrBatchGroupId(BatchGroupId id) {
-        this.batchGroupId = id;
-    }
-
-    public void setGroupId(int groupId) {
-    	this.batchGroupId.groupId = groupId;
-    }
-
     public void setBatchId(long batchId) {
-    	this.batchGroupId.batchId = batchId;
+        this.batchId = batchId;
     }
 
-    public BatchGroupId getCurrBatchGroupId() {
-        return batchGroupId;
+    public long getCurrBatchId() {
+        return batchId;
     }
 
     public Object getsysCheckpoint() {
-    	return systemCheckpoint;
+        return systemCheckpoint;
     }
 
     public void setSystemCheckpoint(Object checkpoint) {
@@ -64,13 +57,13 @@ public class TransactionState implements Serializable {
     }
 
     public void reset() {
-        batchGroupId = null;
+        batchId = 0;
         systemCheckpoint = null;
         userCheckpoint = null;
     }
 
     @Override
     public String toString() {
-        return "batchGroupId=" + batchGroupId + ", sysState=" + systemCheckpoint + ", userState=" + userCheckpoint;
+        return "batchId=" + batchId + ", sysState=" + systemCheckpoint + ", userState=" + userCheckpoint;
     }
 }

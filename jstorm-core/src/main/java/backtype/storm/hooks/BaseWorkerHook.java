@@ -24,7 +24,7 @@ import backtype.storm.task.WorkerTopologyContext;
 
 /**
  * A BaseWorkerHook is a noop implementation of IWorkerHook. You
- * may extends this class and implement any and/or all methods you
+ * may extend this class and implement any and/or all methods you
  * need for your workers.
  */
 public class BaseWorkerHook implements IWorkerHook, Serializable {

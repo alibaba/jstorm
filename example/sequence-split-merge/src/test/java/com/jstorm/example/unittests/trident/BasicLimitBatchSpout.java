@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Created by binyang.dby on 2016/7/9.
+ * @author binyang.dby on 2016/7/9.
  *
  * this is the basic class for BatchSpout which has a limit for unit test. The subclass just need to determine
  * how to generate a batch with a given max batch size.

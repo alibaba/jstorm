@@ -3,7 +3,7 @@ package com.jstorm.example.unittests.utils;
 import backtype.storm.LocalDRPC;
 
 /**
- * Created by binyang.dby on 2016/7/21.
+ * @author binyang.dby on 2016/7/21.
  *
  * used for validate if a unit test result should pass by execute local DRPC.
  */

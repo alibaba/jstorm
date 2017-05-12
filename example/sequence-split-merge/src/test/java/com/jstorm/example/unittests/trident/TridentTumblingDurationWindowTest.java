@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 
 
 /**
- * Created by binyang.dby on 2016/7/22.
+ * @author binyang.dby on 2016/7/22.
  */
 public class TridentTumblingDurationWindowTest {
 

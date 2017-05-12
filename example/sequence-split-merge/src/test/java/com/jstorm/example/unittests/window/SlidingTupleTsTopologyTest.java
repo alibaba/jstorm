@@ -13,7 +13,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Created by binyang.dby on 2016/7/21.
+ * @author binyang.dby on 2016/7/21.
  *
  * @Test pass at 2016/07/22
  */

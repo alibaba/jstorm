@@ -35,7 +35,6 @@ public class FreezerCore implements CgroupCore {
 
     @Override
     public SubSystemType getType() {
-        // TODO Auto-generated method stub
         return SubSystemType.freezer;
     }
 

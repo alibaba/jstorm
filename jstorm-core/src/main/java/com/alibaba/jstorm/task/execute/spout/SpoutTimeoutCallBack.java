@@ -17,32 +17,28 @@
  */
 package com.alibaba.jstorm.task.execute.spout;
 
-import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import backtype.storm.Config;
 import backtype.storm.utils.DisruptorQueue;
-
 import com.alibaba.jstorm.task.TaskBaseMetric;
 import com.alibaba.jstorm.task.comm.TupleInfo;
 import com.alibaba.jstorm.utils.ExpiredCallback;
-import com.alibaba.jstorm.utils.JStormUtils;
+import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SpoutTimeoutCallBack<K, V> implements ExpiredCallback<K, V> {
     private static Logger LOG = LoggerFactory.getLogger(SpoutTimeoutCallBack.class);
 
     private DisruptorQueue disruptorEventQueue;
     private backtype.storm.spout.ISpout spout;
-    private Map storm_conf;
-    private TaskBaseMetric task_stats;
+    private Map stormConf;
+    private TaskBaseMetric taskStats;
 
-    public SpoutTimeoutCallBack(DisruptorQueue disruptorEventQueue, backtype.storm.spout.ISpout _spout, Map _storm_conf, TaskBaseMetric stat) {
-        this.storm_conf = _storm_conf;
+    public SpoutTimeoutCallBack(DisruptorQueue disruptorEventQueue, backtype.storm.spout.ISpout _spout,
+                                Map _storm_conf, TaskBaseMetric stat) {
+        this.stormConf = _storm_conf;
         this.disruptorEventQueue = disruptorEventQueue;
         this.spout = _spout;
-        this.task_stats = stat;
+        this.taskStats = stat;
     }
 
     /**
@@ -55,7 +51,7 @@ public class SpoutTimeoutCallBack<K, V> implements ExpiredCallback<K, V> {
         }
         try {
             TupleInfo tupleInfo = (TupleInfo) val;
-            FailSpoutMsg fail = new FailSpoutMsg(key, spout, (TupleInfo) tupleInfo, task_stats);
+            FailSpoutMsg fail = new FailSpoutMsg(key, spout, tupleInfo, taskStats);
 
             disruptorEventQueue.publish(fail);
         } catch (Exception e) {

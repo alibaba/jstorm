@@ -28,7 +28,7 @@ import java.util.*;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Created by binyang.dby on 2016/7/8.
+ * @author binyang.dby on 2016/7/8.
  *
  * basically the unit test version of the TridentMapExample.
  *

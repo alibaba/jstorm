@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.Random;
 
 /**
- * Created by binyang.dby on 2016/7/21.
+ * @author binyang.dby on 2016/7/21.
  *
  * randomly generate an Integer sequence with a given limit.
  * Because this class is only used for unit test SlidingWindowTopologyTest,

@@ -22,7 +22,7 @@ public class TaskStartEvent extends MetricEvent {
             metricContext.setWorkerSet(assignment.getWorkers());
             context.getTopologyMetricContexts().put(topologyId, metricContext);
         }
-        context.getMetricUploader().sendEvent(context.getClusterName(), this);
+        context.getMetricUploaderDelegate().sendEvent(context.getClusterName(), this);
     }
 
     public Assignment getOldAssignment() {

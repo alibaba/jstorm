@@ -36,15 +36,13 @@ public class VersionInfo {
                 throw new IOException("Resource not found");
             }
             info.load(is);
-        } catch (IOException ex) {
+        } catch (IOException ignored) {
         } finally {
             if (is != null) {
                 try {
-
                     is.close();
-                } catch (IOException ioex) {
+                } catch (IOException ignored) {
                 }
-
             }
         }
     }

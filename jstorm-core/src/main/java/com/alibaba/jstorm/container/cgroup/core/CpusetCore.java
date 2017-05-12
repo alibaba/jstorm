@@ -47,7 +47,6 @@ public class CpusetCore implements CgroupCore {
 
     @Override
     public SubSystemType getType() {
-        // TODO Auto-generated method stub
         return SubSystemType.cpuset;
     }
 
@@ -169,7 +168,7 @@ public class CpusetCore implements CgroupCore {
 
     public static int[] parseNums(String outputStr) {
         char[] output = outputStr.toCharArray();
-        LinkedList<Integer> numList = new LinkedList<Integer>();
+        LinkedList<Integer> numList = new LinkedList<>();
         int value = 0;
         int start = 0;
         boolean isHyphen = false;

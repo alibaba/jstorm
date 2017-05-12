@@ -18,7 +18,6 @@
 package com.alibaba.jstorm.task;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,21 +59,17 @@ import backtype.storm.utils.Utils;
 import backtype.storm.utils.WorkerClassLoader;
 
 /**
- * Sending entrance
- * <p/>
- * Task sending all tuples through this Object
- * <p/>
- * Serialize the Tuple and put the serialized data to the sending queue
+ * The class which sends all task tuples.
+ * it serializes tuples and put the serialized data to the sending queue.
  *
  * @author yannian
  */
 public class TaskTransfer {
-
     private static Logger LOG = LoggerFactory.getLogger(TaskTransfer.class);
 
     protected Map stormConf;
     protected DisruptorQueue transferControlQueue;
-/*    protected KryoTupleSerializer serializer;*/
+    //protected KryoTupleSerializer serializer;
     protected Map<Integer, DisruptorQueue> innerTaskTransfer;
     protected Map<Integer, DisruptorQueue> controlQueues;
     protected DisruptorQueue serializeQueue;
@@ -82,15 +77,14 @@ public class TaskTransfer {
     protected String taskName;
     protected AsmHistogram serializeTimer;
     protected Task task;
-    protected String topolgyId;
+    protected String topologyId;
     protected String componentId;
     protected int taskId;
 
-    protected ConcurrentHashMap<WorkerSlot, IConnection> nodeportSocket;
-    protected ConcurrentHashMap<Integer, WorkerSlot> taskNodeport;
+    protected ConcurrentHashMap<WorkerSlot, IConnection> nodePortToSocket;
+    protected ConcurrentHashMap<Integer, WorkerSlot> taskToNodePort;
 
     protected boolean isTopologyMaster;
-
     protected boolean isBackpressureEnable;
     protected float highMark;
     protected float lowMark;
@@ -98,26 +92,23 @@ public class TaskTransfer {
 
     protected int serializeThreadNum;
     protected final List<AsyncLoopThread> serializeThreads;
-
     protected final GeneralTopologyContext topologyContext;
 
-    
-
-    public TaskTransfer(Task task, String taskName, KryoTupleSerializer serializer, TaskStatus taskStatus, WorkerData workerData,
-                        final GeneralTopologyContext context) {
+    public TaskTransfer(Task task, String taskName, KryoTupleSerializer serializer, TaskStatus taskStatus,
+                        WorkerData workerData, final GeneralTopologyContext context) {
         this.task = task;
         this.taskName = taskName;
-/*        this.serializer = serializer;*/
+        //this.serializer = serializer;
         this.taskStatus = taskStatus;
         this.stormConf = task.getStormConf();
         this.transferControlQueue = workerData.getTransferCtrlQueue();
         this.innerTaskTransfer = workerData.getInnerTaskTransfer();
         this.controlQueues = workerData.getControlQueues();
 
-        this.nodeportSocket = workerData.getNodeportSocket();
-        this.taskNodeport = workerData.getTaskNodeport();
+        this.nodePortToSocket = workerData.getNodePortToSocket();
+        this.taskToNodePort = workerData.getTaskToNodePort();
 
-        this.topolgyId = workerData.getTopologyId();
+        this.topologyId = workerData.getTopologyId();
         this.componentId = this.task.getComponentId();
         this.taskId = this.task.getTaskId();
         this.topologyContext = context;
@@ -128,30 +119,31 @@ public class TaskTransfer {
         boolean isDisruptorBatchMode = ConfigExtension.isDisruptorQueueBatchMode(stormConf);
         int disruptorBatch = ConfigExtension.getDisruptorBufferSize(stormConf);
         long flushMs = ConfigExtension.getDisruptorBufferFlushMs(stormConf);
-        this.serializeQueue = DisruptorQueue.mkInstance(taskName, ProducerType.MULTI, queue_size, waitStrategy, 
+        this.serializeQueue = DisruptorQueue.mkInstance(taskName, ProducerType.MULTI, queue_size, waitStrategy,
                 isDisruptorBatchMode, disruptorBatch, flushMs);
         //this.serializeQueue.consumerStarted();
 
         serializeThreadNum = ConfigExtension.getTaskSerializeThreadNum(workerData.getStormConf());
-        serializeThreads = new ArrayList<AsyncLoopThread>();
+        serializeThreads = new ArrayList<>();
         setupSerializeThread();
 
         String taskId = taskName.substring(taskName.indexOf(":") + 1);
         QueueGauge serializeQueueGauge = new QueueGauge(serializeQueue, taskName, MetricDef.SERIALIZE_QUEUE);
-        JStormMetrics.registerTaskMetric(MetricUtils.taskMetricName(topolgyId, componentId, this.taskId, MetricDef.SERIALIZE_QUEUE, MetricType.GAUGE),
+        JStormMetrics.registerTaskMetric(MetricUtils.taskMetricName(
+                        topologyId, componentId, this.taskId, MetricDef.SERIALIZE_QUEUE, MetricType.GAUGE),
                 new AsmGauge(serializeQueueGauge));
         JStormHealthCheck.registerTaskHealthCheck(Integer.valueOf(taskId), MetricDef.SERIALIZE_QUEUE, serializeQueueGauge);
         AsmHistogram serializeTimerHistogram = new AsmHistogram();
         serializeTimerHistogram.setAggregate(false);
         serializeTimer = (AsmHistogram) JStormMetrics.registerTaskMetric(MetricUtils.taskMetricName(
-                topolgyId, componentId, this.taskId, MetricDef.SERIALIZE_TIME, MetricType.HISTOGRAM), serializeTimerHistogram);
+                topologyId, componentId, this.taskId, MetricDef.SERIALIZE_TIME, MetricType.HISTOGRAM), serializeTimerHistogram);
 
         isTopologyMaster = (task.getTopologyContext().getTopologyMasterId() == task.getTaskId());
 
         this.isBackpressureEnable = ConfigExtension.isBackpressureEnable(stormConf);
         this.highMark = (float) ConfigExtension.getBackpressureWaterMarkHigh(stormConf);
         this.lowMark = (float) ConfigExtension.getBackpressureWaterMarkLow(stormConf);
-        this.targetTaskBackpressureStatus = new ConcurrentHashMap<Integer, Boolean>();
+        this.targetTaskBackpressureStatus = new ConcurrentHashMap<>();
         for (Integer innerTaskId : innerTaskTransfer.keySet()) {
             targetTaskBackpressureStatus.put(innerTaskId, false);
         }
@@ -182,7 +174,7 @@ public class TaskTransfer {
             Boolean backpressureStatus = targetTaskBackpressureStatus.get(taskId);
             if (backpressureStatus == null) {
                 backpressureStatus = false;
-                targetTaskBackpressureStatus.put(taskId, backpressureStatus);
+                targetTaskBackpressureStatus.put(taskId, false);
             }
 
             if (backpressureStatus) {
@@ -191,20 +183,18 @@ public class TaskTransfer {
                 }
                 targetTaskBackpressureStatus.put(taskId, false);
                 targetQueue.publish(tuple);
-            } else  {
+            } else {
                 targetQueue.publish(tuple);
                 if (targetQueue.pctFull() > highMark) {
                     targetTaskBackpressureStatus.put(taskId, true);
                 }
-            } 
+            }
         } else {
             targetQueue.publish(tuple);
         }
-
     }
 
     public void transferControl(TupleExt tuple) {
-
         int taskId = tuple.getTargetTaskId();
 
         DisruptorQueue controlQueue = controlQueues.get(taskId);
@@ -224,7 +214,6 @@ public class TaskTransfer {
     }
 
     protected class TransferRunnable extends RunnableCallback implements EventHandler {
-
         private AtomicBoolean shutdown = AsyncLoopRunnable.getShutdown();
         private int threadIndex;
         protected KryoTupleSerializer serializer;
@@ -238,7 +227,6 @@ public class TaskTransfer {
         public String getThreadName() {
             return taskName + "-" + TransferRunnable.class.getSimpleName() + "-" + threadIndex;
         }
-
 
         @Override
         public void preRun() {
@@ -267,10 +255,10 @@ public class TaskTransfer {
     }
 
     public void serializer(KryoTupleSerializer serializer) {
-        LOG.debug("start Serializer of task, {}", taskId);
+        LOG.debug("start serializer of task: {}", taskId);
         if (!AsyncLoopRunnable.getShutdown().get()) {
-            //note: avoid to cpu idle when serializeQueue is empty
-            if (serializeQueue.population() == 0){
+            //note: sleep 1ms to reduce cpu usage when serializeQueue is empty
+            if (serializeQueue.population() == 0) {
                 Utils.sleep(1);
                 return;
             }
@@ -284,10 +272,8 @@ public class TaskTransfer {
                 }
             } catch (InterruptedException e) {
                 LOG.error("InterruptedException " + e.getCause());
-                return;
-            } catch (TimeoutException e) {
-                return;
-            }catch (AlertException e) {
+            } catch (TimeoutException ignored) {
+            } catch (AlertException e) {
                 LOG.error(e.getMessage(), e);
                 throw new RuntimeException(e);
             }
@@ -296,37 +282,39 @@ public class TaskTransfer {
 
     protected IConnection getConnection(int taskId) {
         IConnection conn = null;
-        WorkerSlot nodePort = taskNodeport.get(taskId);
+        WorkerSlot nodePort = taskToNodePort.get(taskId);
         if (nodePort == null) {
-            String errormsg = "IConnection to task-" + taskId + " can't be found";
-            LOG.warn("Internal transfer warn, throw tuple,", new Exception(errormsg));
+            String errorMsg = "IConnection to task-" + taskId + " can't be found";
+            LOG.warn("Internal transfer error: {}", errorMsg);
         } else {
-            conn = nodeportSocket.get(nodePort);
+            conn = nodePortToSocket.get(nodePort);
             if (conn == null) {
-                String errormsg = "NodePort to" + nodePort + " can't be found";
-                LOG.warn("Internal transfer warn, throw tuple,", new Exception(errormsg));
+                String errorMsg = "NodePort to" + nodePort + " can't be found";
+                LOG.warn("Internal transfer error: {}", errorMsg);
             }
         }
         return conn;
     }
 
-    protected void serialize(KryoTupleSerializer serializer, Object event){
+    protected void serialize(KryoTupleSerializer serializer, Object event) {
         long start = serializeTimer.getTime();
         try {
             ITupleExt tuple = (ITupleExt) event;
-            int targetTaskid = tuple.getTargetTaskId();
-            IConnection conn = getConnection(targetTaskid);
+            int targetTaskId = tuple.getTargetTaskId();
+            IConnection conn = getConnection(targetTaskId);
             if (conn != null) {
                 byte[] tupleMessage = serializer.serialize((TupleExt) tuple);
-                //LOG.info("Task-{} sent msg to task-{}, data={}", task.getTaskId(), taskid, JStormUtils.toPrintableString(tupleMessage));
-                TaskMessage taskMessage = new TaskMessage(targetTaskid, tupleMessage);
+                //LOG.info("Task-{} sent msg to task-{}, data={}", task.getTaskId(), taskid,
+                // JStormUtils.toPrintableString(tupleMessage));
+                TaskMessage taskMessage = new TaskMessage(taskId, targetTaskId, tupleMessage);
                 conn.send(taskMessage);
             } else {
-                LOG.error("Can not find connection for task-{}", targetTaskid);
+                LOG.error("Can not find connection for task-{}", targetTaskId);
             }
         } finally {
-            if (MetricUtils.metricAccurateCal)
+            if (MetricUtils.metricAccurateCal) {
                 serializeTimer.updateTime(start);
+            }
         }
     }
 }

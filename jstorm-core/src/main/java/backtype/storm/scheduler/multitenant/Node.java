@@ -40,8 +40,8 @@ import backtype.storm.scheduler.WorkerSlot;
  */
 public class Node {
     private static final Logger LOG = LoggerFactory.getLogger(Node.class);
-    private Map<String, Set<WorkerSlot>> _topIdToUsedSlots = new HashMap<String, Set<WorkerSlot>>();
-    private Set<WorkerSlot> _freeSlots = new HashSet<WorkerSlot>();
+    private Map<String, Set<WorkerSlot>> _topIdToUsedSlots = new HashMap<>();
+    private Set<WorkerSlot> _freeSlots = new HashSet<>();
     private final String _nodeId;
     private boolean _isAlive;
 
@@ -139,7 +139,7 @@ public class Node {
         }
         Set<WorkerSlot> usedSlots = _topIdToUsedSlots.get(topId);
         if (usedSlots == null) {
-            usedSlots = new HashSet<WorkerSlot>();
+            usedSlots = new HashSet<>();
             _topIdToUsedSlots.put(topId, usedSlots);
         }
         usedSlots.add(ws);
@@ -148,7 +148,7 @@ public class Node {
 
     /**
      * Free all slots on this node. This will update the Cluster too.
-     * 
+     *
      * @param cluster the cluster to be updated
      */
     public void freeAllSlots(Cluster cluster) {
@@ -161,13 +161,13 @@ public class Node {
                 _freeSlots.addAll(entry.getValue());
             }
         }
-        _topIdToUsedSlots = new HashMap<String, Set<WorkerSlot>>();
+        _topIdToUsedSlots = new HashMap<>();
     }
 
     /**
      * Frees a single slot in this node
-     * 
-     * @param ws the slot to free
+     *
+     * @param ws      the slot to free
      * @param cluster the cluster to update
      */
     public void free(WorkerSlot ws, Cluster cluster, boolean forceFree) {
@@ -197,8 +197,8 @@ public class Node {
 
     /**
      * Frees all the slots for a topology.
-     * 
-     * @param topId the topology to free slots for
+     *
+     * @param topId   the topology to free slots for
      * @param cluster the cluster to update
      */
     public void freeTopology(String topId, Cluster cluster) {
@@ -216,10 +216,10 @@ public class Node {
 
     /**
      * Assign a free slot on the node to the following topology and executors. This will update the cluster too.
-     * 
-     * @param topId the topology to assign a free slot to.
+     *
+     * @param topId     the topology to assign a free slot to.
      * @param executors the executors to run in that slot.
-     * @param cluster the cluster to be updated
+     * @param cluster   the cluster to be updated
      */
     public void assign(String topId, Collection<ExecutorDetails> executors, Cluster cluster) {
         if (!_isAlive) {
@@ -292,12 +292,12 @@ public class Node {
     }
 
     public static Map<String, Node> getAllNodesFrom(Cluster cluster) {
-        Map<String, Node> nodeIdToNode = new HashMap<String, Node>();
+        Map<String, Node> nodeIdToNode = new HashMap<>();
         for (SupervisorDetails sup : cluster.getSupervisors().values()) {
             // Node ID and supervisor ID are the same.
             String id = sup.getId();
             boolean isAlive = !cluster.isBlackListed(id);
-            LOG.debug("Found a {} Node {} {}", new Object[] { isAlive ? "living" : "dead", id, sup.getAllPorts() });
+            LOG.debug("Found a {} Node {} {}", new Object[]{isAlive ? "living" : "dead", id, sup.getAllPorts()});
             nodeIdToNode.put(id, new Node(id, sup.getAllPorts(), isAlive));
         }
 

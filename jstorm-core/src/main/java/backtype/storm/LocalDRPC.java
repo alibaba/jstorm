@@ -17,34 +17,26 @@
  */
 package backtype.storm;
 
+import backtype.storm.generated.DRPCRequest;
+import backtype.storm.utils.ServiceRegistry;
 import com.alibaba.jstorm.cluster.StormConfig;
-import com.alibaba.jstorm.utils.JStormServerUtils;
-import com.alibaba.jstorm.utils.JStormUtils;
+import com.alibaba.jstorm.drpc.Drpc;
 import com.alibaba.jstorm.utils.PathUtils;
+import java.io.File;
+import java.util.Map;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import backtype.storm.generated.DRPCRequest;
-import backtype.storm.utils.ServiceRegistry;
-
-import com.alibaba.jstorm.drpc.Drpc;
-
-import java.io.File;
-import java.util.Map;
-
 public final class LocalDRPC implements ILocalDRPC {
     private static final Logger LOG = LoggerFactory.getLogger(LocalDRPC.class);
 
-    private Drpc handler = new Drpc();
-    private Thread thread;
-
+    private final Drpc handler = new Drpc();
+    private final Thread thread;
     private final String serviceId;
 
     public LocalDRPC() {
-
         thread = new Thread(new Runnable() {
-
             @Override
             public void run() {
                 LOG.info("Begin to init local Drpc");
@@ -55,7 +47,7 @@ public final class LocalDRPC implements ILocalDRPC {
                     LOG.info("Failed to  start local drpc");
                     System.exit(-1);
                 }
-                LOG.info("Successfully start local drpc");
+                LOG.info("Successfully started local drpc");
             }
         });
         thread.start();
@@ -63,19 +55,19 @@ public final class LocalDRPC implements ILocalDRPC {
         serviceId = ServiceRegistry.registerService(handler);
     }
 
-    public void killOldDrpcPids() throws Exception{
+    public void killOldDrpcPids() throws Exception {
         Map conf = StormConfig.read_storm_config();
         LOG.info("Configuration is \n" + conf);
         String pidDir = StormConfig.drpcPids(conf);
         File file = new File(pidDir);
 
-        if (file.exists() == false)
-            return ;
+        if (!file.exists())
+            return;
 
 
         String[] existPids = file.list();
         if (existPids == null) {
-        	return ;
+            return;
         }
 
         for (String existPid : existPids) {
@@ -89,43 +81,37 @@ public final class LocalDRPC implements ILocalDRPC {
 
     @Override
     public String execute(String functionName, String funcArgs) {
-        // TODO Auto-generated method stub
         try {
             return handler.execute(functionName, funcArgs);
         } catch (Exception e) {
-            LOG.error("", e);
+            LOG.error("Local DRPC execute error", e);
             throw new RuntimeException(e);
         }
     }
 
     @Override
     public void result(String id, String result) throws TException {
-        // TODO Auto-generated method stub
         handler.result(id, result);
     }
 
     @Override
     public DRPCRequest fetchRequest(String functionName) throws TException {
-        // TODO Auto-generated method stub
         return handler.fetchRequest(functionName);
     }
 
     @Override
     public void failRequest(String id) throws TException {
-        // TODO Auto-generated method stub
         handler.failRequest(id);
     }
 
     @Override
     public void shutdown() {
-        // TODO Auto-generated method stub
         ServiceRegistry.unregisterService(this.serviceId);
         this.handler.shutdown();
     }
 
     @Override
     public String getServiceId() {
-        // TODO Auto-generated method stub
         return serviceId;
     }
 

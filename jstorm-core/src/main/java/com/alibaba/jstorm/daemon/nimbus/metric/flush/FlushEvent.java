@@ -19,7 +19,7 @@ public class FlushEvent extends MetricEvent {
         }
 
         // if metricUploader is not fully initialized, return directly
-        if (context.getMetricUploader() == null) {
+        if (!context.isReadyToUpload()) {
             LOG.info("Context Metric Uploader isn't ready");
             return;
         }
@@ -45,7 +45,7 @@ public class FlushEvent extends MetricEvent {
                 if (curSize != metricContext.getFlushedMetaNum()) {
                     metricContext.setFlushedMetaNum(curSize);
 
-                    context.getMetricUploader().registerMetrics(context.getClusterName(), topologyId, cachedMeta);
+                    context.getMetricUploaderDelegate().registerMetrics(context.getClusterName(), topologyId, cachedMeta);
                     LOG.info("Flush metric meta, topology:{}, total:{}, cost:{}.", topologyId, curSize,
                             System.currentTimeMillis() - start);
                 }

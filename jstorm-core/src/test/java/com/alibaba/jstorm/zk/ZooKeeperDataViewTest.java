@@ -24,7 +24,7 @@ import backtype.storm.generated.TopologyTaskHbInfo;
 import backtype.storm.utils.Utils;
 
 /**
- * Created by dingjun on 15-12-17.
+ * @author dingjun on 15-12-17.
  */
 public class ZooKeeperDataViewTest {
 

@@ -7,13 +7,14 @@ import java.security.InvalidParameterException;
 import java.util.Map;
 
 /**
- * Created by fengjian on 16/5/13.
+ * @author fengjian
+ * @since 2.1.1
  */
 public class blacklist {
 
     public static void main(String[] args) {
         if (args == null || args.length < 2) {
-            throw new InvalidParameterException("Should input action and hostname");
+            throw new InvalidParameterException("Please input action and hostname");
         }
 
         String action = args[0];

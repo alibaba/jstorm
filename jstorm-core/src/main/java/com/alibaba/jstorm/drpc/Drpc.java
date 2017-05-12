@@ -50,22 +50,15 @@ import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.TimeUtils;
 
 /**
- * Drpc
- * 
  * @author yannian
- * 
  */
 public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Iface, Shutdownable {
-
     private static final Logger LOG = LoggerFactory.getLogger(Drpc.class);
 
     public static void main(String[] args) throws Exception {
-        LOG.info("Begin to start Drpc server");
-
+        LOG.info("Begin to start drpc server");
         Thread.setDefaultUncaughtExceptionHandler(new DefaultUncaughtExceptionHandler());
-
         final Drpc service = new Drpc();
-
         service.init();
     }
 
@@ -83,8 +76,8 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
         int port = JStormUtils.parseInt(conf.get(Config.DRPC_PORT));
         int workerThreadNum = JStormUtils.parseInt(conf.get(Config.DRPC_WORKER_THREADS));
         int queueSize = JStormUtils.parseInt(conf.get(Config.DRPC_QUEUE_SIZE));
-        
-        LOG.info("Begin to init Handler Server " + port);
+
+        LOG.info("Begin to init DRPC handler server at port: " + port);
 
         TNonblockingServerSocket socket = new TNonblockingServerSocket(port);
         THsHaServer.Args targs = new THsHaServer.Args(socket);
@@ -92,19 +85,20 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
         targs.protocolFactory(new TBinaryProtocol.Factory());
         targs.processor(new DistributedRPC.Processor<DistributedRPC.Iface>(service));
 
-        ThreadPoolExecutor executor = new ThreadPoolExecutor(workerThreadNum, workerThreadNum, 60, TimeUnit.SECONDS, new ArrayBlockingQueue(queueSize));
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(
+                workerThreadNum, workerThreadNum, 60, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(queueSize));
         targs.executorService(executor);
 
         THsHaServer handlerServer = new THsHaServer(targs);
-        LOG.info("Successfully init Handler Server " + port);
+        LOG.info("Successfully inited DRPC handler server at port: " + port);
 
         return handlerServer;
     }
 
     private THsHaServer initInvokeServer(Map conf, final Drpc service) throws Exception {
         int port = JStormUtils.parseInt(conf.get(Config.DRPC_INVOCATIONS_PORT));
-        
-        LOG.info("Begin to init Invoke Server " + port);
+
+        LOG.info("Begin to init DRPC invoke server at port: " + port);
 
         TNonblockingServerSocket socket = new TNonblockingServerSocket(port);
         THsHaServer.Args targsInvoke = new THsHaServer.Args(socket);
@@ -114,16 +108,13 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
 
         THsHaServer invokeServer = new THsHaServer(targsInvoke);
 
-        LOG.info("Successfully init Invoke Server " + port);
+        LOG.info("Successfully inited DRPC invoke server at port: " + port);
         return invokeServer;
     }
 
     private void initThrift() throws Exception {
-
         handlerServer = initHandlerServer(conf, this);
-
         invokeServer = initInvokeServer(conf, this);
-
         Runtime.getRuntime().addShutdownHook(new Thread() {
             public void run() {
                 Drpc.this.shutdown();
@@ -133,7 +124,7 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
 
         });
 
-        LOG.info("Starting Distributed RPC servers...");
+        LOG.info("Starting distributed RPC servers...");
         new Thread(new Runnable() {
 
             @Override
@@ -146,11 +137,11 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
 
     private void initClearThread() {
         clearThread = new AsyncLoopThread(new ClearThread(this));
-        LOG.info("Successfully start clear thread");
+        LOG.info("Successfully started clear thread");
     }
+
     private void createPid(Map conf) throws Exception {
         String pidDir = StormConfig.drpcPids(conf);
-
         JStormServerUtils.createPid(pidDir);
     }
 
@@ -159,9 +150,7 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
         LOG.info("Configuration is \n" + conf);
 
         createPid(conf);
-
         initClearThread();
-
         initThrift();
     }
 
@@ -170,7 +159,7 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
 
     @Override
     public void shutdown() {
-        if (shutdown.getAndSet(true) == true) {
+        if (shutdown.getAndSet(true)) {
             LOG.info("Notify to quit drpc");
             return;
         }
@@ -182,54 +171,52 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
 
         try {
             clearThread.join();
-        } catch (InterruptedException e) {
+        } catch (InterruptedException ignored) {
         }
-        LOG.info("Successfully cleanup clear thread");
+        LOG.info("Successfully cleaned up clear thread");
 
         invokeServer.stop();
-        LOG.info("Successfully stop invokeServer");
+        LOG.info("Successfully stopped drpc invoke server");
 
         handlerServer.stop();
-        LOG.info("Successfully stop handlerServer");
-
+        LOG.info("Successfully stopped drpc handler server");
     }
 
     private AtomicInteger ctr = new AtomicInteger(0);
-    private ConcurrentHashMap<String, Semaphore> idtoSem = new ConcurrentHashMap<String, Semaphore>();
-    private ConcurrentHashMap<String, Object> idtoResult = new ConcurrentHashMap<String, Object>();
-    private ConcurrentHashMap<String, Integer> idtoStart = new ConcurrentHashMap<String, Integer>();
-    private ConcurrentHashMap<String, String> idtoFunction = new ConcurrentHashMap<String, String>();
-    private ConcurrentHashMap<String, DRPCRequest> idtoRequest = new ConcurrentHashMap<String, DRPCRequest>();
-    private ConcurrentHashMap<String, ConcurrentLinkedQueue<DRPCRequest>> requestQueues = new ConcurrentHashMap<String, ConcurrentLinkedQueue<DRPCRequest>>();
+    private ConcurrentHashMap<String, Semaphore> idToSem = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, Object> idToResult = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, Integer> idToStart = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, String> idToFunction = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, DRPCRequest> idToRequest = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, ConcurrentLinkedQueue<DRPCRequest>> requestQueues = new ConcurrentHashMap<>();
 
     public void cleanup(String id) {
         LOG.info("clean id " + id + " @ " + (System.currentTimeMillis()));
-
-        idtoSem.remove(id);
-        idtoResult.remove(id);
-        idtoStart.remove(id);
-        idtoFunction.remove(id);
-        idtoRequest.remove(id);
+        idToSem.remove(id);
+        idToResult.remove(id);
+        idToStart.remove(id);
+        idToFunction.remove(id);
+        idToRequest.remove(id);
     }
 
     @Override
-    public String execute(String function, String args) throws DRPCExecutionException, TException {
+    public String execute(String function, String args) throws TException {
         LOG.info("Received DRPC request for " + function + " " + args + " at " + (System.currentTimeMillis()));
-        int idinc = this.ctr.incrementAndGet();
+        int idInc = this.ctr.incrementAndGet();
         int maxvalue = 1000000000;
-        int newid = idinc % maxvalue;
-        if (idinc != newid) {
-            this.ctr.compareAndSet(idinc, newid);
+        int newId = idInc % maxvalue;
+        if (idInc != newId) {
+            this.ctr.compareAndSet(idInc, newId);
         }
 
-        String strid = String.valueOf(newid);
+        String strId = String.valueOf(newId);
         Semaphore sem = new Semaphore(0);
 
-        DRPCRequest req = new DRPCRequest(args, strid);
-        this.idtoStart.put(strid, TimeUtils.current_time_secs());
-        this.idtoSem.put(strid, sem);
-        this.idtoFunction.put(strid, function);
-        this.idtoRequest.put(strid, req);
+        DRPCRequest req = new DRPCRequest(args, strId);
+        this.idToStart.put(strId, TimeUtils.current_time_secs());
+        this.idToSem.put(strId, sem);
+        this.idToFunction.put(strId, function);
+        this.idToRequest.put(strId, req);
         ConcurrentLinkedQueue<DRPCRequest> queue = acquireQueue(function);
         queue.add(req);
         LOG.info("Waiting for DRPC request for " + function + " " + args + " at " + (System.currentTimeMillis()));
@@ -240,13 +227,13 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
         }
         LOG.info("Acquired for DRPC request for " + function + " " + args + " at " + (System.currentTimeMillis()));
 
-        Object result = this.idtoResult.get(strid);
-        if (!this.idtoResult.containsKey(strid)){
-            result = new DRPCExecutionException("Request timed out");   // this request is timeout, set exception
+        Object result = this.idToResult.get(strId);
+        if (!this.idToResult.containsKey(strId)) {
+            result = new DRPCExecutionException("Request timed out");   // this request has timed out
         }
         LOG.info("Returning for DRPC request for " + function + " " + args + " at " + (System.currentTimeMillis()));
 
-        this.cleanup(strid);
+        this.cleanup(strId);
 
         if (result instanceof DRPCExecutionException) {
             throw (DRPCExecutionException) result;
@@ -256,18 +243,16 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
 
     @Override
     public void result(String id, String result) throws TException {
-        Semaphore sem = this.idtoSem.get(id);
+        Semaphore sem = this.idToSem.get(id);
         LOG.info("Received result " + result + " for id " + id + " at " + (System.currentTimeMillis()));
         if (sem != null) {
-            this.idtoResult.put(id, result);
+            this.idToResult.put(id, result);
             sem.release();
         }
-
     }
 
     @Override
     public DRPCRequest fetchRequest(String functionName) throws TException {
-
         ConcurrentLinkedQueue<DRPCRequest> queue = acquireQueue(functionName);
         DRPCRequest req = queue.poll();
         if (req != null) {
@@ -276,15 +261,14 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
         } else {
             return new DRPCRequest("", "");
         }
-
     }
 
     @Override
     public void failRequest(String id) throws TException {
-        Semaphore sem = this.idtoSem.get(id);
+        Semaphore sem = this.idToSem.get(id);
         LOG.info("failRequest result  for id " + id + " at " + (System.currentTimeMillis()));
         if (sem != null) {
-            this.idtoResult.put(id, new DRPCExecutionException("Request failed"));
+            this.idToResult.put(id, new DRPCExecutionException("Request failed"));
             sem.release();
         }
     }
@@ -292,33 +276,33 @@ public class Drpc implements DistributedRPC.Iface, DistributedRPCInvocations.Ifa
     protected ConcurrentLinkedQueue<DRPCRequest> acquireQueue(String function) {
         ConcurrentLinkedQueue<DRPCRequest> reqQueue = requestQueues.get(function);
         if (reqQueue == null) {
-            reqQueue = new ConcurrentLinkedQueue<DRPCRequest>();
+            reqQueue = new ConcurrentLinkedQueue<>();
             ConcurrentLinkedQueue<DRPCRequest> tmp = requestQueues.putIfAbsent(function, reqQueue);
             if (tmp != null) {
-            	reqQueue = tmp;
+                reqQueue = tmp;
             }
         }
         return reqQueue;
     }
 
-    public ConcurrentHashMap<String, Semaphore> getIdtoSem() {
-        return idtoSem;
+    public ConcurrentHashMap<String, Semaphore> getIdToSem() {
+        return idToSem;
     }
 
-    public ConcurrentHashMap<String, Object> getIdtoResult() {
-        return idtoResult;
+    public ConcurrentHashMap<String, Object> getIdToResult() {
+        return idToResult;
     }
 
-    public ConcurrentHashMap<String, Integer> getIdtoStart() {
-        return idtoStart;
+    public ConcurrentHashMap<String, Integer> getIdToStart() {
+        return idToStart;
     }
 
-    public ConcurrentHashMap<String, String> getIdtoFunction() {
-        return idtoFunction;
+    public ConcurrentHashMap<String, String> getIdToFunction() {
+        return idToFunction;
     }
 
-    public ConcurrentHashMap<String, DRPCRequest> getIdtoRequest() {
-        return idtoRequest;
+    public ConcurrentHashMap<String, DRPCRequest> getIdToRequest() {
+        return idToRequest;
     }
 
     public AtomicBoolean isShutdown() {

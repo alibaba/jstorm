@@ -17,6 +17,7 @@
  */
 package backtype.storm.metric.api;
 
+@Deprecated
 public class AssignableMetric implements IMetric {
     Object _value;
 

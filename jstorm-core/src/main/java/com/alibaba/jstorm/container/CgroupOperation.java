@@ -25,22 +25,22 @@ import com.alibaba.jstorm.container.cgroup.CgroupCommon;
 
 public interface CgroupOperation {
 
-    public List<Hierarchy> getHierarchies();
+    List<Hierarchy> getHierarchies();
 
-    public Set<SubSystem> getSubSystems();
+    Set<SubSystem> getSubSystems();
 
-    public boolean enabled(SubSystemType subsystem);
+    boolean enabled(SubSystemType subsystem);
 
-    public Hierarchy busy(SubSystemType subsystem);
+    Hierarchy busy(SubSystemType subsystem);
 
-    public Hierarchy mounted(Hierarchy hierarchy);
+    Hierarchy mounted(Hierarchy hierarchy);
 
-    public void mount(Hierarchy hierarchy) throws IOException;
+    void mount(Hierarchy hierarchy) throws IOException;
 
-    public void umount(Hierarchy hierarchy) throws IOException;
+    void umount(Hierarchy hierarchy) throws IOException;
 
-    public void create(CgroupCommon cgroup) throws SecurityException;
+    void create(CgroupCommon cgroup) throws SecurityException;
 
-    public void delete(CgroupCommon cgroup) throws IOException;
+    void delete(CgroupCommon cgroup) throws IOException;
 
 }

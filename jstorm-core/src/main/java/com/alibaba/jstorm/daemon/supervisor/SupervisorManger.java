@@ -17,13 +17,13 @@
  */
 package com.alibaba.jstorm.daemon.supervisor;
 
+import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.common.metric.AsmGauge;
 import com.alibaba.jstorm.metric.JStormMetrics;
 import com.alibaba.jstorm.metric.JStormMetricsReporter;
 import com.alibaba.jstorm.metric.MetricDef;
 import com.alibaba.jstorm.metric.MetricType;
 import com.alibaba.jstorm.utils.LinuxResource;
-import com.alibaba.jstorm.utils.Pair;
 import com.codahale.metrics.Gauge;
 import java.io.IOException;
 import java.util.HashMap;
@@ -51,11 +51,9 @@ import com.alibaba.jstorm.utils.PathUtils;
  * @author Johnfang (xiaojian.fxj@alibaba-inc.com)
  */
 public class SupervisorManger extends ShutdownWork implements SupervisorDaemon, DaemonCommon, Runnable {
-
     private static final Logger LOG = LoggerFactory.getLogger(SupervisorManger.class);
 
     // private Supervisor supervisor;
-
     private final Map conf;
 
     private final String supervisorId;
@@ -105,6 +103,10 @@ public class SupervisorManger extends ShutdownWork implements SupervisorDaemon, 
                     }
                 }));
 
+        String duHome = ConfigExtension.getDuHome(conf);
+        if (duHome != null) {
+            LinuxResource.setDuHome(duHome);
+        }
         JStormMetrics.registerWorkerMetric(
                 JStormMetrics.workerMetricName(MetricDef.DISK_USAGE, MetricType.GAUGE),
                 new AsmGauge(new Gauge<Double>() {
@@ -207,11 +209,11 @@ public class SupervisorManger extends ShutdownWork implements SupervisorDaemon, 
 
         isFinishShutdown = true;
 
-        JStormUtils.halt_process(0, "!!!Shutdown!!!");
+        JStormUtils.halt_process(0, "!!!Shutdown supervisor!!!");
     }
 
     @Override
-    public void ShutdownAllWorkers() {
+    public void shutdownAllWorkers() {
         LOG.info("Begin to shutdown all workers");
         String path;
         try {
@@ -252,10 +254,7 @@ public class SupervisorManger extends ShutdownWork implements SupervisorDaemon, 
                 return false;
             }
         }
-        if (eventManager.waiting()) {
-            return false;
-        }
-        return true;
+        return !eventManager.waiting();
     }
 
     public void run() {

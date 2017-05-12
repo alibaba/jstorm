@@ -25,7 +25,7 @@ import java.security.InvalidParameterException;
 import java.util.Map;
 
 /**
- * Kill topology
+ * Kill a topology
  *
  * @author longda
  */
@@ -33,7 +33,7 @@ public class kill_topology {
 
     public static void main(String[] args) {
         if (args == null || args.length == 0) {
-            throw new InvalidParameterException("Should input topology name");
+            throw new InvalidParameterException("Please input topology name");
         }
 
         String topologyName = args[0];
@@ -43,14 +43,11 @@ public class kill_topology {
             client = NimbusClient.getConfiguredClient(conf);
 
             if (args.length == 1) {
-
                 client.getClient().killTopology(topologyName);
             } else {
                 int delaySeconds = Integer.parseInt(args[1]);
-
                 KillOptions options = new KillOptions();
                 options.set_wait_secs(delaySeconds);
-
                 client.getClient().killTopologyWithOpts(topologyName, options);
             }
 

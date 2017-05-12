@@ -43,35 +43,30 @@ import com.alibaba.jstorm.zk.Zookeeper;
 
 /**
  * All ZK interface implementation
- * 
+ *
  * @author yannian.mu
- * 
  */
 public class DistributedClusterState implements ClusterState {
+    private static final Logger LOG = LoggerFactory.getLogger(DistributedClusterState.class);
 
-    private static Logger LOG = LoggerFactory.getLogger(DistributedClusterState.class);
-
-    private Zookeeper zkobj = new Zookeeper();
+    private final Zookeeper zkObj = new Zookeeper();
     private CuratorFramework zk;
-    private WatcherCallBack watcher;
+    private final WatcherCallBack watcher;
 
-    /**
-     * why run all callbacks, when receive one event
-     */
-    private ConcurrentHashMap<UUID, ClusterStateCallback> callbacks = new ConcurrentHashMap<UUID, ClusterStateCallback>();
+    private final ConcurrentHashMap<UUID, ClusterStateCallback> callbacks = new ConcurrentHashMap<>();
 
-    private Map<Object, Object> conf;
-    private AtomicBoolean active;
+    private final Map<Object, Object> conf;
+    private final AtomicBoolean active;
 
     private JStormCache zkCache;
 
-    public DistributedClusterState(Map<Object, Object> _conf) throws Exception {
-        conf = _conf;
+    public DistributedClusterState(Map<Object, Object> conf) throws Exception {
+        this.conf = conf;
 
         // just mkdir STORM_ZOOKEEPER_ROOT dir
         CuratorFramework _zk = mkZk();
-        String path = String.valueOf(conf.get(Config.STORM_ZOOKEEPER_ROOT));
-        zkobj.mkdirs(_zk, path);
+        String path = String.valueOf(this.conf.get(Config.STORM_ZOOKEEPER_ROOT));
+        zkObj.mkdirs(_zk, path);
         _zk.close();
 
         active = new AtomicBoolean(true);
@@ -102,12 +97,12 @@ public class DistributedClusterState implements ClusterState {
 
     @SuppressWarnings("unchecked")
     private CuratorFramework mkZk() throws IOException {
-        return zkobj.mkClient(conf, (List<String>) conf.get(Config.STORM_ZOOKEEPER_SERVERS), conf.get(Config.STORM_ZOOKEEPER_PORT), "");
+        return zkObj.mkClient(conf, (List<String>) conf.get(Config.STORM_ZOOKEEPER_SERVERS), conf.get(Config.STORM_ZOOKEEPER_PORT), "");
     }
 
     @SuppressWarnings("unchecked")
     private CuratorFramework mkZk(WatcherCallBack watcher) throws NumberFormatException, IOException {
-        return zkobj.mkClient(conf, (List<String>) conf.get(Config.STORM_ZOOKEEPER_SERVERS), conf.get(Config.STORM_ZOOKEEPER_PORT),
+        return zkObj.mkClient(conf, (List<String>) conf.get(Config.STORM_ZOOKEEPER_SERVERS), conf.get(Config.STORM_ZOOKEEPER_PORT),
                 String.valueOf(conf.get(Config.STORM_ZOOKEEPER_ROOT)), watcher);
     }
 
@@ -122,25 +117,25 @@ public class DistributedClusterState implements ClusterState {
         if (zkCache != null) {
             zkCache.remove(path);
         }
-        zkobj.deletereRcursive(zk, path);
+        zkObj.deleteRecursive(zk, path);
     }
 
     @Override
     public List<String> get_children(String path, boolean watch) throws Exception {
-        return zkobj.getChildren(zk, path, watch);
+        return zkObj.getChildren(zk, path, watch);
     }
 
     @Override
     public byte[] get_data(String path, boolean watch) throws Exception {
         byte[] ret = null;
-        if (watch == false && zkCache != null) {
+        if (!watch && zkCache != null) {
             ret = (byte[]) zkCache.get(path);
         }
         if (ret != null) {
             return ret;
         }
 
-        ret = zkobj.getData(zk, path, watch);
+        ret = zkObj.getData(zk, path, watch);
         if (zkCache != null) {
             zkCache.put(path, ret);
         }
@@ -149,22 +144,17 @@ public class DistributedClusterState implements ClusterState {
     }
 
     /**
-     * warning, get_version don't use zkCache avoid to conflict with get_data
-     * @param path
-     * @param watch
-     * @return
-     * @throws Exception
+     * Note that get_version doesn't use zkCache avoid to conflict with get_data
      */
     @Override
     public Integer get_version(String path, boolean watch) throws Exception {
-        Integer ret = zkobj.getVersion(zk, path, watch);
-        return ret;
+        return zkObj.getVersion(zk, path, watch);
     }
 
     @Override
     public byte[] get_data_sync(String path, boolean watch) throws Exception {
-        byte[] ret = null;
-        ret = zkobj.getData(zk, path, watch);
+        byte[] ret;
+        ret = zkObj.getData(zk, path, watch);
         if (zkCache != null && ret != null) {
             zkCache.put(path, ret);
         }
@@ -173,13 +163,12 @@ public class DistributedClusterState implements ClusterState {
 
     @Override
     public void sync_path(String path) throws Exception {
-        zkobj.syncPath(zk, path);
+        zkObj.syncPath(zk, path);
     }
 
     @Override
     public void mkdirs(String path) throws Exception {
-        zkobj.mkdirs(zk, path);
-
+        zkObj.mkdirs(zk, path);
     }
 
     @Override
@@ -187,26 +176,25 @@ public class DistributedClusterState implements ClusterState {
         if (data.length > (JStormUtils.SIZE_1_K * 800)) {
             throw new Exception("Writing 800k+ data into ZK is not allowed!, data size is " + data.length);
         }
-        if (zkobj.exists(zk, path, false)) {
-            zkobj.setData(zk, path, data);
+        if (zkObj.exists(zk, path, false)) {
+            zkObj.setData(zk, path, data);
         } else {
-            zkobj.mkdirs(zk, PathUtils.parent_path(path));
-            zkobj.createNode(zk, path, data, CreateMode.PERSISTENT);
+            zkObj.mkdirs(zk, PathUtils.parent_path(path));
+            zkObj.createNode(zk, path, data, CreateMode.PERSISTENT);
         }
 
         if (zkCache != null) {
             zkCache.put(path, data);
         }
-
     }
 
     @Override
     public void set_ephemeral_node(String path, byte[] data) throws Exception {
-        zkobj.mkdirs(zk, PathUtils.parent_path(path));
-        if (zkobj.exists(zk, path, false)) {
-            zkobj.setData(zk, path, data);
+        zkObj.mkdirs(zk, PathUtils.parent_path(path));
+        if (zkObj.exists(zk, path, false)) {
+            zkObj.setData(zk, path, data);
         } else {
-            zkobj.createNode(zk, path, data, CreateMode.EPHEMERAL);
+            zkObj.createNode(zk, path, data, CreateMode.EPHEMERAL);
         }
 
         if (zkCache != null) {
@@ -228,14 +216,12 @@ public class DistributedClusterState implements ClusterState {
 
     @Override
     public boolean node_existed(String path, boolean watch) throws Exception {
-        // TODO Auto-generated method stub
-        return zkobj.existsNode(zk, path, watch);
+        return zkObj.existsNode(zk, path, watch);
     }
 
     @Override
     public void tryToBeLeader(String path, byte[] host) throws Exception {
-        // TODO Auto-generated method stub
-        zkobj.createNode(zk, path, host, CreateMode.EPHEMERAL);
+        zkObj.createNode(zk, path, host, CreateMode.EPHEMERAL);
     }
 
     public JStormCache getZkCache() {

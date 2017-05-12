@@ -15,7 +15,7 @@ import java.util.Set;
 import static org.junit.Assert.*;
 
 /**
- * Created by binyang.dby on 2016/7/21.
+ * @author binyang.dby on 2016/7/21.
  *
  * This test is to check if the tick works correctly with the cycle which
  * is set by the user.

@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Created by binyang.dby on 2016/7/21.
+ * @author binyang.dby on 2016/7/21.
  *
  * basically the unit test of SlidingWindowTopology. I change the some of the spout to
  * check if the bolt do the correct processing. I calculate what the average value will

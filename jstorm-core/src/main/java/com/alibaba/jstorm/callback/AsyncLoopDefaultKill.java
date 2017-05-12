@@ -21,9 +21,8 @@ import com.alibaba.jstorm.utils.JStormUtils;
 
 /**
  * Killer callback
- * 
+ *
  * @author yannian
- * 
  */
 
 public class AsyncLoopDefaultKill extends RunnableCallback {

@@ -4,21 +4,21 @@ public interface TMHandler {
     /**
      * Init TMHandler
      *
-     * @param tmContext
+     * @param tmContext topology master context
      */
     void init(TopologyMasterContext tmContext);
 
     /**
      * Process Event
      *
-     * @param event
+     * @param event event
      */
     void process(Object event) throws Exception;
 
     /**
      * Do cleanup job
-     * ATTENTION: Due to one TMHandler maybe be register multiple times,
-     * So it is likely to be call cleanup multiple times.
+     * Note that a TMHandler maybe be registered multiple times,
+     * it is likely cleanup could be called multiple times.
      */
     void cleanup();
 }

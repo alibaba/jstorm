@@ -7,8 +7,7 @@ public class KillTopologyEvent extends MetricEvent {
     
     @Override
     public void run() {
-        // TODO Auto-generated method stub
-        context.getMetricUploader().sendEvent(context.getClusterName(), this);
+        context.getMetricUploaderDelegate().sendEvent(context.getClusterName(), this);
         RemoveTopologyEvent.pushEvent(topologyId);
     }
     
@@ -17,6 +16,5 @@ public class KillTopologyEvent extends MetricEvent {
         killEvent.topologyId = topologyId;
         
         ClusterMetricsRunnable.pushEvent(killEvent);
-        
     }
 }

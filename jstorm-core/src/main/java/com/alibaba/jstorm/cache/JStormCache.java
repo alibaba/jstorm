@@ -24,7 +24,7 @@ import java.util.Map;
 import com.alibaba.jstorm.client.ConfigExtension;
 
 public interface JStormCache extends Serializable {
-    public static final String TAG_TIMEOUT_LIST = ConfigExtension.CACHE_TIMEOUT_LIST;
+    String TAG_TIMEOUT_LIST = ConfigExtension.CACHE_TIMEOUT_LIST;
 
     void init(Map<Object, Object> conf) throws Exception;
 

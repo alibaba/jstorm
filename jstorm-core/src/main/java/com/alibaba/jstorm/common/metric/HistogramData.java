@@ -18,7 +18,6 @@ public class HistogramData extends MetricBaseData implements KVSerializable {
     private double p98;
     private double p99;
     private double p999;
-    private double stddev;
 
     public long getMin() {
         return min;
@@ -90,14 +89,6 @@ public class HistogramData extends MetricBaseData implements KVSerializable {
 
     public void setP999(double p999) {
         this.p999 = p999;
-    }
-
-    public double getStddev() {
-        return stddev;
-    }
-
-    public void setStddev(double stddev) {
-        this.stddev = stddev;
     }
 
     @Override

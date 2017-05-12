@@ -55,10 +55,8 @@ public class GzipSerializationDelegate implements SerializationDelegate {
             Object ret = ois.readObject();
             ois.close();
             return (T) ret;
-        } catch (IOException ioe) {
+        } catch (IOException | ClassNotFoundException ioe) {
             throw new RuntimeException(ioe);
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
         }
     }
 }

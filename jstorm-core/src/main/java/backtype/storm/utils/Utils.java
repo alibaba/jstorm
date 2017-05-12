@@ -19,6 +19,7 @@
 package backtype.storm.utils;
 
 import com.google.common.collect.Lists;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -53,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.Random;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.jar.JarEntry;
@@ -135,7 +137,8 @@ public class Utils {
             }
 
             if (con == null) {
-                throw new RuntimeException("Cound not found the corresponding constructor, params=" + JStormUtils.mk_list(params));
+                throw new RuntimeException("Could not found the corresponding constructor, params=" +
+                        JStormUtils.mk_list(params));
             } else {
                 if (con.getParameterTypes().length == 0) {
                     return c.newInstance();
@@ -153,7 +156,7 @@ public class Utils {
      */
     public static byte[] serialize(Object obj) {
         /**
-         * @@@ JStorm disable the thrift.gz.serializer
+         * JStorm disables the thrift.gz.serializer
          */
         // return serializationDelegate.serialize(obj);
         return javaSerialize(obj);
@@ -227,7 +230,7 @@ public class Utils {
     public static Object javaDeserializeWithCL(byte[] serialized, URLClassLoader loader) {
         try {
             ByteArrayInputStream bis = new ByteArrayInputStream(serialized);
-            Object ret = null;
+            Object ret;
             if (loader != null) {
                 ClassLoaderObjectInputStream cis = new ClassLoaderObjectInputStream(loader, bis);
                 ret = cis.readObject();
@@ -349,13 +352,14 @@ public class Utils {
     }
 
     private static Map DEFAULT_CONF = null;
+
     public static Map readDefaultConfig() {
-        synchronized(Utils.class) {
+        synchronized (Utils.class) {
             if (DEFAULT_CONF == null) {
                 DEFAULT_CONF = LoadConf.findAndReadYaml("defaults.yaml", true, false);
             }
         }
-        
+
         return DEFAULT_CONF;
     }
 
@@ -363,7 +367,7 @@ public class Utils {
         Map ret = new HashMap();
         String commandOptions = System.getProperty("storm.options");
         if (commandOptions != null) {
-            String[] configs = commandOptions.split(",");
+            String[] configs = commandOptions.split(",(?![^\\[\\]{}]*(]|}))");
             for (String config : configs) {
                 config = URLDecoder.decode(config);
                 String[] options = config.split("=", 2);
@@ -722,6 +726,14 @@ public class Utils {
         return UUID.randomUUID().getLeastSignificantBits();
     }
 
+    public static long generateId(Random rand) {
+        long ret = rand.nextLong();
+        while(ret == 0) {
+            ret = rand.nextLong();
+        }
+        return ret;
+    }
+
     /*
      * Unpack matching files from a jar. Entries inside the jar that do
      * not match the given pattern will be skipped.
@@ -796,7 +808,7 @@ public class Utils {
      * <p/>
      * This utility will untar ".tar" files and ".tar.gz","tgz" files.
      *
-     * @param inFile   The tar file as input.
+     * @param inFile    The tar file as input.
      * @param targetDir The untar directory where to untar the tar file.
      * @throws IOException
      */
@@ -842,7 +854,7 @@ public class Utils {
         shexec.execute();
         int exitcode = shexec.getExitCode();
         if (exitcode != 0) {
-            throw new IOException("Error untarring file " + inFile +
+            throw new IOException("Error un-taring file " + inFile +
                     ". Tar process exited with exit code " + exitcode);
         }
     }
@@ -1023,7 +1035,7 @@ public class Utils {
                 LOG.info("{}:{}", prefix, line);
             }
         } catch (IOException e) {
-            LOG.warn("Error whiel trying to log stream", e);
+            LOG.warn("Error while trying to log stream", e);
         }
     }
 
@@ -1039,7 +1051,8 @@ public class Utils {
     }
 
     /**
-     * Is the cluster configured to interact with ZooKeeper in a secure way? This only works when called from within Nimbus or a Supervisor process.
+     * Is the cluster configured to interact with ZooKeeper in a secure way?
+     * This only works when called from within Nimbus or a Supervisor process.
      *
      * @param conf the storm configuration, not the topology configuration
      * @return true if it is configured else false.
@@ -1181,17 +1194,12 @@ public class Utils {
             InputStream stream = new FileInputStream(prop);
             properties.load(stream);
             if (properties.size() == 0) {
-                System.out.println("WARN: Config file is empty");
                 return null;
             } else {
                 ret.putAll(properties);
             }
-        } catch (FileNotFoundException e) {
-            System.out.println("No such file " + prop);
-            throw new RuntimeException(e.getMessage());
         } catch (Exception e1) {
-            e1.printStackTrace();
-            throw new RuntimeException(e1.getMessage());
+            throw new RuntimeException(e1);
         }
 
         return ret;
@@ -1205,14 +1213,11 @@ public class Utils {
             stream = new FileInputStream(confPath);
             ret = (Map) yaml.load(stream);
             if (ret == null || ret.isEmpty()) {
-                System.out.println("WARN: Config file is empty");
                 return null;
             }
         } catch (FileNotFoundException e) {
-            System.out.println("No such file " + confPath);
             throw new RuntimeException("No config file");
         } catch (Exception e1) {
-            e1.printStackTrace();
             throw new RuntimeException("Failed to read config file");
         } finally {
             if (stream != null) {
@@ -1249,7 +1254,6 @@ public class Utils {
             } else {
                 LOG.warn("Failed to get version");
             }
-
         } catch (Exception e) {
             LOG.warn("Failed to get version", e);
         } finally {
@@ -1277,7 +1281,6 @@ public class Utils {
             } else {
                 LOG.warn("Failed to get build time");
             }
-
         } catch (Exception e) {
             LOG.warn("Failed to get build time", e);
         } finally {

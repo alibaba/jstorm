@@ -14,7 +14,7 @@ public class HttpserverUtils {
 
     public static final String HTTPSERVER_LOGVIEW_PARAM_CMD_JSTACK = "jstack";
 
-    public static final String HTTPSERVER_LOGVIEW_PARAM_CMD_JSTAT= "jstat";
+    public static final String HTTPSERVER_LOGVIEW_PARAM_CMD_JSTAT = "jstat";
 
     public static final String HTTPSERVER_LOGVIEW_PARAM_CMD_SHOW_CONF = "showConf";
 

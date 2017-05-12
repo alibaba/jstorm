@@ -4,7 +4,7 @@ import java.util.Map;
 
 /**
  * @author wange
- * @since 16/5/2
+ * @since 2.1.1
  */
 public class DefaultConfigUpdateHandler implements ConfigUpdateHandler {
     @Override

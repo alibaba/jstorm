@@ -360,7 +360,8 @@ public class UserDefinedWorkerTopology {
             
             NimbusClientWrapper client = new NimbusClientWrapper();
             try {
-                client.init(conf);
+                Map nimbusConf = Utils.readStormConfig();
+                client.init(nimbusConf);
                 
                 String topologyId = client.getClient().getTopologyId(topologyName);
                 

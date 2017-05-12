@@ -11,24 +11,23 @@ import java.io.OutputStream;
 public class JAverageSnapshot extends Snapshot {
 
     private MetricSnapshot metricSnapshot;
+
     public JAverageSnapshot() {
         metricSnapshot = new MetricSnapshot();
     }
+
     @Override
-    public double getValue(double quantile) {
-        //ingore
+    public double getValue(double percentile) {
         return 0.0;
     }
 
     @Override
     public long[] getValues() {
-        //ingore
         return new long[0];
     }
 
     @Override
     public int size() {
-        //ingore
         return 0;
     }
 
@@ -84,7 +83,6 @@ public class JAverageSnapshot extends Snapshot {
 
     @Override
     public void dump(OutputStream output) {
-        //ingore
     }
 
     public MetricSnapshot getMetricSnapshot() {

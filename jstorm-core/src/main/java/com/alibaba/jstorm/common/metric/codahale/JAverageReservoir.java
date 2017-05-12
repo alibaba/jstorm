@@ -16,13 +16,11 @@ public class JAverageReservoir implements Reservoir {
 
     @Override
     public int size() {
-        // ingore
         return 0;
     }
 
     @Override
     public void update(long value) {
-        // ingore
     }
 
     @Override

@@ -231,7 +231,7 @@ public class Stream implements IAggregatableStream, ResourceDeclarer<Stream> {
      * @return
      */
     public Stream global() {
-        // use this instead of storm's built in one so that we can specify a singleemitbatchtopartition
+        // use this instead of storm's built in one so that we can specify a single emit batch to partition
         // without knowledge of storm's internals
         return partition(new GlobalGrouping());
     }

@@ -28,7 +28,6 @@ import storm.trident.windowing.config.WindowConfig;
 /**
  * This class represents tumbling window strategy based on the window count from the
  * given {@code slidingCountWindow} configuration. In this strategy , window and sliding lengths are equal.
- *
  */
 public final class TumblingCountWindowStrategy<T> extends BaseWindowStrategy<T> {
 
@@ -38,10 +37,6 @@ public final class TumblingCountWindowStrategy<T> extends BaseWindowStrategy<T> 
 
     /**
      * Returns a {@code TriggerPolicy} which triggers for every count of given sliding window.
-
-     * @param triggerHandler
-     * @param evictionPolicy
-     * @return
      */
     @Override
     public TriggerPolicy<T> getTriggerPolicy(TriggerHandler triggerHandler, EvictionPolicy<T> evictionPolicy) {
@@ -50,8 +45,6 @@ public final class TumblingCountWindowStrategy<T> extends BaseWindowStrategy<T> 
 
     /**
      * Returns an {@code EvictionPolicy} instance which evicts elements after a count of given window length.
-     *
-     * @return
      */
     @Override
     public EvictionPolicy<T> getEvictionPolicy() {

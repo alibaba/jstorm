@@ -19,7 +19,7 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Created by binyang.dby on 2016/7/8.
+ * @author binyang.dby on 2016/7/8.
  */
 public class SequenceTestSpout implements IRichSpout
 {

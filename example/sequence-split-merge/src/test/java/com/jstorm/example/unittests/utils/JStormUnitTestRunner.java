@@ -8,7 +8,7 @@ import com.alibaba.jstorm.utils.JStormUtils;
 import java.util.Map;
 
 /**
- * Created by binyang.dby on 2016/7/8.
+ * @author binyang.dby on 2016/7/8.
  *
  * This is a util for JStorm unit tests. You can pass in a topology , a config, the runtime, and
  * an optional validator to run a unit test.

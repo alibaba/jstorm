@@ -31,8 +31,7 @@ public class MetricClient {
     public AsmGauge registerGauge(String name, String group, Gauge<Double> gauge) {
         String userMetricName = getMetricName(name, group, MetricType.GAUGE);
         AsmGauge asmGauge = new AsmGauge(gauge);
-        JStormMetrics.registerTaskMetric(userMetricName, asmGauge);
-        return asmGauge;
+        return (AsmGauge) JStormMetrics.registerTaskMetric(userMetricName, asmGauge);
     }
 
     public AsmCounter registerCounter(String name) {
@@ -42,8 +41,7 @@ public class MetricClient {
     public AsmCounter registerCounter(String name, String group) {
         String userMetricName = getMetricName(name, group, MetricType.COUNTER);
         AsmCounter counter = new AsmCounter();
-        JStormMetrics.registerTaskMetric(userMetricName, counter);
-        return counter;
+        return (AsmCounter) JStormMetrics.registerTaskMetric(userMetricName, counter);
     }
 
     public AsmMeter registerMeter(String name) {
@@ -62,6 +60,24 @@ public class MetricClient {
     public AsmHistogram registerHistogram(String name, String group) {
         String userMetricName = getMetricName(name, group, MetricType.HISTOGRAM);
         return (AsmHistogram) JStormMetrics.registerTaskMetric(userMetricName, new AsmHistogram());
+    }
+
+    public AsmCounter registerTopologyCounter(String name) {
+        String userMetricName = getMetricName(name, GROUP_UDF, MetricType.COUNTER);
+        AsmCounter counter = new AsmCounter();
+        return (AsmCounter) JStormMetrics.registerTaskTopologyMetric(userMetricName, counter);
+    }
+
+    public AsmMeter registerTopologyMeter(String name) {
+        String userMetricName = getMetricName(name, GROUP_UDF, MetricType.METER);
+        AsmMeter meter = new AsmMeter();
+        return (AsmMeter) JStormMetrics.registerTaskTopologyMetric(userMetricName, meter);
+    }
+
+    public AsmHistogram registerTopologyHistogram(String name) {
+        String userMetricName = getMetricName(name, GROUP_UDF, MetricType.HISTOGRAM);
+        AsmHistogram histogram = new AsmHistogram();
+        return (AsmHistogram) JStormMetrics.registerTaskTopologyMetric(userMetricName, histogram);
     }
 
     public void unregister(String name, MetricType type) {

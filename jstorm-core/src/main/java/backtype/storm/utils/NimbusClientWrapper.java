@@ -28,9 +28,7 @@ public class NimbusClientWrapper implements StormObject {
         if (isLocal) {
             client = LocalCluster.getInstance().getLocalClusterMap().getNimbus();
         } else {
-            Map clientConf = Utils.readStormConfig();
-            clientConf.putAll(conf);
-            remoteClient = NimbusClient.getConfiguredClient(clientConf);
+            remoteClient = NimbusClient.getConfiguredClient(conf);
             client = remoteClient.getClient();
         }
         isValid.set(true);
@@ -61,7 +59,7 @@ public class NimbusClientWrapper implements StormObject {
         try {
             init(this.conf);
         } catch (Exception ex) {
-            LOG.error("reconnect error, maybe nimbus is not alive.");
+            LOG.error("reconnect error, maybe nimbus is not alive.", ex);
         }
     }
 

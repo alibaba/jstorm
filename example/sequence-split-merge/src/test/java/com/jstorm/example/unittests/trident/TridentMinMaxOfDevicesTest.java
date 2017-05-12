@@ -18,7 +18,7 @@ import java.util.Map;
 import static org.junit.Assert.*;
 
 /**
- * Created by binyang.dby on 2016/7/9.
+ * @author binyang.dby on 2016/7/9.
  *
  * This is the unit test version of TridentMinMaxOfDevicesTopology.
  * The spout generate 2

@@ -4,7 +4,7 @@ import com.codahale.metrics.*;
 
 /**
  * @author wange
- * @since 15/12/16
+ * @since 2.1.1
  */
 public class JHistogram implements Metric, Sampling, Counting {
     private final Reservoir reservoir;

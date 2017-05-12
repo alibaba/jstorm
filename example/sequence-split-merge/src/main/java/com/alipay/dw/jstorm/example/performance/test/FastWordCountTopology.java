@@ -51,14 +51,13 @@ public class FastWordCountTopology {
     public final static String TOPOLOGY_COUNT_PARALLELISM_HINT = "count.parallel";
     
     public static class FastRandomSentenceSpout implements IRichSpout {
-        SpoutOutputCollector _collector;
-        Random               _rand;
-        long                 sendingCount;
-        long                 startTime;
-        boolean              isStatEnable;
-        int                  sendNumPerNexttuple;
-        
-        private static final String[] CHOICES = { "marry had a little lamb whos fleese was white as snow",
+        protected SpoutOutputCollector collector;
+        protected int                  index = 0;
+        protected long                 sendingCount = 0;
+        protected long                 startTime;
+        protected boolean              isStatEnable;
+
+        protected static final String[] CHOICES = { "marry had a little lamb whos fleese was white as snow",
                 "and every where that marry went the lamb was sure to go",
                 "one two three four five six seven eight nine ten",
                 "this is a test of the emergency broadcast system this is only a test",
@@ -81,32 +80,27 @@ public class FastWordCountTopology {
                 
         @Override
         public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
-            _collector = collector;
-            _rand = new Random();
-            sendingCount = 0;
-            startTime = System.currentTimeMillis();
-            sendNumPerNexttuple = JStormUtils.parseInt(conf.get("send.num.each.time"), 1);
-            isStatEnable = JStormUtils.parseBoolean(conf.get("is.stat.enable"), false);
+            this.collector = collector;
+            this.startTime = System.currentTimeMillis();
+            this.isStatEnable = JStormUtils.parseBoolean(conf.get("is.stat.enable"), false);
         }
         
         @Override
         public void nextTuple() {
-            int n = sendNumPerNexttuple;
-            while (--n >= 0) {
-                String sentence = CHOICES[_rand.nextInt(CHOICES.length)];
-                _collector.emit(new Values(sentence));
-            }
-            updateSendTps();
+            String sentence = CHOICES[index];
+            collector.emit(new Values(sentence));
+            index = (++index) % CHOICES.length;
+            printSendTps(1);
         }
         
         @Override
         public void ack(Object id) {
-            // Ignored
+            
         }
         
         @Override
         public void fail(Object id) {
-            _collector.emit(new Values(id), id);
+            collector.emit(new Values(id), id);
         }
         
         @Override
@@ -114,7 +108,7 @@ public class FastWordCountTopology {
             declarer.declare(new Fields("sentence"));
         }
         
-        private void updateSendTps() {
+        protected void printSendTps(int tupleNumPerSending) {
             if (!isStatEnable)
                 return;
                 
@@ -122,7 +116,7 @@ public class FastWordCountTopology {
             long now = System.currentTimeMillis();
             long interval = now - startTime;
             if (interval > 60 * 1000) {
-                LOG.info("Sending tps of last one minute is " + (sendingCount * sendNumPerNexttuple * 1000) / interval);
+                LOG.info("Sending tps of last one minute is " + (sendingCount * tupleNumPerSending * 1000) / interval);
                 startTime = now;
                 sendingCount = 0;
             }
@@ -130,31 +124,27 @@ public class FastWordCountTopology {
         
         @Override
         public void close() {
-            // TODO Auto-generated method stub
             
         }
         
         @Override
         public void activate() {
-            // TODO Auto-generated method stub
             
         }
         
         @Override
         public void deactivate() {
-            // TODO Auto-generated method stub
-            
+             
         }
         
         @Override
         public Map<String, Object> getComponentConfiguration() {
-            // TODO Auto-generated method stub
             return null;
         }
     }
     
     public static class SplitSentence implements IRichBolt {
-        OutputCollector collector;
+        protected OutputCollector collector;
         
         @Override
         public void execute(Tuple tuple) {
@@ -176,20 +166,18 @@ public class FastWordCountTopology {
         
         @Override
         public void cleanup() {
-            // TODO Auto-generated method stub
             
         }
         
         @Override
         public Map<String, Object> getComponentConfiguration() {
-            // TODO Auto-generated method stub
             return null;
         }
     }
     
     public static class WordCount implements IRichBolt {
-        OutputCollector      collector;
-        Map<String, Integer> counts = new HashMap<String, Integer>();
+        protected OutputCollector      collector;
+        protected Map<String, Integer> counts = new HashMap<String, Integer>();
         
         @Override
         public void execute(Tuple tuple) {
@@ -213,13 +201,11 @@ public class FastWordCountTopology {
         
         @Override
         public void cleanup() {
-            // TODO Auto-generated method stub
             
         }
         
         @Override
         public Map<String, Object> getComponentConfiguration() {
-            // TODO Auto-generated method stub
             return null;
         }
     }
@@ -232,39 +218,29 @@ public class FastWordCountTopology {
     }
     
     public static void test() {
-        
         int spout_Parallelism_hint = JStormUtils.parseInt(conf.get(TOPOLOGY_SPOUT_PARALLELISM_HINT), 1);
         int split_Parallelism_hint = JStormUtils.parseInt(conf.get(TOPOLOGY_SPLIT_PARALLELISM_HINT), 1);
         int count_Parallelism_hint = JStormUtils.parseInt(conf.get(TOPOLOGY_COUNT_PARALLELISM_HINT), 2);
         
-        TopologyBuilder builder = new TopologyBuilder();
-        
-        boolean isLocalShuffle = JStormUtils.parseBoolean(conf.get("is.local.first.group"), false);
-        
+        TopologyBuilder builder = new TopologyBuilder();        
         builder.setSpout("spout", new FastRandomSentenceSpout(), spout_Parallelism_hint);
-        if (isLocalShuffle)
-            builder.setBolt("split", new SplitSentence(), split_Parallelism_hint).localFirstGrouping("spout");
-        else
-            builder.setBolt("split", new SplitSentence(), split_Parallelism_hint).shuffleGrouping("spout");
+        builder.setBolt("split", new SplitSentence(), split_Parallelism_hint).localOrShuffleGrouping("spout");
         builder.setBolt("count", new WordCount(), count_Parallelism_hint).fieldsGrouping("split", new Fields("word"));
         
         String[] className = Thread.currentThread().getStackTrace()[1].getClassName().split("\\.");
         String topologyName = className[className.length - 1];
         
         isLocal = JStormHelper.localMode(conf);
-        
         try {
             JStormHelper.runTopology(builder.createTopology(), topologyName, conf, 60,
                     new JStormHelper.CheckAckedFail(conf), isLocal);
         } catch (Exception e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
             Assert.fail("Failed");
         }
     }
     
     public static void main(String[] args) throws Exception {
-        
         conf = JStormHelper.getConfig(args);
         test();
     }

@@ -33,10 +33,6 @@ public class MetricDataConverter {
         convertBase(snapshot, data, win);
 
         data.setM1(snapshot.get_m1());
-        data.setM5(snapshot.get_m5());
-        data.setM15(snapshot.get_m15());
-        data.setMean(snapshot.get_mean());
-
         return data;
     }
 

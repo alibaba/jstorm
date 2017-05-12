@@ -8,7 +8,8 @@ import java.util.Map;
  * @since 2.0.5
  */
 public enum MetaType {
-    TASK(1, "T"), COMPONENT(2, "C"), STREAM(3, "S"), WORKER(4, "W"), TOPOLOGY(5, "P"), NETTY(6, "N"), NIMBUS(7, "M");
+    TASK(1, "T"), COMPONENT(2, "C"), STREAM(3, "S"), WORKER(4, "W"), TOPOLOGY(5, "P"), NETTY(6, "N"), NIMBUS(7, "M"),
+    COMPONENT_STREAM(8, "O");
 
     private int t;
     private String v;
@@ -18,8 +19,8 @@ public enum MetaType {
         this.v = v;
     }
 
-    private static final Map<String, MetaType> valueMap = new HashMap<String, MetaType>();
-    private static final Map<Integer, MetaType> typeMap = new HashMap<Integer, MetaType>();
+    private static final Map<String, MetaType> valueMap = new HashMap<>();
+    private static final Map<Integer, MetaType> typeMap = new HashMap<>();
 
     static {
         for (MetaType type : MetaType.values()) {

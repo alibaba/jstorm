@@ -25,7 +25,6 @@ import org.slf4j.LoggerFactory;
 /**
  * {@code State} implementation for windowing operation. This is mainly used to get callback of commit txId of batches
  * in which triggers are emitted.
- *
  */
 public class WindowsState implements State {
     private static final Logger LOG = LoggerFactory.getLogger(WindowsState.class);

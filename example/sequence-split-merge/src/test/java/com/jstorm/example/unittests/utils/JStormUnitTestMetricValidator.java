@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Created by binyang.dby on 2016/7/8.
+ * @author binyang.dby on 2016/7/8.
  *
  * used for validate if a unit test result should pass by user define metrics. The metrics name should
  * be put in a set, and the value of it will be the key of the metric value.

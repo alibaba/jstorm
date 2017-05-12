@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 
 /**
- * Created by binyang.dby on 2016/7/21.
+ * @author binyang.dby on 2016/7/21.
  */
 public class TickTupleTestBolt implements IRichBolt{
     private Logger LOG = LoggerFactory.getLogger(TickTupleTestBolt.class);

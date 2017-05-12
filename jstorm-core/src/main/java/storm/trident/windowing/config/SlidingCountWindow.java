@@ -24,7 +24,6 @@ import storm.trident.windowing.strategy.WindowStrategy;
 /**
  * Represents configuration of sliding window based on count of events. Window of length {@code windowLength} slides
  * at every count of given {@code slideLength}
- *
  */
 public final class SlidingCountWindow extends BaseWindowConfig {
 

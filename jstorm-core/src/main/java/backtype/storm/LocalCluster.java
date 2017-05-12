@@ -29,8 +29,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 
 public class LocalCluster implements ILocalCluster {
-
-    public static Logger LOG = LoggerFactory.getLogger(LocalCluster.class);
+    private static final Logger LOG = LoggerFactory.getLogger(LocalCluster.class);
 
     private LocalClusterMap state;
 
@@ -55,32 +54,25 @@ public class LocalCluster implements ILocalCluster {
     // this is easy to debug
     protected static LocalCluster instance = null;
 
-    public static LocalCluster getInstance() {
+    public static synchronized LocalCluster getInstance() {
+        if (instance == null)
+            instance = new LocalCluster();
         return instance;
     }
+
     public static void setEnv() {
-    	// fix in zk occur Address family not supported by protocol family:
-        // connect
+        // fix in zk occur Address family not supported by protocol family: connect
         System.setProperty("java.net.preferIPv4Stack", "true");
-        
+
         AsyncLoopRunnable.getShutdown().set(false);
     }
 
     public LocalCluster() {
-        synchronized (LocalCluster.class) {
-            if (instance != null) {
-                throw new RuntimeException("LocalCluster should be single");
-            }
-            setLogger();
-            
-            setEnv();
-
-            this.state = LocalUtils.prepareLocalCluster();
-            if (this.state == null)
-                throw new RuntimeException("prepareLocalCluster error");
-
-            instance = this;
-        }
+        setLogger();
+        setEnv();
+        this.state = LocalUtils.prepareLocalCluster();
+        if (this.state == null)
+            throw new RuntimeException("prepareLocalCluster error");
     }
 
     @Override
@@ -93,10 +85,9 @@ public class LocalCluster implements ILocalCluster {
     public void submitTopologyWithOpts(String topologyName, Map conf, StormTopology topology, SubmitOptions submitOpts) {
         if (!Utils.isValidConf(conf))
             throw new RuntimeException("Topology conf is not json-serializable");
-        
+
         conf.putAll(LocalUtils.getLocalBaseConf());
         conf.putAll(Utils.readCommandLineOpts());
-        
         try {
             if (submitOpts == null) {
                 state.getNimbus().submitTopology(topologyName, null, Utils.to_json(conf), topology);
@@ -105,7 +96,7 @@ public class LocalCluster implements ILocalCluster {
             }
 
         } catch (Exception e) {
-            LOG.error("Failed to submit topology " + topologyName, e);
+            LOG.error("failed to submit topology " + topologyName, e);
             throw new RuntimeException(e);
         }
     }
@@ -118,7 +109,7 @@ public class LocalCluster implements ILocalCluster {
             killOps.set_wait_secs(0);
             state.getNimbus().killTopologyWithOpts(topologyName, killOps);
         } catch (Exception e) {
-            LOG.error("fail to kill Topology " + topologyName, e);
+            LOG.error("failed to kill topology " + topologyName, e);
         }
     }
 
@@ -127,7 +118,7 @@ public class LocalCluster implements ILocalCluster {
         try {
             state.getNimbus().killTopologyWithOpts(name, options);
         } catch (TException e) {
-            LOG.error("fail to kill Topology " + name, e);
+            LOG.error("failed to kill topology " + name, e);
             throw new RuntimeException(e);
         }
     }
@@ -137,7 +128,7 @@ public class LocalCluster implements ILocalCluster {
         try {
             state.getNimbus().activate(topologyName);
         } catch (Exception e) {
-            LOG.error("fail to activate " + topologyName, e);
+            LOG.error("failed to activate " + topologyName, e);
             throw new RuntimeException(e);
         }
     }
@@ -147,7 +138,7 @@ public class LocalCluster implements ILocalCluster {
         try {
             state.getNimbus().deactivate(topologyName);
         } catch (Exception e) {
-            LOG.error("fail to deactivate " + topologyName, e);
+            LOG.error("failed to deactivate " + topologyName, e);
             throw new RuntimeException(e);
         }
     }
@@ -157,12 +148,13 @@ public class LocalCluster implements ILocalCluster {
         try {
             state.getNimbus().rebalance(name, options);
         } catch (Exception e) {
-            LOG.error("fail to rebalance " + name, e);
+            LOG.error("failed to rebalance " + name, e);
             throw new RuntimeException(e);
         }
     }
+
     protected void cleanEnv() {
-    	System.clearProperty(ConfigExtension.TASK_BATCH_TUPLE);
+        System.clearProperty(ConfigExtension.TASK_BATCH_TUPLE);
     }
 
     @Override
@@ -184,7 +176,7 @@ public class LocalCluster implements ILocalCluster {
         try {
             return state.getNimbus().getTopologyConf(id);
         } catch (Exception e) {
-            LOG.error("fail to get topology Conf of topologId: " + id, e);
+            LOG.error("failed to get topology conf of topology id: " + id, e);
         }
         return null;
     }
@@ -194,7 +186,7 @@ public class LocalCluster implements ILocalCluster {
         try {
             return state.getNimbus().getTopology(id);
         } catch (TException e) {
-            LOG.error("fail to get topology of topologId: " + id, e);
+            LOG.error("failed to get topology of topology id: " + id, e);
         }
         return null;
     }
@@ -214,14 +206,14 @@ public class LocalCluster implements ILocalCluster {
         try {
             return state.getNimbus().getTopologyInfo(id);
         } catch (TException e) {
-            LOG.error("fail to get topology info of topologyId: " + id, e);
+            LOG.error("failed to get info of topology id: " + id, e);
         }
         return null;
     }
 
     /***
      * You should use getLocalClusterMap() to instead.This function will always return null
-     * */
+     */
     @Deprecated
     @Override
     public Map getState() {
@@ -248,7 +240,7 @@ public class LocalCluster implements ILocalCluster {
         try {
             state.getNimbus().uploadNewCredentials(topologyName, creds);
         } catch (Exception e) {
-            LOG.error("fail to uploadNewCredentials of topologyId: " + topologyName, e);
+            LOG.error("failed to upload new credentials of topology id: " + topologyName, e);
         }
     }
 

@@ -29,9 +29,8 @@ public class BatchId implements Serializable {
 
     // this is just for kryo
     protected BatchId() {
-        
     }
-    
+
     protected BatchId(long id) {
         this.id = id;
     }

@@ -148,6 +148,11 @@ public class AsmHistogram extends AsmMetric<JHistogram> {
         }
     }
 
+    @Override
+    public Object getValue(Integer window) {
+        throw new UnsupportedOperationException("Not supported for histograms");
+    }
+
     /**
      * flush temp histogram data to all windows & assoc metrics.
      */
@@ -158,7 +163,7 @@ public class AsmHistogram extends AsmMetric<JHistogram> {
                 histogram.update(val);
             }
         }
-        if (MetricUtils.metricAccurateCal){
+        if (MetricUtils.metricAccurateCal) {
             for (long val : values) {
                 for (AsmMetric metric : this.assocMetrics) {
                     metric.updateDirectly(val);

@@ -20,10 +20,9 @@ package com.alibaba.jstorm.utils;
 import java.util.ArrayList;
 
 /**
- * Shuffle the Range, This class is used in shuffle grouping, it is better than random, which can't make sure balance.
- * 
+ * Shuffle the range, this class is used in shuffle grouping, it is better than random, which can't make sure of balance.
+ *
  * @author yannian
- * 
  */
 public class RandomRange {
     private ArrayList<Integer> rr;
@@ -40,12 +39,12 @@ public class RandomRange {
 
     private ArrayList<Integer> rotating_random_range(int amt) {
 
-        ArrayList<Integer> range = new ArrayList<Integer>();
+        ArrayList<Integer> range = new ArrayList<>();
         for (int i = 0; i < amt; i++) {
             range.add(i);
         }
 
-        ArrayList<Integer> rtn = new ArrayList<Integer>();
+        ArrayList<Integer> rtn = new ArrayList<>();
         for (int i = 0; i < amt; i++) {
             int index = (int) (Math.random() * range.size());
             rtn.add(range.remove(index));

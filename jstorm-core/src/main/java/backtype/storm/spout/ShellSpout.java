@@ -28,19 +28,16 @@ import backtype.storm.task.TopologyContext;
 import backtype.storm.utils.ShellProcess;
 import clojure.lang.RT;
 import com.google.common.util.concurrent.MoreExecutors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 import java.util.TimerTask;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ShellSpout implements ISpout {
     public static Logger LOG = LoggerFactory.getLogger(ShellSpout.class);
@@ -73,8 +70,8 @@ public class ShellSpout implements ISpout {
 
         _process = new ShellProcess(_command);
 
-        Number subpid = _process.launch(stormConf, context);
-        LOG.info("Launched subprocess with pid " + subpid);
+        Number subPid = _process.launch(stormConf, context);
+        LOG.info("Launched subprocess with pid " + subPid);
 
         heartBeatExecutorService = MoreExecutors.getExitingScheduledExecutorService(new ScheduledThreadPoolExecutor(1));
     }
@@ -165,7 +162,6 @@ public class ShellSpout implements ISpout {
                     Object messageId = shellMsg.getId();
                     if (task == 0) {
                         _collector.emit(stream, tuple, messageId, new ShellEmitCb(shellMsg));
-     
                     } else {
                         _collector.emitDirect((int) task.longValue(), stream, tuple, messageId);
                     }
@@ -187,24 +183,24 @@ public class ShellSpout implements ISpout {
         ShellMsg.ShellLogLevel logLevel = shellMsg.getLogLevel();
 
         switch (logLevel) {
-        case TRACE:
-            LOG.trace(msg);
-            break;
-        case DEBUG:
-            LOG.debug(msg);
-            break;
-        case INFO:
-            LOG.info(msg);
-            break;
-        case WARN:
-            LOG.warn(msg);
-            break;
-        case ERROR:
-            LOG.error(msg);
-            break;
-        default:
-            LOG.info(msg);
-            break;
+            case TRACE:
+                LOG.trace(msg);
+                break;
+            case DEBUG:
+                LOG.debug(msg);
+                break;
+            case INFO:
+                LOG.info(msg);
+                break;
+            case WARN:
+                LOG.warn(msg);
+                break;
+            case ERROR:
+                LOG.error(msg);
+                break;
+            default:
+                LOG.info(msg);
+                break;
         }
     }
 
@@ -254,18 +250,18 @@ public class ShellSpout implements ISpout {
             long currentTimeMillis = System.currentTimeMillis();
             long lastHeartbeat = getLastHeartbeat();
 
-            LOG.debug("current time : {}, last heartbeat : {}, worker timeout (ms) : {}", currentTimeMillis, lastHeartbeat, workerTimeoutMills);
-
+            LOG.debug("current time : {}, last heartbeat : {}, worker timeout (ms) : {}",
+                    currentTimeMillis, lastHeartbeat, workerTimeoutMills);
             if (currentTimeMillis - lastHeartbeat > workerTimeoutMills) {
-                spout.die(new RuntimeException("subprocess heartbeat timeout"));
+                spout.die(new RuntimeException("subprocess heartbeat timed out"));
             }
         }
     }
-    
+
     public class ShellEmitCb implements ICollectorCallback {
-        
+
         private ShellMsg shellMsg;
-        
+
         public ShellEmitCb(ShellMsg shellMsg) {
             this.shellMsg = shellMsg;
         }
@@ -276,12 +272,10 @@ public class ShellSpout implements ISpout {
                 try {
                     _process.writeTaskIds(outTasks);
                 } catch (IOException e) {
-                    // TODO Auto-generated catch block
-                    LOG.warn("Skip write outTasks", e);
+                    LOG.warn("Skip writing outTasks", e);
                 }
             }
         }
-        
     }
 
 }

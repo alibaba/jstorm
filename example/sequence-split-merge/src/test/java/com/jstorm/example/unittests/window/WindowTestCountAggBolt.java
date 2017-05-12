@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Created by binyang.dby on 2016/7/22.
+ * @author binyang.dby on 2016/7/22.
  */
 public class WindowTestCountAggBolt extends BaseRichBolt {
     // Mapping of key->upstreamBolt->count
@@ -30,7 +30,7 @@ public class WindowTestCountAggBolt extends BaseRichBolt {
         long count = input.getLong(1);
         int source = input.getSourceTask();
 
-        System.out.println("### obj = " + obj + " count = " + count + " src = " +source);
+        System.out.println("### obj = " + obj + " count = " + count + " src = " + source);
 
         Map<Integer, Long> subCounts = counts.get(obj);
         if (subCounts == null) {

@@ -36,8 +36,8 @@ import storm.trident.windowing.config.WindowConfig;
 public class InMemoryTridentWindowManager extends AbstractTridentWindowManager<TridentTuple> {
     private static final Logger LOG = LoggerFactory.getLogger(InMemoryTridentWindowManager.class);
 
-    public InMemoryTridentWindowManager(WindowConfig windowConfig, String windowTaskId, WindowsStore windowStore, Aggregator aggregator,
-                                        BatchOutputCollector delegateCollector) {
+    public InMemoryTridentWindowManager(WindowConfig windowConfig, String windowTaskId, WindowsStore windowStore,
+                                        Aggregator aggregator, BatchOutputCollector delegateCollector) {
         super(windowConfig, windowTaskId, windowStore, aggregator, delegateCollector);
     }
 

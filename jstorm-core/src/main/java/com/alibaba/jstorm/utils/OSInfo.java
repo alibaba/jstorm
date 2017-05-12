@@ -29,80 +29,80 @@ public class OSInfo {
     }
 
     public static boolean isLinux() {
-        return OS.indexOf("linux") >= 0;
+        return OS.contains("linux");
     }
 
     public static boolean isMacOS() {
-        return OS.indexOf("mac") >= 0 && OS.indexOf("os") > 0 && OS.indexOf("x") < 0;
+        return OS.contains("mac") && OS.indexOf("os") > 0 && !OS.contains("x");
     }
 
     public static boolean isMacOSX() {
-        return OS.indexOf("mac") >= 0 && OS.indexOf("os") > 0 && OS.indexOf("x") > 0;
+        return OS.contains("mac") && OS.indexOf("os") > 0 && OS.indexOf("x") > 0;
     }
 
     public static boolean isMac() {
-        return OS.indexOf("mac") >= 0 && OS.indexOf("os") > 0;
+        return OS.contains("mac") && OS.indexOf("os") > 0;
     }
 
     public static boolean isWindows() {
-        return OS.indexOf("windows") >= 0;
+        return OS.contains("windows");
     }
 
     public static boolean isOS2() {
-        return OS.indexOf("os/2") >= 0;
+        return OS.contains("os/2");
     }
 
     public static boolean isSolaris() {
-        return OS.indexOf("solaris") >= 0;
+        return OS.contains("solaris");
     }
 
     public static boolean isSunOS() {
-        return OS.indexOf("sunos") >= 0;
+        return OS.contains("sunos");
     }
 
     public static boolean isMPEiX() {
-        return OS.indexOf("mpe/ix") >= 0;
+        return OS.contains("mpe/ix");
     }
 
     public static boolean isHPUX() {
-        return OS.indexOf("hp-ux") >= 0;
+        return OS.contains("hp-ux");
     }
 
     public static boolean isAix() {
-        return OS.indexOf("aix") >= 0;
+        return OS.contains("aix");
     }
 
     public static boolean isOS390() {
-        return OS.indexOf("os/390") >= 0;
+        return OS.contains("os/390");
     }
 
     public static boolean isFreeBSD() {
-        return OS.indexOf("freebsd") >= 0;
+        return OS.contains("freebsd");
     }
 
     public static boolean isIrix() {
-        return OS.indexOf("irix") >= 0;
+        return OS.contains("irix");
     }
 
     public static boolean isDigitalUnix() {
-        return OS.indexOf("digital") >= 0 && OS.indexOf("unix") > 0;
+        return OS.contains("digital") && OS.indexOf("unix") > 0;
     }
 
     public static boolean isNetWare() {
-        return OS.indexOf("netware") >= 0;
+        return OS.contains("netware");
     }
 
     public static boolean isOSF1() {
-        return OS.indexOf("osf1") >= 0;
+        return OS.contains("osf1");
     }
 
     public static boolean isOpenVMS() {
-        return OS.indexOf("openvms") >= 0;
+        return OS.contains("openvms");
     }
 
     /**
      * Get OS name
-     * 
+     *
      * @return OS name
      */
     public static EPlatform getOSname() {
@@ -146,9 +146,6 @@ public class OSInfo {
         return _instance.platform;
     }
 
-    /**
-     * @param args
-     */
     public static void main(String[] args) {
         System.out.println(System.getProperty("os.name"));
         System.out.println(System.getProperty("os.version"));

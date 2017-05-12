@@ -27,31 +27,28 @@ public interface IConnection {
 
     /**
      * (flags != 1) synchronously (flags==1) asynchronously
-     * 
-     * @param flags
-     * @return
      */
-    public Object recv(Integer taskId, int flags);
+    Object recv(Integer taskId, int flags);
 
     /**
      * In the new design, receive flow is through registerQueue, then push message into queue
-     * 
-     * @param recvQueu
      */
-    public void registerQueue(Integer taskId, DisruptorQueue recvQueu);
+    void registerQueue(Integer taskId, DisruptorQueue recvQueu);
 
-    public void enqueue(TaskMessage message, Channel channel);
+    void enqueue(TaskMessage message, Channel channel);
 
-    public void send(List<TaskMessage> messages);
+    void send(List<TaskMessage> messages);
 
-    public void send(TaskMessage message);
+    void send(TaskMessage message);
 
-    public boolean available();
+    void sendDirect(TaskMessage message);
+
+    boolean available(int taskId);
 
     /**
      * close this connection
      */
-    public void close();
+    void close();
 
-    public boolean isClosed();
+    boolean isClosed();
 }

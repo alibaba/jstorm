@@ -17,37 +17,26 @@
  */
 package com.alibaba.jstorm.schedule;
 
-import java.util.Map;
-import java.util.Set;
-
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-
 import backtype.storm.generated.StormTopology;
-
 import com.alibaba.jstorm.daemon.supervisor.SupervisorInfo;
 import com.alibaba.jstorm.schedule.default_assign.ResourceWorkerSlot;
-import com.alibaba.jstorm.schedule.Assignment;
+import java.util.Map;
+import java.util.Set;
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
 
 public class TopologyAssignContext {
 
     public static final int ASSIGN_TYPE_NEW = 0; // assign a new topology
-
-    public static final int ASSIGN_TYPE_REBALANCE = 1; // rebalance a topology
-
-    public static final int ASSIGN_TYPE_MONITOR = 2; // monitor a topology, some
-                                                     // tasks are dead
+    public static final int ASSIGN_TYPE_REBALANCE = 1; // re-balance a topology
+    public static final int ASSIGN_TYPE_MONITOR = 2; // monitor a topology, some tasks are dead
 
     protected String topologyId;
-
     protected int assignType;
-
     protected StormTopology rawTopology;
-
     protected Map stormConf;
 
-    // if assignType is ASSIGN_TYPE_NEW, oldAssignment is the Assignment last
-    // time
+    // if assignType is ASSIGN_TYPE_NEW, oldAssignment is the Assignment last time
     // otherwise it is the old assignment before assignment.
     protected Assignment oldAssignment;
 
@@ -61,13 +50,12 @@ public class TopologyAssignContext {
     protected Set<Integer> allTaskIds; // all tasks
     protected Set<Integer> deadTaskIds; // dead tasks
     protected Set<Integer> unstoppedTaskIds; // the task is alive, but his
-                                             // supervisor is dead
+    // supervisor is dead
     protected Set<ResourceWorkerSlot> unstoppedWorkers;
 
     protected boolean isReassign;
 
     public TopologyAssignContext() {
-
     }
 
     public TopologyAssignContext(TopologyAssignContext copy) {

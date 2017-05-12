@@ -43,7 +43,6 @@ import storm.trident.windowing.strategy.WindowStrategy;
 /**
  * Basic functionality to manage trident tuple events using {@code WindowManager} and {@code WindowsStore} for storing
  * tuples and triggers related information.
- *
  */
 public abstract class AbstractTridentWindowManager<T> implements ITridentWindowManager {
     private static final Logger LOG = LoggerFactory.getLogger(AbstractTridentWindowManager.class);
@@ -91,7 +90,7 @@ public abstract class AbstractTridentWindowManager<T> implements ITridentWindowM
         // get trigger count value from store
         Object result = windowStore.get(windowTriggerCountId);
         Integer currentCount = 0;
-        if(result == null) {
+        if (result == null) {
             LOG.info("No current trigger count in windows store.");
         } else {
             currentCount = (Integer) result + 1;
@@ -132,8 +131,6 @@ public abstract class AbstractTridentWindowManager<T> implements ITridentWindowM
 
     /**
      * Handle expired tuple events which can be removing from cache or store.
-     *
-     * @param expiredEvents
      */
     protected abstract void onTuplesExpired(List<T> expiredEvents);
 
@@ -159,8 +156,6 @@ public abstract class AbstractTridentWindowManager<T> implements ITridentWindowM
 
     /**
      * Return {@code TridentTuple}s from given {@code tupleEvents}.
-     * @param tupleEvents
-     * @return
      */
     protected abstract List<TridentTuple> getTridentTuples(List<T> tupleEvents);
 
@@ -215,10 +210,7 @@ public abstract class AbstractTridentWindowManager<T> implements ITridentWindowM
 
         @Override
         public String toString() {
-            return "TriggerResult{" +
-                    "id=" + id +
-                    ", result=" + result +
-                    '}';
+            return "TriggerResult{" + "id=" + id + ", result=" + result + '}';
         }
     }
 

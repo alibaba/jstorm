@@ -98,7 +98,7 @@ public class MetricDef {
     public static final String NETSENDSPEED = "NetSendSpeed";
     public static final String NETRECVSPEED = "NetRecvSpeed";
 
-    public static final Set<String> MERGE_SUM_TAG = new HashSet<String>();
+    public static final Set<String> MERGE_SUM_TAG = new HashSet<>();
 
     static {
         MERGE_SUM_TAG.add(MetricDef.EMMITTED_NUM);
@@ -109,7 +109,7 @@ public class MetricDef {
 
     }
 
-    public static final Set<String> MERGE_AVG_TAG = new HashSet<String>();
+    public static final Set<String> MERGE_AVG_TAG = new HashSet<>();
 
     static {
         MERGE_AVG_TAG.add(PROCESS_LATENCY);
@@ -119,7 +119,7 @@ public class MetricDef {
 
     public static final String QEUEU_IS_FULL = "queue is full";
 
-    public static final Set<String> TASK_QUEUE_SET = new HashSet<String>();
+    public static final Set<String> TASK_QUEUE_SET = new HashSet<>();
 
     static {
         TASK_QUEUE_SET.add(DESERIALIZE_QUEUE);
@@ -129,7 +129,7 @@ public class MetricDef {
 
     }
 
-    public static final Set<String> WORKER_QUEUE_SET = new HashSet<String>();
+    public static final Set<String> WORKER_QUEUE_SET = new HashSet<>();
 
     static {
         WORKER_QUEUE_SET.add(RECV_CTRL_QUEUE);
@@ -140,7 +140,7 @@ public class MetricDef {
 
     public static boolean isNettyDetails(String metricName) {
 
-        Set<String> specialNettySet = new HashSet<String>();
+        Set<String> specialNettySet = new HashSet<>();
         specialNettySet.add(MetricDef.NETTY_CLI_SEND_SPEED);
         specialNettySet.add(MetricDef.NETTY_SRV_RECV_SPEED);
 

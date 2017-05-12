@@ -25,21 +25,19 @@ import java.security.InvalidParameterException;
 import java.util.Map;
 
 /**
- * Monitor topology
+ * metric monitor of a topology, not used currently
  *
  * @author Basti
  */
 public class metrics_monitor {
     public static void main(String[] args) {
         if (args == null || args.length <= 1) {
-            throw new InvalidParameterException("Should input topology name and enable flag");
+            throw new InvalidParameterException("Please input topology name and enable flag");
         }
 
         String topologyName = args[0];
-
         NimbusClient client = null;
         try {
-
             Map conf = Utils.readStormConfig();
             client = NimbusClient.getConfiguredClient(conf);
 

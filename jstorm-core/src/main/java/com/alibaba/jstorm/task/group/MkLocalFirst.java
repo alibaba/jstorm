@@ -34,17 +34,14 @@ import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.RandomRange;
 
 /**
- * 
- * 
  * @author zhongyan.feng
- * @version
  */
 public class MkLocalFirst extends Shuffer {
     private static final Logger LOG = LoggerFactory.getLogger(MkLocalFirst.class);
 
-    private List<Integer> allOutTasks = new ArrayList<Integer>();
-    private List<Integer> localOutTasks = new ArrayList<Integer>();
-    private List<Integer> remoteOutTasks = new ArrayList<Integer>();
+    private List<Integer> allOutTasks = new ArrayList<>();
+    private List<Integer> localOutTasks = new ArrayList<>();
+    private List<Integer> remoteOutTasks = new ArrayList<>();
     private RandomRange randomrange;
     private RandomRange remoteRandomRange;
     private boolean isLocalWorkerAvail;
@@ -61,7 +58,7 @@ public class MkLocalFirst extends Shuffer {
         this.allOutTasks.addAll(allOutTasks);
         this.workerData = workerData;
 
-        List<Integer> localWorkerOutTasks = new ArrayList<Integer>();
+        List<Integer> localWorkerOutTasks = new ArrayList<>();
 
         for (Integer outTask : allOutTasks) {
             if (workerTasks.contains(outTask)) {
@@ -79,8 +76,8 @@ public class MkLocalFirst extends Shuffer {
         randomrange = new RandomRange(localOutTasks.size());
         remoteRandomRange = new RandomRange(remoteOutTasks.size());
 
-        LOG.info("Local out tasks:" + localOutTasks + ", Remote out tasks:" + remoteOutTasks);
-        
+        LOG.info("Local out tasks:" + localOutTasks + ", remote out tasks:" + remoteOutTasks);
+
         loadMark = JStormUtils.parseDouble(workerData.getStormConf().get("shuffle.load.mark"), 1.0).floatValue();
     }
 
@@ -88,8 +85,7 @@ public class MkLocalFirst extends Shuffer {
     protected int getActiveTask(RandomRange randomrange, List<Integer> outTasks) {
         int index = randomrange.nextInt();
         int size = outTasks.size();
-        int i = 0;
-
+        int i;
         for (i = 0; i < size; i++) {
             Integer taskId = outTasks.get(index);
             boolean taskStatus = workerData.isOutboundTaskActive(taskId);
@@ -129,14 +125,6 @@ public class MkLocalFirst extends Shuffer {
         if (ret == null)
             ret = interGroup(values);
         return ret;
-    }
-
-    /**
-     * @param args
-     */
-    public static void main(String[] args) {
-        // TODO Auto-generated method stub
-
     }
 
 }

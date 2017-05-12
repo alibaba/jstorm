@@ -36,21 +36,20 @@ import backtype.storm.scheduler.WorkerSlot;
 import com.alibaba.jstorm.client.WorkerAssignment;
 import com.alibaba.jstorm.utils.NetWorkUtils;
 
-//one worker 's assignment
+/**
+ * allocation unit for a worker
+ */
 public class ResourceWorkerSlot extends WorkerSlot implements Serializable {
-
-    public static Logger LOG = LoggerFactory.getLogger(ResourceWorkerSlot.class);
     private static final long serialVersionUID = 9138386287559932411L;
+    public static Logger LOG = LoggerFactory.getLogger(ResourceWorkerSlot.class);
 
     private String hostname;
     private long memSize;
     private int cpu;
     private Set<Integer> tasks;
-
     private String jvm;
 
     public ResourceWorkerSlot() {
-
     }
 
     public ResourceWorkerSlot(String supervisorId, Integer port) {
@@ -60,16 +59,17 @@ public class ResourceWorkerSlot extends WorkerSlot implements Serializable {
     public ResourceWorkerSlot(WorkerAssignment worker, Map<String, List<Integer>> componentToTask) {
         super(worker.getNodeId(), worker.getPort());
         this.hostname = worker.getHostName();
-        this.tasks = new HashSet<Integer>();
+        this.tasks = new HashSet<>();
         this.cpu = worker.getCpu();
         this.memSize = worker.getMem();
         this.jvm = worker.getJvm();
         for (Entry<String, Integer> entry : worker.getComponentToNum().entrySet()) {
             List<Integer> tasks = componentToTask.get(entry.getKey());
-            if (tasks == null || tasks.size() == 0)
+            if (tasks == null || tasks.size() == 0) {
                 continue;
+            }
             int num = Math.min(tasks.size(), entry.getValue().intValue());
-            List<Integer> cTasks = new ArrayList<Integer>();
+            List<Integer> cTasks = new ArrayList<>();
             cTasks.addAll(tasks.subList(0, num));
             this.tasks.addAll(cTasks);
             tasks.removeAll(cTasks);
@@ -132,13 +132,13 @@ public class ResourceWorkerSlot extends WorkerSlot implements Serializable {
         if (jvm != null && !jvm.equals(this.jvm))
             return false;
         String hostName = worker.getHostName();
-        if (NetWorkUtils.equals(hostname, hostName) == false)
+        if (!NetWorkUtils.equals(hostname, hostName))
             return false;
         int port = worker.getPort();
         if (port != 0 && port != this.getPort())
             return false;
         Map<String, Integer> componentToNum = worker.getComponentToNum();
-        Map<String, Integer> myComponentToNum = new HashMap<String, Integer>();
+        Map<String, Integer> myComponentToNum = new HashMap<>();
         for (Integer task : tasks) {
             String component = taskToComponent.get(task);
             Integer i = myComponentToNum.get(component);

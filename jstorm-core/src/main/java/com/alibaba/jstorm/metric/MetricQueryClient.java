@@ -99,7 +99,7 @@ public interface MetricQueryClient {
      * @param metricId    metric id
      * @return metric meta
      */
-    MetricMeta getMetricMeta(String clusterName, String topologyId, MetaType metaType, long metricId);
+    MetricMeta getMetricMeta(String clusterName, String topologyId, MetaType metaType, String metricId);
 
     /**
      * get metric data
@@ -119,7 +119,7 @@ public interface MetricQueryClient {
      * @param end        end time
      * @return metric data objects, depending on metric type, could be CounterData, GaugeData, ... etc.
      */
-    List<Object> getMetricData(long metricId, MetricType metricType, int win, long start, long end);
+    List<Object> getMetricData(String metricId, MetricType metricType, int win, long start, long end);
 
     /**
      * get metric data
@@ -132,7 +132,7 @@ public interface MetricQueryClient {
      * @param size       return size
      * @return metric data objects, depending on metric type, could be CounterData, GaugeData, ... etc.
      */
-    List<Object> getMetricData(long metricId, MetricType metricType, int win, long start, long end, int size);
+    List<Object> getMetricData(String metricId, MetricType metricType, int win, long start, long end, int size);
 
     /**
      * get all task track by topology id

@@ -20,7 +20,7 @@ package backtype.storm.testing;
 import java.io.Serializable;
 
 public interface AckFailDelegate extends Serializable {
-    public void ack(Object id);
+    void ack(Object id);
 
-    public void fail(Object id);
+    void fail(Object id);
 }

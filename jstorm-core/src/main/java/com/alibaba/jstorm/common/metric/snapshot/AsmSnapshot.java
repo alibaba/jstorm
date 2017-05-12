@@ -4,7 +4,7 @@ import java.io.Serializable;
 
 /**
  * @author wange
- * @since 15/6/5
+ * @since 2.0.5
  */
 public abstract class AsmSnapshot implements Serializable, Cloneable{
     private static final long serialVersionUID = 1945719653840917619L;

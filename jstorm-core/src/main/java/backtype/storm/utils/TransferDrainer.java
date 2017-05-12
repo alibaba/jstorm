@@ -26,14 +26,14 @@ import backtype.storm.messaging.TaskMessage;
 
 public class TransferDrainer {
 
-    private HashMap<String, ArrayList<ArrayList<TaskMessage>>> bundles = new HashMap();
+    private HashMap<String, ArrayList<ArrayList<TaskMessage>>> bundles = new HashMap<>();
 
     public void add(HashMap<String, ArrayList<TaskMessage>> workerTupleSetMap) {
         for (String key : workerTupleSetMap.keySet()) {
 
             ArrayList<ArrayList<TaskMessage>> bundle = bundles.get(key);
             if (null == bundle) {
-                bundle = new ArrayList<ArrayList<TaskMessage>>();
+                bundle = new ArrayList<>();
                 bundles.put(key, bundle);
             }
 
@@ -52,21 +52,19 @@ public class TransferDrainer {
                 for (ArrayList<TaskMessage> list : bundle) {
                     connection.send(list);
                 }
-
             }
         }
     }
 
     private Iterator<TaskMessage> getBundleIterator(final ArrayList<ArrayList<TaskMessage>> bundle) {
-
         if (null == bundle) {
             return null;
         }
 
         return new Iterator<TaskMessage>() {
-
             private int offset = 0;
             private int size = 0;
+
             {
                 for (ArrayList<TaskMessage> list : bundle) {
                     size += list.size();
@@ -78,15 +76,12 @@ public class TransferDrainer {
 
             @Override
             public boolean hasNext() {
-                if (offset < size) {
-                    return true;
-                }
-                return false;
+                return offset < size;
             }
 
             @Override
             public TaskMessage next() {
-                TaskMessage msg = null;
+                TaskMessage msg;
                 if (iter.hasNext()) {
                     msg = iter.next();
                 } else {

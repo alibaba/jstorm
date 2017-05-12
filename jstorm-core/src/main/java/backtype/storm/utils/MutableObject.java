@@ -21,7 +21,6 @@ public class MutableObject {
     Object o = null;
 
     public MutableObject() {
-
     }
 
     public MutableObject(Object o) {

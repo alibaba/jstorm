@@ -26,26 +26,24 @@ import com.alibaba.jstorm.task.TaskTransfer;
 
 /**
  * Send init/ack/fail tuple to acker
- * 
+ *
  * @author yannian
- * 
  */
 
 public class UnanchoredSend {
-    public static void send(TopologyContext topologyContext, TaskSendTargets taskTargets, TaskTransfer transfer_fn, String stream, List<Object> values) {
-
+    public static void send(TopologyContext topologyContext, TaskSendTargets taskTargets,
+                            TaskTransfer transferFn, String stream, List<Object> values) {
         List<Integer> tasks = taskTargets.get(stream, values, null, values.get(0));
         if (tasks.size() == 0) {
             return;
         }
 
         Integer taskId = topologyContext.getThisTaskId();
-
         for (Integer task : tasks) {
             TupleImplExt tup = new TupleImplExt(topologyContext, values, taskId, stream);
             tup.setTargetTaskId(task);
 
-            transfer_fn.transfer(tup);
+            transferFn.transfer(tup);
         }
     }
 }

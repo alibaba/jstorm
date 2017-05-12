@@ -9,9 +9,8 @@ public class StartTopologyEvent extends MetricEvent {
     
     @Override
     public void run() {
-        // TODO Auto-generated method stub
         context.getMetricCache().putSampleRate(topologyId, sampleRate);
-        context.getMetricUploader().sendEvent(context.getClusterName(), this);
+        context.getMetricUploaderDelegate().sendEvent(context.getClusterName(), this);
         
         if (!context.getTopologyMetricContexts().containsKey(topologyId)) {
             TopologyMetricContext metricContext = new TopologyMetricContext();

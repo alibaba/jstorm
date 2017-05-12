@@ -15,7 +15,7 @@ public class TopologyMetricDataInfo implements Serializable {
     public long   timestamp; // metrics report time
     
     public Map<String, Object> toMap() {
-        Map<String, Object> ret = new HashMap<String, Object>();
+        Map<String, Object> ret = new HashMap<>();
         ret.put(MetricUploader.METRIC_TIME, timestamp);
         ret.put(MetricUploader.METRIC_TYPE, type);
         

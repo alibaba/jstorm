@@ -1,7 +1,7 @@
 package com.jstorm.example.unittests.sequence;
 
 /**
- * Created by binyang.dby on 2016/7/8.
+ * @author binyang.dby on 2016/7/8.
  *
  * I use endsWith to filter the user define metrics from all metrics. Make sure all the metrics ends with ".user.define"
  */

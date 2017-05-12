@@ -63,12 +63,14 @@ public class JStormMetrics implements Serializable {
     protected static final AsmMetricRegistry workerMetrics = new AsmMetricRegistry();
     protected static final AsmMetricRegistry nettyMetrics = new AsmMetricRegistry();
     protected static final AsmMetricRegistry componentMetrics = new AsmMetricRegistry();
+    protected static final AsmMetricRegistry compStreamMetrics = new AsmMetricRegistry();
     protected static final AsmMetricRegistry taskMetrics = new AsmMetricRegistry();
     protected static final AsmMetricRegistry streamMetrics = new AsmMetricRegistry();
     protected static final AsmMetricRegistry topologyMetrics = new AsmMetricRegistry();
 
     protected static final AsmMetricRegistry[] allRegistries = {
-            streamMetrics, taskMetrics, componentMetrics, workerMetrics, nettyMetrics, topologyMetrics};
+            streamMetrics, taskMetrics, componentMetrics, compStreamMetrics,
+            workerMetrics, nettyMetrics, topologyMetrics};
 
     protected static String topologyId;
     protected static String host;
@@ -174,6 +176,43 @@ public class JStormMetrics implements Serializable {
         return null;
     }
 
+    public static List<AsmMetric> search(String metricName, MetaType metaType, MetricType metricType) {
+        if (metaType == MetaType.TOPOLOGY) {
+            return search(topologyMetrics, metricName, metricType);
+        } else if (metaType == MetaType.COMPONENT) {
+            return search(componentMetrics, metricName, metricType);
+        } else if (metaType == MetaType.TASK) {
+            return search(taskMetrics, metricName, metricType);
+        } else if (metaType == MetaType.COMPONENT_STREAM) {
+            return search(compStreamMetrics, metricName, metricType);
+        } else if (metaType == MetaType.WORKER) {
+            return search(workerMetrics, metricName, metricType);
+        }
+        return Lists.newArrayList();
+    }
+
+    private static List<AsmMetric> search(AsmMetricRegistry registry, String metricName, MetricType metricType) {
+        List<AsmMetric> ret = Lists.newArrayList();
+
+        Map<String, ?> metricMap;
+        if (metricType == MetricType.COUNTER) {
+            metricMap = registry.getCounters();
+        } else if (metricType == MetricType.GAUGE) {
+            metricMap = registry.getGauges();
+        } else if (metricType == MetricType.METER) {
+            metricMap = registry.getMeters();
+        } else {
+            metricMap = registry.getHistograms();
+        }
+        for (Map.Entry<String, ?> entry : metricMap.entrySet()) {
+            if (entry.getKey().endsWith(metricName)) {
+                ret.add((AsmMetric) entry.getValue());
+            }
+        }
+
+        return ret;
+    }
+
     public static AsmMetric registerStreamMetric(String name, AsmMetric metric, boolean mergeTopology) {
         name = fixNameIfPossible(name);
         LOG.debug("register stream metric:{}", name);
@@ -183,6 +222,8 @@ public class JStormMetrics implements Serializable {
         if (metric.isAggregate()) {
             List<AsmMetric> assocMetrics = new ArrayList<>();
 
+            // in this step we've normalized metric names which contains "."
+            // e.g., a metric named: 'abc.def' will be normalized to 'def'
             String taskMetricName = MetricUtils.stream2taskName(name);
             AsmMetric taskMetric = taskMetrics.register(taskMetricName, metric.clone());
             assocMetrics.add(taskMetric);
@@ -191,12 +232,9 @@ public class JStormMetrics implements Serializable {
             AsmMetric componentMetric = componentMetrics.register(compMetricName, taskMetric.clone());
             assocMetrics.add(componentMetric);
 
-            String metricName = MetricUtils.getMetricName(name);
-            if (metricName.contains(".")) {
-                compMetricName = MetricUtils.task2MergeCompName(taskMetricName);
-                AsmMetric mergeCompMetric = componentMetrics.register(compMetricName, taskMetric.clone());
-                assocMetrics.add(mergeCompMetric);
-            }
+            String compStreamMetricName = MetricUtils.stream2compStreamName(name);
+            AsmMetric componentStreamMetric = compStreamMetrics.register(compStreamMetricName, ret.clone());
+            assocMetrics.add(componentStreamMetric);
 
             if (mergeTopology) {
                 String topologyMetricName = MetricUtils.comp2topologyName(compMetricName);
@@ -224,26 +262,19 @@ public class JStormMetrics implements Serializable {
         return ret;
     }
 
-//    public static AsmMetric registerStreamTopologyMetric(String name, AsmMetric metric) {
-//        name = fixNameIfPossible(name);
-//        LOG.info("register stream metric:{}", name);
-//        AsmMetric ret = streamMetrics.register(name, metric);
-//
-//        if (metric.isAggregate()) {
-//            String taskMetricName = MetricUtils.stream2taskName(name);
-//            AsmMetric taskMetric = taskMetrics.register(taskMetricName, ret.clone());
-//
-//            String compMetricName = MetricUtils.task2compName(taskMetricName);
-//            AsmMetric componentMetric = componentMetrics.register(compMetricName, ret.clone());
-//
-//            String topologyMetricName = MetricUtils.comp2topologyName(compMetricName);
-//            AsmMetric topologyMetric = topologyMetrics.register(topologyMetricName, ret.clone());
-//
-//            ret.addAssocMetrics(taskMetric, componentMetric, topologyMetric);
-//        }
-//
-//        return ret;
-//    }
+    public static AsmMetric registerTaskTopologyMetric(String name, AsmMetric metric) {
+        name = fixNameIfPossible(name);
+        AsmMetric ret = taskMetrics.register(name, metric);
+
+        String compMetricName = MetricUtils.task2compName(name);
+        AsmMetric compMetric = topologyMetrics.register(compMetricName, ret.clone());
+
+        String topologyMetricName = MetricUtils.comp2topologyName(compMetricName);
+        AsmMetric topologyMetric = topologyMetrics.register(topologyMetricName, ret.clone());
+
+        ret.addAssocMetrics(compMetric, topologyMetric);
+        return ret;
+    }
 
     public static AsmMetric registerWorkerMetric(String name, AsmMetric metric) {
         name = fixNameIfPossible(name);
@@ -377,6 +408,7 @@ public class JStormMetrics implements Serializable {
         }
         entries.addAll(taskMetrics.metrics.entrySet());
         entries.addAll(componentMetrics.metrics.entrySet());
+        entries.addAll(compStreamMetrics.metrics.entrySet());
         entries.addAll(workerMetrics.metrics.entrySet());
         entries.addAll(nettyMetrics.metrics.entrySet());
         entries.addAll(topologyMetrics.metrics.entrySet());
@@ -430,89 +462,119 @@ public class JStormMetrics implements Serializable {
 
     public static MetricInfo approximateComputeAllMetrics() {
         long start = System.currentTimeMillis();
+
+        // metric name => worker count
+        Map<String, Integer> histogramMetricNameCounters = new HashMap<>();
         MetricInfo metricInfo = MetricUtils.mkMetricInfo();
         Map<String, Map<Integer, MetricSnapshot>> mergeWorkerMetrics = metricInfo.get_metrics();
-        mergeLevelMetricSnapshot(mergeWorkerMetrics, streamMetrics.metrics);
-        mergeLevelMetricSnapshot(mergeWorkerMetrics, taskMetrics.metrics);
-        mergeLevelMetricSnapshot(mergeWorkerMetrics, componentMetrics.metrics);
-        mergeLevelMetricSnapshot(mergeWorkerMetrics, workerMetrics.metrics);
-        mergeLevelMetricSnapshot(mergeWorkerMetrics, nettyMetrics.metrics);
-        mergeLevelMetricSnapshot(mergeWorkerMetrics, topologyMetrics.metrics);
+        mergeLevelMetricSnapshot(mergeWorkerMetrics, streamMetrics.metrics, histogramMetricNameCounters);
+        mergeLevelMetricSnapshot(mergeWorkerMetrics, taskMetrics.metrics, histogramMetricNameCounters);
+        mergeLevelMetricSnapshot(mergeWorkerMetrics, componentMetrics.metrics, histogramMetricNameCounters);
+        mergeLevelMetricSnapshot(mergeWorkerMetrics, compStreamMetrics.metrics, histogramMetricNameCounters);
+        mergeLevelMetricSnapshot(mergeWorkerMetrics, workerMetrics.metrics, histogramMetricNameCounters);
+        mergeLevelMetricSnapshot(mergeWorkerMetrics, nettyMetrics.metrics, histogramMetricNameCounters);
+        mergeLevelMetricSnapshot(mergeWorkerMetrics, topologyMetrics.metrics, histogramMetricNameCounters);
 
         if (debug) {
             MetricUtils.printMetricInfo(metricInfo, debugMetricNames);
         }
-        Set<String> fiterStreamNames = new HashSet<>();
+        Set<String> filteredStreamNames = new HashSet<>();
         if (!enableStreamMetrics) {
             for (Map.Entry<String, AsmMetric> entry : streamMetrics.metrics.entrySet()) {
-                fiterStreamNames.add(entry.getKey());
+                filteredStreamNames.add(entry.getKey());
             }
         }
         Map<String, Map<Integer, MetricSnapshot>> uploadWorkerMetrics = new HashMap<>();
         for (Map.Entry<String, Map<Integer, MetricSnapshot>> entry : mergeWorkerMetrics.entrySet()) {
-            if (!fiterStreamNames.contains(entry.getKey()))
+            if (!filteredStreamNames.contains(entry.getKey())) {
+                Integer count = histogramMetricNameCounters.get(entry.getKey());
+                Map<Integer, MetricSnapshot> values = entry.getValue();
+                //adjust Histogram
+                if (values != null && count != null && count > 1) {
+                    for (Map.Entry<Integer, MetricSnapshot> entry1 : values.entrySet()) {
+                        MetricSnapshot metricSnapshot = entry1.getValue();
+                        metricSnapshot.set_min(metricSnapshot.get_min() / count);
+                        metricSnapshot.set_max(metricSnapshot.get_max() / count);
+                        metricSnapshot.set_p50(metricSnapshot.get_p50() / count);
+                        metricSnapshot.set_p75(metricSnapshot.get_p75() / count);
+                        metricSnapshot.set_p95(metricSnapshot.get_p95() / count);
+                        metricSnapshot.set_p98(metricSnapshot.get_p98() / count);
+                        metricSnapshot.set_p99(metricSnapshot.get_p99() / count);
+                        metricSnapshot.set_p999(metricSnapshot.get_p999() / count);
+                        metricSnapshot.set_mean(metricSnapshot.get_mean() / count);
+                        metricSnapshot.set_stddev(metricSnapshot.get_stddev() / count);
+                    }
+                }
                 uploadWorkerMetrics.put(entry.getKey(), entry.getValue());
+            }
+
         }
         metricInfo.set_metrics(uploadWorkerMetrics);
-        LOG.debug("approximate compute all metrics, cost:{}", System.currentTimeMillis() - start);
+        LOG.debug("approximately compute all metrics, cost:{}", System.currentTimeMillis() - start);
 
         return metricInfo;
     }
 
-    public static void mergeLevelMetricSnapshot(Map<String, Map<Integer, MetricSnapshot>> mergeWorkerMetrics, ConcurrentMap<String, AsmMetric> metrics) {
+    public static void mergeLevelMetricSnapshot(Map<String, Map<Integer, MetricSnapshot>> mergeWorkerMetrics,
+                                                ConcurrentMap<String, AsmMetric> metrics,
+                                                Map<String, Integer> histogramMetricNameCounters) {
 
         for (Map.Entry<String, AsmMetric> entry : metrics.entrySet()) {
             String name = entry.getKey();
             AsmMetric metric = entry.getValue();
-            if (metric.isAttached()){
-                LOG.debug("start merge this isattached Metrics {}", metric.getMetricName());
+            if (metric.isAttached() || disabledMetricNames.contains(metric.getShortName()) ||
+                    metric.getSnapshots().size() == 0) {
                 continue;
             }
 
-            // skip disabled metrics, double check
-            if (disabledMetricNames.contains(metric.getShortName())) {
-                LOG.debug("start merge this disable Metrics {}", metric.getMetricName());
-                continue;
-            }
-            Map<Integer, AsmSnapshot> snapshots = metric.getSnapshots();
-            if (snapshots.size() == 0) {
-                LOG.debug("start merge this snapshots Metrics {}", metric.getMetricName());
-                continue;
-            }
             Set<AsmMetric> assocMetrics = metric.getAssocMetrics();
             MetricType metricType = MetricUtils.metricType(metric.getMetricName());
 
             List<AsmMetric> asmMetricList = Lists.newLinkedList(assocMetrics);
             asmMetricList.add(metric);
 
+            // snapshot of the root metric: stream/task
+            Map<Integer, MetricSnapshot> rootSnapshotMap = MetricUtils.toThriftSnapshots(metric.getSnapshots(), metricType);
+
             for (AsmMetric asmMetric : asmMetricList) {
-                LOG.debug("asmMetric {}, parentMetrics {}", asmMetric.getMetricName(), metric.getMetricName());
                 int op = metric.getOp();
                 if ((op & AsmMetric.MetricOp.LOG) == AsmMetric.MetricOp.LOG) {
                     MetricUtils.printMetricSnapshot(asmMetric, metric.getSnapshots());
                 }
                 if ((op & AsmMetric.MetricOp.REPORT) == AsmMetric.MetricOp.REPORT) {
                     try {
-                        Map<Integer, MetricSnapshot> relatedSnapshotMap = MetricUtils.toThriftSnapshots(metric.getSnapshots(), metricType);
-                        Map<Integer, MetricSnapshot> oldSnapshotMap = mergeWorkerMetrics.get(asmMetric.getMetricName());
+                        String metricName = asmMetric.getMetricName();
+                        Map<Integer, MetricSnapshot> oldSnapshotMap = mergeWorkerMetrics.get(metricName);
                         if (oldSnapshotMap == null) {
-                            Map<Integer, MetricSnapshot> generateSnapshotMap = MetricUtils.toThriftSnapshots(asmMetric.getSnapshots(), metricType);
-                            for (Map.Entry<Integer, MetricSnapshot> entry1 : relatedSnapshotMap.entrySet()) {
-                                entry1.getValue().set_ts(generateSnapshotMap.get(entry1.getKey()).get_ts());
-                                entry1.getValue().set_metricId(asmMetric.getMetricId());
-                            }
-                            oldSnapshotMap = relatedSnapshotMap;
-                            mergeWorkerMetrics.put(asmMetric.getMetricName(), oldSnapshotMap);
+                            mergeWorkerMetrics.put(metricName,
+                                    copyMetricSnapshotMapWithId(rootSnapshotMap, asmMetric.getMetricId()));
                         } else {
-                            MetricUtils.mergeMetricSnapshotMap(oldSnapshotMap, relatedSnapshotMap, asmMetric, metricType);
+                            MetricUtils.mergeMetricSnapshotMap(oldSnapshotMap, rootSnapshotMap, metricType);
+                        }
+                        if (metricType == MetricType.HISTOGRAM) {
+                            if (histogramMetricNameCounters.containsKey(metricName)) {
+                                histogramMetricNameCounters.put(metricName, histogramMetricNameCounters.get(metricName) + 1);
+                            } else {
+                                histogramMetricNameCounters.put(metricName, 1);
+                            }
                         }
                     } catch (Exception ex) {
                         LOG.error("Error", ex);
                     }
                 }
             }
-            LOG.debug("mergeWorkerMetrics {}", mergeWorkerMetrics);
         }
+    }
+
+    private static Map<Integer, MetricSnapshot> copyMetricSnapshotMapWithId(Map<Integer, MetricSnapshot> snapshotMap,
+                                                                            Long metricId) {
+        Map<Integer, MetricSnapshot> ret = new HashMap<>();
+        for (Map.Entry<Integer, MetricSnapshot> entry : snapshotMap.entrySet()) {
+            MetricSnapshot snapshot = new MetricSnapshot(entry.getValue());
+            snapshot.set_metricId(metricId);
+            ret.put(entry.getKey(), snapshot);
+        }
+        return ret;
     }
 
     @SuppressWarnings("unchecked")
@@ -554,18 +616,16 @@ public class JStormMetrics implements Serializable {
         int taskId = 1;
         String streamId = "defaultStream";
         String type = MetaType.STREAM.getV() + MetricType.COUNTER.getV();
-        String metricName = "counter1";
+        String metricName = "counter1.abcde";
         String group = "udf";
 
         String name = MetricUtils.metricName(type, tpId, compName, taskId, streamId, group, metricName);
         System.out.println(name);
 
         AsmCounter counter = new AsmCounter();
-        AsmMetric ret1 = JStormMetrics.registerStreamMetric(name, counter, false);
+        AsmMetric ret1 = JStormMetrics.registerStreamMetric(name, counter, true);
         AsmMetric ret2 = JStormMetrics.registerStreamMetric(name, counter, false);
         System.out.println(ret1 == ret2);
-
-        counter.update(1L);
 
         metricName = MetricUtils.workerMetricName("metric1", MetricType.COUNTER);
         System.out.println(metricName);

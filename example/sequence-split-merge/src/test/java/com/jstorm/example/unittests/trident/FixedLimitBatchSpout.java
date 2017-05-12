@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by binyang.dby on 2016/7/9.
+ * @author binyang.dby on 2016/7/9.
  *
  * This is a finite version of the FixedBatchSpout class.
  * Using the BasicLimitBatchSpout, pick at most maxBatchSize content in the outputs and emit as

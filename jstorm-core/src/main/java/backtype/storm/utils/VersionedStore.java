@@ -123,7 +123,7 @@ public class VersionedStore {
         if (versionsToKeep >= 0) {
             versions = versions.subList(0, Math.min(versions.size(), versionsToKeep));
         }
-        HashSet<Long> keepers = new HashSet<Long>(versions);
+        HashSet<Long> keepers = new HashSet<>(versions);
 
         for (String p : listDir(_root)) {
             Long v = parseVersion(p);
@@ -137,7 +137,7 @@ public class VersionedStore {
      * Sorted from most recent to oldest
      */
     public List<Long> getAllVersions() throws IOException {
-        List<Long> ret = new ArrayList<Long>();
+        List<Long> ret = new ArrayList<>();
         for (String s : listDir(_root)) {
             if (s.endsWith(FINISHED_VERSION_SUFFIX)) {
                 ret.add(validateAndGetVersion(s));
@@ -180,7 +180,7 @@ public class VersionedStore {
     }
 
     private List<String> listDir(String dir) throws IOException {
-        List<String> ret = new ArrayList<String>();
+        List<String> ret = new ArrayList<>();
         File[] contents = new File(dir).listFiles();
         if (contents != null) {
             for (File f : contents) {

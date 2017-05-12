@@ -1,37 +1,28 @@
 package com.alibaba.jstorm.transactional.spout;
 
 import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
-import com.alibaba.jstorm.utils.JStormUtils;
 
 import backtype.storm.spout.SpoutOutputCollector;
 import backtype.storm.task.TopologyContext;
 
 public class BasicTransactionSpout extends TransactionSpout {
-    private ScheduledExecutorService scheduledService = null;
+    public BasicTransactionSpout(ITransactionSpoutExecutor spoutExecutor) {
+        super(spoutExecutor);
+    }
 
-	public BasicTransactionSpout(ITransactionSpoutExecutor spoutExecutor) {
-		super(spoutExecutor);
-	}
-
-	@Override 
-	public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
+    @Override
+    public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
         super.open(conf, context, collector);
-
-        int threadPoolNum = JStormUtils.parseInt(conf.get("transaction.schedule.thread.pool"), 1);
-        int delay = JStormUtils.parseInt(conf.get("transaction.schedule.batch.delay.ms"), 1000);
-        int initDelay = delay >= 30000 ? 30000 : delay;
-        if (scheduledService == null) {
-            scheduledService = Executors.newScheduledThreadPool(threadPoolNum);
+        /**
+         *  For backward compatibility to release 2.2.*, the conversion of output collector to 
+         *  BasicSpoutOutputCollector is still kept here.
+         */
+        if (spoutExecutor instanceof BasicTransactionSpoutExecutor) {
+            ((BasicTransactionSpoutExecutor) spoutExecutor).open(conf, context, new BasicSpoutOutputCollector(outputCollector));
+        } else if (spoutExecutor instanceof IBasicTransactionSpoutExecutor) {
+            ((IBasicTransactionSpoutExecutor) spoutExecutor).open(conf, context, new BasicSpoutOutputCollector(outputCollector));
+        } else {
+            spoutExecutor.open(conf, context, new SpoutOutputCollector(outputCollector));
         }
-        scheduledService.scheduleWithFixedDelay(new Runnable() {
-            @Override
-            public void run() {
-                process(Operation.commit, null);
-            } 
-        }, initDelay, delay, TimeUnit.MILLISECONDS);
-	}
+    }
 }

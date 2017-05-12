@@ -13,7 +13,7 @@ public class DiagnosisEvent extends MetricEvent {
         }
 
         // if metricUploader is not fully initialized, return directly
-        if (context.getMetricUploader() == null) {
+        if (!context.isReadyToUpload()) {
             LOG.info("Context Metric Uploader isn't ready");
             return;
         }

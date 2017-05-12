@@ -44,7 +44,6 @@ import storm.trident.windowing.config.WindowConfig;
 
 /**
  * {@code TridentProcessor} implementation for windowing operations on trident stream.
- *
  */
 public class WindowTridentProcessor implements TridentProcessor {
     private static final Logger LOG = LoggerFactory.getLogger(WindowTridentProcessor.class);
@@ -174,7 +173,7 @@ public class WindowTridentProcessor implements TridentProcessor {
         }
 
         // if there are no trigger values in earlier attempts or this is a new batch, emit pending triggers.
-        if(triggerValues == null) {
+        if (triggerValues == null) {
             pendingTriggerIds = new ArrayList<>();
             Queue<StoreBasedTridentWindowManager.TriggerResult> pendingTriggers = tridentWindowManager.getPendingTriggers();
             LOG.debug("pending triggers at batch: [{}] and triggers.size: [{}] ", batchId, pendingTriggers.size());

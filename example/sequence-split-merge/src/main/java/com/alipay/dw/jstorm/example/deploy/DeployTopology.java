@@ -22,11 +22,7 @@ public class DeployTopology {
     //message size
     private final static String TOPOLOGY_MESSAGE_SIZES = "topology.messagesize";
 
-    public final static String TOPOLOGY_FINISH_STREAM = "topology.finish.stream";
-
-
-    private static Map conf = new HashMap<Object, Object>();
-
+    private static Map conf = new HashMap<>();
 
     public void realMain(String[] args) throws Exception {
 
@@ -43,7 +39,7 @@ public class DeployTopology {
         int _numTopologies = JStormUtils.parseInt(conf.get(TOPOLOGY_NUMS), 1);
         int _spoutParallel = JStormUtils.parseInt(conf.get(TOPOLOGY_SPOUT_PARALLELISM_HINT), 2);
         int _boltParallel = JStormUtils.parseInt(conf.get(TOPOLOGY_BOLT_PARALLELISM_HINT), 4);
-        int _messageSize =  JStormUtils.parseInt(conf.get(TOPOLOGY_MESSAGE_SIZES), 10);
+        int _messageSize = JStormUtils.parseInt(conf.get(TOPOLOGY_MESSAGE_SIZES), 10);
         int _numAcker = JStormUtils.parseInt(conf.get(Config.TOPOLOGY_ACKER_EXECUTORS), 2);
         int _boltNum = JStormUtils.parseInt(conf.get(TOPOLOGY_BOLTS_NUMS), 3);
         boolean _ackEnabled = false;

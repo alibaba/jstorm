@@ -54,35 +54,32 @@ public class RocksTTLDBCache implements JStormCache {
     }
 
     public static final String ROCKSDB_ROOT_DIR = "rocksdb.root.dir";
-    public static final String ROCKSDB_RESET = "rocksdb.reset";
     protected TtlDB ttlDB;
     protected String rootDir;
-    protected TreeMap<Integer, ColumnFamilyHandle> windowHandlers = new TreeMap<Integer, ColumnFamilyHandle>();
+    protected TreeMap<Integer, ColumnFamilyHandle> windowHandlers = new TreeMap<>();
 
     public void initDir(Map<Object, Object> conf) {
         String confDir = (String) conf.get(ROCKSDB_ROOT_DIR);
-        if (StringUtils.isBlank(confDir) == true) {
-            throw new RuntimeException("Doesn't set rootDir of rocksDB");
+        if (StringUtils.isBlank(confDir)) {
+            throw new RuntimeException("rootDir of rocksDB is not specified!");
         }
 
         boolean clean = ConfigExtension.getNimbusCacheReset(conf);
         LOG.info("RocksDB reset is " + clean);
-        if (clean == true) {
+        if (clean) {
             try {
                 PathUtils.rmr(confDir);
             } catch (IOException e) {
-                // TODO Auto-generated catch block
                 throw new RuntimeException("Failed to cleanup rooDir of rocksDB " + confDir);
             }
         }
 
         File file = new File(confDir);
-        if (file.exists() == false) {
+        if (!file.exists()) {
             try {
                 PathUtils.local_mkdirs(confDir);
                 file = new File(confDir);
             } catch (IOException e) {
-                // TODO Auto-generated catch block
                 throw new RuntimeException("Failed to mkdir rooDir of rocksDB " + confDir);
             }
         }
@@ -95,30 +92,26 @@ public class RocksTTLDBCache implements JStormCache {
 
         DBOptions dbOptions = null;
 
-        List<ColumnFamilyDescriptor> columnFamilyNames = new ArrayList<ColumnFamilyDescriptor>();
+        List<ColumnFamilyDescriptor> columnFamilyNames = new ArrayList<>();
         columnFamilyNames.add(new ColumnFamilyDescriptor(RocksDB.DEFAULT_COLUMN_FAMILY));
         for (Integer timeout : list) {
             columnFamilyNames.add(new ColumnFamilyDescriptor(String.valueOf(timeout).getBytes()));
         }
 
-        List<Integer> ttlValues = new ArrayList<Integer>();
-        // Default column family with infinite lifetime
-        // ATTENSION, the first must be 0, RocksDB.java API has this limitation
+        List<Integer> ttlValues = new ArrayList<>();
+        // Default column family with infinite TTL
+        // NOTE that the first must be 0, RocksDB.java API has this limitation
         ttlValues.add(0);
         // new column family with list second ttl
         ttlValues.addAll(list);
 
         try {
             dbOptions = new DBOptions().setCreateMissingColumnFamilies(true).setCreateIfMissing(true);
-
-            List<ColumnFamilyHandle> columnFamilyHandleList = new ArrayList<ColumnFamilyHandle>();
-
+            List<ColumnFamilyHandle> columnFamilyHandleList = new ArrayList<>();
             ttlDB = TtlDB.open(dbOptions, rootDir, columnFamilyNames, columnFamilyHandleList, ttlValues, false);
-
             for (int i = 0; i < ttlValues.size(); i++) {
                 windowHandlers.put(ttlValues.get(i), columnFamilyHandleList.get(i));
             }
-
             LOG.info("Successfully init rocksDB of {}", rootDir);
         } finally {
 
@@ -130,10 +123,9 @@ public class RocksTTLDBCache implements JStormCache {
 
     @Override
     public void init(Map<Object, Object> conf) throws Exception {
-        // TODO Auto-generated method stub
         initDir(conf);
 
-        List<Integer> list = new ArrayList<Integer>();
+        List<Integer> list = new ArrayList<>();
         if (conf.get(TAG_TIMEOUT_LIST) != null) {
             for (Object obj : (List) ConfigExtension.getCacheTimeoutList(conf)) {
                 Integer timeoutSecond = JStormUtils.parseInt(obj);
@@ -145,7 +137,7 @@ public class RocksTTLDBCache implements JStormCache {
             }
         }
 
-        // Add retry logic
+        // retry
         boolean isSuccess = false;
         for (int i = 0; i < 3; i++) {
             try {
@@ -156,14 +148,12 @@ public class RocksTTLDBCache implements JStormCache {
                 LOG.warn("Failed to init rocksDB " + rootDir, e);
                 try {
                     PathUtils.rmr(rootDir);
-                } catch (IOException e1) {
-                    // TODO Auto-generated catch block
-
+                } catch (IOException ignored) {
                 }
             }
         }
 
-        if (isSuccess == false) {
+        if (!isSuccess) {
             throw new RuntimeException("Failed to init rocksDB " + rootDir);
         }
     }
@@ -171,7 +161,6 @@ public class RocksTTLDBCache implements JStormCache {
     @Override
     public void cleanup() {
         LOG.info("Begin to close rocketDb of {}", rootDir);
-
         for (ColumnFamilyHandle columnFamilyHandle : windowHandlers.values()) {
             columnFamilyHandle.dispose();
         }
@@ -185,7 +174,6 @@ public class RocksTTLDBCache implements JStormCache {
 
     @Override
     public Object get(String key) {
-        // TODO Auto-generated method stub
         for (Entry<Integer, ColumnFamilyHandle> entry : windowHandlers.entrySet()) {
             try {
                 byte[] data = ttlDB.get(entry.getValue(), key.getBytes());
@@ -198,9 +186,7 @@ public class RocksTTLDBCache implements JStormCache {
                         return null;
                     }
                 }
-
-            } catch (Exception e) {
-
+            } catch (Exception ignored) {
             }
         }
 
@@ -209,13 +195,13 @@ public class RocksTTLDBCache implements JStormCache {
 
     @Override
     public void getBatch(Map<String, Object> map) {
-        List<byte[]> lookupKeys = new ArrayList<byte[]>();
+        List<byte[]> lookupKeys = new ArrayList<>();
         for (String key : map.keySet()) {
             lookupKeys.add(key.getBytes());
         }
         for (Entry<Integer, ColumnFamilyHandle> entry : windowHandlers.entrySet()) {
-
-            List<ColumnFamilyHandle> cfHandlers = new ArrayList<ColumnFamilyHandle>();
+            List<ColumnFamilyHandle> cfHandlers = new ArrayList<>();
+            // todo: problematic??
             for (String key : map.keySet()) {
                 cfHandlers.add(entry.getValue());
             }
@@ -234,7 +220,7 @@ public class RocksTTLDBCache implements JStormCache {
                         continue;
                     }
 
-                    Object value = null;
+                    Object value;
                     try {
                         value = Utils.javaDeserialize(valueByte);
                     } catch (Exception e) {
@@ -242,7 +228,6 @@ public class RocksTTLDBCache implements JStormCache {
                         ttlDB.remove(entry.getValue(), keyByte);
                         continue;
                     }
-
                     map.put(new String(keyByte), value);
                 }
 
@@ -251,8 +236,6 @@ public class RocksTTLDBCache implements JStormCache {
                 LOG.error("Failed to query " + map.keySet() + ", in window: " + entry.getKey());
             }
         }
-
-        return;
     }
 
     @Override
@@ -269,19 +252,17 @@ public class RocksTTLDBCache implements JStormCache {
 
     @Override
     public void removeBatch(Collection<String> keys) {
-        // TODO Auto-generated method stub
         for (String key : keys) {
             remove(key);
         }
     }
 
     protected void put(String key, Object value, Entry<Integer, ColumnFamilyHandle> entry) {
-
         byte[] data = Utils.javaSerialize(value);
         try {
             ttlDB.put(entry.getValue(), key.getBytes(), data);
         } catch (Exception e) {
-            LOG.error("Failed put into cache, " + key, e);
+            LOG.error("Failed to put key into cache, " + key, e);
             return;
         }
 
@@ -293,14 +274,12 @@ public class RocksTTLDBCache implements JStormCache {
             try {
                 ttlDB.remove(removeEntry.getValue(), key.getBytes());
             } catch (Exception e) {
-                // TODO Auto-generated catch block
                 LOG.warn("Failed to remove other " + key);
             }
         }
     }
 
     protected Entry<Integer, ColumnFamilyHandle> getHandler(int timeoutSecond) {
-        ColumnFamilyHandle cfHandler = null;
         Entry<Integer, ColumnFamilyHandle> ceilingEntry = windowHandlers.ceilingEntry(timeoutSecond);
         if (ceilingEntry != null) {
             return ceilingEntry;
@@ -311,8 +290,6 @@ public class RocksTTLDBCache implements JStormCache {
 
     @Override
     public void put(String key, Object value, int timeoutSecond) {
-        // TODO Auto-generated method stub
-
         put(key, value, getHandler(timeoutSecond));
 
     }
@@ -323,12 +300,10 @@ public class RocksTTLDBCache implements JStormCache {
     }
 
     protected void putBatch(Map<String, Object> map, Entry<Integer, ColumnFamilyHandle> putEntry) {
-        // TODO Auto-generated method stub
         WriteOptions writeOpts = null;
         WriteBatch writeBatch = null;
 
-        Set<byte[]> putKeys = new HashSet<byte[]>();
-
+        Set<byte[]> putKeys = new HashSet<>();
         try {
             writeOpts = new WriteOptions();
             writeBatch = new WriteBatch();
@@ -338,7 +313,6 @@ public class RocksTTLDBCache implements JStormCache {
                 Object value = entry.getValue();
 
                 byte[] data = Utils.javaSerialize(value);
-
                 if (StringUtils.isBlank(key) || data == null || data.length == 0) {
                     continue;
                 }
@@ -369,7 +343,6 @@ public class RocksTTLDBCache implements JStormCache {
             for (byte[] keyByte : putKeys) {
                 try {
                     ttlDB.remove(entry.getValue(), keyByte);
-
                 } catch (Exception e) {
                     LOG.error("Failed to remove other's " + new String(keyByte));
                 }
@@ -379,82 +352,11 @@ public class RocksTTLDBCache implements JStormCache {
 
     @Override
     public void putBatch(Map<String, Object> map) {
-        // TODO Auto-generated method stub
         putBatch(map, windowHandlers.firstEntry());
     }
 
     @Override
     public void putBatch(Map<String, Object> map, int timeoutSeconds) {
-        // TODO Auto-generated method stub
         putBatch(map, getHandler(timeoutSeconds));
     }
-
-    // public void put() throws Exception {
-
-    // }
-    //
-    // public void write() throws Exception {
-    // Options options = null;
-    // WriteBatch wb1 = null;
-    // WriteBatch wb2 = null;
-    // WriteOptions opts = null;
-    // try {
-    // options = new Options().setMergeOperator(new StringAppendOperator()).setCreateIfMissing(true);
-    // db = RocksDB.open(options, dbFolder.getRoot().getAbsolutePath());
-    // opts = new WriteOptions();
-    // wb1 = new WriteBatch();
-    // wb1.put("key1".getBytes(), "aa".getBytes());
-    // wb1.merge("key1".getBytes(), "bb".getBytes());
-    // wb2 = new WriteBatch();
-    // wb2.put("key2".getBytes(), "xx".getBytes());
-    // wb2.merge("key2".getBytes(), "yy".getBytes());
-    // db.write(opts, wb1);
-    // db.write(opts, wb2);
-    // assertThat(db.get("key1".getBytes())).isEqualTo("aa,bb".getBytes());
-    // assertThat(db.get("key2".getBytes())).isEqualTo("xx,yy".getBytes());
-    // } finally {
-    // if (db != null) {
-    // db.close();
-    // }
-    // if (wb1 != null) {
-    // wb1.dispose();
-    // }
-    // if (wb2 != null) {
-    // wb2.dispose();
-    // }
-    // if (options != null) {
-    // options.dispose();
-    // }
-    // if (opts != null) {
-    // opts.dispose();
-    // }
-    // }
-    // }
-    //
-
-    //
-    // public void remove() throws Exception {
-    // RocksDB db = null;
-    // WriteOptions wOpt;
-    // try {
-    // wOpt = new WriteOptions();
-    // db = RocksDB.open(dbFolder.getRoot().getAbsolutePath());
-    // db.put("key1".getBytes(), "value".getBytes());
-    // db.put("key2".getBytes(), "12345678".getBytes());
-    // assertThat(db.get("key1".getBytes())).isEqualTo("value".getBytes());
-    // assertThat(db.get("key2".getBytes())).isEqualTo("12345678".getBytes());
-    // db.remove("key1".getBytes());
-    // db.remove(wOpt, "key2".getBytes());
-    // assertThat(db.get("key1".getBytes())).isNull();
-    // assertThat(db.get("key2".getBytes())).isNull();
-    // } finally {
-    // if (db != null) {
-    // db.close();
-    // }
-    // }
-    // }
-    //
-    // public void ttlDbOpenWithColumnFamilies() throws Exception, InterruptedException {
-    //
-    // }
 }

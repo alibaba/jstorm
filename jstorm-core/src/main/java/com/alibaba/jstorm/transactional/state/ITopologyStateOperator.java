@@ -1,11 +1,11 @@
 package com.alibaba.jstorm.transactional.state;
 
-import java.util.Map;
+import backtype.storm.task.TopologyContext;
 
 public interface ITopologyStateOperator {
-    public void init(Map conf);
+    void init(TopologyContext context);
 
-    public Object initState(String topologyName);
+    Object initState(String topologyName);
 
-    public boolean commitState(String topologyName, int groupId, Object state);
+    boolean commitState(String topologyName, Object state);
 }

@@ -38,7 +38,7 @@ public class SchedulerAssignmentImpl implements SchedulerAssignment {
 
     public SchedulerAssignmentImpl(String topologyId, Map<ExecutorDetails, WorkerSlot> executorToSlots) {
         this.topologyId = topologyId;
-        this.executorToSlot = new HashMap<ExecutorDetails, WorkerSlot>(0);
+        this.executorToSlot = new HashMap<>(0);
         if (executorToSlots != null) {
             this.executorToSlot.putAll(executorToSlots);
         }
@@ -46,14 +46,11 @@ public class SchedulerAssignmentImpl implements SchedulerAssignment {
 
     @Override
     public Set<WorkerSlot> getSlots() {
-        return new HashSet(executorToSlot.values());
+        return new HashSet<>(executorToSlot.values());
     }
 
     /**
      * Assign the slot to executors.
-     * 
-     * @param slot
-     * @param executors
      */
     public void assign(WorkerSlot slot, Collection<ExecutorDetails> executors) {
         for (ExecutorDetails executor : executors) {
@@ -63,11 +60,9 @@ public class SchedulerAssignmentImpl implements SchedulerAssignment {
 
     /**
      * Release the slot occupied by this assignment.
-     * 
-     * @param slot
      */
     public void unassignBySlot(WorkerSlot slot) {
-        List<ExecutorDetails> executors = new ArrayList<ExecutorDetails>();
+        List<ExecutorDetails> executors = new ArrayList<>();
         for (ExecutorDetails executor : this.executorToSlot.keySet()) {
             WorkerSlot ws = this.executorToSlot.get(executor);
             if (ws.equals(slot)) {
@@ -82,10 +77,7 @@ public class SchedulerAssignmentImpl implements SchedulerAssignment {
     }
 
     /**
-     * Does this slot occupied by this assignment?
-     * 
-     * @param slot
-     * @return
+     * Is this slot occupied by an assignment?
      */
     public boolean isSlotOccupied(WorkerSlot slot) {
         return this.executorToSlot.containsValue(slot);
@@ -105,8 +97,6 @@ public class SchedulerAssignmentImpl implements SchedulerAssignment {
 
     /**
      * Return the executors covered by this assignments
-     * 
-     * @return
      */
     public Set<ExecutorDetails> getExecutors() {
         return this.executorToSlot.keySet();

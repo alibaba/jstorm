@@ -36,11 +36,8 @@ import java.util.Set;
 
 /**
  * Thrift utils
- * 
- * 2012-03-28
- * 
+ *
  * @author yannian
- * 
  */
 public class Thrift {
     private static Logger LOG = LoggerFactory.getLogger(Thrift.class);
@@ -54,7 +51,6 @@ public class Thrift {
     }
 
     public static CustomStreamGrouping instantiateJavaObject(JavaObject obj) {
-
         List<JavaObjectArg> args = obj.get_args_list();
         Class[] paraTypes = new Class[args.size()];
         Object[] paraValues = new Object[args.size()];
@@ -80,8 +76,8 @@ public class Thrift {
         }
 
         try {
-            Class clas = Class.forName(obj.get_full_class_name());
-            Constructor cons = clas.getConstructor(paraTypes);
+            Class clazz = Class.forName(obj.get_full_class_name());
+            Constructor cons = clazz.getConstructor(paraTypes);
             return (CustomStreamGrouping) cons.newInstance(paraValues);
         } catch (Exception e) {
             LOG.error("instantiate_java_object fail", e);
@@ -139,7 +135,8 @@ public class Thrift {
         return Grouping.all(new NullStruct());
     }
 
-    private static ComponentCommon mkComponentcommon(Map<GlobalStreamId, Grouping> inputs, HashMap<String, StreamInfo> output_spec, Integer parallelism_hint) {
+    private static ComponentCommon mkComponentcommon(Map<GlobalStreamId, Grouping> inputs,
+                                                     HashMap<String, StreamInfo> output_spec, Integer parallelism_hint) {
         ComponentCommon ret = new ComponentCommon(inputs, output_spec);
         if (parallelism_hint != null) {
             ret.set_parallelism_hint(parallelism_hint);
@@ -147,7 +144,8 @@ public class Thrift {
         return ret;
     }
 
-    public static Bolt mkBolt(Map<GlobalStreamId, Grouping> inputs, IBolt bolt, HashMap<String, StreamInfo> output, Integer p) {
+    public static Bolt mkBolt(Map<GlobalStreamId, Grouping> inputs, IBolt bolt,
+                              HashMap<String, StreamInfo> output, Integer p) {
         ComponentCommon common = mkComponentcommon(inputs, output, p);
         byte[] boltSer = Utils.serialize(bolt);
         ComponentObject component = ComponentObject.serialized_java(boltSer);
@@ -155,7 +153,8 @@ public class Thrift {
     }
 
     public static StormTopology._Fields[] STORM_TOPOLOGY_FIELDS = null;
-    public static StormTopology._Fields[] SPOUT_FIELDS = { StormTopology._Fields.SPOUTS, StormTopology._Fields.STATE_SPOUTS };
+    public static StormTopology._Fields[] SPOUT_FIELDS = {StormTopology._Fields.SPOUTS, StormTopology._Fields.STATE_SPOUTS};
+
     static {
         Set<_Fields> keys = StormTopology.metaDataMap.keySet();
         STORM_TOPOLOGY_FIELDS = new StormTopology._Fields[keys.size()];

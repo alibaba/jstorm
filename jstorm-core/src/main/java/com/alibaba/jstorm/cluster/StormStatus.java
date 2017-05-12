@@ -19,6 +19,7 @@ package com.alibaba.jstorm.cluster;
 
 import java.io.Serializable;
 
+import java.util.Objects;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
@@ -26,9 +27,9 @@ import com.alibaba.jstorm.daemon.nimbus.StatusType;
 
 /**
  * author: lixin/longda
- * 
+ *
  * Dedicate Topology status
- * 
+ *
  * Topology status: active/inactive/killed/rebalancing killTimeSecs: when status isn't killed, it is -1 and useless. when status is killed, do kill operation
  * after killTimeSecs seconds when status is rebalancing, do rebalancing opation after delaySecs seconds restore oldStatus as current status
  */
@@ -92,12 +93,14 @@ public class StormStatus implements Serializable {
 
     @Override
     public boolean equals(Object base) {
-        if ((base instanceof StormStatus) == false) {
+        if (!(base instanceof StormStatus)) {
             return false;
         }
 
         StormStatus check = (StormStatus) base;
-        if (check.getStatusType().equals(getStatusType()) && check.getKillTimeSecs() == getKillTimeSecs() && check.getDelaySecs().equals(getDelaySecs())) {
+        if (check.getStatusType().equals(getStatusType()) &&
+                check.getKillTimeSecs().equals(getKillTimeSecs()) &&
+                check.getDelaySecs().equals(getDelaySecs())) {
             return true;
         }
         return false;

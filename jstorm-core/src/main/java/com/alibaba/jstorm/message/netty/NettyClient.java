@@ -81,9 +81,9 @@ class NettyClient implements IConnection {
     protected final AtomicBoolean beingClosed;
 
     protected AtomicLong pendings;
-    protected int messageBatchSize; 
+    protected int messageBatchSize;
     protected MessageBuffer messageBuffer;
-    protected Object writeLock;
+    protected final Object writeLock;
 
     protected String address;
     // doesn't use timer, due to competition
@@ -107,9 +107,9 @@ class NettyClient implements IConnection {
 
     protected boolean enableNettyMetrics;
 
-    // when batch buffer size is more than BATCH_THREASHOLD_WARN
+    // when batch buffer size is more than BATCH_THRESHOLD_WARN
     // it will block Drainer thread
-    protected long BATCH_THREASHOLD_WARN;
+    protected long BATCH_THRESHOLD_WARN;
 
     @SuppressWarnings("rawtypes")
     NettyClient(Map storm_conf, ChannelFactory factory, String host, int port, ReconnectRunnable reconnector) {
@@ -118,7 +118,7 @@ class NettyClient implements IConnection {
         this.reconnector = reconnector;
 
         retries = new AtomicInteger(0);
-        channelRef = new AtomicReference<Channel>(null);
+        channelRef = new AtomicReference<>(null);
         beingClosed = new AtomicBoolean(false);
         pendings = new AtomicLong(0);
 
@@ -155,7 +155,7 @@ class NettyClient implements IConnection {
         }
         closingChannel = new HashSet<Channel>();
 
-        BATCH_THREASHOLD_WARN = ConfigExtension.getNettyBufferThresholdSize(stormConf);
+        BATCH_THRESHOLD_WARN = ConfigExtension.getNettyBufferThresholdSize(stormConf);
     }
 
     public void registerMetrics() {
@@ -169,12 +169,12 @@ class NettyClient implements IConnection {
 
             CacheGaugeHealthCheck cacheGauge = new CacheGaugeHealthCheck(messageBuffer,
                     MetricDef.NETTY_CLI_CACHE_SIZE + ":" + nettyConnection.toString());
-            JStormMetrics.registerNettyMetric(MetricUtils
-                            .nettyMetricName(AsmMetric.mkName(MetricDef.NETTY_CLI_CACHE_SIZE, nettyConnection), MetricType.GAUGE),
+            JStormMetrics.registerNettyMetric(MetricUtils.nettyMetricName(
+                            AsmMetric.mkName(MetricDef.NETTY_CLI_CACHE_SIZE, nettyConnection), MetricType.GAUGE),
                     new AsmGauge(cacheGauge));
 
-            JStormMetrics.registerNettyMetric(MetricUtils
-                            .nettyMetricName(AsmMetric.mkName(MetricDef.NETTY_CLI_SEND_PENDING, nettyConnection), MetricType.GAUGE),
+            JStormMetrics.registerNettyMetric(MetricUtils.nettyMetricName(
+                            AsmMetric.mkName(MetricDef.NETTY_CLI_SEND_PENDING, nettyConnection), MetricType.GAUGE),
                     new AsmGauge(new com.codahale.metrics.Gauge<Double>() {
                         @Override
                         public Double getValue() {
@@ -182,15 +182,15 @@ class NettyClient implements IConnection {
                         }
                     }));
 
-            JStormHealthCheck.registerWorkerHealthCheck(MetricDef.NETTY_CLI_CACHE_SIZE + ":" + nettyConnection.toString(),
-                    cacheGauge);
+            JStormHealthCheck.registerWorkerHealthCheck(
+                    MetricDef.NETTY_CLI_CACHE_SIZE + ":" + nettyConnection.toString(), cacheGauge);
         }
 
         JStormHealthCheck.registerWorkerHealthCheck(MetricDef.NETTY_CLI_CONNECTION + ":" + nettyConnection.toString(),
                 new HealthCheck() {
                     HealthCheck.Result healthy = HealthCheck.Result.healthy();
-                    HealthCheck.Result unhealthy = HealthCheck.Result
-                            .unhealthy("NettyConnection " + nettyConnection.toString() + " is broken.");
+                    HealthCheck.Result unhealthy =
+                            HealthCheck.Result.unhealthy("NettyConnection " + nettyConnection.toString() + " is broken.");
 
                     @Override
                     protected Result check() throws Exception {
@@ -200,7 +200,6 @@ class NettyClient implements IConnection {
                             return healthy;
                         }
                     }
-
                 });
     }
 
@@ -229,22 +228,21 @@ class NettyClient implements IConnection {
     }
 
     public void notifyInterestChanged(Channel channel) {
-        synchronized (writeLock) {
+        /*synchronized (writeLock) {
             if (channel.isWritable()) {
                 MessageBatch messageBatch = messageBuffer.drain();
                 if (messageBatch != null) {
                     flushRequest(channel, messageBatch);
                 }
             }
-        }
+        }*/
     }
 
     /**
-     * The function can't be synchronized, otherwise it will be deadlock
+     * The function can't be synchronized, otherwise it will cause deadlock
      */
     public void doReconnect() {
         if (channelRef.get() != null) {
-
             // if (channelRef.get().isWritable()) {
             // LOG.info("already exist a writable channel, give up reconnect, {}",
             // channelRef.get());
@@ -253,7 +251,7 @@ class NettyClient implements IConnection {
             return;
         }
 
-        if (isClosed() == true) {
+        if (isClosed()) {
             return;
         }
 
@@ -274,20 +272,24 @@ class NettyClient implements IConnection {
                     LOG.info("Connection established, channel = :{}", channel);
                     setChannel(channel);
                     // handleResponse();
-                    BATCH_THREASHOLD_WARN = ConfigExtension.getNettyBufferThresholdSize(stormConf);
-                    
+                    BATCH_THRESHOLD_WARN = ConfigExtension.getNettyBufferThresholdSize(stormConf);
+
                     // Check if any pending message
-                    synchronized (writeLock) {
+                    /*synchronized (writeLock) {
                         if (channel != null && messageBuffer.size() > 0) {
                             MessageBatch messageBatch = messageBuffer.drain();
                             flushRequest(channel, messageBatch);
                         } else {
-                            LOG.warn("Failed to flush pending message after reconnecting, channel={}, messageBuffer.size={}", channel, messageBuffer.size());
+                            LOG.warn("Failed to flush pending message after reconnecting, channel={}, messageBuffer.size={}",
+                                    channel, messageBuffer.size());
                         }
-                    }
+                    }*/
                 } else {
-                    LOG.info("Failed to reconnect ... [{}], {}, channel = {}, cause = {}", retries.get(), name, channel, future.getCause());
-                    reconnect();
+                    if (!isClosed()) {
+                        LOG.info("Failed to reconnect ... [{}], {}, channel = {}, cause = {}",
+                                retries.get(), name, channel, future.getCause());
+                        reconnect();
+                    }
                 }
             }
         });
@@ -314,12 +316,17 @@ class NettyClient implements IConnection {
      */
     @Override
     public void send(List<TaskMessage> messages) {
-        LOG.warn("Should be overload");
+        LOG.warn("Should be overridden");
     }
 
     @Override
     public void send(TaskMessage message) {
-        LOG.warn("Should be overload");
+        LOG.warn("Should be overridden");
+    }
+
+    @Override
+    public void sendDirect(TaskMessage message) {
+        LOG.warn("Should be overridden");
     }
 
     Channel isChannelReady() {
@@ -329,7 +336,7 @@ class NettyClient implements IConnection {
         }
 
         // improve performance skill check
-        if (channel.isWritable() == false) {
+        if (!channel.isWritable()) {
             return null;
         }
 
@@ -350,22 +357,19 @@ class NettyClient implements IConnection {
             NettyMetricInstance.batchSizeWorkerHistogram.update(batchSize);
         }
 
-
         ChannelFuture future = channel.write(requests);
         future.addListener(new ChannelFutureListener() {
             public void operationComplete(ChannelFuture future) throws Exception {
                 pendings.decrementAndGet();
                 if (!future.isSuccess()) {
                     Channel channel = future.getChannel();
-                    if (isClosed() == false) {
+                    if (!isClosed()) {
                         LOG.info("Failed to send requests to " + name + ": " + channel.toString() + ":", future.getCause());
                     }
 
                     if (null != channel) {
                         exceptionChannel(channel);
                     }
-                } else {
-                    // LOG.debug("{} request(s) sent, size={}", requests.size(), requests.getEncodedLength());
                 }
             }
         });
@@ -377,10 +381,10 @@ class NettyClient implements IConnection {
                     AsmMetric.mkName(MetricDef.NETTY_CLI_SEND_TIME, nettyConnection), MetricType.HISTOGRAM));
             JStormMetrics.unregisterNettyMetric(MetricUtils.nettyMetricName(
                     AsmMetric.mkName(MetricDef.NETTY_CLI_SEND_PENDING, nettyConnection), MetricType.GAUGE));
-            JStormMetrics.unregisterNettyMetric(MetricUtils
-                    .nettyMetricName(AsmMetric.mkName(MetricDef.NETTY_CLI_CACHE_SIZE, nettyConnection), MetricType.GAUGE));
-            JStormMetrics.unregisterNettyMetric(MetricUtils
-                    .nettyMetricName(AsmMetric.mkName(MetricDef.NETTY_CLI_SEND_SPEED, nettyConnection), MetricType.METER));
+            JStormMetrics.unregisterNettyMetric(MetricUtils.nettyMetricName(
+                    AsmMetric.mkName(MetricDef.NETTY_CLI_CACHE_SIZE, nettyConnection), MetricType.GAUGE));
+            JStormMetrics.unregisterNettyMetric(MetricUtils.nettyMetricName(
+                    AsmMetric.mkName(MetricDef.NETTY_CLI_SEND_SPEED, nettyConnection), MetricType.METER));
         }
         JStormMetrics.unregisterWorkerMetric(MetricUtils.workerMetricName(MetricDef.NETTY_CLI_SEND_SPEED, MetricType.METER));
         JStormMetrics.unregisterWorkerMetric(MetricUtils.workerMetricName(MetricDef.NETTY_CLI_BATCH_SIZE, MetricType.HISTOGRAM));
@@ -406,7 +410,7 @@ class NettyClient implements IConnection {
 
         Channel channel = channelRef.get();
         if (channel == null) {
-            LOG.info("Channel {} has been closed before", name());
+            LOG.info("Channel {} has been closed already", name());
             return;
         }
 
@@ -414,13 +418,15 @@ class NettyClient implements IConnection {
         final long timeoutMilliSeconds = 10 * 1000;
         final long start = System.currentTimeMillis();
 
-        LOG.info("Waiting for pending batchs to be sent with " + name() + "..., timeout: {}ms, pendings: {}", timeoutMilliSeconds, pendings.get());
+        LOG.info("Waiting for pending batchs to be sent with " + name() + "..., timeout: {}ms, pendings: {}",
+                timeoutMilliSeconds, pendings.get());
 
         while (pendings.get() != 0) {
             try {
                 long delta = System.currentTimeMillis() - start;
                 if (delta > timeoutMilliSeconds) {
-                    LOG.error("Timeout when sending pending batchs with {}..., there are still {} pending batchs not sent", name(), pendings.get());
+                    LOG.error("Timeout when sending pending batchs with {}..., there are still {} pending batchs not sent",
+                            name(), pendings.get());
                     break;
                 }
                 Thread.sleep(1000); // sleep 1s
@@ -430,7 +436,6 @@ class NettyClient implements IConnection {
         }
 
         close_n_release();
-
     }
 
     /**
@@ -445,20 +450,18 @@ class NettyClient implements IConnection {
 
     /**
      * Avoid channel double close
-     *
-     * @param channel
      */
     void closeChannel(final Channel channel) {
         synchronized (channelClosing) {
             if (closingChannel.contains(channel)) {
-                LOG.info(channel.toString() + " is already closed");
+                LOG.info(channel.toString() + " has already been closed");
                 return;
             }
 
             closingChannel.add(channel);
         }
 
-        LOG.debug(channel.toString() + " begin to closed");
+        LOG.debug(channel.toString() + " begin to close");
         ChannelFuture closeFuture = channel.close();
         closeFuture.addListener(new ChannelFutureListener() {
             public void operationComplete(ChannelFuture future) throws Exception {
@@ -466,13 +469,12 @@ class NettyClient implements IConnection {
                 synchronized (channelClosing) {
                     closingChannel.remove(channel);
                 }
-                LOG.debug(channel.toString() + " finish closed");
+                LOG.debug(channel.toString() + " closed.");
             }
         });
     }
 
     void connectChannel(Channel channel) {
-    	
     }
 
     void disconnectChannel(Channel channel) {
@@ -486,7 +488,6 @@ class NettyClient implements IConnection {
         } else {
             closeChannel(channel);
         }
-
     }
 
     void exceptionChannel(Channel channel) {
@@ -506,11 +507,10 @@ class NettyClient implements IConnection {
 
         final String oldLocalAddres = (oldChannel == null) ? "null" : oldChannel.getLocalAddress().toString();
         String newLocalAddress = (newChannel == null) ? "null" : newChannel.getLocalAddress().toString();
-        LOG.info("Use new channel {} replace old channel {}", newLocalAddress, oldLocalAddres);
+        LOG.info("Use new channel {} to replace old channel {}", newLocalAddress, oldLocalAddres);
 
         // avoid one netty client use too much connection, close old one
         if (oldChannel != newChannel && oldChannel != null) {
-
             closeChannel(oldChannel);
             LOG.info("Successfully close old channel " + oldLocalAddres);
         }
@@ -537,8 +537,8 @@ class NettyClient implements IConnection {
         return name;
     }
 
-    public void handleResponse(Channel channel , Object msg) {
-        LOG.warn("Should be overload");
+    public void handleResponse(Channel channel, Object msg) {
+        LOG.warn("Should be overridden");
     }
 
     @Override
@@ -557,7 +557,6 @@ class NettyClient implements IConnection {
     }
 
     public static class CacheGaugeHealthCheck extends HealthCheck implements com.codahale.metrics.Gauge<Double> {
-
         MessageBuffer messageBuffer;
         String name;
         Result healthy;
@@ -586,7 +585,7 @@ class NettyClient implements IConnection {
     }
 
     @Override
-    public boolean available() {
+    public boolean available(int taskId) {
         return (isChannelReady() != null && pendings.get() < MAX_SEND_PENDING);
     }
 }

@@ -1,17 +1,16 @@
 package com.alibaba.jstorm.transactional;
 
+import backtype.storm.generated.StreamInfo;
+import backtype.storm.topology.OutputFieldsDeclarer;
+import backtype.storm.tuple.Fields;
+import backtype.storm.utils.Utils;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import backtype.storm.generated.StreamInfo;
-import backtype.storm.topology.OutputFieldsDeclarer;
-import backtype.storm.tuple.Fields;
-import backtype.storm.utils.Utils;
-
 public class TransactionOutputFieldsDeclarer implements OutputFieldsDeclarer {
-    private Map<String, StreamInfo> _fields = new HashMap<String, StreamInfo>();
+    private Map<String, StreamInfo> _fields = new HashMap<>();
 
     public void declare(Fields fields) {
         declare(false, fields);
@@ -27,10 +26,9 @@ public class TransactionOutputFieldsDeclarer implements OutputFieldsDeclarer {
 
     public void declareStream(String streamId, boolean direct, Fields fields) {
         if (_fields.containsKey(streamId)) {
-            throw new IllegalArgumentException("Fields for " + streamId
-                    + " already set");
+            throw new IllegalArgumentException("Fields for " + streamId + " already set");
         }
-        List<String> fieldList = new ArrayList<String>();
+        List<String> fieldList = new ArrayList<>();
         fieldList.add(TransactionCommon.BATCH_GROUP_ID_FIELD);
         fieldList.addAll(fields.toList());
         _fields.put(streamId, new StreamInfo(fieldList, direct));

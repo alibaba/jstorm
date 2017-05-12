@@ -27,6 +27,7 @@ import backtype.storm.task.TopologyContext;
 import java.util.HashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import static backtype.storm.utils.Utils.tuple;
 
 public class TestAggregatesCounter extends BaseRichBolt {
@@ -37,7 +38,7 @@ public class TestAggregatesCounter extends BaseRichBolt {
 
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         _collector = collector;
-        _counts = new HashMap<String, Integer>();
+        _counts = new HashMap<>();
     }
 
     public void execute(Tuple input) {

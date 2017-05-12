@@ -25,10 +25,6 @@ public class EventManagerZkPusher extends RunnableCallback {
 
     private RunnableCallback cb;
 
-    /**
-     * @param cb
-     * @param eventManager
-     */
     public EventManagerZkPusher(RunnableCallback cb, EventManager eventManager) {
         this.eventManager = eventManager;
         this.cb = cb;

@@ -29,6 +29,7 @@ import java.util.Map;
 /**
  * Contains methods to access and manipulate logback/log4j framework dynamically at run-time.
  * Here 'dynamically' means without referencing the logback/log4j JAR, but using it if found in the classpath.
+ *
  * @author Jark (wuchong.wc@alibaba-inc.com)
  */
 public class LogUtils {
@@ -60,7 +61,7 @@ public class LogUtils {
         Long confTs = ConfigExtension.getChangeLogLevelTimeStamp(conf);
         if (logLevelConfig != null && confTs != null && confTs > lastChangeTS) {
             updateLogLevel(logLevelConfig);
-            if (WorkerClassLoader.isEnable()){
+            if (WorkerClassLoader.isEnable()) {
                 WorkerClassLoader.switchThreadContext();
                 updateLogLevel(logLevelConfig);
                 WorkerClassLoader.restoreThreadContext();
@@ -69,13 +70,13 @@ public class LogUtils {
         }
     }
 
-    private static void updateLogLevel(Map<String, String> logLevelConfig){
+    private static void updateLogLevel(Map<String, String> logLevelConfig) {
         for (Map.Entry<String, String> entry : logLevelConfig.entrySet()) {
             String loggerName = entry.getKey();
             String level = entry.getValue();
             boolean logback = setLogBackLevel(loggerName, level);
             boolean log4j = setLog4jLevel(loggerName, level);
-            if (!logback && !log4j){
+            if (!logback && !log4j) {
                 LOG.warn("Couldn't set logback level to {} for the logger '{}'", level, loggerName);
             }
         }
@@ -87,7 +88,7 @@ public class LogUtils {
      *
      * @param loggerName Name of the logger to set its log level. If blank, root logger will be used.
      * @param logLevel   One of the supported log levels: TRACE, DEBUG, INFO, WARN, ERROR, FATAL,
-     *                      OFF. {@code null} value is considered as 'OFF'.
+     *                   OFF. {@code null} value is considered as 'OFF'.
      */
     public static boolean setLogBackLevel(String loggerName, String logLevel) {
         String logLevelUpper = (logLevel == null) ? "OFF" : logLevel.toUpperCase();
@@ -126,8 +127,11 @@ public class LogUtils {
 
             LOG.info("LogBack level set to {} for the logger '{}'", logLevelUpper, loggerName);
             return true;
+        } catch (NoClassDefFoundError e) {
+            LOG.warn("Couldn't set logback level to {} for the logger '{}'", logLevelUpper, loggerName, e);
+            return false;
         } catch (Exception e) {
-//            LOG.warn("Couldn't set logback level to {} for the logger '{}'", logLevelUpper, loggerName, e);
+            LOG.warn("Couldn't set logback level to {} for the logger '{}'", logLevelUpper, loggerName, e);
             return false;
         }
     }
@@ -137,7 +141,7 @@ public class LogUtils {
      *
      * @param loggerName Name of the logger to set its log level. If blank, root logger will be used.
      * @param logLevel   One of the supported log levels: TRACE, DEBUG, INFO, WARN, ERROR, FATAL,
-     *                      OFF. {@code null} value is considered as 'OFF'.
+     *                   OFF. {@code null} value is considered as 'OFF'.
      */
     public static boolean setLog4jLevel(String loggerName, String logLevel) {
         String logLevelUpper = (logLevel == null) ? "OFF" : logLevel.toUpperCase();
@@ -151,7 +155,7 @@ public class LogUtils {
             Class<?> clz = Class.forName(LOG4J_CLASSIC_LOGGER);
             // Obtain logger by the name
             Object loggerObtained;
-            if ((loggerName == null) || loggerName.trim().isEmpty()) {
+            if ((loggerName == null) || loggerName.trim().isEmpty() || loggerName.trim().equals("ROOT")) {
                 // Use ROOT logger if given logger name is blank.
                 Method method = clz.getMethod("getRootLogger");
                 loggerObtained = method.invoke(null);
@@ -182,8 +186,11 @@ public class LogUtils {
 
             LOG.info("Log4j level set to {} for the logger '{}'", logLevelUpper, loggerName);
             return true;
+        } catch (NoClassDefFoundError e) {
+            LOG.warn("Couldn't set log4j level to {} for the logger '{}'", logLevelUpper, loggerName, e);
+            return false;
         } catch (Exception e) {
-//            LOG.warn("Couldn't set log4j level to {} for the logger '{}'", logLevelUpper, loggerName);
+            LOG.warn("Couldn't set log4j level to {} for the logger '{}'", logLevelUpper, loggerName);
             return false;
         }
     }

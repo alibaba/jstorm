@@ -28,8 +28,13 @@ import com.alibaba.jstorm.cluster.StormClusterState;
 import com.alibaba.jstorm.cluster.StormConfig;
 import com.alibaba.jstorm.daemon.nimbus.NimbusData;
 import com.alibaba.jstorm.metric.JStormMetrics;
+import com.alibaba.jstorm.utils.JStormServerUtils;
+import com.alibaba.jstorm.utils.JStormUtils;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import java.net.URL;
+import org.apache.commons.io.FileExistsException;
+import org.apache.commons.io.FileUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
@@ -57,7 +62,7 @@ public class BlobStoreUtils {
             Object port = conf.get(Config.STORM_ZOOKEEPER_PORT);
             zkClient = Utils.newCurator(conf, zkServers, port, (String) conf.get(Config.STORM_ZOOKEEPER_ROOT));
             zkClient.start();
-        }catch (Exception e){
+        } catch (Exception e) {
             if (zkClient != null) {
                 zkClient.close();
                 zkClient = null;
@@ -160,7 +165,7 @@ public class BlobStoreUtils {
         }
 
         if (!isSuccess) {
-            LOG.error("Could not download blob with key" + key);
+            LOG.error("Could not download blob with key " + key);
         }
         return isSuccess;
     }
@@ -183,12 +188,11 @@ public class BlobStoreUtils {
         return isSuccess;
     }
 
-    public static boolean updateBlob(BlobStore blobStore, String key, InputStream inputStream) throws IOException,
-            KeyNotFoundException, Exception {
+    public static boolean updateBlob(BlobStore blobStore, String key, InputStream inputStream) throws Exception {
         AtomicOutputStream out;
         out = blobStore.updateBlob(key);
-        byte[] buffer = new byte[2048];
-        int len = 0;
+        byte[] buffer = new byte[4096];
+        int len;
         while ((len = inputStream.read(buffer)) > 0) {
             out.write(buffer, 0, len);
         }
@@ -203,8 +207,6 @@ public class BlobStoreUtils {
             throws TTransportException {
         NimbusClient client;
         ClientBlobStore remoteBlobStore;
-        InputStreamWithMeta in;
-        AtomicOutputStream out;
         boolean isSuccess = false;
         LOG.debug("Download blob NimbusInfos {}", nimbusInfos);
         for (NimbusInfo nimbusInfo : nimbusInfos) {
@@ -254,7 +256,14 @@ public class BlobStoreUtils {
         cb.createStateInZookeeper(key);
     }
 
-    public static void updateKeyForBlobStore(Map conf, BlobStore blobStore, CuratorFramework zkClient, String key, NimbusInfo nimbusDetails) {
+    public static void updateKeyForBlobStore(Map conf, BlobStore blobStore, CuratorFramework zkClient,
+                                             String key, NimbusInfo nimbusDetails) {
+        updateKeyForBlobStore(conf, blobStore, zkClient, key, nimbusDetails, null);
+    }
+
+    public static void updateKeyForBlobStore(Map conf, BlobStore blobStore, CuratorFramework zkClient,
+                                             String key, NimbusInfo nimbusDetails,
+                                             Set<NimbusInfo> nimbusInfoList) {
         try {
             // Most of clojure tests currently try to access the blobs using getBlob. Since, updateKeyForBlobStore
             // checks for updating the correct version of the blob as a part of nimbus ha before performing any
@@ -272,7 +281,9 @@ public class BlobStoreUtils {
             }
             stateInfo = zkClient.getChildren().forPath(BLOBSTORE_SUBTREE + "/" + key);
             LOG.debug("StateInfo for update {}", stateInfo);
-            Set<NimbusInfo> nimbusInfoList = getNimbodesWithLatestSequenceNumberOfBlob(zkClient, key);
+            if (nimbusInfoList == null) {
+                nimbusInfoList = getNimbodesWithLatestSequenceNumberOfBlob(zkClient, key);
+            }
 
             for (NimbusInfo nimbusInfo : nimbusInfoList) {
                 if (nimbusInfo.getHostPort().equals(nimbusDetails.getHostPort())) {
@@ -323,8 +334,8 @@ public class BlobStoreUtils {
      * @throws KeyNotFoundException
      * @throws IOException
      */
-    public static void downloadResourcesAsSupervisor(String key, String localFile,
-                                                     ClientBlobStore cb, Map conf) throws KeyNotFoundException, IOException {
+    public static void downloadResourcesAsSupervisor(String key, String localFile, ClientBlobStore cb, Map conf)
+            throws KeyNotFoundException, IOException {
         if (cb instanceof NimbusBlobStore) {
             List<NimbusInfo> nimbusInfos = null;
             CuratorFramework zkClient = null;
@@ -335,24 +346,22 @@ public class BlobStoreUtils {
             } catch (Exception e) {
                 LOG.error("get available nimbus for blob key:{} error", e);
                 return;
-            }finally {
+            } finally {
                 if (zkClient != null) {
                     zkClient.close();
                     zkClient = null;
                 }
             }
-            if (nimbusInfos != null){
-                for (NimbusInfo nimbusInfo : nimbusInfos) {
-                    try {
-                        NimbusClient nimbusClient = new NimbusClient(conf, nimbusInfo.getHost(), nimbusInfo.getPort());
-                        cb.setClient(conf, nimbusClient);
-                    } catch (TTransportException e) {
-                        // ignore
-                        continue;
-                    }
-                    LOG.info("download blob {} from nimbus {}:{}", key, nimbusInfo.getHost(), nimbusInfo.getPort());
-                    downloadResourcesAsSupervisorDirect(key, localFile, cb);
+            for (NimbusInfo nimbusInfo : nimbusInfos) {
+                try {
+                    NimbusClient nimbusClient = new NimbusClient(conf, nimbusInfo.getHost(), nimbusInfo.getPort());
+                    cb.setClient(conf, nimbusClient);
+                } catch (TTransportException e) {
+                    // ignore
+                    continue;
                 }
+                LOG.info("download blob {} from nimbus {}:{}", key, nimbusInfo.getHost(), nimbusInfo.getPort());
+                downloadResourcesAsSupervisorDirect(key, localFile, cb);
             }
 
         } else {
@@ -432,8 +441,9 @@ public class BlobStoreUtils {
     /**
      * Filters keys based on the KeyFilter
      * passed as the argument.
+     *
      * @param filter KeyFilter
-     * @param <R> Type
+     * @param <R>    Type
      * @return Set of filtered keys
      */
     public static <R> Set<R> filterAndListKeys(Iterator<R> keys, KeyFilter<R> filter) {
@@ -518,13 +528,14 @@ public class BlobStoreUtils {
         keys.add(StormConfig.master_stormjar_key(topologyId));
         keys.add(StormConfig.master_stormcode_key(topologyId));
         keys.add(StormConfig.master_stormconf_key(topologyId));
-
+        keys.add(StormConfig.master_stormcode_bak_key(topologyId));
+        keys.add(StormConfig.master_stormjar_bak_key(topologyId));
 
         Map stormConf = null;
         try {
             stormConf = StormConfig.read_nimbus_topology_conf(topologyId, data.getBlobStore());
-        } catch (KeyNotFoundException e) {
-            LOG.warn("can't find conf of topology {}", topologyId);
+        } catch (Exception e) {
+            LOG.warn("can't find conf of topology {}, {}", topologyId, e);
         }
         if (stormConf != null) {
             List<String> libs = (List<String>) stormConf.get(GenericOptionsParser.TOPOLOGY_LIB_NAME);
@@ -533,7 +544,139 @@ public class BlobStoreUtils {
                     keys.add(StormConfig.master_stormlib_key(topologyId, libName));
                 }
             }
+        } else {
+            //topologyId + "-stormconf.ser maybe be clean
+            try {
+                String filterName = topologyId + "-lib-";
+                List<String> blobKeys = data.getStormClusterState().blobstoreInfo(null);
+                for (String blobkey : blobKeys) {
+                    if (blobkey.startsWith(filterName))
+                        keys.add(blobkey);
+                }
+            } catch (Exception e) {
+                LOG.warn("error!!!", e);
+            }
         }
         return keys;
+    }
+
+    /**
+     * no need to synchronize, since EventManager will execute sequentially
+     */
+    public static void downloadDistributeStormCode(Map conf, String topologyId, String masterCodeDir)
+            throws IOException, TException {
+        String tmpToot = null;
+        try {
+            // STORM_LOCAL_DIR/supervisor/tmp/(UUID)
+            tmpToot = StormConfig.supervisorTmpDir(conf) + File.separator + UUID.randomUUID().toString();
+
+            // STORM_LOCAL_DIR/supervisor/stormdist/topologyId
+            String stormRoot = StormConfig.supervisor_stormdist_root(conf, topologyId);
+
+//        JStormServerUtils.downloadCodeFromMaster(conf, tmproot, masterCodeDir, topologyId, true);
+            JStormServerUtils.downloadCodeFromBlobStore(conf, tmpToot, topologyId);
+
+            // tmproot/stormjar.jar
+            String localFileJarTmp = StormConfig.stormjar_path(tmpToot);
+
+            // extract dir from jar
+            JStormUtils.extractDirFromJar(localFileJarTmp, StormConfig.RESOURCES_SUBDIR, tmpToot);
+
+            File srcDir = new File(tmpToot);
+            File destDir = new File(stormRoot);
+            try {
+                FileUtils.moveDirectory(srcDir, destDir);
+            } catch (FileExistsException e) {
+                FileUtils.copyDirectory(srcDir, destDir);
+                FileUtils.deleteQuietly(srcDir);
+            }
+        } finally {
+            if (tmpToot != null) {
+                File srcDir = new File(tmpToot);
+                FileUtils.deleteQuietly(srcDir);
+            }
+        }
+    }
+
+    public static void downloadLocalStormCode(Map conf, String topologyId, String masterCodeDir) throws IOException,
+            TException {
+        // STORM_LOCAL_DIR/supervisor/tmp/(UUID)
+        String tmpRoot = StormConfig.supervisorTmpDir(conf) + File.separator + UUID.randomUUID().toString();
+
+        // STORM-LOCAL-DIR/supervisor/stormdist/storm-id
+        String stormRoot = StormConfig.supervisor_stormdist_root(conf, topologyId);
+
+        BlobStore blobStore = null;
+        try {
+            blobStore = BlobStoreUtils.getNimbusBlobStore(conf, masterCodeDir, null);
+            FileUtils.forceMkdir(new File(tmpRoot));
+            blobStore.readBlobTo(StormConfig.master_stormcode_key(topologyId),
+                    new FileOutputStream(StormConfig.stormcode_path(tmpRoot)));
+            blobStore.readBlobTo(StormConfig.master_stormconf_key(topologyId),
+                    new FileOutputStream(StormConfig.stormconf_path(tmpRoot)));
+        } finally {
+            if (blobStore != null)
+                blobStore.shutdown();
+        }
+
+        File srcDir = new File(tmpRoot);
+        File destDir = new File(stormRoot);
+        try {
+            FileUtils.moveDirectory(srcDir, destDir);
+        } catch (FileExistsException e) {
+            FileUtils.copyDirectory(srcDir, destDir);
+            FileUtils.deleteQuietly(srcDir);
+        }
+
+        ClassLoader classloader = Thread.currentThread().getContextClassLoader();
+        String resourcesJar = resourcesJar();
+        URL url = classloader.getResource(StormConfig.RESOURCES_SUBDIR);
+        String targetDir = stormRoot + '/' + StormConfig.RESOURCES_SUBDIR;
+        if (resourcesJar != null) {
+            LOG.info("Extracting resources from jar at " + resourcesJar + " to " + targetDir);
+            JStormUtils.extractDirFromJar(resourcesJar, StormConfig.RESOURCES_SUBDIR, stormRoot);
+        } else if (url != null) {
+            LOG.info("Copying resources at " + url.toString() + " to " + targetDir);
+            FileUtils.copyDirectory(new File(url.getFile()), (new File(targetDir)));
+        }
+    }
+
+    private static String resourcesJar() {
+        String path = System.getProperty("java.class.path");
+        if (path == null) {
+            return null;
+        }
+
+        String[] paths = path.split(File.pathSeparator);
+
+        List<String> jarPaths = new ArrayList<>();
+        for (String s : paths) {
+            if (s.endsWith(".jar")) {
+                jarPaths.add(s);
+            }
+        }
+
+        /**
+         * FIXME, problematic??
+         */
+        List<String> rtn = new ArrayList<>();
+        int size = jarPaths.size();
+        for (int i = 0; i < size; i++) {
+            if (JStormUtils.zipContainsDir(jarPaths.get(i), StormConfig.RESOURCES_SUBDIR)) {
+                rtn.add(jarPaths.get(i));
+            }
+        }
+
+        if (rtn.size() == 0)
+            return null;
+
+        return rtn.get(0);
+    }
+
+    public static void main(String[] args) {
+        System.out.println(Math.abs((long) "data_SequenceTest-1-1487569882-stormjar.jar".hashCode()) % 1024);
+        System.out.println(Math.abs((long) "data_SequenceTest-1-1487569882-stormjar.jar.bak".hashCode()) % 1024);
+        System.out.println(Math.abs((long) "data_SequenceTest-1-1487569882-stormcode.ser.bak".hashCode()) % 1024);
+        System.out.println(Math.abs((long) "meta_SequenceTest-1-1487569882-stormcode.ser.bak".hashCode()) % 1024);
     }
 }

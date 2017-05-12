@@ -26,7 +26,6 @@ import java.util.Map;
 import backtype.storm.metric.api.IMetricsConsumer;
 import backtype.storm.task.IErrorReporter;
 import backtype.storm.task.TopologyContext;
-import backtype.storm.utils.Utils;
 
 /*
  * Listens for all metrics, dumps them to log
@@ -41,6 +40,7 @@ import backtype.storm.utils.Utils;
  *       parallelism.hint: 1
  *
  */
+@Deprecated
 public class LoggingMetricsConsumer implements IMetricsConsumer {
     public static final Logger LOG = LoggerFactory.getLogger(LoggingMetricsConsumer.class);
 
@@ -54,8 +54,9 @@ public class LoggingMetricsConsumer implements IMetricsConsumer {
     public void handleDataPoints(TaskInfo taskInfo, Collection<DataPoint> dataPoints) {
         StringBuilder sb = new StringBuilder();
         String header =
-                String.format("%d\t%15s:%-4d\t%3d:%-11s\t", taskInfo.timestamp, taskInfo.srcWorkerHost, taskInfo.srcWorkerPort, taskInfo.srcTaskId,
-                        taskInfo.srcComponentId);
+                String.format("%d\t%15s:%-4d\t%3d:%-11s\t",
+                        taskInfo.timestamp, taskInfo.srcWorkerHost, taskInfo.srcWorkerPort,
+                        taskInfo.srcTaskId, taskInfo.srcComponentId);
         sb.append(header);
         for (DataPoint p : dataPoints) {
             sb.delete(header.length(), sb.length());
