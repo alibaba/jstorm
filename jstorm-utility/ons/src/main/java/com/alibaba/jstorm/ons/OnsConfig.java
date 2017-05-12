@@ -12,7 +12,7 @@ import com.aliyun.openservices.ons.api.PropertyKeyConst;
 public class OnsConfig implements Serializable{
 
 	private static final long serialVersionUID = -3911741873533333336L;
-	
+
 	private final String topic;
 	private final String subExpress;
 	private final String accessKey;

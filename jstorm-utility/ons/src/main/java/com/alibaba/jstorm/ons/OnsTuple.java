@@ -13,7 +13,7 @@ public class OnsTuple implements Serializable {
 
 	/**  */
 	private static final long serialVersionUID = 2277714452693486955L;
-
+	
 	protected final Message message;
 
 	protected final AtomicInteger failureTimes;

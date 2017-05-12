@@ -30,7 +30,7 @@ public class ConsumerSpout implements IRichSpout, IAckValueSpout, IFailValueSpou
     public static final String ONS_SPOUT_FLOW_CONTROL = "OnsSpoutFlowControl";
     public static final String ONS_SPOUT_AUTO_ACK = "OnsSpoutAutoAck";
     public static final String ONS_MSG_MAX_FAIL_TIMES = "OnsMsgMaxFailTimes";
-
+    
     protected SpoutOutputCollector collector;
     protected transient Consumer consumer;
     protected transient ConsumerConfig consumerConfig;

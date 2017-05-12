@@ -25,10 +25,10 @@ import java.util.concurrent.BlockingQueue;
 public class JstormAMHandler implements JstormAM.Iface {
 
     public JstormAMHandler(JstormMaster jm) {
-        amRMClient = jstormMasterContext.amRMClient;
-        requestQueue = jstormMasterContext.requestBlockingQueue;
         this.jstormMasterContext = jm.jstormMasterContext;
         this.jstormMaster = jm;
+        amRMClient = jstormMasterContext.amRMClient;
+        requestQueue = jstormMasterContext.requestBlockingQueue;
     }
 
     private static final Log LOG = LogFactory.getLog(JstormAMHandler.class);
