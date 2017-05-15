@@ -94,11 +94,11 @@ class SyncProcessEvent extends ShutdownWork {
     // private Supervisor supervisor;
     private int lastTime;
 
-    private WorkerReportError workerReportError;
+    private IWorkerReportError workerReportError;
 
     public SyncProcessEvent(String supervisorId, Map conf, LocalState localState,
                             ConcurrentHashMap<String, String> workerThreadPids,
-                            IContext sharedContext, WorkerReportError workerReportError) {
+                            IContext sharedContext, IWorkerReportError workerReportError) {
 
         this.supervisorId = supervisorId;
 

@@ -18,6 +18,7 @@
 package com.alibaba.jstorm.client;
 
 import backtype.storm.Config;
+import backtype.storm.ConfigValidation;
 import backtype.storm.utils.Utils;
 import com.alibaba.jstorm.config.DefaultConfigUpdateHandler;
 import com.alibaba.jstorm.utils.JStormUtils;
@@ -1309,5 +1310,22 @@ public class ConfigExtension {
     public static String TOPOLOGY_HISTOGRAM_SIZE = "topology.histogram.size";
     public static Integer getTopologyHistogramSize(Map conf) {
         return JStormUtils.parseInt(conf.get(TOPOLOGY_HISTOGRAM_SIZE), 256);
+    }
+
+    public static final String WORKER_ERROR_REPORT_PLUGIN = "worker.error.reporter.plugin.class";
+
+    public static String getWorkerErrorReportPluginClass(Map conf) {
+        if (conf.containsKey(WORKER_ERROR_REPORT_PLUGIN)) {
+            return (String)conf.get(WORKER_ERROR_REPORT_PLUGIN);
+        }
+        return "com.alibaba.jstorm.daemon.worker.WorkerReportError";
+    }
+
+    public static final String CLUSTER_ERROR_MANAGER_PLUGIN = "cluster.error.manager.plugin";
+    public static final String getClusterErrorManagerPlugin(Map conf) {
+        if (conf.containsKey(CLUSTER_ERROR_MANAGER_PLUGIN)) {
+            return (String)conf.get(CLUSTER_ERROR_MANAGER_PLUGIN);
+        }
+        return "com.alibaba.jstorm.cluster.StormZkErrorManager";
     }
 }

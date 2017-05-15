@@ -18,7 +18,7 @@
 package com.alibaba.jstorm.daemon.supervisor;
 
 import com.alibaba.jstorm.config.SupervisorRefreshConfig;
-import com.alibaba.jstorm.metric.JStormMetricsReporter;
+import com.alibaba.jstorm.daemon.worker.IWorkerReportError;
 import java.io.File;
 import java.util.Map;
 import java.util.UUID;
@@ -103,7 +103,10 @@ public class Supervisor {
         StormClusterState stormClusterState = Cluster.mk_storm_cluster_state(conf);
 
         String hostName = JStormServerUtils.getHostName(conf);
-        WorkerReportError workerReportError = new WorkerReportError(stormClusterState, hostName);
+        String errorReporterClass = ConfigExtension.getWorkerErrorReportPluginClass(conf);
+
+        IWorkerReportError workerReportError = (IWorkerReportError)Utils.newInstance(errorReporterClass);
+        workerReportError.init(conf, stormClusterState);
 
         /**
          * Step 3, create LocalStat (a simple KV store)
