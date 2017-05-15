@@ -19,11 +19,15 @@
 
 ## Improvements
 * Support deserialize for no-arg class in kryo
-* Fix the bug of incorrect computation of unstopped tasks when assigning topology
-* add getValue method in AsmMetric for quick assert so that unit tests/integration tests don't have to get metrics from 
+* Add getValue method in AsmMetric for quick assert so that unit tests/integration tests don't have to get metrics from 
 nimbus
-* fixed the bug that supervisor storm.yaml is always different from nimbus storm.yaml
-* fixed the bug that kryo doesn't accept conf value of literal string "true"/"false"
+
+## Bug Fix
+* Fix the bug of incorrect computation of unstopped tasks when assigning topology
+* Fix the bug that supervisor storm.yaml is always different from nimbus storm.yaml
+* Fix the bug that kryo doesn't accept conf value of literal string "true"/"false"
+* Thanks to @gohitbear @bryant1410 @oubenruing for doc fixes.
+* Thanks to @zeromem @elloray @yunfan123 @iBuddha @Glowdable @waooog for bug fixes. 
 
 
 # Release 2.2.1
