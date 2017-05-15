@@ -6,7 +6,7 @@ title: "Dynamic Adjust application configuration"
 sub-nav-parent: DynamicAdjust
 sub-nav-group: AdvancedUsage
 sub-nav-id: Configuration
-#sub-nav-pos: 2
+# sub-nav-pos: 2
 sub-nav-title: Dynamic-Adjust-Configuration
 ---
 

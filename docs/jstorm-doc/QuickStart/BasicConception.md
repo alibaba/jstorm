@@ -9,8 +9,8 @@ top-nav-title: "Basic Conception"
 * This will be replaced by the TOC
 {:toc}
 
-#TO BE MODIFY
-#the architecture is quite different from the cn version
+# TO BE MODIFY
+# the architecture is quite different from the cn version
 
 ## Stream ##
 

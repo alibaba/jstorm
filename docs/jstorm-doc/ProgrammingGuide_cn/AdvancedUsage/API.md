@@ -1,7 +1,7 @@
 ---
 title:  "API 介绍"
 
-#sub-nav-parent: AdvancedUsage
+# sub-nav-parent: AdvancedUsage
 sub-nav-group: AdvancedUsage_cn
 sub-nav-id: API_cn
 sub-nav-pos: 2
