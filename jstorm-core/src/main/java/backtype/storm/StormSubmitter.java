@@ -200,45 +200,45 @@ public class StormSubmitter {
         }
     }
 
-    private static String submittedJar = null;
+    //private static String submittedJar = null;
     private static String path = null;
 
     private static void submitJar(NimbusClient client, Map conf) {
-        if (submittedJar == null) {
-            try {
-                LOG.info("Jar not uploaded to master yet. Submitting jar...");
-                String localJar = System.getProperty("storm.jar");
-                path = client.getClient().beginFileUpload();
-                String[] pathCache = path.split("/");
-                String uploadLocation = path + "/stormjar-" + pathCache[pathCache.length - 1] + ".jar";
-                List<String> lib = (List<String>) conf.get(GenericOptionsParser.TOPOLOGY_LIB_NAME);
-                Map<String, String> libPath = (Map<String, String>) conf.get(GenericOptionsParser.TOPOLOGY_LIB_PATH);
-                if (lib != null && lib.size() != 0) {
-                    for (String libName : lib) {
-                        String jarPath = path + "/lib/" + libName;
-                        client.getClient().beginLibUpload(jarPath);
-                        submitJar(conf, libPath.get(libName), jarPath, client);
-                    }
-
-                } else {
-                    if (localJar == null) {
-                        // no lib, no client jar
-                        throw new RuntimeException("No client app jar, please upload it");
-                    }
+//    	if (submittedJar == null) {
+        try {
+            LOG.info("Jar not uploaded to master yet. Submitting jar...");
+            String localJar = System.getProperty("storm.jar");
+            path = client.getClient().beginFileUpload();
+            String[] pathCache = path.split("/");
+            String uploadLocation = path + "/stormjar-" + pathCache[pathCache.length - 1] + ".jar";
+            List<String> lib = (List<String>) conf.get(GenericOptionsParser.TOPOLOGY_LIB_NAME);
+            Map<String, String> libPath = (Map<String, String>) conf.get(GenericOptionsParser.TOPOLOGY_LIB_PATH);
+            if (lib != null && lib.size() != 0) {
+                for (String libName : lib) {
+                    String jarPath = path + "/lib/" + libName;
+                    client.getClient().beginLibUpload(jarPath);
+                    submitJar(conf, libPath.get(libName), jarPath, client);
                 }
 
-                if (localJar != null) {
-                    submittedJar = submitJar(conf, localJar, uploadLocation, client);
-                } else {
-                    // no client jar, but with lib jar
-                    client.getClient().finishFileUpload(uploadLocation);
+            } else {
+                if (localJar == null) {
+                    // no lib, no client jar
+                    throw new RuntimeException("No client app jar, please upload it");
                 }
-            } catch (Exception e) {
-                throw new RuntimeException(e);
             }
-        } else {
-            LOG.info("Jar already uploaded to master. Not submitting jar.");
+
+            if (localJar != null) {
+                submitJar(conf, localJar, uploadLocation, client);
+            } else {
+                // no client jar, but with lib jar
+                client.getClient().finishFileUpload(uploadLocation);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
+//        } else {
+//            LOG.info("Jar already uploaded to master. Not submitting jar.");
+//        }
     }
 
     public static String submitJar(Map conf, String localJar, String uploadLocation, NimbusClient client) {
