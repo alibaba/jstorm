@@ -11,6 +11,7 @@
 * Support gray upgrade
     1. supports per worker/component gray upgrade
     2. supports upgrade rollback
+* Add memory/rocksdb-based KV store.
 * HBase metrics plugin is open source
 * Support multiple metrics uploaders.
 * Add api in MetricClient to register topology-level metrics
