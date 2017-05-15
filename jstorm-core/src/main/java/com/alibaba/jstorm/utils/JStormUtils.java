@@ -518,6 +518,10 @@ public class JStormUtils {
         return LinuxResource.getFreePhysicalMem();
     }
 
+    public static Long getAvailablePhysicalMem() {
+        return LinuxResource.getAvailablePhysicalMem();
+    }
+
     public static int getNumProcessors() {
         return LinuxResource.getProcessNum();
     }
