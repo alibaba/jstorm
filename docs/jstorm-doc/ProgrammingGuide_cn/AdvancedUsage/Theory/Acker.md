@@ -6,7 +6,7 @@ layout: plain_cn
 sub-nav-parent: Theory_cn
 sub-nav-group: AdvancedUsage_cn
 sub-nav-id: Acker_cn
-#sub-nav-pos: 1
+# sub-nav-pos: 1
 sub-nav-title: Acker 原理
 ---
 

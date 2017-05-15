@@ -41,7 +41,7 @@ ack机制即， spout发送的每一条消息，
 * 设置acker数等于0
 
 
-#Acker的原理：
+# Acker的原理：
 acker的原理如下图所示：
 
 ![acker]({{site.baseurl}}/img/advance_cn/ack/acker.jpg)

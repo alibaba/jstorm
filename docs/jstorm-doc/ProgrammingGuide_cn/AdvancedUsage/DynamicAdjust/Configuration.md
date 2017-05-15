@@ -6,7 +6,7 @@ layout: plain_cn
 sub-nav-parent: DynamicAdjust_cn
 sub-nav-group: AdvancedUsage_cn
 sub-nav-id: Configuration_cn
-#sub-nav-pos: 2
+# sub-nav-pos: 2
 sub-nav-title: 动态更新配置
 ---
 

@@ -6,7 +6,7 @@ layout: plain_cn
 # Top-level navigation
 sub-nav-group: AdvancedUsage_cn
 sub-nav-id: BlobStore_cn
-#sub-nav-pos: 7
+# sub-nav-pos: 7
 sub-nav-title: BlobStore
 ---
 

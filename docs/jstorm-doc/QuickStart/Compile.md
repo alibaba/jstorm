@@ -9,8 +9,8 @@ top-nav-title: Compile JStorm
 * This will be replaced by the TOC
 {:toc}
 
-#TO BE DONE 
-#need "PATCH TO THE COMMUNITY"
+# TO BE DONE 
+# need "PATCH TO THE COMMUNITY"
 
 
 

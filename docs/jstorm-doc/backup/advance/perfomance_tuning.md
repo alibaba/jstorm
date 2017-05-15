@@ -37,20 +37,20 @@ When using fieldGrouping, please take care of hotpoint task which receive more d
 # Hotpoint worker
 For some heavy component, please make sure every worker's loader is almost equal, so the parallelism of the component had better be multiple of the worker number.
 
-#Hotpoint/Bad Supervisor
+# Hotpoint/Bad Supervisor
 Please pay attention to this problem When whole cluster's load is heavy. Here are several solution to resolve this problem:
 
 1. let the worker number is multiple of the supervisor number and reduce hotpoint  worker
 2. Do connection check after install one cluster, You can use the installation package's example to do this check.
 3. Check supervisor's page, check whether there are some workers whose one of CPU usage/"Batch Trans Time over network(ms)"/"Netty Client Batch Size" is pretty high
 
-#Hotpoint spout
+# Hotpoint spout
 Normally spout consumer Kafka/RockeMq/TimeTunel/Redis, the data source's partition number had better be the multiple of spout's number.
 
 # Worker number
 It had better run 2 ~ 8 tasks in one worker, the more data to be handled in one task, the smaller the number. Running multiple tasks in one worker will save much CPU, more data will be past in one process, no network cost, no serialize/deserialize operation. But the number bigger than 12 isn't be suggested, due to thread switch maybe cost much CPU.
 
-#Some JStorm setting for performance
+# Some JStorm setting for performance
 
 ```
 topology.max.spout.pending: null                 #this will effect spout emit tuple number in one time, the bigger it is, the more tuple it will emit, the easier occur failure

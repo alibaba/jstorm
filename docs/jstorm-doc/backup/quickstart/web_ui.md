@@ -12,12 +12,12 @@ User is able to manage multiple JStorm clusters using one single web UI after JS
 
 With the growing size of cluster and increasing number of clusters, especially small clusters, it is very difficult to launch a Web UI for each single cluster. Besides, normally launching a new Web UI for online applications requires examinations and approval in company, which will take a lot of time, so it's very necessary to manage multiple JStorm clusters using one single web UI.
 
-##Preparation
+## Preparation
 
 * A running web ui.  [How to Install Web UI]({{site.baseu}}/quickstart/install.html#install-jstorm-web-ui) 
 * The version of Web UI must align with the highest version of Jstorm cluster
 
-##Add a new cluster
+## Add a new cluster
 Edit ~/.jstorm/storm.yaml on the machine where Web UI running, here is the example:
 
 ```
