@@ -111,7 +111,7 @@
             <directory>jstorm-hbase-metrics-plugin/target/</directory>
             <outputDirectory>lib/ext/hbase</outputDirectory>
             <includes>
-                <include>jstorm-hbase-${project.version}.jar</include>
+                <include>jstorm-hbase-metrics-plugin-${project.version}.jar</include>
             </includes>
         </fileSet>
         <fileSet>

@@ -18,10 +18,12 @@
             <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
+        <!-- please use hbase cdh versions -->
         <dependency>
             <groupId>org.apache.hbase</groupId>
             <artifactId>hbase</artifactId>
-            <version>0.94-adh3u7.4</version>
+            <!--<version>0.94-adh3u7.4</version>-->
+            <version>0.94.6-cdh4.5.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apache.zookeeper</groupId>
@@ -95,10 +97,6 @@
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-log4j12</artifactId>
                 </exclusion>
-                <exclusion>
-                    <groupId>com.taobao.diamond</groupId>
-                    <artifactId>diamond-client</artifactId>
-                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -147,12 +145,6 @@
             <artifactId>libthrift</artifactId>
             <version>0.9.2</version>
             <scope>provided</scope>
-        </dependency>
-        <!-- force to use 3.7.2.5 -->
-        <dependency>
-            <groupId>com.taobao.diamond</groupId>
-            <artifactId>diamond-client</artifactId>
-            <version>3.7.2.5</version>
         </dependency>
         <dependency>
             <groupId>com.google.protobuf</groupId>
@@ -248,8 +240,9 @@
                     <excludeScope>provided</excludeScope>
                     <outputDirectory>target/lib</outputDirectory>
                     <excludeArtifactIds>
-                        hadoop-common,hadoop-auth,protobuf-java,hbase,netty,logback-classic,logback-core,guava,
-                        curator-client,curator-framework,curator-recipes,zookeeper,httpclient,httpcore
+                        hadoop-common,hadoop-auth,protobuf-java,hbase,netty,logback-classic,logback-core,
+                        slf4j-log4j12,log4j,guava,curator-client,curator-framework,curator-recipes,
+                        zookeeper,httpclient,httpcore
                     </excludeArtifactIds>
                 </configuration>
             </plugin>
