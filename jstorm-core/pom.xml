@@ -103,8 +103,8 @@
                                     <shadedPattern>shade.storm.jline</shadedPattern>
                                 </relocation>
                                 <relocation>
-                                    <pattern>com.google.code.gson</pattern>
-                                    <shadedPattern>shade.storm.com.google.code.gson</shadedPattern>
+                                    <pattern>com.google.gson</pattern>
+                                    <shadedPattern>shade.storm.com.google.gson</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>com.codahale.metrics</pattern>
