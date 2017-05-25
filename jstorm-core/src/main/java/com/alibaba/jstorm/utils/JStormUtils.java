@@ -117,14 +117,10 @@ public class JStormUtils {
     private static ThreadLocal<TDeserializer> threadDes = new ThreadLocal<>();
 
     public static String getErrorInfo(String baseInfo, Exception e) {
-        try {
-            StringWriter sw = new StringWriter();
-            PrintWriter pw = new PrintWriter(sw);
-            e.printStackTrace(pw);
-            return baseInfo + "\r\n" + sw.toString() + "\r\n";
-        } catch (Exception e2) {
-            return baseInfo;
-        }
+        if (baseInfo == null) {
+            return getErrorInfo(e);
+        } else
+            return baseInfo + "\r\n" + getErrorInfo(e) + "\r\n";
     }
 
     public static String getErrorInfo(Throwable error) {
