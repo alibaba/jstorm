@@ -13,7 +13,7 @@ sub-nav-title: IBasicBolt 介绍
 * This will be replaced by the TOC
 {:toc}
 
-事实上，很多使用JStorm/Storm的人无法分清BasicBolt和IRichBolt之间的区别。我们的建议是尽可能的使用IBasicBolt。
+事实上，很多使用JStorm/Storm的人无法分清BasicBolt和IRichBolt之间的区别。我们的建议是尽可能的使用IRichBolt。
 
 ***
 
