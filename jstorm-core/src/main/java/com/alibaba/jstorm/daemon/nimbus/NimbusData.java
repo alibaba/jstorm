@@ -63,8 +63,6 @@ public class NimbusData {
     private static final Logger LOG = LoggerFactory.getLogger(NimbusData.class);
 
     /**
-     * @@@ TOBE Done 
-     * 
      * Due to the conf is no longer to be static, it will be refreshed dynamically
      * it should be AtomicReference
      */
@@ -148,7 +146,7 @@ public class NimbusData {
 
         createCache();
 
-        this.taskHeartbeatsCache = new ConcurrentHashMap<String, Map<Integer, TkHbCacheTime>>();
+        this.taskHeartbeatsCache = new ConcurrentHashMap<>();
 
         this.scheduExec = Executors.newScheduledThreadPool(SCHEDULE_THREAD_NUM);
 
@@ -163,32 +161,27 @@ public class NimbusData {
         this.metricCache = new JStormMetricCache(conf, this.stormClusterState);
         this.clusterName = ConfigExtension.getClusterName(conf);
 
-        pendingSubmitTopologies = new TimeCacheMap<String, Object>(JStormUtils.MIN_10);
-        topologyTaskTimeout = new ConcurrentHashMap<String, Integer>();
-        tasksHeartbeat = new ConcurrentHashMap<String, TopologyTaskHbInfo>();
+        pendingSubmitTopologies = new TimeCacheMap<>(JStormUtils.MIN_10);
+        topologyTaskTimeout = new ConcurrentHashMap<>();
+        tasksHeartbeat = new ConcurrentHashMap<>();
 
         // init nimbus metric reporter
         this.metricsReporter = new JStormMetricsReporter(this);
-        
 
         // metrics thread will be started in NimbusServer
         this.metricRunnable = ClusterMetricsRunnable.mkInstance(this);
-        
 
         String configUpdateHandlerClass = ConfigExtension.getNimbusConfigUpdateHandlerClass(conf);
         this.configUpdateHandler = (ConfigUpdateHandler) Utils.newInstance(configUpdateHandlerClass);
-        
 
         if (conf.containsKey(Config.NIMBUS_TOPOLOGY_ACTION_NOTIFIER_PLUGIN)) {
             String string = (String) conf.get(Config.NIMBUS_TOPOLOGY_ACTION_NOTIFIER_PLUGIN);
             nimbusNotify = (ITopologyActionNotifierPlugin) Utils.newInstance(string);
-            
         } else {
             nimbusNotify = null;
         }
-
     }
-    
+
     public void init() {
         this.metricsReporter.init();
         this.metricRunnable.init();
@@ -196,7 +189,6 @@ public class NimbusData {
         if (nimbusNotify != null) {
             nimbusNotify.prepare(conf);
         }
-        
     }
 
     public void createFileHandler() {
@@ -221,8 +213,8 @@ public class NimbusData {
             }
         };
         int file_copy_expiration_secs = JStormUtils.parseInt(conf.get(Config.NIMBUS_FILE_COPY_EXPIRATION_SECS), 30);
-        uploaders = new TimeCacheMap<Object, Object>(file_copy_expiration_secs, expiredCallback);
-        downloaders = new TimeCacheMap<Object, Object>(file_copy_expiration_secs, expiredCallback);
+        uploaders = new TimeCacheMap<>(file_copy_expiration_secs, expiredCallback);
+        downloaders = new TimeCacheMap<>(file_copy_expiration_secs, expiredCallback);
     }
 
     public void mkBlobCacheMap() {
@@ -248,12 +240,11 @@ public class NimbusData {
         };
 
         int expiration_secs = JStormUtils.parseInt(conf.get(Config.NIMBUS_FILE_COPY_EXPIRATION_SECS), 30);
-        blobUploaders = new TimeCacheMap<Object, Object>(expiration_secs, expiredCallback);
-        blobDownloaders = new TimeCacheMap<Object, Object>(expiration_secs, expiredCallback);
-        blobListers = new TimeCacheMap<Object, Object>(expiration_secs, null);
+        blobUploaders = new TimeCacheMap<>(expiration_secs, expiredCallback);
+        blobDownloaders = new TimeCacheMap<>(expiration_secs, expiredCallback);
+        blobListers = new TimeCacheMap<>(expiration_secs, null);
     }
 
-    
 
     public void createCache() throws IOException {
         nimbusCache = new NimbusCache(conf, stormClusterState);
@@ -285,10 +276,10 @@ public class NimbusData {
     }
 
     public Map<Integer, TkHbCacheTime> getTaskHeartbeatsCache(String topologyId, boolean createIfNotExist) {
-        Map<Integer, TkHbCacheTime> ret = null;
+        Map<Integer, TkHbCacheTime> ret;
         ret = taskHeartbeatsCache.get(topologyId);
         if (ret == null && createIfNotExist) {
-            ret = new ConcurrentHashMap<Integer, TkHbCacheTime>();
+            ret = new ConcurrentHashMap<>();
             Map<Integer, TkHbCacheTime> tmp = taskHeartbeatsCache.putIfAbsent(topologyId, ret);
             if (tmp != null) {
                 ret = tmp;

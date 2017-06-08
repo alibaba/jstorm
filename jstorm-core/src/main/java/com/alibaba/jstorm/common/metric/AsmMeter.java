@@ -17,46 +17,35 @@
  */
 package com.alibaba.jstorm.common.metric;
 
-import com.alibaba.jstorm.common.metric.codahale.JMeter;
 import com.alibaba.jstorm.common.metric.snapshot.AsmMeterSnapshot;
 import com.alibaba.jstorm.metric.MetricUtils;
-import com.codahale.metrics.Meter;
-
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * one meter & one snapshot for all windows. since meter is window-sliding, there's no need to recreate new ones.
  */
-public class AsmMeter extends AsmMetric<Meter> {
-    private static final long UPDATE_INTERVAL_MS = 3000L;
-    private final JMeter meter = new JMeter();
+public class AsmMeter extends AsmMetric<MeanMeter> {
     private final AtomicLong unflushed = new AtomicLong(0l);
-    private volatile long lastUpdateTime = System.currentTimeMillis();
+
+    private final Map<Integer, MeanMeter> meterMap = new ConcurrentHashMap<>();
+
+    public AsmMeter() {
+        super();
+        for (int win : windowSeconds) {
+            meterMap.put(win, new MeanMeter());
+        }
+    }
 
     public void mark() {
         unflushed.addAndGet(1L);
-//        meter.mark(1l);
     }
 
     @Override
     public void update(Number obj) {
         if (enabled.get()) {
             unflushed.addAndGet(obj.longValue());
-
-            // do flush every updateInterval, make sure meter count rightly
-            long now = System.currentTimeMillis();
-            long elapsed = now - lastUpdateTime;
-            if (elapsed >= UPDATE_INTERVAL_MS) {
-                lastUpdateTime = now;
-                // here maybe not thread safe, but that's ok
-                // because doFlush is thread safe
-                doFlush();
-            }
-//            meter.mark(obj.longValue());
-//            for (AsmMetric metric : this.assocMetrics) {
-//                metric.update(obj);
-//            }
         }
     }
 
@@ -71,17 +60,24 @@ public class AsmMeter extends AsmMetric<Meter> {
     }
 
     @Override
-    public Map<Integer, Meter> getWindowMetricMap() {
-        return null;
+    public Map<Integer, MeanMeter> getWindowMetricMap() {
+        return meterMap;
     }
 
     @Override
     protected void doFlush() {
-        long v = unflushed.getAndSet(0l);
-        meter.mark(v);
-        if (MetricUtils.metricAccurateCal){
-            for (AsmMetric metric : this.assocMetrics) {
-                metric.update(v);
+        long v;
+        synchronized (unflushed) {
+            v = unflushed.get();
+        }
+        for (MeanMeter meter : meterMap.values()) {
+            meter.mark(v);
+        }
+        this.unflushed.addAndGet(-v);
+
+        if (MetricUtils.metricAccurateCal) {
+            for (AsmMetric assocMetric : assocMetrics) {
+                assocMetric.updateDirectly(v);
             }
         }
     }
@@ -89,14 +85,33 @@ public class AsmMeter extends AsmMetric<Meter> {
     @Override
     protected void updateSnapshot(int window) {
         AsmMeterSnapshot meterSnapshot = new AsmMeterSnapshot();
-        meterSnapshot.setM1(meter.getOneMinuteRate()).setM5(meter.getFiveMinuteRate())
-                .setM15(meter.getFifteenMinuteRate()).setMean(meter.getMeanRate())
-                .setTs(System.currentTimeMillis()).setMetricId(metricId);
-        snapshots.put(window, meterSnapshot);
+        MeanMeter meter = meterMap.get(window);
+        if (meter != null) {
+            meterSnapshot.setM1(meter.getOneMinuteRate()).setM5(meter.getFiveMinuteRate())
+                    .setM15(meter.getFifteenMinuteRate()).setMean(meter.getMeanRate())
+                    .setTs(System.currentTimeMillis()).setMetricId(metricId);
+            snapshots.put(window, meterSnapshot);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Object getValue(Integer window) {
+        synchronized (this) {
+            long v = unflushed.get();
+            for (MeanMeter meter : meterMap.values()) {
+                meter.mark(v);
+            }
+            unflushed.addAndGet(-v);
+
+            return meterMap.get(window).getOneMinuteRate();
+        }
     }
 
     @Override
-    public Meter mkInstance() {
-        return null;
+    public MeanMeter mkInstance() {
+        return new MeanMeter();
     }
 }

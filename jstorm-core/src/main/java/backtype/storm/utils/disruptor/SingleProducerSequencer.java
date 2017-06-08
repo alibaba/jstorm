@@ -104,7 +104,7 @@ public class SingleProducerSequencer extends AbstractSequencerExt {
                 if (AbstractSequencerExt.isWaitSleep()) {
                     try {
                         Thread.sleep(1);
-                    } catch (InterruptedException e) {
+                    } catch (InterruptedException ignored) {
                     }
                 } else {
                     LockSupport.parkNanos(1);
@@ -140,9 +140,7 @@ public class SingleProducerSequencer extends AbstractSequencerExt {
             throw InsufficientCapacityException.INSTANCE;
         }
 
-        long nextSequence = pad.nextValue += n;
-
-        return nextSequence;
+        return pad.nextValue += n;
     }
 
     /**
@@ -153,8 +151,7 @@ public class SingleProducerSequencer extends AbstractSequencerExt {
         long nextValue = pad.nextValue;
 
         long consumed = Util.getMinimumSequence(gatingSequences, nextValue);
-        long produced = nextValue;
-        return getBufferSize() - (produced - consumed);
+        return getBufferSize() - (nextValue - consumed);
     }
 
     /**

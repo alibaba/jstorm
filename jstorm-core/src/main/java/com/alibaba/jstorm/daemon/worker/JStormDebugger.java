@@ -63,8 +63,8 @@ public class JStormDebugger implements Refreshable {
         return isDebug && sample(root_id);
     }
 
-    public static boolean isDebug(Set<Long> root_ids) {
-        return isDebug && sample(root_ids);
+    public static boolean isDebug(Set<Long> rootIds) {
+        return isDebug && sample(rootIds);
     }
 
     public static boolean isDebug(Collection<Tuple> anchors) {
@@ -79,8 +79,8 @@ public class JStormDebugger implements Refreshable {
         return msgId != null && isDebugRecv(msgId.getAnchors());
     }
 
-    public static boolean isDebugRecv(Set<Long> root_ids) {
-        return isDebugRecv && sample(root_ids);
+    public static boolean isDebugRecv(Set<Long> rootIds) {
+        return isDebugRecv && sample(rootIds);
     }
 
     public static boolean isDebugRecv(Collection<Tuple> anchors) {
@@ -92,24 +92,24 @@ public class JStormDebugger implements Refreshable {
     }
 
     /**
-     * the tuple debug logs only output `rate`% the tuples with same root_id, should be logged or not logged together.
+     * the tuple debug logs only output `rate`% the tuples with same rootId, should be logged or not logged together.
      */
-    private static boolean sample(Long root_id) {
+    private static boolean sample(Long rootId) {
         if (Double.compare(sampleRate, 1.0d) >= 0)
             return true;
-        int mod = (int) (Math.abs(root_id) % PRECISION);
+        int mod = (int) (Math.abs(rootId) % PRECISION);
         int threshold = (int) (sampleRate * PRECISION);
         return mod < threshold;
     }
 
     /**
-     * one of the root_ids has been chosen , the logs should be output
+     * one of the rootIds has been chosen , the logs should be output
      */
-    private static boolean sample(Set<Long> root_ids) {
+    private static boolean sample(Set<Long> rootIds) {
         if (Double.compare(sampleRate, 1.0d) >= 0)
             return true;
         int threshold = (int) (sampleRate * PRECISION);
-        for (Long id : root_ids) {
+        for (Long id : rootIds) {
             int mod = (int) (Math.abs(id) % PRECISION);
             if (mod < threshold) {
                 return true;

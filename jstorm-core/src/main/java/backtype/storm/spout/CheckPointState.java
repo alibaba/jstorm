@@ -146,7 +146,9 @@ public class CheckPointState {
 
         CheckPointState that = (CheckPointState) o;
 
-        if (txid != that.txid) return false;
+        if (txid != that.txid) {
+            return false;
+        }
         return state == that.state;
 
     }
@@ -160,9 +162,6 @@ public class CheckPointState {
 
     @Override
     public String toString() {
-        return "CheckPointState{" +
-                "txid=" + txid +
-                ", state=" + state +
-                '}';
+        return "CheckPointState{" + "txid=" + txid + ", state=" + state + '}';
     }
 }

@@ -26,7 +26,9 @@ import backtype.storm.generated.StormTopology;
 import backtype.storm.tuple.Fields;
 import backtype.storm.utils.ThriftTopologyUtils;
 import backtype.storm.utils.Utils;
+
 import com.alibaba.jstorm.cluster.StormConfig;
+
 import org.json.simple.JSONAware;
 
 import java.util.*;
@@ -42,18 +44,15 @@ public class GeneralTopologyContext implements JSONAware {
 
     // pass in componentToSortedTasks for the case of running tons of tasks in single executor
     public GeneralTopologyContext(StormTopology topology, Map stormConf, Map<Integer, String> taskToComponent,
-                                  Map<String, List<Integer>> componentToSortedTasks, Map<String, Map<String, Fields>> componentToStreamToFields, String topologyId) {
+                                  Map<String, List<Integer>> componentToSortedTasks,
+                                  Map<String, Map<String, Fields>> componentToStreamToFields, String topologyId) {
         _topology = topology;
         _stormConf = stormConf;
         _taskToComponent = taskToComponent;
         _topologyId = topologyId;
         _componentToTasks = componentToSortedTasks;
         _componentToStreamToFields = componentToStreamToFields;
-        if (!StormConfig.local_mode(stormConf)) {
-            _topologyMasterId = _componentToTasks.get("__topology_master").get(0);
-        } else {
-            _topologyMasterId = 0;
-        }
+        _topologyMasterId = _componentToTasks.get("__topology_master").get(0);
     }
 
     /**
@@ -85,7 +84,8 @@ public class GeneralTopologyContext implements JSONAware {
     }
 
     /**
-     * Gets the component id for the specified task id. The component id maps to a component id specified for a Spout or Bolt in the topology definition.
+     * Gets the component id for the specified task id.
+     * The component id maps to a component id specified for a Spout or Bolt in the topology definition.
      *
      * @param taskId the task id
      * @return the component id for the input task id
@@ -111,13 +111,13 @@ public class GeneralTopologyContext implements JSONAware {
     public List<Integer> getComponentTasks(String componentId) {
         List<Integer> ret = _componentToTasks.get(componentId);
         if (ret == null)
-            return new ArrayList<Integer>();
+            return new ArrayList<>();
         else
-            return new ArrayList<Integer>(ret);
+            return new ArrayList<>(ret);
     }
 
     public List<Integer> getComponentsTasks(Set<String> componentIds) {
-        List<Integer> ret = new ArrayList<Integer>();
+        List<Integer> ret = new ArrayList<>();
         for (String componentId : componentIds) {
             List<Integer> tasks = _componentToTasks.get(componentId);
             if (tasks != null) {
@@ -125,6 +125,18 @@ public class GeneralTopologyContext implements JSONAware {
             }
         }
         return ret;
+    }
+
+    public int getTaskIndexById(int taskId) {
+        String componentId = getComponentId(taskId);
+        List<Integer> tasks = new ArrayList<>(getComponentTasks(componentId));
+        Collections.sort(tasks);
+        for (int i = 0; i < tasks.size(); i++) {
+            if (tasks.get(i) == taskId) {
+                return i;
+            }
+        }
+        throw new RuntimeException("Fatal: could not find this task id in this component");
     }
 
     /**
@@ -160,14 +172,14 @@ public class GeneralTopologyContext implements JSONAware {
      * @return Map from stream id to component id to the Grouping used.
      */
     public Map<String, Map<String, Grouping>> getTargets(String componentId) {
-        Map<String, Map<String, Grouping>> ret = new HashMap<String, Map<String, Grouping>>();
+        Map<String, Map<String, Grouping>> ret = new HashMap<>();
         for (String otherComponentId : getComponentIds()) {
             Map<GlobalStreamId, Grouping> inputs = getComponentCommon(otherComponentId).get_inputs();
             for (GlobalStreamId id : inputs.keySet()) {
                 if (id.get_componentId().equals(componentId)) {
                     Map<String, Grouping> curr = ret.get(id.get_streamId());
                     if (curr == null)
-                        curr = new HashMap<String, Grouping>();
+                        curr = new HashMap<>();
                     curr.put(otherComponentId, inputs.get(id));
                     ret.put(id.get_streamId(), curr);
                 }
@@ -180,8 +192,6 @@ public class GeneralTopologyContext implements JSONAware {
     public String toJSONString() {
         Map obj = new HashMap();
         obj.put("task->component", _taskToComponent);
-        // TODO: jsonify StormTopology
-        // at the minimum should send source info
         return Utils.to_json(obj);
     }
 

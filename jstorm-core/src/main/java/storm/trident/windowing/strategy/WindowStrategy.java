@@ -21,6 +21,7 @@ package storm.trident.windowing.strategy;
 import backtype.storm.windowing.EvictionPolicy;
 import backtype.storm.windowing.TriggerHandler;
 import backtype.storm.windowing.TriggerPolicy;
+
 /**
  * Strategy for windowing which will have respective trigger and eviction policies.
  */
@@ -29,17 +30,11 @@ public interface WindowStrategy<T> {
     /**
      * Returns a {@code TriggerPolicy}  by creating with {@code triggerHandler} and {@code evictionPolicy} with
      * the given configuration.
-     *
-     * @param triggerHandler
-     * @param evictionPolicy
-     * @return
      */
-    public TriggerPolicy<T> getTriggerPolicy(TriggerHandler triggerHandler, EvictionPolicy<T> evictionPolicy);
+    TriggerPolicy<T> getTriggerPolicy(TriggerHandler triggerHandler, EvictionPolicy<T> evictionPolicy);
 
     /**
      * Returns an {@code EvictionPolicy} instance for this strategy with the given configuration.
-     *
-     * @return
      */
-    public EvictionPolicy<T> getEvictionPolicy();
+    EvictionPolicy<T> getEvictionPolicy();
 }

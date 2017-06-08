@@ -17,22 +17,12 @@
  */
 package com.alibaba.jstorm.daemon.nimbus;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.server.THsHaServer;
-import org.apache.thrift.transport.TNonblockingServerSocket;
-import org.apache.thrift.transport.TTransportException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import backtype.storm.Config;
+import backtype.storm.generated.Nimbus;
+import backtype.storm.generated.Nimbus.Iface;
+import backtype.storm.generated.TopologyMetric;
+import backtype.storm.scheduler.INimbus;
+import backtype.storm.utils.Utils;
 import com.alibaba.jstorm.callback.AsyncLoopRunnable;
 import com.alibaba.jstorm.callback.AsyncLoopThread;
 import com.alibaba.jstorm.callback.Callback;
@@ -49,26 +39,32 @@ import com.alibaba.jstorm.schedule.MonitorRunnable;
 import com.alibaba.jstorm.utils.DefaultUncaughtExceptionHandler;
 import com.alibaba.jstorm.utils.JStormServerUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
-
-import backtype.storm.Config;
-import backtype.storm.generated.Nimbus;
-import backtype.storm.generated.Nimbus.Iface;
-import backtype.storm.generated.TopologyMetric;
-import backtype.storm.scheduler.INimbus;
-import backtype.storm.utils.Utils;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.server.THsHaServer;
+import org.apache.thrift.transport.TNonblockingServerSocket;
+import org.apache.thrift.transport.TTransportException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * NimbusServer work flow: 1. cleanup interrupted topology delete /storm-local-dir/nimbus/topologyid/stormdis delete /storm-zk-root/storms/topologyid
- *
+ * NimbusServer workflow:
+ * 1. cleanup interrupted topology delete /storm-local-dir/nimbus/topologyid/stormdis delete /storm-zk-root/storms/topologyid
  * 2. set /storm-zk-root/storms/topology stats as run
- *
- * 3. start one thread, every nimbus.monitor.reeq.secs set /storm-zk-root/storms/ all topology as monitor. when the topology's status is monitor, nimubs would
- * reassign workers 4. start one threa, every nimubs.cleanup.inbox.freq.secs cleanup useless jar
+ * 3. start one thread, every nimbus.monitor.freq.secs set /storm-zk-root/storms/ all topology as monitor.
+ * when the topology's status is monitor, nimbus would reassign workers
+ * 4. start one thread, every nimbus.cleanup.inbox.freq.secs cleanup useless jar
  *
  * @author version 1: Nathan Marz version 2: Lixin/Chenjun version 3: Longda
  */
 public class NimbusServer {
-
     private static final Logger LOG = LoggerFactory.getLogger(NimbusServer.class);
 
     private NimbusData data;
@@ -83,29 +79,21 @@ public class NimbusServer {
 
     private Httpserver hs;
 
-    private List<AsyncLoopThread> smartThreads = new ArrayList<AsyncLoopThread>();
+    private final List<AsyncLoopThread> smartThreads = new ArrayList<>();
 
     public static void main(String[] args) throws Exception {
-
         Thread.setDefaultUncaughtExceptionHandler(new DefaultUncaughtExceptionHandler());
-
         // read configuration files
         @SuppressWarnings("rawtypes")
         Map config = Utils.readStormConfig();
-
         JStormServerUtils.startTaobaoJvmMonitor();
-
         NimbusServer instance = new NimbusServer();
-
         INimbus iNimbus = new DefaultInimbus();
-
         instance.launchServer(config, iNimbus);
-
     }
 
     private void createPid(Map conf) throws Exception {
         String pidDir = StormConfig.masterPids(conf);
-
         JStormServerUtils.createPid(pidDir);
     }
 
@@ -137,7 +125,7 @@ public class NimbusServer {
             initThrift(conf);
         } catch (Throwable e) {
             if (e instanceof OutOfMemoryError) {
-                LOG.error("Halting due to Out Of Memory Error...");
+                LOG.error("Halting due to out of memory error...");
             }
             LOG.error("Fail to run nimbus ", e);
         } finally {
@@ -181,15 +169,10 @@ public class NimbusServer {
 
     public ServiceHandler launcherLocalServer(final Map conf, INimbus inimbus) throws Exception {
         LOG.info("Begin to start nimbus on local model");
-
         StormConfig.validate_local_mode(conf);
-
         inimbus.prepare(conf, StormConfig.masterInimbus(conf));
-
         data = createNimbusData(conf, inimbus);
-
         init(conf);
-
         serviceHandler = new ServiceHandler(data);
         return serviceHandler;
     }
@@ -207,7 +190,6 @@ public class NimbusServer {
     }
 
     private void init(Map conf) throws Exception {
-
         data.init();
 
         NimbusUtils.cleanupCorruptTopologies(data);
@@ -228,7 +210,6 @@ public class NimbusServer {
 
     @SuppressWarnings("rawtypes")
     private NimbusData createNimbusData(Map conf, INimbus inimbus) throws Exception {
-
         // Callback callback=new TimerCallBack();
         // StormTimer timer=Timer.mkTimerTimer(callback);
         return new NimbusData(conf, inimbus);
@@ -252,9 +233,7 @@ public class NimbusServer {
                 NimbusUtils.updateTopologyTaskTimeout(data, topologyid);
                 NimbusUtils.updateTopologyTaskHb(data, topologyid);
             }
-
         }
-
         LOG.info("Successfully init topology status");
     }
 
@@ -277,9 +256,8 @@ public class NimbusServer {
     }
 
     /**
-     * Right now, every 600 seconds, nimbus will clean jar under /LOCAL-DIR/nimbus/inbox, which is the uploading topology directory
-     *
-     * @throws IOException
+     * Right now, every 600 seconds, nimbus will clean jar under /LOCAL-DIR/nimbus/inbox,
+     * which is the uploading topology directory
      */
     @SuppressWarnings("rawtypes")
     private void initCleaner(Map conf) throws IOException {
@@ -297,7 +275,7 @@ public class NimbusServer {
             data.setLaunchedCleaner(true);
             LOG.info("Successfully init " + dir_location + " cleaner");
         } else {
-            LOG.info("We have launched Cleaner thread before");
+            LOG.info("cleaner thread has been started already");
         }
     }
 
@@ -321,6 +299,7 @@ public class NimbusServer {
         thriftServer.serve();
     }
 
+    @SuppressWarnings("unused")
     private void initFollowerThread(Map conf) {
         // when this nimbus become leader, we will execute this callback, to init some necessary data/thread
         Callback leaderCallback = new Callback() {
@@ -329,7 +308,7 @@ public class NimbusServer {
                     init(data.getConf());
                 } catch (Exception e) {
                     LOG.error("Nimbus init error after becoming a leader", e);
-                    throw new RuntimeException(e);
+                    JStormUtils.halt_process(0, "Failed to init nimbus");
                 }
                 return null;
             }
@@ -348,7 +327,6 @@ public class NimbusServer {
             }
 
         });
-
         //JStormUtils.registerJStormSignalHandler();
     }
 

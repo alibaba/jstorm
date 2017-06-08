@@ -1,3 +1,20 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.alibaba.jstorm.metric;
 
 import com.alibaba.jstorm.common.metric.MetricMeta;
@@ -99,7 +116,7 @@ public interface MetricQueryClient {
      * @param metricId    metric id
      * @return metric meta
      */
-    MetricMeta getMetricMeta(String clusterName, String topologyId, MetaType metaType, long metricId);
+    MetricMeta getMetricMeta(String clusterName, String topologyId, MetaType metaType, String metricId);
 
     /**
      * get metric data
@@ -119,7 +136,7 @@ public interface MetricQueryClient {
      * @param end        end time
      * @return metric data objects, depending on metric type, could be CounterData, GaugeData, ... etc.
      */
-    List<Object> getMetricData(long metricId, MetricType metricType, int win, long start, long end);
+    List<Object> getMetricData(String metricId, MetricType metricType, int win, long start, long end);
 
     /**
      * get metric data
@@ -132,7 +149,7 @@ public interface MetricQueryClient {
      * @param size       return size
      * @return metric data objects, depending on metric type, could be CounterData, GaugeData, ... etc.
      */
-    List<Object> getMetricData(long metricId, MetricType metricType, int win, long start, long end, int size);
+    List<Object> getMetricData(String metricId, MetricType metricType, int win, long start, long end, int size);
 
     /**
      * get all task track by topology id

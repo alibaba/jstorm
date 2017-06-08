@@ -25,9 +25,9 @@ import org.slf4j.LoggerFactory;
 import com.alibaba.jstorm.utils.JStormUtils;
 
 /**
- * AsyncLoopThread 's runnable
+ * AsyncLoopThread runnable
  *
- * The class wrapper RunnableCallback fn, if occur exception, run killfn
+ * The class wraps RunnableCallback fn, if an exception is thrown, will run killFn
  *
  * @author yannian
  */
@@ -36,7 +36,6 @@ public class AsyncLoopRunnable implements Runnable {
 
     // set shutdown as false is to
     private static AtomicBoolean shutdown = new AtomicBoolean(false);
-
     private AtomicBoolean shutdowned = new AtomicBoolean(false);
 
     public static AtomicBoolean getShutdown() {

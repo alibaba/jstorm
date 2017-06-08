@@ -19,11 +19,13 @@ package backtype.storm.metric.api.rpc;
 
 import backtype.storm.metric.api.IMetric;
 
+@Deprecated
 public interface IShellMetric extends IMetric {
     /***
-     * @function This interface is used by ShellBolt and ShellSpout through RPC call to update Metric
-     * @param value used to update metric, its's meaning change according implementation Object can be any json support types: String, Long, Double, Boolean,
-     *            Null, List, Map
-     * */
-    public void updateMetricFromRPC(Object value);
+     * This interface is used by ShellBolt and ShellSpout through RPC call to update Metric
+     *
+     * @param value used to update metric, its's meaning change according implementation Object can be any json
+     *              support types: String, Long, Double, Boolean, Null, List, Map
+     */
+    void updateMetricFromRPC(Object value);
 }

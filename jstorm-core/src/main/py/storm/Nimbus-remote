@@ -65,6 +65,7 @@ if len(sys.argv) <= 1 or sys.argv[1] == '--help':
   print('  TopologyInfo getTopologyInfo(string id)')
   print('  TopologyInfo getTopologyInfoByName(string topologyName)')
   print('   getTopologyTasksToSupervisorIds(string topologyName)')
+  print('   getTopologyWorkersToSupervisorIds(string topologyName)')
   print('  StormTopology getTopology(string id)')
   print('  StormTopology getUserTopology(string id)')
   print('  void notifyThisTopologyTasksIsDead(string topologyId)')
@@ -84,6 +85,10 @@ if len(sys.argv) <= 1 or sys.argv[1] == '--help':
   print('  void updateTaskHeartbeat(TopologyTaskHbInfo taskHbs)')
   print('  void setHostInBlackList(string host)')
   print('  void removeHostOutBlackList(string host)')
+  print('  void deleteMetricMeta(string topologyId, i32 metaType,  idList)')
+  print('  void grayUpgrade(string topologyName, string component,  workers, i32 workerNum)')
+  print('  void rollbackTopology(string topologyName)')
+  print('  void completeUpgrade(string topologyName)')
   print('')
   sys.exit(0)
 
@@ -386,6 +391,12 @@ elif cmd == 'getTopologyTasksToSupervisorIds':
     sys.exit(1)
   pp.pprint(client.getTopologyTasksToSupervisorIds(args[0],))
 
+elif cmd == 'getTopologyWorkersToSupervisorIds':
+  if len(args) != 1:
+    print('getTopologyWorkersToSupervisorIds requires 1 args')
+    sys.exit(1)
+  pp.pprint(client.getTopologyWorkersToSupervisorIds(args[0],))
+
 elif cmd == 'getTopology':
   if len(args) != 1:
     print('getTopology requires 1 args')
@@ -499,6 +510,30 @@ elif cmd == 'removeHostOutBlackList':
     print('removeHostOutBlackList requires 1 args')
     sys.exit(1)
   pp.pprint(client.removeHostOutBlackList(args[0],))
+
+elif cmd == 'deleteMetricMeta':
+  if len(args) != 3:
+    print('deleteMetricMeta requires 3 args')
+    sys.exit(1)
+  pp.pprint(client.deleteMetricMeta(args[0],eval(args[1]),eval(args[2]),))
+
+elif cmd == 'grayUpgrade':
+  if len(args) != 4:
+    print('grayUpgrade requires 4 args')
+    sys.exit(1)
+  pp.pprint(client.grayUpgrade(args[0],args[1],eval(args[2]),eval(args[3]),))
+
+elif cmd == 'rollbackTopology':
+  if len(args) != 1:
+    print('rollbackTopology requires 1 args')
+    sys.exit(1)
+  pp.pprint(client.rollbackTopology(args[0],))
+
+elif cmd == 'completeUpgrade':
+  if len(args) != 1:
+    print('completeUpgrade requires 1 args')
+    sys.exit(1)
+  pp.pprint(client.completeUpgrade(args[0],))
 
 else:
   print('Unrecognized method %s' % cmd)

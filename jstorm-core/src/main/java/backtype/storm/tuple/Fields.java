@@ -27,14 +27,14 @@ import java.io.Serializable;
 
 public class Fields implements Iterable<String>, Serializable {
     private List<String> _fields;
-    private Map<String, Integer> _index = new HashMap<String, Integer>();
+    private Map<String, Integer> _index = new HashMap<>();
 
     public Fields(String... fields) {
         this(Arrays.asList(fields));
     }
 
     public Fields(List<String> fields) {
-        _fields = new ArrayList<String>(fields.size());
+        _fields = new ArrayList<>(fields.size());
         for (String field : fields) {
             if (_fields.contains(field))
                 throw new IllegalArgumentException(String.format("duplicate field '%s'", field));
@@ -44,7 +44,7 @@ public class Fields implements Iterable<String>, Serializable {
     }
 
     public List<Object> select(Fields selector, List<Object> tuple) {
-        List<Object> ret = new ArrayList<Object>(selector.size());
+        List<Object> ret = new ArrayList<>(selector.size());
         for (String s : selector) {
             ret.add(tuple.get(_index.get(s)));
         }
@@ -52,11 +52,11 @@ public class Fields implements Iterable<String>, Serializable {
     }
 
     public Object select(String selector, List<Object> tuple) {
-    	return tuple.get(_index.get(selector));
+        return tuple.get(_index.get(selector));
     }
 
     public List<String> toList() {
-        return new ArrayList<String>(_fields);
+        return new ArrayList<>(_fields);
     }
 
     public int size() {

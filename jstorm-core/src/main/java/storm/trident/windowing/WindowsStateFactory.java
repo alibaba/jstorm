@@ -26,7 +26,6 @@ import storm.trident.state.StateFactory;
 
 /**
  * {@code StateFactory} instance for creating {@code WindowsState} instances.
- *
  */
 public class WindowsStateFactory implements StateFactory {
 

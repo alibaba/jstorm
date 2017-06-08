@@ -32,14 +32,23 @@ import com.alibaba.jstorm.task.error.TaskError;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.PathUtils;
 import com.alibaba.jstorm.utils.TimeUtils;
-import org.apache.zookeeper.KeeperException.NodeExistsException;
-import org.apache.zookeeper.Watcher.Event.EventType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.*;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.KeeperException.NodeExistsException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class StormZkClusterState implements StormClusterState {
     private static Logger LOG = LoggerFactory.getLogger(StormZkClusterState.class);
@@ -52,31 +61,29 @@ public class StormZkClusterState implements StormClusterState {
     private ConcurrentHashMap<String, RunnableCallback> storm_base_callback;
     private AtomicReference<RunnableCallback> master_callback;
     private AtomicReference<RunnableCallback> blobstore_callback;
+    private AtomicReference<RunnableCallback> gray_upgrade_callback;
 
     private UUID state_id;
-
     private boolean solo;
 
     public StormZkClusterState(Object cluster_state_spec) throws Exception {
-
         if (cluster_state_spec instanceof ClusterState) {
             solo = false;
             cluster_state = (ClusterState) cluster_state_spec;
         } else {
-
             solo = true;
             cluster_state = new DistributedClusterState((Map) cluster_state_spec);
         }
 
-        assignment_info_callback = new ConcurrentHashMap<String, RunnableCallback>();
-        supervisors_callback = new AtomicReference<RunnableCallback>(null);
-        assignments_callback = new AtomicReference<RunnableCallback>(null);
-        storm_base_callback = new ConcurrentHashMap<String, RunnableCallback>();
-        master_callback = new AtomicReference<RunnableCallback>(null);
-        blobstore_callback = new AtomicReference<RunnableCallback>(null);
+        assignment_info_callback = new ConcurrentHashMap<>();
+        supervisors_callback = new AtomicReference<>(null);
+        assignments_callback = new AtomicReference<>(null);
+        storm_base_callback = new ConcurrentHashMap<>();
+        master_callback = new AtomicReference<>(null);
+        blobstore_callback = new AtomicReference<>(null);
+        gray_upgrade_callback = new AtomicReference<>(null);
 
         state_id = cluster_state.register(new ClusterStateCallback() {
-
             public <T> Object execute(T... args) {
                 if (args == null) {
                     LOG.warn("Input args is null");
@@ -86,33 +93,34 @@ public class StormZkClusterState implements StormClusterState {
                     return null;
                 }
 
-                EventType zkEventTypes = (EventType) args[0];
                 String path = (String) args[1];
-
-                List<String> toks = PathUtils.tokenize_path(path);
-                int size = toks.size();
+                List<String> tokens = PathUtils.tokenize_path(path);
+                int size = tokens.size();
                 if (size >= 1) {
-                    String params = null;
-                    String root = toks.get(0);
+                    String params;
+                    String root = tokens.get(0);
                     RunnableCallback fn = null;
                     if (root.equals(Cluster.ASSIGNMENTS_ROOT)) {
                         if (size == 1) {
                             // set null and get the old value
                             fn = assignments_callback.getAndSet(null);
                         } else {
-                            params = toks.get(1);
+                            params = tokens.get(1);
                             fn = assignment_info_callback.remove(params);
                         }
 
                     } else if (root.equals(Cluster.SUPERVISORS_ROOT)) {
                         fn = supervisors_callback.getAndSet(null);
                     } else if (root.equals(Cluster.STORMS_ROOT) && size > 1) {
-                        params = toks.get(1);
+                        params = tokens.get(1);
                         fn = storm_base_callback.remove(params);
                     } else if (root.equals(Cluster.MASTER_ROOT)) {
                         fn = master_callback.getAndSet(null);
                     } else if (root.equals(Cluster.BLOBSTORE_ROOT)) {
                         fn = blobstore_callback.getAndSet(null);
+                    } else if (root.equals(Cluster.GRAY_UPGRADE_ROOT)) {
+                        fn = gray_upgrade_callback.getAndSet(null);
+                        LOG.error("@@@@@@@@@@@@@ Tokens under gray upgrade: {}", tokens);
                     } else {
                         LOG.error("Unknown callback for subtree " + path);
                     }
@@ -123,28 +131,24 @@ public class StormZkClusterState implements StormClusterState {
                         fn.run();
                     }
                 }
-
                 return null;
             }
-
         });
 
-        String[] pathlist =
+        String[] pathList =
                 JStormUtils.mk_arr(Cluster.SUPERVISORS_SUBTREE, Cluster.STORMS_SUBTREE, Cluster.ASSIGNMENTS_SUBTREE,
                         Cluster.ASSIGNMENTS_BAK_SUBTREE, Cluster.TASKS_SUBTREE, Cluster.TASKBEATS_SUBTREE,
-                        Cluster.TASKERRORS_SUBTREE, Cluster.METRIC_SUBTREE, Cluster.BLOBSTORE_SUBTREE);
-        for (String path : pathlist) {
+                        Cluster.TASKERRORS_SUBTREE, Cluster.METRIC_SUBTREE, Cluster.BLOBSTORE_SUBTREE,
+                        Cluster.GRAY_UPGRADE_SUBTREE);
+        for (String path : pathList) {
             cluster_state.mkdirs(path);
         }
 
     }
 
     /**
-     * @@@ TODO
-     *
-     *     Just add cache in lower ZK level In fact, for some Object Assignment/TaskInfo/StormBase These object can be cache for long time
-     *
-     * @param simpleCache
+     * set zk cache, for some objects like Assignment/TaskInfo/StormBase
+     * These object can be cached for a long time
      */
     public void setCache(JStormCache simpleCache) {
         if (cluster_state instanceof DistributedClusterState) {
@@ -201,7 +205,7 @@ public class StormZkClusterState implements StormClusterState {
     @Override
     public void disconnect() {
         cluster_state.unregister(state_id);
-        if (solo == true) {
+        if (solo) {
             cluster_state.close();
         }
     }
@@ -217,6 +221,7 @@ public class StormZkClusterState implements StormClusterState {
             teardown_heartbeats(topologyId);
             teardown_task_errors(topologyId);
             deleteObject(Cluster.metric_path(topologyId));
+            deleteObject(Cluster.gray_upgrade_base_path(topologyId));
         } catch (Exception e) {
             LOG.warn("Failed to delete task root and monitor root for" + topologyId);
         }
@@ -239,9 +244,8 @@ public class StormZkClusterState implements StormClusterState {
             assignment_info_callback.put(topologyId, callback);
         }
 
-        String assgnmentPath = Cluster.assignment_path(topologyId);
-
-        return (Assignment) getObject(assgnmentPath, callback != null);
+        String assignmentPath = Cluster.assignment_path(topologyId);
+        return (Assignment) getObject(assignmentPath, callback != null);
 
     }
 
@@ -250,8 +254,8 @@ public class StormZkClusterState implements StormClusterState {
         if (callback != null) {
             assignment_info_callback.put(topologyId, callback);
         }
-        String assgnmentPath = Cluster.assignment_path(topologyId);
-        return cluster_state.get_version(assgnmentPath, callback != null);
+        String assignmentPath = Cluster.assignment_path(topologyId);
+        return cluster_state.get_version(assignmentPath, callback != null);
     }
 
     @Override
@@ -269,10 +273,9 @@ public class StormZkClusterState implements StormClusterState {
 
     @Override
     public AssignmentBak assignment_bak(String topologyName) throws Exception {
-        String assgnmentBakPath = Cluster.assignment_bak_path(topologyName);
+        String assignmentBakPath = Cluster.assignment_bak_path(topologyName);
 
-        return (AssignmentBak) getObject(assgnmentBakPath, false);
-
+        return (AssignmentBak) getObject(assignmentBakPath, false);
     }
 
     @Override
@@ -285,9 +288,7 @@ public class StormZkClusterState implements StormClusterState {
         if (callback != null) {
             storm_base_callback.put(topologyId, callback);
         }
-
         return (StormBase) getObject(Cluster.storm_path(topologyId), callback != null);
-
     }
 
     @Override
@@ -307,7 +308,6 @@ public class StormZkClusterState implements StormClusterState {
         /**
          * FIXME, maybe overwrite old callback
          */
-
         StormBase base = this.storm_base(topologyId, null);
 
         if (base != null) {
@@ -319,7 +319,6 @@ public class StormZkClusterState implements StormClusterState {
 
     @Override
     public void set_storm_monitor(String topologyId, boolean isEnable) throws Exception {
-        // TODO Auto-generated method stub
         StormBase base = this.storm_base(topologyId, null);
 
         if (base != null) {
@@ -354,12 +353,10 @@ public class StormZkClusterState implements StormClusterState {
     public void teardown_heartbeats(String topologyId) {
         try {
             String taskbeatPath = Cluster.taskbeat_storm_root(topologyId);
-
             deleteObject(taskbeatPath);
         } catch (Exception e) {
             LOG.warn("Could not teardown heartbeats for " + topologyId, e);
         }
-
     }
 
     @Override
@@ -391,9 +388,12 @@ public class StormZkClusterState implements StormClusterState {
                                   int duration_secs, String tag) throws Exception {
         boolean found = false;
         String path = Cluster.taskerror_path(topology_id, task_id);
-        cluster_state.mkdirs(path);
+        try {
+            cluster_state.mkdirs(path);
+        } catch (NodeExistsException ignored) {
+        }
 
-        List<Integer> children = new ArrayList<Integer>();
+        List<Integer> children = new ArrayList<>();
 
         int timeSecs = TimeUtils.current_time_secs();
         String timestampPath = path + Cluster.ZK_SEPERATOR + timeSecs;
@@ -401,8 +401,8 @@ public class StormZkClusterState implements StormClusterState {
 
         for (String str : cluster_state.get_children(path, false)) {
             String errorPath = path + Cluster.ZK_SEPERATOR + str;
-            Object obj =  getObject(errorPath, false);
-            if (obj == null){
+            Object obj = getObject(errorPath, false);
+            if (obj == null) {
                 deleteObject(errorPath);
                 continue;
             }
@@ -424,18 +424,13 @@ public class StormZkClusterState implements StormClusterState {
 
         if (!found) {
             Collections.sort(children);
-
             while (children.size() >= 3) {
                 deleteObject(path + Cluster.ZK_SEPERATOR + children.remove(0));
             }
-
             setObject(timestampPath, taskError);
         }
         setLastErrInfo(topology_id, duration_secs, timeSecs);
     }
-
-    private static final String TASK_IS_DEAD = "is dead on"; // Full string is
-                                                             // "task-id is dead on hostname:port"
 
     private void removeLastErrInfoDuration(String topologyId, int durationRemove) {
         String lastErrTopoPath = Cluster.lasterror_path(topologyId);
@@ -457,21 +452,21 @@ public class StormZkClusterState implements StormClusterState {
         // Currently, the duration for "queue full" error is 180sec(3min) while
         // the duration for other errors is 1800sec(30min).
         String lastErrTopoPath = Cluster.lasterror_path(topologyId);
-        Map<Integer, String> lastErrInfo = null;
+        Map<Integer, String> lastErrInfo;
         try {
             lastErrInfo = (Map<Integer, String>) getObject(lastErrTopoPath, false);
-
         } catch (Exception e) {
             LOG.error("Failed to get last error time. Remove the corrupt node for " + topologyId, e);
             remove_lastErr_time(topologyId);
             lastErrInfo = null;
         }
         if (lastErrInfo == null)
-            lastErrInfo = new HashMap<Integer, String>();
+            lastErrInfo = new HashMap<>();
 
         // The error time is used to indicate how long the error info is present
         // in UI
         lastErrInfo.put(duration, timeStamp + "");
+        cluster_state.delete_node(lastErrTopoPath);
         setObject(lastErrTopoPath, lastErrInfo);
     }
 
@@ -484,7 +479,6 @@ public class StormZkClusterState implements StormClusterState {
     @Override
     public Map<Integer, String> topo_lastErr_time(String topologyId) throws Exception {
         String path = Cluster.lasterror_path(topologyId);
-
         return (Map<Integer, String>) getObject(path, false);
     }
 
@@ -507,8 +501,8 @@ public class StormZkClusterState implements StormClusterState {
     @Override
     public List<String> task_error_time(String topologyId, int taskId) throws Exception {
         String path = Cluster.taskerror_path(topologyId, taskId);
-        if (cluster_state.node_existed(path, false) == false) {
-        	return new ArrayList<String>();
+        if (!cluster_state.node_existed(path, false)) {
+            return new ArrayList<>();
         }
         return cluster_state.get_children(path, false);
     }
@@ -536,15 +530,13 @@ public class StormZkClusterState implements StormClusterState {
 
     @Override
     public List<TaskError> task_errors(String topologyId, int taskId) throws Exception {
-    	List<TaskError> errors = new ArrayList<TaskError>();
-    	String path = Cluster.taskerror_path(topologyId, taskId);
-    	if (cluster_state.node_existed(path, false) == false) {
-        	return errors;
+        List<TaskError> errors = new ArrayList<>();
+        String path = Cluster.taskerror_path(topologyId, taskId);
+        if (!cluster_state.node_existed(path, false)) {
+            return errors;
         }
 
         List<String> children = cluster_state.get_children(path, false);
-
-
         for (String str : children) {
             Object obj = getObject(path + Cluster.ZK_SEPERATOR + str, false);
             if (obj != null) {
@@ -554,7 +546,6 @@ public class StormZkClusterState implements StormClusterState {
         }
 
         Collections.sort(errors, new Comparator<TaskError>() {
-
             @Override
             public int compare(TaskError o1, TaskError o2) {
                 if (o1.getTimSecs() > o2.getTimSecs()) {
@@ -568,14 +559,13 @@ public class StormZkClusterState implements StormClusterState {
         });
 
         return errors;
-
     }
 
     @Override
     public void teardown_task_errors(String topologyId) {
         try {
-            String taskerrPath = Cluster.taskerror_storm_root(topologyId);
-            deleteObject(taskerrPath);
+            String taskErrPath = Cluster.taskerror_storm_root(topologyId);
+            deleteObject(taskErrPath);
         } catch (Exception e) {
             LOG.error("Could not teardown errors for " + topologyId, e);
         }
@@ -585,7 +575,7 @@ public class StormZkClusterState implements StormClusterState {
     public void set_task(String topologyId, Map<Integer, TaskInfo> taskInfoMap) throws Exception {
         String stormTaskPath = Cluster.storm_task_root(topologyId);
         if (taskInfoMap != null) {
-            // reupdate zk node of tasks
+            // re-update zk node of tasks
             setObject(stormTaskPath, taskInfoMap);
         }
     }
@@ -608,7 +598,6 @@ public class StormZkClusterState implements StormClusterState {
 
     @Override
     public Set<Integer> task_ids(String stromId) throws Exception {
-
         String stormTaskPath = Cluster.storm_task_root(stromId);
         Object data = getObject(stormTaskPath, false);
         if (data == null) {
@@ -625,7 +614,7 @@ public class StormZkClusterState implements StormClusterState {
             return null;
         }
         Map<Integer, TaskInfo> taskInfoMap = (Map<Integer, TaskInfo>) data;
-        Set<Integer> rtn = new HashSet<Integer>();
+        Set<Integer> rtn = new HashSet<>();
         Set<Integer> taskIds = taskInfoMap.keySet();
         for (Integer taskId : taskIds) {
             TaskInfo taskInfo = taskInfoMap.get(taskId);
@@ -639,7 +628,6 @@ public class StormZkClusterState implements StormClusterState {
 
     @Override
     public Map<Integer, TaskInfo> task_all_info(String topologyId) throws Exception {
-
         String taskPath = Cluster.storm_task_root(topologyId);
 
         Object data = getObject(taskPath, false);
@@ -652,9 +640,7 @@ public class StormZkClusterState implements StormClusterState {
     @Override
     public SupervisorInfo supervisor_info(String supervisorId) throws Exception {
         String supervisorPath = Cluster.supervisor_path(supervisorId);
-
         return (SupervisorInfo) getObject(supervisorPath, false);
-
     }
 
     @Override
@@ -667,21 +653,17 @@ public class StormZkClusterState implements StormClusterState {
 
     @Override
     public void supervisor_heartbeat(String supervisorId, SupervisorInfo info) throws Exception {
-
         String supervisorPath = Cluster.supervisor_path(supervisorId);
-
         setTempObject(supervisorPath, info);
     }
 
     @Override
     public String get_leader_host() throws Exception {
-        // TODO Auto-generated method stub
         return new String(cluster_state.get_data(Cluster.MASTER_SUBTREE, false));
     }
 
     @Override
     public boolean leader_existed() throws Exception {
-        // TODO Auto-generated method stub
         return cluster_state.node_existed(Cluster.MASTER_SUBTREE, false);
     }
 
@@ -707,7 +689,6 @@ public class StormZkClusterState implements StormClusterState {
 
     @Override
     public void update_nimbus_detail(String hostPort, Map map) throws Exception {
-        // TODO Auto-generated method stub
         cluster_state.set_ephemeral_node(Cluster.NIMBUS_SLAVE_DETAIL_SUBTREE + Cluster.ZK_SEPERATOR + hostPort, Utils.serialize(map));
     }
 
@@ -716,6 +697,7 @@ public class StormZkClusterState implements StormClusterState {
         byte[] data = cluster_state.get_data(Cluster.NIMBUS_SLAVE_DETAIL_SUBTREE + Cluster.ZK_SEPERATOR + hostPort, watch);
         return (Map) Utils.maybe_deserialize(data);
     }
+
     @Override
     public void unregister_nimbus_detail(String hostPort) throws Exception {
         cluster_state.delete_node(Cluster.NIMBUS_SLAVE_DETAIL_SUBTREE + Cluster.ZK_SEPERATOR + hostPort);
@@ -724,7 +706,6 @@ public class StormZkClusterState implements StormClusterState {
 
     @Override
     public boolean try_to_be_leader(String path, String host, RunnableCallback callback) throws Exception {
-        // TODO Auto-generated method stub
         if (callback != null)
             this.master_callback.set(callback);
         try {
@@ -752,9 +733,10 @@ public class StormZkClusterState implements StormClusterState {
     public List<String> get_metrics() throws Exception {
         return cluster_state.get_children(Cluster.METRIC_SUBTREE, false);
     }
+
     @Override
-    public List<String> list_dirs(String path, boolean watch) throws  Exception {
-        List<String> subDirs = null;
+    public List<String> list_dirs(String path, boolean watch) throws Exception {
+        List<String> subDirs;
         subDirs = cluster_state.get_children(path, watch);
         return subDirs;
     }
@@ -818,12 +800,13 @@ public class StormZkClusterState implements StormClusterState {
         LOG.debug("removing key {}", blobKey);
         cluster_state.delete_node(Cluster.blob_max_key_sequence_number_path(blobKey));
     }
+
     @Override
-    public void mkdir(String path){
+    public void mkdir(String path) {
         try {
             cluster_state.mkdirs(path);
-        }catch (Exception e){
-            LOG.warn("Could not create the path : {}", path);
+        } catch (Exception e) {
+            LOG.warn("Could not create path : {}", path);
         }
     }
 
@@ -854,6 +837,72 @@ public class StormZkClusterState implements StormClusterState {
         Object blackListObj = getObject(stormPath, false);
         if (blackListObj != null)
             return (List<String>) blackListObj;
-        return new ArrayList<String>();
+        return new ArrayList<>();
+    }
+
+    @Override
+    public List<String> get_upgrading_topologies() throws Exception {
+        List<String> ret = cluster_state.get_children(Cluster.GRAY_UPGRADE_SUBTREE, false);
+        if (ret == null) {
+            ret = Lists.newArrayList();
+        }
+        return ret;
+    }
+
+    @Override
+    public Object get_gray_upgrade_conf(String topologyId) throws Exception {
+        return getObject(Cluster.gray_upgrade_conf_path(topologyId), false);
+    }
+
+    @Override
+    public void set_gray_upgrade_conf(String topologyId, Object obj) throws Exception {
+        setObject(Cluster.gray_upgrade_conf_path(topologyId), obj);
+    }
+
+    @Override
+    public List<String> get_upgrading_workers(String topologyId) throws Exception {
+        List<String> ret = cluster_state.get_children(Cluster.gray_upgrade_upgrading_workers_path(topologyId), false);
+        if (ret == null) {
+            ret = new ArrayList<>();
+        }
+        return ret;
+    }
+
+    @Override
+    public List<String> get_upgraded_workers(String topologyId) throws Exception {
+        List<String> ret = cluster_state.get_children(Cluster.gray_upgrade_upgraded_workers_path(topologyId), false);
+        if (ret == null) {
+            ret = new ArrayList<>();
+        }
+        return ret;
+    }
+
+    @Override
+    public void remove_upgrading_worker(String topologyId, String hostPort) throws Exception {
+        cluster_state.delete_node(Cluster.gray_upgrade_upgrading_worker_path(topologyId, hostPort));
+    }
+
+    @Override
+    public void add_upgrading_worker(String topologyId, String hostPort) throws Exception {
+        cluster_state.set_data(Cluster.gray_upgrade_upgrading_worker_path(topologyId, hostPort), new byte[0]);
+    }
+
+    @Override
+    public void add_upgraded_worker(String topologyId, String hostPort) throws Exception {
+        cluster_state.set_data(Cluster.gray_upgrade_upgraded_worker_path(topologyId, hostPort), new byte[0]);
+    }
+
+    @Override
+    public void remove_gray_upgrade_info(String topologyId) throws Exception {
+        cluster_state.delete_node(Cluster.gray_upgrade_conf_path(topologyId));
+        List<String> upgradingWorkers = get_upgrading_workers(topologyId);
+        for (String upgradingWorker : upgradingWorkers) {
+            cluster_state.delete_node(Cluster.gray_upgrade_upgrading_worker_path(topologyId, upgradingWorker));
+        }
+
+        List<String> upgradedWorkers = get_upgraded_workers(topologyId);
+        for (String upgradedWorker : upgradedWorkers) {
+            cluster_state.delete_node(Cluster.gray_upgrade_upgraded_worker_path(topologyId, upgradedWorker));
+        }
     }
 }

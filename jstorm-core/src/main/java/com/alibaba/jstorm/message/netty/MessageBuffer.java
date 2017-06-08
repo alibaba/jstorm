@@ -20,19 +20,18 @@ package com.alibaba.jstorm.message.netty;
 import java.util.List;
 
 import backtype.storm.messaging.NettyMessage;
-import backtype.storm.messaging.TaskMessage;
 
 
 /**
  * Encapsulates the state used for batching up messages.
  */
 public class MessageBuffer {
-    private final int mesageBatchSize;
+    private final int messageBatchSize;
     private MessageBatch currentBatch;
 
-    public MessageBuffer(int mesageBatchSize){
-        this.mesageBatchSize = mesageBatchSize;
-        this.currentBatch = new MessageBatch(mesageBatchSize);
+    public MessageBuffer(int messageBatchSize) {
+        this.messageBatchSize = messageBatchSize;
+        this.currentBatch = new MessageBatch(messageBatchSize);
     }
 
     public void setMessageBatch(MessageBatch batch) {
@@ -44,17 +43,16 @@ public class MessageBuffer {
     }
 
     /**
-     * 
-     * @param msg
+     * @param msg        netty message
      * @param isFlushed, true: return batch when batch is full
      *                   false: just add message
-     * @return
+     * @return message batch if available
      */
-    public MessageBatch add(NettyMessage msg, boolean isFlushed){
+    public MessageBatch add(NettyMessage msg, boolean isFlushed) {
         currentBatch.add(msg);
-        if(currentBatch.isFull() && isFlushed){
+        if (isFlushed && currentBatch.isFull()) {
             MessageBatch ret = currentBatch;
-            currentBatch = new MessageBatch(mesageBatchSize);
+            currentBatch = new MessageBatch(messageBatchSize);
             return ret;
         } else {
             return null;
@@ -66,17 +64,16 @@ public class MessageBuffer {
     }
 
     /**
-     * 
-     * @param msgs
+     * @param msgs       a list of netty messages
      * @param isFlushed, true: return batch when batch is full
      *                   false: just add message
-     * @return
+     * @return message batch if available
      */
-    public MessageBatch add(List<NettyMessage> msgs, boolean isFlushed){
+    public MessageBatch add(List<NettyMessage> msgs, boolean isFlushed) {
         currentBatch.add(msgs);
-        if(currentBatch.isFull() && isFlushed){
+        if (currentBatch.isFull() && isFlushed) {
             MessageBatch ret = currentBatch;
-            currentBatch = new MessageBatch(mesageBatchSize);
+            currentBatch = new MessageBatch(messageBatchSize);
             return ret;
         } else {
             return null;
@@ -93,9 +90,9 @@ public class MessageBuffer {
     }
 
     public MessageBatch drain() {
-        if(!currentBatch.isEmpty()) {
+        if (!currentBatch.isEmpty()) {
             MessageBatch ret = currentBatch;
-            currentBatch = new MessageBatch(mesageBatchSize);
+            currentBatch = new MessageBatch(messageBatchSize);
             return ret;
         } else {
             return null;
@@ -103,6 +100,6 @@ public class MessageBuffer {
     }
 
     public void clear() {
-        currentBatch = new MessageBatch(mesageBatchSize);
+        currentBatch = new MessageBatch(messageBatchSize);
     }
 }

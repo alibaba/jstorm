@@ -184,7 +184,7 @@ Like `JStormMetrics.registerMetrics...` methods, once user calls `metricClient.r
 
 2. counters are not sampled, so metrics like `emitted`, `acked`, `failed` are exactly accurate.
                         
-3. all time-related metrics are measured in us instead of ms to improve accuracy. Metrics like `nextTuple_time` in ms makes no sense  since they are usually 0ms.
+3. all time-related metrics are measured in µs instead of ms to improve accuracy. Metrics like `nextTuple_time` in ms makes no sense  since they are usually 0ms.
 
 ### topology history & task events
 topology/task event hooks are added to enable such events can be sent to external systems via `MetricUploader` interface.
@@ -300,3 +300,142 @@ For full API, please refer to `MetricClient` class.
 ## TODO
 1. simplify metrics data sent to topology master/nimbus
 
+
+## Appendix I: Explanation of JStorm Built-in Metrics
+  
+### Topology Metrics
+
+#### MemoryUsed
+physical memory used by cluster/topology/worker
+
+#### HeapMemory
+JVM heap memory used by cluster/topology/worker
+
+#### CpuUsedRatio 
+CPU usage of cluster/topology/worker cpu, e.g., 62.000 means 0.62 cpu core is used, 
+200.00 means 2 cpu cores are used
+
+#### NettyCliSendSpeed
+Output network flow of cluster/topology/worker, in Bytes/sec
+
+#### NettySrvRecvSpeed
+Input network flow of cluster/topology/worker, in Bytes/sec
+
+#### FullGc
+FGC num of past min of cluster/topology/worker
+
+#### RecvTps
+Receive tps (of tuples) of cluster/topology/component/task/stream
+
+#### SendTps
+Send tps (of tuples) cluster/topology/component/task/stream
+
+#### Emitted
+Emitted msgs of cluster/topology/component/task/stream in the past min,
+note that it includes **both business msgs and acker msgs**
+
+#### Acked
+Acked msgs of cluster/topology/component/task/stream in the past min,
+the difference with `Emitted` is that, if acker mechanism is enabled,
+because `Emitted` includes acker msgs, usually the value of `Emitted` is
+about double the value of `Acked` 
+
+#### Failed
+Failed msgs of cluster/topology/component/task/stream in the past min,
+note that "fail" can mean active ack fail in user code or process failure
+like ack timeout, exception, etc.
+
+
+### Component Metrics
+
+#### EmitTime
+The time spent when spout/bolt publishes msgs to disruptor queue, in **micro seconds**,
+note that **time is measured in µs system-wide in JStorm 2.x**.
+
+#### DeserializeTime
+Deserialize time of a tuple in component/task/stream, in µs.
+
+#### SerializeTime
+Serialize time of a tuple in component/task/stream, in µs.
+
+#### ExecutorTime
+Time spent in `Spout#nextTuple` method in component/task/stream, in µs, 
+note that this metric exists only in spouts.
+
+#### TupleLifeCycle
+The time gap in component/task/stream of a tuple/batch emitted from its upstream
+ component till current component receives this tuple/batch in µs, which includes
+ upstream serialize time, network time and deserialize time of current component.
+
+#### ProcessLatency
+Roughly speaking, it's the time spent in `Bolt#execute` method in component/task/stream
+, in µs.
+
+Specifically, when calling `processTuple` internally, a tuple will be put into a pending map,
+this is when the start time is specified; 
+when the tuple is being acked, the end time is specified, thus the process latency is 
+subtracted using the end time and start time.
+
+If it's in a spout, then it's the time gap of sending the tuple from spout, until the 
+time it's acked in acker. Since this process goes through all bolts, it's usually quite large,
+even larger than `TupleLifeCycle`.
+
+
+### Task Metrics
+
+#### DeserializeQueue
+Deserialize queue usage.
+Note that a task includes 4 queues: deserialize queue, execute queue, control msg queue,
+serialize queue.
+
+#### SerializeQueue
+Serialize queue usage.
+
+#### ExecutorQueue
+Execute queue usage.
+
+#### CtrlQueue
+Control queue usage.
+
+#### PendingNum
+The num of tuples that have been sent to downstream components but not yet acked.
+Note that this metric exists in spout only.
+
+#### BatchInterval
+The time gap between 2 full internal batches, for performance tuning.
+
+
+### Worker Metrics
+
+#### GCCount
+The GC num in the past min, internally this value is retrieved through JMX.
+
+#### GCTime
+The GC time spent in the past min in µs, internally this value is retrieved through JMX. 
+
+#### NettyCliSendBatchSize
+The average netty batch size sent in worker in the past min, in Bytes.
+
+#### NettySrvTransmitTime
+Average network time of incoming batches/tuples in worker in the past min, in µs. 
+
+#### RecvCtrlQueue
+The worker-level incoming control queue usage, from which control msgs are dispatched to task control queues
+
+#### SendCtrlQueue
+The worker-level outgoing control queue usage.
+
+
+### Supervisor Metrics
+
+#### DiskUsage
+Home disk usage of current user.
+
+#### MemoryUsage
+Physical memory usage of current machine.
+
+#### CpuUsedRatio
+CPU usage of current machine.
+
+#### NettyCliSendSpeed/NettySrvRecvSpeed
+Input/output bytes of NIC in Bytes.

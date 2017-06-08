@@ -18,7 +18,7 @@
 ########### These all have default values as shown
 ########### Additional configuration goes into storm.yaml
 
-java.library.path: "/usr/local/lib:/opt/local/lib:/usr/lib"
+java.library.path: "/usr/local/lib:/opt/local/lib:/usr/lib:/home/admin/jstorm/lib"
 
 ### storm.* configs are general configurations
 # the local dir is where jars are kept
@@ -63,7 +63,7 @@ nimbus.thrift.port: 8627
 nimbus.thrift.threads: 64
 nimbus.thrift.max_buffer_size: 16384000
 nimbus.childopts: " -Xms4g -Xmx4g -Xmn1536m -XX:PermSize=256m  -XX:SurvivorRatio=4 -XX:+UseConcMarkSweepGC  -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:CMSFullGCsBeforeCompaction=5 -XX:+HeapDumpOnOutOfMemoryError -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=5 -XX:GCLogFileSize=100M -XX:+UseCMSCompactAtFullCollection -XX:CMSMaxAbortablePrecleanTime=5000 "
-nimbus.task.timeout.secs: 240
+nimbus.task.timeout.secs: 120
 nimbus.supervisor.timeout.secs: 180
 nimbus.monitor.freq.secs: 10
 nimbus.cleanup.inbox.freq.secs: 600
@@ -164,7 +164,7 @@ supervisor.slots.ports: null
 #    - 6801
 #    - 6802
 #    - 6803
-supervisor.childopts: " -Xms1g -Xmx1g -Xmn512m -XX:PermSize=64m -XX:+UseConcMarkSweepGC  -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:CMSFullGCsBeforeCompaction=5 -XX:+HeapDumpOnOutOfMemoryError -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=5 -XX:GCLogFileSize=100M -XX:+UseCMSCompactAtFullCollection -XX:CMSMaxAbortablePrecleanTime=5000 "
+supervisor.childopts: " -Xms512m -Xmx512m -Xmn256m -XX:PermSize=64m -XX:+UseConcMarkSweepGC  -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:CMSFullGCsBeforeCompaction=5 -XX:+HeapDumpOnOutOfMemoryError -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=5 -XX:GCLogFileSize=100M -XX:+UseCMSCompactAtFullCollection -XX:CMSMaxAbortablePrecleanTime=5000 "
 supervisor.run.worker.as.user: false
 #how long supervisor will wait to ensure that a worker process is started
 supervisor.worker.start.timeout.secs: 120
@@ -235,7 +235,7 @@ zmq.hwm: 0
 
 # Netty thread num: 0 means no limit
 storm.messaging.netty.server_worker_threads: 5
-storm.messaging.netty.client_worker_threads: 1
+storm.messaging.netty.client_worker_threads: 2
 storm.messaging.netty.buffer_size: 5242880 #5MB buffer
 storm.messaging.netty.receive.buffer_size: 20971520 #20MB
 storm.messaging.netty.max_retries: 30
@@ -309,13 +309,12 @@ topology.fall.back.on.java.serialization: false
 topology.kryo.register.required: false
 topology.worker.childopts: null
 topology.ctrl.buffer.size: 256 #control queue size
-topology.executor.receive.buffer.size: 1024 #batched
-topology.executor.send.buffer.size: 1024 #individual messages
+topology.executor.receive.buffer.size: 256 # recv buffer(deserialize and execute) of task
+topology.executor.send.buffer.size: 256 # send buffer of task
 topology.receiver.buffer.size: 8 # setting it too high causes a lot of problems (heartbeat thread gets starved, throughput plummets)
-topology.transfer.buffer.size: 2048 # batched
 topology.tick.tuple.freq.secs: null
 topology.worker.shared.thread.pool.size: 4
-topology.disruptor.wait.timeout: 10 # ms
+topology.disruptor.wait.timeout: 5 # ms
 topology.spout.wait.strategy: "backtype.storm.spout.SleepSpoutWaitStrategy"
 topology.sleep.spout.wait.strategy.time.ms: 1
 topology.error.throttle.interval.secs: 10
@@ -348,6 +347,8 @@ topology.enable.stream.metrics: false
 topology.timer.update.interval: 10
 # disable some worker metrics and time realted task/comp metrics by default
 topology.disabled.metric.names: "EmitTime,MsgDecodeTime"
+topology.debug.metric.names: null
+topology.enable.metric.debug: false
 
 topology.backpressure.enable: true
 topology.backpressure.water.mark.high: 0.8
@@ -372,7 +373,7 @@ resource.aware.scheduler.priority.strategy: "backtype.storm.scheduler.resource.s
 # Enbale topology automatically to batch the tuples before sending them out.
 # The batch size is 4.
 task.batch.tuple: true
-task.msg.batch.size: 50
+task.msg.batch.size: 20
 task.msg.batch.flush.interval.millis: 2
 
 # enable supervisor use cgroup to make resource isolation
@@ -521,14 +522,20 @@ worker.deserialize.thread.ratio: null
 worker.serialize.thread.ratio: null
 
 ### Config for "snapshot state" transaction topology
+transaction.exactly.once.mode: true # true: exactly once, false: at least once 
+transaction.topology.reset: false
 transaction.schedule.batch.delay.ms: 1000
 transaction.max.pending.batch: 2
-
-transaction.cache.block.size: 1073741824 # 1GB
-transaction.max.cache.block.num: 3
+transaction.batch.snapshot.timeout: 120
+transaction.cache.block.size: 134217728 # 128m
+transaction.max.cache.block.num: 2
+transaction.exactly.cache.type: "rocksDb"
 
 #if set "shuffle.enable.inter.path", the tuple will firstly try to send the task in the same worker
 shuffle.enable.inter.path: true
 shuffle.inter.load.mark: 0.5
 
-jstorm.yarn.conf.blacklist: "jstorm.home,jstorm.log.dir,storm.local.dir,java.library.path"
+#jstorm.yarn.conf.blacklist: "jstorm.home,jstorm.log.dir,storm.local.dir,java.library.path"
+cluster.conf.sync.enabled: true
+
+jstorm.reserve.workers: 0

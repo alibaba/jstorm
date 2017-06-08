@@ -150,7 +150,7 @@ public class ShellProcess implements Serializable {
                 processErrorStream.read(errorReadingBuffer, 0, bufferSize);
                 ShellLogger.info(new String(errorReadingBuffer));
             }
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
     }
 

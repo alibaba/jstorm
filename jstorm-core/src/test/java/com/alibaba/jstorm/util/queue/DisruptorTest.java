@@ -36,11 +36,6 @@ import com.lmax.disruptor.InsufficientCapacityException;
 import com.lmax.disruptor.dsl.ProducerType;
 
 public class DisruptorTest {
-
-    static {
-        DisruptorQueue.setUseSleep(true);
-    }
-
     private int count = 100000000;
     private int buffer_size = 8 * 1024;
 

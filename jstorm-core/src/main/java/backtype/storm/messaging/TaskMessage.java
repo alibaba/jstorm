@@ -20,11 +20,13 @@ package backtype.storm.messaging;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBufferOutputStream;
 import org.jboss.netty.buffer.ChannelBuffers;
-public class TaskMessage implements NettyMessage{
+
+public class TaskMessage implements NettyMessage {
     public final static short NORMAL_MESSAGE = 0;
     public final static short CONTROL_MESSAGE = 1;
     public final static short BACK_PRESSURE_REQUEST = 2;
-    private final short _type; //0 means taskmessage , 1 means task controlmessage
+    private final short _type; //0 means task message , 1 means task control message
+    private int _sourceTask = 0;
     private int _task;
     private byte[] _message;
 
@@ -33,14 +35,33 @@ public class TaskMessage implements NettyMessage{
         _task = task;
         _message = message;
     }
+
+    public TaskMessage(int sourceTask, int task, byte[] message) {
+        _type = NORMAL_MESSAGE;
+        _sourceTask = sourceTask;
+        _task = task;
+        _message = message;
+    }
+
     public TaskMessage(short type, int task, byte[] message) {
         _type = type;
         _task = task;
         _message = message;
     }
 
+    public TaskMessage(short type, int sourceTask, int task, byte[] message) {
+        _type = type;
+        _sourceTask = sourceTask;
+        _task = task;
+        _message = message;
+    }
+
     public short get_type() {
         return _type;
+    }
+
+    public int sourceTask() {
+        return _sourceTask;
     }
 
     public int task() {
@@ -50,24 +71,17 @@ public class TaskMessage implements NettyMessage{
     public byte[] message() {
         return _message;
     }
-    
 
     @Override
     public boolean isEmpty() {
-        // TODO Auto-generated method stub
-        if (_message == null || _message.length == 0) {
-            return true;
-        }
-        return false;
+        return _message == null || _message.length == 0;
     }
-    
+
     @Override
     public int getEncodedLength() {
-        // TODO Auto-generated method stub
         if (_message == null) {
             return 0;
         }
-        
         return _message.length;
     }
 
@@ -82,7 +96,6 @@ public class TaskMessage implements NettyMessage{
 
         int totalLen = 8 + payloadLen;
         ChannelBufferOutputStream bout = new ChannelBufferOutputStream(ChannelBuffers.directBuffer(totalLen));
-
         bout.writeShort(_type);
 
         if (_task > Short.MAX_VALUE)
@@ -92,10 +105,9 @@ public class TaskMessage implements NettyMessage{
         bout.writeInt(payloadLen);
         if (payloadLen > 0)
             bout.write(_message);
-        
+
         bout.close();
         return bout.buffer();
     }
-    
-    
+
 }

@@ -26,7 +26,7 @@ public class ZkEventTypes {
     private static HashMap<Watcher.Event.EventType, String> map;
 
     static {
-        map = new HashMap<Watcher.Event.EventType, String>();
+        map = new HashMap<>();
 
         map.put(Watcher.Event.EventType.None, ":none");
         map.put(Watcher.Event.EventType.NodeCreated, ":node-created");

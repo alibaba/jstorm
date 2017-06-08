@@ -1,6 +1,33 @@
 [JStorm English introduction](http://42.121.19.155/jstorm/JStorm-introduce-en.pptx)
 [JStorm Chinese introduction](http://42.121.19.155/jstorm/JStorm-introduce.pptx)
 
+# Release 2.4.0
+
+## New features
+* exactly-once接口支持异步checkpoint(rocksdb+hdfs)
+* 引入重构的窗口机制
+    1. 支持滚动和滑动窗口
+    2. 支持常见窗口类型,包括:count window, processing time window, event time window, session window.
+    3. 不会在内存中憋数据,有数据到达即会触发计算
+* 支持灰度发布
+    1. 支持根据worker/component来进行灰度发布
+    2. 支持灰度发布的回滚
+* 支持基于内存/rocksdb的KV store
+* HBase metrics插件开源
+* 支持多个metrics uploader同时写异构存储
+* MetricClient支持注册汇总到topology级别的metrics
+* 支持component stream metrics, 即stream metrics在component级别的汇总 
+
+## Improvements
+* 支持kryo中没有无参构造函数类的序列化
+* 在AsmMetric中加入getValue方法,用于单测/集成测试中快速assert,而不必通过nimbus client从nimbus中获取数据
+
+## Bug Fix
+* 修复调度topology的时候unstopped task的计算错误
+* 修复supervisor中storm.yaml永远跟nimbus的storm.yaml不同,从而一直在同步的bug
+* 修复kryo配置中无法识别字符串"true"/"false"配置值的bug
+
+
 # Release 2.2.1
 
 ## New features

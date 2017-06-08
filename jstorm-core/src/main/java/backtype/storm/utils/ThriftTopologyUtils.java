@@ -26,7 +26,7 @@ import java.util.Set;
 
 public class ThriftTopologyUtils {
     public static Set<String> getComponentIds(StormTopology topology) {
-        Set<String> ret = new HashSet<String>();
+        Set<String> ret = new HashSet<>();
         for (StormTopology._Fields f : StormTopology.metaDataMap.keySet()) {
             Map<String, Object> componentMap = (Map<String, Object>) topology.getFieldValue(f);
             ret.addAll(componentMap.keySet());
@@ -35,7 +35,7 @@ public class ThriftTopologyUtils {
     }
 
     public static Map<String, Object> getComponents(StormTopology topology) {
-        Map<String, Object> ret = new HashMap<String, Object>();
+        Map<String, Object> ret = new HashMap<>();
         for (StormTopology._Fields f : StormTopology.metaDataMap.keySet()) {
             Map<String, Object> componentMap = (Map<String, Object>) topology.getFieldValue(f);
             ret.putAll(componentMap);

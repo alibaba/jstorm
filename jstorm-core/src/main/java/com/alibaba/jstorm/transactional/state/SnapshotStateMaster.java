@@ -1,6 +1,22 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.alibaba.jstorm.transactional.state;
 
-import static org.slf4j.LoggerFactory.getLogger;
 import backtype.storm.generated.InvalidTopologyException;
 import backtype.storm.generated.StormTopology;
 import backtype.storm.task.OutputCollector;
@@ -9,27 +25,31 @@ import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 import backtype.storm.utils.Utils;
 
+import com.alibaba.jstorm.client.ConfigExtension;
+import com.alibaba.jstorm.cluster.Common;
+import com.alibaba.jstorm.task.execute.BoltCollector;
+import com.alibaba.jstorm.task.master.ctrlevent.TopoMasterCtrlEvent;
+import com.alibaba.jstorm.task.master.ctrlevent.TopoMasterCtrlEvent.EventType;
+import com.alibaba.jstorm.transactional.TransactionCommon;
+import com.alibaba.jstorm.transactional.state.TransactionState.State;
+
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.slf4j.Logger;
 
-import com.alibaba.jstorm.client.ConfigExtension;
-import com.alibaba.jstorm.cluster.Common;
-import com.alibaba.jstorm.task.execute.BoltCollector;
-import com.alibaba.jstorm.task.master.ctrlevent.TopoMasterCtrlEvent;
-import com.alibaba.jstorm.task.master.ctrlevent.TopoMasterCtrlEvent.EventType;
-import com.alibaba.jstorm.transactional.BatchGroupId;
-import com.alibaba.jstorm.transactional.TransactionCommon;
-import com.alibaba.jstorm.utils.JStormUtils;
+import static org.slf4j.LoggerFactory.getLogger;
 
 public class SnapshotStateMaster {
     private static final Logger LOG = getLogger(SnapshotStateMaster.class);
@@ -41,16 +61,19 @@ public class SnapshotStateMaster {
     private OutputCollector outputCollector;
     private TopologyContext context;
 
-    private Map<String, Integer> groupIds;
-    private Map<Integer, List<String>> groupIdToNames;
-
+    private Map<String, Set<Integer>> spouts;
+    private Map<String, Set<Integer>> statefulBolts;
+    private Map<String, Set<Integer>> nonStatefulBoltTasks;
+    private Set<Integer> endBoltTasks;
     private ITopologyStateOperator stateOperator;
-    private Map<Integer, SnapshotState> topologySnapshotState;
+    private SnapshotState snapshotState;
 
     private int batchSnapshotTimeout;
     private ScheduledExecutorService scheduledService = null;
 
-    public SnapshotStateMaster(TopologyContext context, OutputCollector outputCollector){
+    private Lock lock;
+
+    public SnapshotStateMaster(TopologyContext context, OutputCollector outputCollector) {
         this.topologyId = context.getTopologyId();
         try {
             this.topologyName = Common.topologyIdToName(topologyId);
@@ -69,46 +92,25 @@ public class SnapshotStateMaster {
         } else {
             stateOperator = (ITopologyStateOperator) Utils.newInstance(topologyStateOpClassName);
         }
-        stateOperator.init(conf);
- 
-        topologySnapshotState = new HashMap<Integer, SnapshotState>();
-        Set<String> spoutNames = topology.get_spouts().keySet();
-        groupIds = TransactionCommon.groupIds(spoutNames);
-        groupIdToNames = JStormUtils.reverse_map(groupIds);
-        Set<String> statefulBolts = TransactionCommon.getStatefulBolts(topology);
-        for (Integer groupId : groupIdToNames.keySet()) {
-            Set<Integer> spoutTasks = new HashSet<Integer>();
-            Set<Integer> statefulBoltTasks = new HashSet<Integer>();
-            Set<Integer> nonStatefulBoltTasks = new HashSet<Integer>();
-            Set<Integer> endBoltTasks = new HashSet<>();
-            for (String spoutName : spoutNames) {
-                // Get spout tasks
-                spoutTasks.addAll(context.getComponentTasks(spoutName));
-                // Get downstream stateful bolt tasks
-                Set<String> downstreamComponents = TransactionCommon.getAllDownstreamComponents(spoutName, topology);
-                Set<String> statefulDownstreamComponents = new HashSet<String>(downstreamComponents);
-                statefulDownstreamComponents.retainAll(statefulBolts);
-                statefulBoltTasks.addAll(context.getComponentsTasks(statefulDownstreamComponents));
-                // Get downstream non-stateful bolt tasks
-                downstreamComponents.removeAll(statefulDownstreamComponents);
-                nonStatefulBoltTasks.addAll(context.getComponentsTasks(downstreamComponents));
-                // Get end bolt tasks
-                Set<String> endBolts = TransactionCommon.getEndBolts(topology, spoutName);
-                endBoltTasks.addAll(context.getComponentsTasks(endBolts));  
-            }
-            topologySnapshotState.put(groupId, new SnapshotState(groupId, spoutTasks, statefulBoltTasks, nonStatefulBoltTasks, endBoltTasks));
-        }
+        stateOperator.init(context);
 
-        HashMap<Integer, SnapshotState> topologyCommitState = (HashMap<Integer, SnapshotState>) stateOperator.initState(topologyName);
-        if (topologyCommitState != null && topologyCommitState.size() > 0) {
-            for (Entry<Integer, SnapshotState> entry : topologyCommitState.entrySet()) {
-                int id = entry.getKey();
-                SnapshotState commitState = entry.getValue();
-                topologySnapshotState.get(id).setLastSuccessfulBatch(commitState);
-                topologySnapshotState.get(id).setState(commitState.getState());
-            }
-        }
-        LOG.info("topologySnapshotState=" + topologySnapshotState);
+        Set<String> spoutIds = topology.get_spouts().keySet();
+        Set<String> statefulBoltIds = TransactionCommon.getStatefulBolts(topology);
+        Set<String> endBolts = TransactionCommon.getEndBolts(topology);
+        Set<String> downstreamComponents = new HashSet<>(topology.get_bolts().keySet());
+
+        spouts = componentToComponentTasks(context, spoutIds);
+        statefulBolts = componentToComponentTasks(context, statefulBoltIds);
+        downstreamComponents.removeAll(statefulBoltIds);
+        nonStatefulBoltTasks = componentToComponentTasks(context, downstreamComponents);
+        endBoltTasks = new HashSet<Integer>(context.getComponentsTasks(endBolts));
+        snapshotState = new SnapshotState(context, spouts, statefulBolts, nonStatefulBoltTasks, endBoltTasks, stateOperator);
+
+        SnapshotState commitState = ConfigExtension.resetTransactionTopologyState(conf) ? null : (SnapshotState) stateOperator.initState(topologyName);
+        snapshotState.initState(commitState);
+
+        LOG.info("topologySnapshotState: {}, isResetTopologyState: {}", snapshotState, ConfigExtension.resetTransactionTopologyState(conf));
+        LOG.info("lastSuccessfulSnapshotState: {}", snapshotState.getLastSuccessfulBatch().statesInfo());
 
         this.batchSnapshotTimeout = ConfigExtension.getTransactionBatchSnapshotTimeout(conf);
         scheduledService = Executors.newSingleThreadScheduledExecutor();
@@ -116,160 +118,188 @@ public class SnapshotStateMaster {
             @Override
             public void run() {
                 expiredCheck();
-            } 
+            }
         }, batchSnapshotTimeout, batchSnapshotTimeout / 2, TimeUnit.SECONDS);
+
+        this.lock = new ReentrantLock(true);
     }
 
-    public synchronized void process(Tuple tuple) {
+    private Map<String, Set<Integer>> componentToComponentTasks(TopologyContext context, Set<String> components) {
+        Map<String, Set<Integer>> ret = new HashMap<>();
+        for (String component : components) {
+            ret.put(component, new HashSet<Integer>(context.getComponentTasks(component)));
+        }
+        return ret;
+    }
+
+    public void process(Tuple tuple) {
+        try {
+            lock.lock();
+            processTuple(tuple);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void processTuple(Tuple tuple) {
         int taskId = tuple.getSourceTask();
 
         TopoMasterCtrlEvent event = (TopoMasterCtrlEvent) tuple.getValues().get(0);
-        BatchGroupId batchGroupId = null;
+        long batchId = -1;
         if (event.getEventValue() != null && event.getEventValue().size() > 0) {
-            batchGroupId =  (BatchGroupId) event.getEventValue().get(0);
-        }
-        SnapshotState snapshotState = null;
-        // If batchGroupId == null, it is initState request
-        if (batchGroupId != null) {
-            snapshotState = topologySnapshotState.get(batchGroupId.groupId);
-            if (snapshotState == null) {
-                LOG.warn("unexpected event from task-{}, event={}", taskId, event.toString());;
-                return;
-            }
+            batchId = (long) event.getEventValue().get(0);
         }
         LOG.debug("Received control event from task-{}, event={}", taskId, event);
 
         boolean isFinished = false;
-        switch(event.getEventType()) {
-            case transactionInitState:
-                for (Entry<Integer, SnapshotState> entry : topologySnapshotState.entrySet()) {
-                    TransactionState state = entry.getValue().getInitState(taskId);
-                    int groupId = entry.getKey();
-                    if (state != null) {
-                        TopoMasterCtrlEvent initStateResp = new TopoMasterCtrlEvent(EventType.transactionInitState);
-                        initStateResp.addEventValue(state);
-                        ((BoltCollector) (outputCollector.getDelegate())).emitDirectCtrl(taskId, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null, 
-                                new Values(initStateResp));
-                    }
+        switch (event.getEventType()) {
+        case transactionInitState:
+            if (snapshotState.isRunning()) {
+                // If init happened during topology is running, trigger rollback immediately.
+                LOG.info("Found task-{} restart request during topology committing. Current state is {}", taskId, snapshotState.getState());
+                if (!snapshotState.getState().equals(State.ROLLBACK))
+                    stopAndRollback(snapshotState.rollback());
+            } else {
+                TransactionState state = snapshotState.getInitState(taskId);
+                if (state != null) {
+                    TopoMasterCtrlEvent initStateResp = new TopoMasterCtrlEvent(EventType.transactionInitState);
+                    initStateResp.addEventValue(state);
+                    ((BoltCollector) (outputCollector.getDelegate())).emitDirectCtrl(taskId, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null, new Values(
+                            initStateResp));
+                } else {
+                    LOG.warn("Can not find init state for task-{}", taskId);
                 }
-                break;
-            case transactionCommit:
-                TransactionState commitState = (TransactionState) event.getEventValue().get(1);
-                isFinished = snapshotState.commit(batchGroupId.batchId, taskId, commitState);
-                break;
-            case transactionAck:
-                isFinished = snapshotState.ackEndBolt(batchGroupId.batchId, taskId);
-                break;
-            case transactionRollback:
-                // If receiving rollback request, TM will rollback all tasks which are on the same stream as this task
-                stopAndRollback(batchGroupId.groupId, snapshotState.rollback());
-                break;
-            default:
-                LOG.warn("unexpected event type from task-{}, event={}", taskId, event.toString());
-                break;
+            }
+            break;
+        case transactionCommit:
+            TransactionState commitState = (TransactionState) event.getEventValue().get(1);
+            isFinished = snapshotState.commit(batchId, taskId, commitState);
+            break;
+        case transactionAck:
+            isFinished = snapshotState.ackEndBolt(batchId, taskId);
+            break;
+        case transactionRollback:
+            // If receiving rollback request, TM will rollback all tasks which are on the same stream as this task
+            LOG.debug("Received rollback request. snapshotState: {}", snapshotState);
+            if (!snapshotState.getState().equals(State.ROLLBACK))
+                stopAndRollback(snapshotState.rollback());
+            break;
+        default:
+            LOG.warn("unexpected event type from task-{}, event={}", taskId, event.toString());
+            break;
         }
 
-        if(isFinished) {
-            finishSnapshotStateCommit(batchGroupId, snapshotState);
+        if (isFinished) {
+            finishSnapshotStateCommit(batchId, snapshotState);
         }
         LOG.debug("snapshotState: {}", snapshotState);
     }
 
-    private void finishSnapshotStateCommit(BatchGroupId batchGroupId, SnapshotState snapshotState) {
-        Set<Integer> statefulTasks = new HashSet<Integer>();
+    private void finishSnapshotStateCommit(long batchId, SnapshotState snapshotState) {
+        Set<Integer> statefulTasks = new HashSet<>();
         statefulTasks.addAll(snapshotState.getSpoutTasks());
         TopoMasterCtrlEvent resp = null;
         boolean isCommitSuccess = false;
-        if (batchGroupId.batchId != TransactionCommon.INIT_BATCH_ID) {
+        if (batchId != TransactionCommon.INIT_BATCH_ID) {
             if (snapshotState.isActive()) {
                 resp = new TopoMasterCtrlEvent(EventType.transactionCommit);
-                resp.addEventValue(batchGroupId);
+                resp.addEventValue(batchId);
+                resp.addEventValue(System.currentTimeMillis());
                 statefulTasks.addAll(snapshotState.getStatefulTasks());
 
-                snapshotState.successBatch(batchGroupId.batchId);
-                // Try to persist the topology snapshot state. But if any failure happened, just continue.
-                try {
-                    isCommitSuccess = stateOperator.commitState(topologyName, batchGroupId.groupId, topologySnapshotState);
-                    if(!isCommitSuccess) {
-                        LOG.warn("Failed to commit topology state for batch-{}", batchGroupId);
-                    }
-                } catch (Exception e) {
-                    LOG.warn("Got exception, when committing topology state for batch-{}, {}", batchGroupId, e);
+                snapshotState.successBatch(batchId);
+                // Try to persist the topology snapshot state. But if any failure happened, just rollback.
+                isCommitSuccess = stateOperator.commitState(topologyName, snapshotState);
+                if (!isCommitSuccess) {
+                    LOG.warn("Failed to commit topology state for batch-{}", batchId);
+                    stopAndRollback(snapshotState.rollback());
                 }
+            } else {
+                LOG.info("Ignore finish request for batchId-{}, since current status({}) is not active", batchId, snapshotState.getState());
             }
         } else {
             snapshotState.setActive();
             resp = new TopoMasterCtrlEvent(EventType.transactionStart);
-            snapshotState.successBatch(batchGroupId.batchId);
+            snapshotState.successBatch(batchId);
             isCommitSuccess = true;
         }
 
         if (isCommitSuccess) {
             // Ack the init or commit request from spout and stateful bolt
-            LOG.debug("Send ack to spouts-{}, event={}", statefulTasks, resp);
-            for (Integer spoutTask : statefulTasks) {
-                ((BoltCollector) (outputCollector.getDelegate())).emitDirectCtrl(spoutTask, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null, 
-                        new Values(resp));
+            LOG.debug("Send ack to spouts/statefulBolts-{}, event={}", statefulTasks, resp);
+            for (Integer task : statefulTasks) {
+                ((BoltCollector) (outputCollector.getDelegate())).emitDirectCtrl(task, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null, new Values(resp));
             }
-        }
 
-        long nextPendingSuccessBatch = snapshotState.getPendingSuccessBatch();
-        if (nextPendingSuccessBatch != -1) {
-            LOG.info("Try to commit a pending successful batch-{}", nextPendingSuccessBatch);
-            finishSnapshotStateCommit(new BatchGroupId(batchGroupId.groupId, nextPendingSuccessBatch), snapshotState);
+            long nextPendingSuccessBatch = snapshotState.getPendingSuccessBatch();
+            if (nextPendingSuccessBatch != -1) {
+                LOG.info("Try to commit a pending successful batch-{}", nextPendingSuccessBatch);
+                finishSnapshotStateCommit(nextPendingSuccessBatch, snapshotState);
+            }
         }
     }
 
     public void expiredCheck() {
-        for (Entry<Integer, SnapshotState> entry : topologySnapshotState.entrySet()) {
-            final Map<Integer, TransactionState> tasksToStates = entry.getValue().expiredCheck();
+        try {
+            lock.lock();
+            final Map<Integer, TransactionState> tasksToStates = snapshotState.expiredCheck();
             if (tasksToStates.size() > 0) {
-                stopAndRollback(entry.getKey(), tasksToStates);
+                stopAndRollback(tasksToStates);
             }
+        } finally {
+            lock.unlock();
         }
     }
 
-    private void stopAndRollback(final int groupId, final Map<Integer, TransactionState> tasksToStates) {
-        List<String> spoutNames = groupIdToNames.get(groupId);
-        for (String spoutName : spoutNames) {
-            for (int taskId : context.getComponentTasks(spoutName)) {
+    private void stopAndRollback(final Map<Integer, TransactionState> tasksToStates) {
+        final long lastSuccessBatchId = snapshotState.getLastSuccessfulBatchId();
+        for (Entry<String, Set<Integer>> entry : spouts.entrySet()) {
+            for (int taskId : entry.getValue()) {
                 TopoMasterCtrlEvent stop = new TopoMasterCtrlEvent(EventType.transactionStop);
-                stop.addEventValue(groupId);
-                ((BoltCollector) (outputCollector.getDelegate())).emitDirectCtrl(taskId, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null, 
-                    new Values(stop));
+                ((BoltCollector) (outputCollector.getDelegate())).emitDirectCtrl(taskId, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null, new Values(stop));
             }
+
         }
-        LOG.info("Stop spouts={}, tasks={}", spoutNames, context.getComponentsTasks(new HashSet<String>(spoutNames)));
+        LOG.info("Stop spouts={}", spouts.keySet());
 
         scheduledService.schedule(new Runnable() {
             @Override
             public void run() {
-                sendRollbackRequest(groupId, tasksToStates);
+                sendRollbackRequest(lastSuccessBatchId, tasksToStates);
             }
         }, 10, TimeUnit.SECONDS);
     }
 
-    private void sendRollbackRequest(int groupId, Map<Integer, TransactionState> tasksToStates) {
+    private void sendRollbackRequest(long lastSuccessBatchId, Map<Integer, TransactionState> tasksToStates) {
         // Rollback for stateful tasks
         Iterator<Integer> iter = tasksToStates.keySet().iterator();
         while (iter.hasNext()) {
             int taskId = iter.next();
-            TransactionState state = tasksToStates.get(taskId) != null ? tasksToStates.get(taskId) : new TransactionState(groupId, 0, null, null);
+            TransactionState state = tasksToStates.get(taskId) != null ? tasksToStates.get(taskId) : new TransactionState(0, null, null);
             TopoMasterCtrlEvent rollbackRequest = new TopoMasterCtrlEvent(EventType.transactionRollback);
             rollbackRequest.addEventValue(state);
-            ((BoltCollector) (outputCollector.getDelegate())).emitDirectCtrl(taskId, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null, 
+            ((BoltCollector) (outputCollector.getDelegate())).emitDirectCtrl(taskId, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null,
                     new Values(rollbackRequest));
         }
-        LOG.info("Send rollback request to group:{}, tasks:{}", groupIdToNames.get(groupId), tasksToStates.keySet());
+        LOG.info("Send rollback request to tasks:{}", tasksToStates.keySet());
 
         // Rollback for non-stateful tasks
-        SnapshotState snapshot = topologySnapshotState.get(groupId);
-        TransactionState state = new TransactionState(groupId, snapshot.getLastSuccessfulBatchId(), null, null);
+        TransactionState state = new TransactionState(lastSuccessBatchId, null, null);
         TopoMasterCtrlEvent rollbackRequest = new TopoMasterCtrlEvent(EventType.transactionRollback);
         rollbackRequest.addEventValue(state);
-        for (Integer nonStatefulTaskId : snapshot.getNonStatefulTasks()) {
-            ((BoltCollector) (outputCollector.getDelegate())).emitDirectCtrl(nonStatefulTaskId, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null, 
-                    new Values(rollbackRequest));
+        Set<String> nonStatefulBoltIds = nonStatefulBoltTasks.keySet();
+        for (Integer nonStatefulTaskId : context.getComponentsTasks(nonStatefulBoltIds)) {
+            ((BoltCollector) (outputCollector.getDelegate())).emitDirectCtrl(nonStatefulTaskId, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null, new Values(
+                    rollbackRequest));
         }
+    }
+
+    public void close() {
+        if (stateOperator instanceof Closeable)
+            try {
+                ((Closeable) stateOperator).close();
+            } catch (IOException e) {
+                LOG.warn("Failed to close state operator", e);
+            }
     }
 }

@@ -1,7 +1,26 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.alibaba.jstorm.daemon.nimbus.metric.refresh;
 
 import com.alibaba.jstorm.daemon.nimbus.metric.CheckMetricEvent;
 import com.alibaba.jstorm.utils.Pair;
+import com.alibaba.jstorm.utils.TimeUtils;
+import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -9,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
@@ -43,7 +63,14 @@ public class RefreshEvent extends MetricEvent {
      * we should automatically send an RefreshEvent on update to
      * trigger the sync
      */
-    private static final int SYNC_REMOTE_META_TIME_SEC = 10 * 60;
+    private static final int INIT_SYNC_REMOTE_META_TIME_SEC = 10 * 60;
+
+
+    private static final int SYNC_REMOTE_META_TIME_SEC = 5 * 60;
+    /**
+     * after initial sync time, sync remote every 5 min
+     */
+    private static final ConcurrentMap<String, Integer> syncRemoteTimes = new ConcurrentHashMap<>();
 
     @Override
     public void run() {
@@ -59,11 +86,9 @@ public class RefreshEvent extends MetricEvent {
             doRefreshTopologies();
             LOG.debug("Refresh topologies, cost:{}", ticker.stopAndRestart());
 
-            if (!context.getNimbusData().isLeader()) {
-                syncTopologyMeta();
+            if (!context.getNimbusData().isLeader()) { // won't hit...
+                syncTopologyMetaForFollower();
                 LOG.debug("Sync topology meta, cost:{}", ticker.stop());
-            } else if (context.getNimbusData().uptime() < SYNC_REMOTE_META_TIME_SEC) {
-                syncSysMetaFromRemote();
             }
         } catch (Exception ex) {
             LOG.error("handleRefreshEvent error:", ex);
@@ -87,7 +112,16 @@ public class RefreshEvent extends MetricEvent {
                 TopologyMetricContext metricContext = new TopologyMetricContext(topology, workerSlot, conf);
                 context.getTopologyMetricContexts().putIfAbsent(topology, metricContext);
                 syncMetaFromCache(topology, context.getTopologyMetricContexts().get(topology));
-                syncMetaFromRemote(topology, context.getTopologyMetricContexts().get(topology));
+            }
+
+            // in the first 10 min, sync every 1 min
+            if (context.getNimbusData().uptime() < INIT_SYNC_REMOTE_META_TIME_SEC) {
+                syncMetaFromRemote(topology, context.getTopologyMetricContexts().get(topology),
+                        Lists.newArrayList(MetaType.TOPOLOGY, MetaType.WORKER, MetaType.NIMBUS));
+            } else { // after that, sync every 5 min
+                checkTimeAndSyncMetaFromRemote(topology, context.getTopologyMetricContexts().get(topology),
+                        Lists.newArrayList(MetaType.values()));
+
             }
         }
 
@@ -95,17 +129,17 @@ public class RefreshEvent extends MetricEvent {
         try {
             assignMap = Cluster.get_all_assignment(context.getStormClusterState(), null);
             for (Entry<String, Assignment> entry : assignMap.entrySet()) {
-                String topologyId = entry.getKey();
+                String topology = entry.getKey();
                 Assignment assignment = entry.getValue();
 
-                TopologyMetricContext metricContext = context.getTopologyMetricContexts().get(topologyId);
+                TopologyMetricContext metricContext = context.getTopologyMetricContexts().get(topology);
                 if (metricContext == null) {
                     metricContext = new TopologyMetricContext(assignment.getWorkers());
                     metricContext.setTaskNum(NimbusUtils.getTopologyTaskNum(assignment));
-                    syncMetaFromCache(topologyId, metricContext);
+                    syncMetaFromCache(topology, metricContext);
 
-                    LOG.info("adding {} to metric context.", topologyId);
-                    context.getTopologyMetricContexts().put(topologyId, metricContext);
+                    LOG.info("adding {} to metric context.", topology);
+                    context.getTopologyMetricContexts().put(topology, metricContext);
                 } else {
                     boolean modify = false;
                     if (metricContext.getTaskNum() != NimbusUtils.getTopologyTaskNum(assignment)) {
@@ -118,6 +152,10 @@ public class RefreshEvent extends MetricEvent {
                         metricContext.setWorkerSet(assignment.getWorkers());
                     }
 
+                    // for normal topologies, only sync topology/component level metrics
+                    checkTimeAndSyncMetaFromRemote(topology, metricContext,
+                            Lists.newArrayList(MetaType.TOPOLOGY, MetaType.COMPONENT));
+
                     // we may need to sync meta when task num/workers change
                     metricContext.setSyncMeta(!modify);
                 }
@@ -128,15 +166,28 @@ public class RefreshEvent extends MetricEvent {
         }
 
         List<String> removing = new ArrayList<>();
-        for (String topologyId : context.getTopologyMetricContexts().keySet()) {
-            if (!JStormMetrics.SYS_TOPOLOGY_SET.contains(topologyId) && !assignMap.containsKey(topologyId)) {
-                removing.add(topologyId);
+        for (String topology : context.getTopologyMetricContexts().keySet()) {
+            if (!JStormMetrics.SYS_TOPOLOGY_SET.contains(topology) && !assignMap.containsKey(topology)) {
+                removing.add(topology);
             }
         }
 
-        for (String topologyId : removing) {
-            LOG.info("removing topology:{}", topologyId);
-            RemoveTopologyEvent.pushEvent(topologyId);
+        for (String topology : removing) {
+            LOG.info("removing topology:{}", topology);
+            RemoveTopologyEvent.pushEvent(topology);
+            syncRemoteTimes.remove(topology);
+        }
+    }
+
+    private void checkTimeAndSyncMetaFromRemote(String topology, TopologyMetricContext metricContext,
+                                                List<MetaType> metaTypes) {
+        Integer curTimeSec = TimeUtils.current_time_secs();
+
+        // for normal topologies, check topology/component level metrics
+        Integer lastCheck = syncRemoteTimes.get(topology);
+        if (lastCheck != null && curTimeSec - lastCheck >= SYNC_REMOTE_META_TIME_SEC) {
+            syncRemoteTimes.put(topology, curTimeSec);
+            syncMetaFromRemote(topology, metricContext, metaTypes);
         }
     }
 
@@ -144,21 +195,21 @@ public class RefreshEvent extends MetricEvent {
      * sync topology metric meta from external storage like TDDL/OTS.
      * nimbus server will skip syncing, only followers do this
      */
-    public void syncTopologyMeta() {
+    public void syncTopologyMetaForFollower() {
         // sys meta, use remote only
         syncSysMetaFromRemote();
 
         // normal topology meta, local + remote
         for (Entry<String, TopologyMetricContext> entry : context.getTopologyMetricContexts().entrySet()) {
-            String topologyId = entry.getKey();
+            String topology = entry.getKey();
             TopologyMetricContext metricContext = entry.getValue();
 
-            if (!JStormMetrics.SYS_TOPOLOGY_SET.contains(topologyId)) {
+            if (!JStormMetrics.SYS_TOPOLOGY_SET.contains(topology)) {
                 try {
-                    syncMetaFromCache(topologyId, metricContext);
-                    syncMetaFromRemote(topologyId, metricContext);
+                    syncMetaFromCache(topology, metricContext);
+                    syncNonSysMetaFromRemote(topology, metricContext);
                 } catch (Exception e1) {
-                    LOG.warn("failed to sync meta for topology:{}", topologyId);
+                    LOG.warn("failed to sync meta for topology:{}", topology);
                 }
             }
         }
@@ -167,9 +218,9 @@ public class RefreshEvent extends MetricEvent {
     /**
      * sync metric meta from rocks db into mem cache on startup
      */
-    private void syncMetaFromCache(String topologyId, TopologyMetricContext tmContext) {
+    private void syncMetaFromCache(String topology, TopologyMetricContext tmContext) {
         if (!tmContext.syncMeta()) {
-            Map<String, Long> meta = context.getMetricCache().getMeta(topologyId);
+            Map<String, Long> meta = context.getMetricCache().getMeta(topology);
             if (meta != null) {
                 tmContext.getMemMeta().putAll(meta);
             }
@@ -184,26 +235,33 @@ public class RefreshEvent extends MetricEvent {
     private void syncSysMetaFromRemote() {
         for (String topology : JStormMetrics.SYS_TOPOLOGIES) {
             if (context.getTopologyMetricContexts().containsKey(topology)) {
-                syncMetaFromRemote(topology, context.getTopologyMetricContexts().get(topology));
+                syncMetaFromRemote(topology,
+                        context.getTopologyMetricContexts().get(topology),
+                        Lists.newArrayList(MetaType.TOPOLOGY, MetaType.WORKER, MetaType.NIMBUS));
             }
         }
     }
 
-    private void syncMetaFromRemote(String topologyId, TopologyMetricContext tmContext) {
+    private void syncNonSysMetaFromRemote(String topology, TopologyMetricContext tmContext) {
+        syncMetaFromRemote(topology, tmContext, Lists.newArrayList(MetaType.values()));
+    }
+
+    private void syncMetaFromRemote(String topology, TopologyMetricContext tmContext, List<MetaType> metaTypes) {
+        LOG.debug("sync meta from remote, topology:{}", topology);
         try {
             int memSize = tmContext.getMemMeta().size();
-            //Integer zkSize = (Integer) context.getStormClusterState().get_topology_metric(topologyId);
+            //Integer zkSize = (Integer) context.getStormClusterState().get_topology_metric(topology);
 
             Set<String> added = new HashSet<>();
             List<Pair<MetricMeta, Long>> pairsToCheck = new ArrayList<>();
 
             ConcurrentMap<String, Long> memMeta = tmContext.getMemMeta();
-            for (MetaType metaType : MetaType.values()) {
+            for (MetaType metaType : metaTypes) {
                 List<MetricMeta> metaList = context.getMetricQueryClient().getMetricMeta(context.getClusterName(),
-                        topologyId, metaType);
+                        topology, metaType);
                 if (metaList != null) {
                     LOG.debug("get remote metric meta, topology:{}, metaType:{}, local mem:{}, remote:{}",
-                            topologyId, metaType, memSize, metaList.size());
+                            topology, metaType, memSize, metaList.size());
                     for (MetricMeta meta : metaList) {
                         String fqn = meta.getFQN();
                         if (added.contains(fqn)) {
@@ -220,9 +278,9 @@ public class RefreshEvent extends MetricEvent {
                     }
                 }
             }
-            context.getMetricCache().putMeta(topologyId, memMeta);
+            context.getMetricCache().putMeta(topology, memMeta);
             if (pairsToCheck.size() > 0) {
-                CheckMetricEvent.pushEvent(topologyId, tmContext, pairsToCheck);
+                CheckMetricEvent.pushEvent(topology, tmContext, pairsToCheck);
             }
         } catch (Exception ex) {
             LOG.error("failed to sync remote meta", ex);

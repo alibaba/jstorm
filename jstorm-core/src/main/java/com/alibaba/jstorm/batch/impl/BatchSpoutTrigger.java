@@ -45,13 +45,11 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Values;
 
 /**
- * Strong Sequence
- * 
+ * Batch spout trigger with strong sequential order
+ *
  * @author zhongyan.feng
- * @version
  */
 public class BatchSpoutTrigger implements IRichSpout {
-    /**  */
     private static final long serialVersionUID = 7215109169247425954L;
 
     private static final Logger LOG = LoggerFactory.getLogger(BatchSpoutTrigger.class);
@@ -72,10 +70,6 @@ public class BatchSpoutTrigger implements IRichSpout {
 
     private IntervalCheck intervalCheck;
 
-    /**
-     * @throws Exception
-     * 
-     */
     public void initMsgId() throws Exception {
         Long zkMsgId = null;
         byte[] data = zkClient.get_data(ZK_NODE_PATH, false);
@@ -86,9 +80,7 @@ public class BatchSpoutTrigger implements IRichSpout {
                 LOG.info("ZK msgId:" + zkMsgId);
             } catch (Exception e) {
                 LOG.warn("Failed to get msgId ", e);
-
             }
-
         }
 
         if (zkMsgId != null) {
@@ -96,7 +88,6 @@ public class BatchSpoutTrigger implements IRichSpout {
         }
 
         int max_spout_pending = JStormUtils.parseInt(conf.get(Config.TOPOLOGY_MAX_SPOUT_PENDING), 1);
-
         for (int i = 0; i < max_spout_pending; i++) {
             BatchSpoutMsgId msgId = BatchSpoutMsgId.mkInstance();
             if (currentBatchId == null) {
@@ -110,18 +101,15 @@ public class BatchSpoutTrigger implements IRichSpout {
 
     @Override
     public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
-        batchQueue = new LinkedBlockingQueue<BatchSpoutMsgId>();
+        batchQueue = new LinkedBlockingQueue<>();
         this.collector = collector;
         this.conf = conf;
         taskName = context.getThisComponentId() + "_" + context.getThisTaskId();
 
         intervalCheck = new IntervalCheck();
-
         try {
             zkClient = BatchCommon.getZkClient(conf);
-
             initMsgId();
-
         } catch (Exception e) {
             LOG.error("", e);
             throw new RuntimeException("Failed to init");
@@ -156,7 +144,7 @@ public class BatchSpoutTrigger implements IRichSpout {
         } else if (batchStatus == BatchStatus.REVERT_COMMIT) {
             return BatchDef.REVERT_STREAM_ID;
         } else {
-            LOG.error("Occur unkonw type BatchStatus " + batchStatus);
+            LOG.error("unknown BatchStatus type: " + batchStatus);
             throw new RuntimeException();
         }
     }
@@ -172,8 +160,7 @@ public class BatchSpoutTrigger implements IRichSpout {
     }
 
     protected boolean isCommitWait(BatchSpoutMsgId msgId) {
-
-        if (isCommitStatus(msgId.getBatchStatus()) == false) {
+        if (!isCommitStatus(msgId.getBatchStatus())) {
             return false;
         }
 
@@ -181,7 +168,6 @@ public class BatchSpoutTrigger implements IRichSpout {
         if (currentBatchId.getId() >= msgId.getBatchId().getId()) {
             return false;
         }
-
         return true;
     }
 
@@ -198,44 +184,33 @@ public class BatchSpoutTrigger implements IRichSpout {
         }
 
         if (isCommitWait(msgId)) {
-
             batchQueue.offer(msgId);
             if (intervalCheck.check()) {
                 LOG.info("Current msgId " + msgId + ", but current commit BatchId is " + currentBatchId);
             } else {
                 LOG.debug("Current msgId " + msgId + ", but current commit BatchId is " + currentBatchId);
             }
-
             return;
         }
 
         String streamId = getStreamId(msgId.getBatchStatus());
-        collector.emit(streamId, new Values(msgId.getBatchId()), msgId, new EmitCb(msgId) );
-        
-        return;
-
+        collector.emit(streamId, new Values(msgId.getBatchId()), msgId, new EmitCb(msgId));
     }
 
     protected void mkMsgId(BatchSpoutMsgId oldMsgId) {
         synchronized (BatchSpoutMsgId.class) {
             if (currentBatchId.getId() <= oldMsgId.getBatchId().getId()) {
                 // this is normal case
-
                 byte[] data = String.valueOf(currentBatchId.getId()).getBytes();
                 try {
                     zkClient.set_data(ZK_NODE_PATH, data);
                 } catch (Exception e) {
                     LOG.error("Failed to update to ZK " + oldMsgId, e);
                 }
-
                 currentBatchId = BatchId.incBatchId(oldMsgId.getBatchId());
-
             } else {
-                // bigger batchId has been failed, when old msgId finish
-                // it will go here
-
+                // a larger batchId fails, when the earlier msgId finishes it will go here
             }
-
         }
 
         BatchSpoutMsgId newMsgId = BatchSpoutMsgId.mkInstance();
@@ -268,10 +243,8 @@ public class BatchSpoutTrigger implements IRichSpout {
     public void ack(Object msgId) {
         if (msgId instanceof BatchSpoutMsgId) {
             forward((BatchSpoutMsgId) msgId);
-            return;
         } else {
-            LOG.warn("Unknown type msgId " + msgId.getClass().getName() + ":" + msgId);
-            return;
+            LOG.warn("Unknown msgId type " + msgId.getClass().getName() + ":" + msgId);
         }
     }
 
@@ -283,12 +256,9 @@ public class BatchSpoutTrigger implements IRichSpout {
         if (newStatus == BatchStatus.ERROR) {
             // create new status
             mkMsgId(msgId);
-
         } else {
-
             msgId.setBatchStatus(newStatus);
             batchQueue.offer(msgId);
-
         }
     }
 
@@ -297,8 +267,7 @@ public class BatchSpoutTrigger implements IRichSpout {
         if (msgId instanceof BatchSpoutMsgId) {
             handleFail((BatchSpoutMsgId) msgId);
         } else {
-            LOG.warn("Unknown type msgId " + msgId.getClass().getName() + ":" + msgId);
-            return;
+            LOG.warn("Unknown msgId type " + msgId.getClass().getName() + ":" + msgId);
         }
     }
 
@@ -313,25 +282,23 @@ public class BatchSpoutTrigger implements IRichSpout {
 
     @Override
     public Map<String, Object> getComponentConfiguration() {
-        Map<String, Object> map = new HashMap<String, Object>();
+        Map<String, Object> map = new HashMap<>();
         ConfigExtension.setSpoutSingleThread(map, true);
         return map;
     }
 
     class EmitCb implements ICollectorCallback {
+        private BatchSpoutMsgId msgId;
 
-        private BatchSpoutMsgId msgId ;
         public EmitCb(BatchSpoutMsgId msgId) {
             this.msgId = msgId;
         }
-       
-		@Override
-		public void execute(String stream, List<Integer> outTasks, List values) {
-			// TODO Auto-generated method stub
-			if (outTasks.isEmpty()) {
+
+        @Override
+        public void execute(String stream, List<Integer> outTasks, List values) {
+            if (outTasks.isEmpty()) {
                 forward(msgId);
             }
-		}
-        
+        }
     }
 }

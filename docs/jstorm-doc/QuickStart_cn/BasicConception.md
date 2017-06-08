@@ -71,7 +71,7 @@ JStorm处理数据的方式是基于消息的流水线处理， 因此特别**�
 
 ### spout
 
-spout代表输入的数据源，这个数据源可以是任意的，比如说kafaka，DB，HBase，甚至是HDFS等，JStorm从这个数据源中不断地读取数据，然后发送到下游的bolt中进行处理。
+spout代表输入的数据源，这个数据源可以是任意的，比如说kafka，DB，HBase，甚至是HDFS等，JStorm从这个数据源中不断地读取数据，然后发送到下游的bolt中进行处理。
 
 ### bolt
 

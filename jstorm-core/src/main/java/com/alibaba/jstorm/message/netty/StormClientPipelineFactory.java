@@ -18,12 +18,9 @@
 package com.alibaba.jstorm.message.netty;
 
 import java.util.Map;
-
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.channel.Channels;
-
-import com.alibaba.jstorm.client.ConfigExtension;
 
 class StormClientPipelineFactory implements ChannelPipelineFactory {
     private NettyClient client;
@@ -32,7 +29,6 @@ class StormClientPipelineFactory implements ChannelPipelineFactory {
     StormClientPipelineFactory(NettyClient client, Map conf) {
         this.client = client;
         this.conf = conf;
-
     }
 
     public ChannelPipeline getPipeline() throws Exception {

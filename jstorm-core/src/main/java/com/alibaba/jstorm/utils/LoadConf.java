@@ -1,3 +1,19 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ * <p/>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p/>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.alibaba.jstorm.utils;
 
 import backtype.storm.utils.Utils;
@@ -32,7 +48,7 @@ public class LoadConf {
     public static List<URL> findResources(String name) {
         try {
             Enumeration<URL> resources = Thread.currentThread().getContextClassLoader().getResources(name);
-            List<URL> ret = new ArrayList<URL>();
+            List<URL> ret = new ArrayList<>();
             while (resources.hasMoreElements()) {
                 ret.add(resources.nextElement());
             }
@@ -43,10 +59,10 @@ public class LoadConf {
     }
 
     /**
-     * @param name
-     * @param mustExist   -- if this is true, the file must exist, otherwise throw exception
-     * @param canMultiple -- if this is false and there is multiple conf, it will throw exception
-     * @return
+     * @param name        conf file name
+     * @param mustExist   if true, the file must exist, otherwise throw an exception
+     * @param canMultiple if false and there is multiple conf, it will throw an exception
+     * @return conf map
      */
     public static Map findAndReadYaml(String name, boolean mustExist, boolean canMultiple) {
         InputStream in = null;
@@ -91,15 +107,15 @@ public class LoadConf {
             throw new IOException("Could not find config file, name not specified");
         }
 
-        HashSet<URL> resources = new HashSet<URL>(findResources(configFilePath));
+        HashSet<URL> resources = new HashSet<>(findResources(configFilePath));
         if (resources.isEmpty()) {
             File configFile = new File(configFilePath);
             if (configFile.exists()) {
                 return new FileInputStream(configFile);
             }
-        } else if (resources.size() > 1 && canMultiple == false) {
-            throw new IOException("Found multiple " + configFilePath + " resources. You're probably bundling the Storm jars with your topology jar. "
-                    + resources);
+        } else if (resources.size() > 1 && !canMultiple) {
+            throw new IOException("Found multiple " + configFilePath + " resources. " +
+                    "You're probably bundling storm jars with your topology jar. " + resources);
         } else {
             LOG.debug("Using " + configFilePath + " from resources");
             URL resource = resources.iterator().next();
@@ -113,13 +129,10 @@ public class LoadConf {
     }
 
     public static Map LoadYaml(String confPath) {
-
         return findAndReadYaml(confPath, true, true);
-
     }
 
     public static Map LoadProperty(String prop) {
-
         InputStream in = null;
         Properties properties = new Properties();
 
@@ -154,8 +167,11 @@ public class LoadConf {
         }
     }
 
+    /**
+     * dumps a conf map into a file, note that the output yaml file uses a compact format
+     * e.g., for a list, it uses key: [xx, xx] instead of multiple lines.
+     */
     public static void dumpYaml(Map conf, String file) {
-        // flush new conf to storm.yaml
         Yaml yaml = new Yaml();
         try {
             Writer writer = new OutputStreamWriter(new FileOutputStream(file), "UTF-8");

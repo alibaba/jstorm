@@ -1,22 +1,44 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.alibaba.jstorm.transactional;
+
+import backtype.storm.generated.Bolt;
+import backtype.storm.generated.ComponentCommon;
+import backtype.storm.generated.GlobalStreamId;
+import backtype.storm.generated.SpoutSpec;
+import backtype.storm.generated.StormTopology;
+import backtype.storm.generated.StreamInfo;
+import backtype.storm.task.TopologyContext;
+import backtype.storm.utils.ThriftTopologyUtils;
+import backtype.storm.utils.Utils;
+
+import com.alibaba.jstorm.utils.JStormUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
-
-import backtype.storm.generated.*;
-import backtype.storm.utils.Utils;
-import com.alibaba.jstorm.utils.JStormUtils;
-
-import backtype.storm.task.TopologyContext;
+import java.util.Set;
 
 public class TransactionCommon {
     public static final String BARRIER_STREAM_ID = "barrier_stream";
-    public static final String SUCCESS_STREAM_ID = "success_stream";
 
     public static final String BARRIER_SNAPSHOT_FIELD = "barrier_snapshot";
     public static final String BATCH_GROUP_ID_FIELD = "batch_group_id";
@@ -30,7 +52,7 @@ public class TransactionCommon {
     public static final Object COMMIT_FAIL = new Object();
 
     public static Set<String> getDownstreamComponents(String componentId, StormTopology topology) {
-        Set<String> components = new HashSet<String>();
+        Set<String> components = new HashSet<>();
 
         Map<String, Bolt> bolts = topology.get_bolts();
         for (Entry<String, Bolt> entry : bolts.entrySet()) {
@@ -45,7 +67,7 @@ public class TransactionCommon {
                 }
             }
         }
-        
+
         return components;
     }
 
@@ -53,10 +75,11 @@ public class TransactionCommon {
         return getAllDownstreamComponents(componentId, topology, new HashSet<String>());
     }
 
-    public static Set<String> getAllDownstreamComponents(String componentId, StormTopology topology, Set<String> traversedComponents) {
-        Set<String> components = new HashSet<String>();
+    public static Set<String> getAllDownstreamComponents(String componentId, StormTopology topology,
+                                                         Set<String> traversedComponents) {
+        Set<String> components = new HashSet<>();
         traversedComponents.add(componentId);
-        
+
         Map<String, Bolt> bolts = topology.get_bolts();
         for (Entry<String, Bolt> entry : bolts.entrySet()) {
             String downstreamComponentId = entry.getKey();
@@ -71,12 +94,12 @@ public class TransactionCommon {
                 }
             }
         }
-        
+
         return components;
     }
 
     public static Set<Integer> getDownstreamTasks(String componentId, TopologyContext context) {
-        Set<Integer> tasks = new HashSet<Integer>();
+        Set<Integer> tasks = new HashSet<>();
         StormTopology topology = context.getRawTopology();
 
         Map<String, Bolt> bolts = topology.get_bolts();
@@ -92,12 +115,12 @@ public class TransactionCommon {
                 }
             }
         }
-        
+
         return tasks;
     }
 
     public static Set<String> getUpstreamSpouts(String componentId, TopologyContext context) {
-        Set<String> spoutIds = new HashSet<String>();
+        Set<String> spoutIds = new HashSet<>();
         StormTopology topology = context.getRawTopology();
         Map<String, SpoutSpec> spouts = topology.get_spouts();
         for (Entry<String, SpoutSpec> entry : spouts.entrySet()) {
@@ -111,7 +134,7 @@ public class TransactionCommon {
     }
 
     public static Set<String> getUpstreamComponents(String componentId, TopologyContext context) {
-        Set<String> upstreamComponents = new HashSet<String>();
+        Set<String> upstreamComponents = new HashSet<>();
         ComponentCommon componentCommon = Utils.getComponentCommon(context.getRawTopology(), componentId);
         Set<GlobalStreamId> input = componentCommon.get_inputs().keySet();
         for (GlobalStreamId stream : input) {
@@ -122,11 +145,11 @@ public class TransactionCommon {
 
     public static Set<Integer> getUpstreamTasks(String componentId, TopologyContext context) {
         Set<String> upstreamComponents = getUpstreamComponents(componentId, context);
-        return new HashSet<Integer>(context.getComponentsTasks(upstreamComponents));
+        return new HashSet<>(context.getComponentsTasks(upstreamComponents));
     }
 
     public static Set<String> getInputStreamIds(TopologyContext context) {
-        Set<String> ret = new HashSet<String>();
+        Set<String> ret = new HashSet<>();
         Set<GlobalStreamId> inputs = context.getThisSources().keySet();
         for (GlobalStreamId streamId : inputs) {
             ret.add(streamId.get_streamId());
@@ -148,8 +171,8 @@ public class TransactionCommon {
     }
 
     public static Map<String, Integer> groupIds(Set<String> names) {
-        Collections.sort(new ArrayList<String>(names));
-        Map<String, Integer> ret = new HashMap<String, Integer>();
+        Collections.sort(new ArrayList<>(names));
+        Map<String, Integer> ret = new HashMap<>();
         int i = 1;
         for (String name : names) {
             ret.put(name, i);
@@ -159,8 +182,8 @@ public class TransactionCommon {
     }
 
     public static Set<String> getStatefulBolts(StormTopology topology) {
-        Set<String> statefulBolts = new HashSet<String>();
-        
+        Set<String> statefulBolts = new HashSet<>();
+
         Map<String, Bolt> bolts = topology.get_bolts();
         for (Entry<String, Bolt> entry : bolts.entrySet()) {
             Bolt bolt = entry.getValue();
@@ -169,22 +192,47 @@ public class TransactionCommon {
                 statefulBolts.add(entry.getKey());
             }
         }
-        
+
         return statefulBolts;
     }
 
-    public static Set<String> getEndBolts(StormTopology topology, String sourceId) {
-        Set<String> endBolts = new HashSet<String>();
+    public static Set<String> getEndBolts(StormTopology topology) {
+        Set<String> endBolts = new HashSet<>();
 
         Map<String, Bolt> bolts = topology.get_bolts();
         for (Entry<String, Bolt> entry : bolts.entrySet()) {
+            String componentId = entry.getKey();
             Bolt bolt = entry.getValue();
             Map<String, StreamInfo> outputStreams = bolt.get_common().get_streams();
             if (outputStreams.size() == 0) {
-                endBolts.add(entry.getKey());
+                endBolts.add(entry.getKey());  
+            } else {
+                // Try to check if there is any "real" downstream for the output stream
+                boolean found = false;
+                for (String streamId : outputStreams.keySet()) {
+                    if (hasDownstreamComponent(topology, componentId, streamId)) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    endBolts.add(entry.getKey()); 
             }
         }
-        
+
         return endBolts;
+    }
+
+    private static boolean hasDownstreamComponent(StormTopology topology, String outComponentId, String outStreamId) {
+        boolean ret = false;
+        for (String componentId : ThriftTopologyUtils.getComponentIds(topology)) {
+            ComponentCommon componentCommon = Utils.getComponentCommon(topology, componentId);
+            Set<GlobalStreamId> inputs = componentCommon.get_inputs().keySet();
+            for (GlobalStreamId input : inputs) {
+                if (input.get_componentId().equals(outComponentId) && input.get_streamId().equals(outStreamId))
+                    return true;
+            }
+        }
+        return ret;
     }
 }

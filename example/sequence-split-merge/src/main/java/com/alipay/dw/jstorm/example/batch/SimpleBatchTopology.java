@@ -27,41 +27,36 @@ import backtype.storm.topology.BoltDeclarer;
 import backtype.storm.topology.TopologyBuilder;
 
 public class SimpleBatchTopology {
-    
-    public static TopologyBuilder SetBuilder() {
+
+    public static TopologyBuilder setBuilder() {
         BatchTopologyBuilder topologyBuilder = new BatchTopologyBuilder(topologyName);
-        
+
         int spoutParallel = JStormUtils.parseInt(conf.get("topology.spout.parallel"), 1);
-        
         BoltDeclarer boltDeclarer = topologyBuilder.setSpout("Spout", new SimpleSpout(), spoutParallel);
-        
         int boltParallel = JStormUtils.parseInt(conf.get("topology.bolt.parallel"), 2);
         topologyBuilder.setBolt("Bolt", new SimpleBolt(), boltParallel).shuffleGrouping("Spout");
-        
+
         return topologyBuilder.getTopologyBuilder();
     }
-    
+
     static boolean isLocal = true;
-    static Config  conf    = JStormHelper.getConfig(null);
-    static String  topologyName;
-    
+    static Config conf = JStormHelper.getConfig(null);
+    static String topologyName;
+
     public static void test() {
-        
         String[] className = Thread.currentThread().getStackTrace()[1].getClassName().split("\\.");
         topologyName = className[className.length - 1];
-        
+
         try {
-            JStormHelper.runTopology(SetBuilder().createTopology(), topologyName, conf, 100,
+            JStormHelper.runTopology(setBuilder().createTopology(), topologyName, conf, 100,
                     new JStormHelper.CheckAckedFail(conf), isLocal);
         } catch (Exception e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
             Assert.fail("Failed");
         }
     }
-    
+
     public static void main(String[] args) throws Exception {
-        
         conf = JStormHelper.getConfig(args);
         isLocal = false;
         test();

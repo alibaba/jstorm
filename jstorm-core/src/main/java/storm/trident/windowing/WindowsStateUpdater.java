@@ -37,7 +37,6 @@ import storm.trident.tuple.TridentTuple;
  * {@code StateUpdater<WindowState>} instance which removes successfully emitted triggers from store
  */
 public class WindowsStateUpdater implements StateUpdater<WindowsState> {
-
     private static final Logger LOG = LoggerFactory.getLogger(WindowsStateUpdater.class);
 
     private final WindowsStoreFactory windowStoreFactory;
@@ -54,11 +53,11 @@ public class WindowsStateUpdater implements StateUpdater<WindowsState> {
         for (TridentTuple tuple : tuples) {
             try {
                 Object fieldValue = tuple.getValueByField(WindowTridentProcessor.TRIGGER_FIELD_NAME);
-                if(! (fieldValue instanceof WindowTridentProcessor.TriggerInfo)) {
+                if (!(fieldValue instanceof WindowTridentProcessor.TriggerInfo)) {
                     throw new IllegalClassException(WindowTridentProcessor.TriggerInfo.class, fieldValue.getClass());
                 }
                 WindowTridentProcessor.TriggerInfo triggerInfo = (WindowTridentProcessor.TriggerInfo) fieldValue;
-                String triggerCompletedKey = WindowTridentProcessor.getWindowTriggerInprocessIdPrefix(triggerInfo.windowTaskId)+currentTxId;
+                String triggerCompletedKey = WindowTridentProcessor.getWindowTriggerInprocessIdPrefix(triggerInfo.windowTaskId) + currentTxId;
 
                 LOG.debug("Removing trigger key [{}] and trigger completed key [{}] from store: [{}]", triggerInfo, triggerCompletedKey, windowsStore);
 

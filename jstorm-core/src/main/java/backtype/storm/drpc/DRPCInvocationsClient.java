@@ -62,7 +62,7 @@ public class DRPCInvocationsClient extends ThriftClient implements DistributedRP
         return client.get() != null;
     }
 
-    public void result(String id, String result) throws TException, AuthorizationException {
+    public void result(String id, String result) throws TException {
         DistributedRPCInvocations.Client c = client.get();
         try {
             if (c == null) {
@@ -77,7 +77,7 @@ public class DRPCInvocationsClient extends ThriftClient implements DistributedRP
         }
     }
 
-    public DRPCRequest fetchRequest(String func) throws TException, AuthorizationException {
+    public DRPCRequest fetchRequest(String func) throws TException {
         DistributedRPCInvocations.Client c = client.get();
         try {
             if (c == null) {

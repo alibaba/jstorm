@@ -34,8 +34,7 @@ import sun.misc.CompoundEnumeration;
 
 
 public class WorkerClassLoader extends URLClassLoader {
-
-    public static Logger LOG = LoggerFactory.getLogger(WorkerClassLoader.class);
+    private static final Logger LOG = LoggerFactory.getLogger(WorkerClassLoader.class);
 
     private ClassLoader defaultClassLoader;
     private ClassLoader JDKClassLoader;
@@ -69,7 +68,6 @@ public class WorkerClassLoader extends URLClassLoader {
         Class<?> result = null;
         try {
             result = this.findLoadedClass(name);
-
             if (result != null) {
                 return result;
             }
@@ -78,26 +76,21 @@ public class WorkerClassLoader extends URLClassLoader {
                 result = JDKClassLoader.loadClass(name);
                 if (result != null)
                     return result;
-            } catch (Exception e) {
-
+            } catch (Exception ignored) {
             }
 
             try {
                 if (!isLoadByDefault(name)) {
                     result = findClass(name);
-
                     if (result != null) {
                         return result;
                     }
                 }
-
-            } catch (Exception e) {
-
+            } catch (Exception ignored) {
             }
 
             result = defaultClassLoader.loadClass(name);
             return result;
-
         } finally {
             if (result != null) {
                 ClassLoader resultClassLoader = result.getClassLoader();
@@ -125,13 +118,11 @@ public class WorkerClassLoader extends URLClassLoader {
         synchronized (WorkerClassLoader.class) {
             if (instance == null) {
                 instance = new WorkerClassLoader(urls, DefaultClassLoader, JDKClassLoader, isDebug);
-
-                threadContextCache = new ConcurrentHashMap<Thread, ClassLoader>();
+                threadContextCache = new ConcurrentHashMap<>();
             }
-
         }
 
-        LOG.info("Successfully create classloader " + mk_list(urls));
+        LOG.info("Successfully created classloader " + mk_list(urls));
         return instance;
     }
 
@@ -185,7 +176,7 @@ public class WorkerClassLoader extends URLClassLoader {
 
     public InputStream getResourceAsStream(String name) {
         InputStream is = super.getResourceAsStream(name);
-        if (is == null){
+        if (is == null) {
             is = defaultClassLoader.getResourceAsStream(name);
         }
         return is;

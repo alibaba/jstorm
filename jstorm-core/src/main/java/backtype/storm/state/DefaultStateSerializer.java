@@ -25,8 +25,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * A default implementation that uses Kryo to serialize and de-serialize
- * the state.
+ * A default implementation that uses Kryo to serialize and de-serialize the state.
  */
 public class DefaultStateSerializer<T> implements Serializer<T> {
     private final Kryo kryo;

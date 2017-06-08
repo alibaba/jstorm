@@ -1,19 +1,41 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.alibaba.jstorm.config;
 
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
+
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+
+import com.google.common.collect.Lists;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * yarn config black list, note that ONLY plain K-V is supported, list/map values are not supported!!!
+ * so if you intend to set list values, put the values on a single line like ['xx', 'xx'].
  *
  * @author Cody (weiyue.wy@alibaba-inc.com)
  * @since 16/5/26
@@ -72,14 +94,15 @@ public class YarnConfigBlacklist implements Refreshable {
     }
 
     public String filterConfigIfNecessary(String confData) {
-        if (confData == null || !isJstormOnYarn) {
-            return confData;
+        if (confData == null) {
+            return "";
         }
 
         StringBuilder sb = new StringBuilder(4096);
         Iterable<String> lines = splitLines(confData);
-        for (String line : lines) {
-            String trimmedLine = line.trim();
+        List<String> lineArray = Lists.newArrayList(lines);
+        for (int i = 0; i < lineArray.size(); i++) {
+            String trimmedLine = lineArray.get(i).trim();
             if (!trimmedLine.startsWith("#") && trimmedLine.contains(":")) {
                 String[] parts = trimmedLine.split(":");
                 if (parts.length >= 2) {
@@ -87,10 +110,24 @@ public class YarnConfigBlacklist implements Refreshable {
                     if (yarnConfigBlackList.contains(key)) {
                         continue;
                     }
+                } else if (parts.length == 1) {
+                    String key = parts[0].trim();
+                    if (yarnConfigBlackList.contains(key)) {
+                        while (i + 1 < lineArray.size()) {
+                            trimmedLine = lineArray.get(i + 1).trim();
+                            if (!trimmedLine.startsWith("#") && !trimmedLine.contains(":")) {
+                                i++;
+                            } else {
+                                break;
+                            }
+                        }
+                        continue;
+                    }
                 }
             }
-            sb.append(line).append("\n");
+            sb.append(lineArray.get(i)).append("\n");
         }
+
         return sb.toString();
     }
 
@@ -101,18 +138,34 @@ public class YarnConfigBlacklist implements Refreshable {
 
         StringBuilder sb = new StringBuilder();
         Iterable<String> lines = splitLines(confData);
-        for (String line : lines) {
-            String trimmedLine = line.trim();
+        List<String> lineArray = Lists.newArrayList(lines);
+        for (int i = 0; i < lineArray.size(); i++) {
+            String trimmedLine = lineArray.get(i).trim();
             if (!trimmedLine.startsWith("#") && trimmedLine.contains(":")) {
                 String[] parts = trimmedLine.split(":");
                 if (parts.length >= 2) {
                     String key = parts[0].trim();
                     if (yarnConfigBlackList.contains(key)) {
-                        sb.append(line).append("\n");
+                        sb.append(lineArray.get(i)).append("\n");
+                    }
+                } else if (parts.length == 1) {
+                    String key = parts[0].trim();
+                    if (yarnConfigBlackList.contains(key)) {
+                        sb.append(lineArray.get(i)).append("\n");
+                        while (i + 1 < lineArray.size()) {
+                            trimmedLine = lineArray.get(i + 1).trim();
+                            if (!trimmedLine.startsWith("#") && !trimmedLine.contains(":")) {
+                                i++;
+                                sb.append(lineArray.get(i)).append("\n");
+                            } else {
+                                break;
+                            }
+                        }
                     }
                 }
             }
         }
+
         return sb.toString();
     }
 

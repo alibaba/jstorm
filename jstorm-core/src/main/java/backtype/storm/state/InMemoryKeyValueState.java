@@ -44,10 +44,7 @@ public class InMemoryKeyValueState<K, V> implements KeyValueState<K, V> {
 
         @Override
         public String toString() {
-            return "TxIdState{" +
-                    "txid=" + txid +
-                    ", state=" + state +
-                    '}';
+            return "TxIdState{" + "txid=" + txid + ", state=" + state + '}';
         }
     }
 
@@ -78,7 +75,7 @@ public class InMemoryKeyValueState<K, V> implements KeyValueState<K, V> {
         if (preparedState != null && txid > preparedState.txid) {
             throw new RuntimeException("Cannot prepare a new txn while there is a pending txn");
         }
-        preparedState = new TxIdState<>(txid, new ConcurrentHashMap<K, V>(state));
+        preparedState = new TxIdState<>(txid, new ConcurrentHashMap<>(state));
     }
 
     @Override
@@ -89,7 +86,7 @@ public class InMemoryKeyValueState<K, V> implements KeyValueState<K, V> {
             preparedState = null;
         } else {
             throw new RuntimeException("Invalid prepared state for commit, " +
-                                               "preparedState " + preparedState + " txid " + txid);
+                    "preparedState " + preparedState + " txid " + txid);
         }
     }
 

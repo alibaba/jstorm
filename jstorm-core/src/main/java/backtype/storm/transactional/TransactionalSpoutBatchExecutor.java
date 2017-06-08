@@ -37,7 +37,7 @@ public class TransactionalSpoutBatchExecutor implements IRichBolt {
     ITransactionalSpout _spout;
     ITransactionalSpout.Emitter _emitter;
 
-    TreeMap<BigInteger, TransactionAttempt> _activeTransactions = new TreeMap<BigInteger, TransactionAttempt>();
+    TreeMap<BigInteger, TransactionAttempt> _activeTransactions = new TreeMap<>();
 
     public TransactionalSpoutBatchExecutor(ITransactionalSpout spout) {
         _spout = spout;

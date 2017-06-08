@@ -1,3 +1,20 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.alibaba.jstorm.yarn.utils;/* -*-mode:java; c-basic-offset:2; indent-tabs-mode:nil -*- */
 
 import com.jcraft.jsch.*;
@@ -5,7 +22,9 @@ import com.jcraft.jsch.*;
 import javax.swing.*;
 import java.awt.*;
 import java.io.InputStream;
-
+/**
+ * Created by fengjian on 16/4/7.
+ */
 public class Exec {
 
     public Exec(String host, String username, String password) {
@@ -70,25 +89,6 @@ public class Exec {
             session.setPassword("");
             session.setConfig("StrictHostKeyChecking", "no");
             session.connect();
-      
-      /*
-      String xhost="127.0.0.1";
-      int xport=0;
-      String display=JOptionPane.showInputDialog("Enter display name", 
-                                                 xhost+":"+xport);
-      xhost=display.substring(0, display.indexOf(':'));
-      xport=Integer.parseInt(display.substring(display.indexOf(':')+1));
-      session.setX11Host(xhost);
-      session.setX11Port(xport+6000);
-      */
-
-            // username and password will be given via UserInfo interface.
-//            UserInfo ui = new MyUserInfo();
-//            session.setUserInfo(ui);
-//            session.connect();
-
-//            String command = JOptionPane.showInputDialog("Enter command",
-//                    "set|grep SSH");
 
             String command = "ls";
             Channel channel = session.openChannel("exec");

@@ -22,21 +22,21 @@ import com.alibaba.jstorm.daemon.nimbus.StatusType;
 import com.alibaba.jstorm.daemon.nimbus.metric.assignment.KillTopologyEvent;
 
 /**
- * The action when nimbus receive killed command.
- * <p/>
- * 1. change current topology status as killed 2. one TIMEOUT seconds later, do remove action, which remove topology from ZK
- * 
+ * The action when nimbus receives a killed command.
+ * 1. change current topology status to killed
+ * 2. wait for timeout seconds, do remove action, which removes topology from ZK
+ *
  * @author Longda
  */
 public class KillTransitionCallback extends DelayStatusTransitionCallback {
 
-    public KillTransitionCallback(NimbusData data, String topologyid) {
-        super(data, topologyid, null, StatusType.killed, StatusType.remove);
+    public KillTransitionCallback(NimbusData data, String topologyId) {
+        super(data, topologyId, null, StatusType.killed, StatusType.remove);
     }
 
     @Override
     public <T> Object execute(T... args) {
-        KillTopologyEvent.pushEvent(topologyid);
+        KillTopologyEvent.pushEvent(topologyId);
         return super.execute(args);
     }
 

@@ -18,9 +18,7 @@
 package backtype.storm.utils;
 
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import com.alibaba.jstorm.callback.Callback;
 import com.alibaba.jstorm.daemon.worker.Flusher;
@@ -29,14 +27,11 @@ import com.alibaba.jstorm.utils.JStormUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import backtype.storm.utils.disruptor.AbstractSequencerExt;
-import backtype.storm.utils.disruptor.RingBuffer;
-
 import com.lmax.disruptor.AlertException;
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.InsufficientCapacityException;
-//import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.Sequence;
 import com.lmax.disruptor.SequenceBarrier;
 import com.lmax.disruptor.TimeoutException;
@@ -44,16 +39,11 @@ import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
 
 /**
- *
+ * 
  * A single consumer queue that uses the LMAX Disruptor. They key to the performance is the ability to catch up to the producer by processing tuples in batches.
  */
 public class DisruptorQueueImpl extends DisruptorQueue {
     private static final Logger LOG = LoggerFactory.getLogger(DisruptorQueueImpl.class);
-    static boolean useSleep = true;
-
-    public static void setUseSleep(boolean useSleep) {
-        AbstractSequencerExt.setWaitSleep(useSleep);
-    }
 
     private static final Object INTERRUPT = new Object();
     private static final String PREFIX = "disruptor-";
@@ -65,7 +55,7 @@ public class DisruptorQueueImpl extends DisruptorQueue {
 
     private boolean _isBatch;
     private ThreadLocalBatch _batcher;
-    private int _inputBatchSize;
+    private int _inputBatchSize = 0;
     private Flusher _flusher;
 
     private Object _callbackLock = new Object();
@@ -73,22 +63,21 @@ public class DisruptorQueueImpl extends DisruptorQueue {
     private Object _cacheLock = new Object();
     private List<Object> _cache;
 
-    // TODO: consider having a threadlocal cache of this variable to speed up
+    // TODO: consider having a threadlocal cache of this variable to improve performance
     // reads?
-    //volatile boolean consumerStartedFlag = false;
-    private final HashMap<String, Object> state = new HashMap<String, Object>(4);
+    // volatile boolean consumerStartedFlag = false;
+    private final HashMap<String, Object> state = new HashMap<>(4);
 
-    public DisruptorQueueImpl(String queueName, ProducerType producerType, int bufferSize, WaitStrategy wait, boolean isBatch,
-                              int batchSize, long flushMs) {
+    public DisruptorQueueImpl(String queueName, ProducerType producerType, int bufferSize, WaitStrategy wait, boolean isBatch, int batchSize, long flushMs) {
         _queueName = PREFIX + queueName;
         _buffer = RingBuffer.create(producerType, new ObjectEventFactory(), bufferSize, wait);
         _consumer = new Sequence();
         _barrier = _buffer.newBarrier();
         _buffer.addGatingSequences(_consumer);
         _isBatch = isBatch;
-        _cache = new ArrayList<Object>();
+        _cache = new ArrayList<>();
+        _inputBatchSize = batchSize;
         if (_isBatch) {
-            _inputBatchSize = batchSize;
             _batcher = new ThreadLocalBatch();
             _flusher = new DisruptorFlusher(Math.max(flushMs, 1));
             _flusher.start();
@@ -102,8 +91,8 @@ public class DisruptorQueueImpl extends DisruptorQueue {
     }
 
     public void consumeBatch(EventHandler<Object> handler) {
-        //write pos > read pos
-        //Asynchronous release the queue, but still is single thread
+        // write pos > read pos
+        // Asynchronous release the queue, but still is single thread
         if (_buffer.getCursor() > _consumer.get())
             consumeBatchWhenAvailable(handler);
     }
@@ -113,52 +102,45 @@ public class DisruptorQueueImpl extends DisruptorQueue {
     }
 
     public Object poll() {
-    	Object ret = null;
-    	if (cacheSize() > 0) { 
-    		synchronized (_cacheLock) {
-    			ret = _cache.remove(0);
-    		}
-    	} else {
-            final long nextSequence = _consumer.get() + 1;
-            if (nextSequence <= _barrier.getCursor()) {
-                MutableObject mo = _buffer.get(nextSequence);
-                _consumer.set(nextSequence);
-                ret = mo.o;
-                mo.setObject(null);
-            }
-    	}
-    	handlerCallback();
-        return ret;
+        return getEvent(false);
     }
 
     public Object take() {
-    	Object ret = null;
-    	if (cacheSize() > 0) { 
-    		synchronized (_cacheLock) {
-    			ret = _cache.remove(0);
-    		}
-    	} else {
-            final long nextSequence = _consumer.get() + 1;
-            // final long availableSequence;
-            try {
-                _barrier.waitFor(nextSequence);
-            } catch (AlertException e) {
-                LOG.error(e.getMessage(), e);
-                throw new RuntimeException(e);
-            } catch (InterruptedException e) {
-                LOG.error("InterruptedException " + e.getCause());
-                // throw new RuntimeException(e);
-                return null;
-            } catch (TimeoutException e) {
-                // LOG.error(e.getCause(), e);
-                return null;
+        return getEvent(true);
+    }
+
+    private Object getEvent(boolean block) {
+        Object ret = null;
+        if (cacheSize() > 0) {
+            synchronized (_cacheLock) {
+                ret = _cache.remove(0);
             }
-            MutableObject mo = _buffer.get(nextSequence);
-            _consumer.set(nextSequence);
-            ret = mo.o;
-            mo.setObject(null);
-    	}
-    	handlerCallback();
+        } else {
+            if (block || _buffer.getCursor() > _consumer.get()) {
+                final long nextSequence = _consumer.get() + 1;
+                try {
+                    final long availableSequence = _barrier.waitFor(nextSequence);
+                    if (availableSequence >= nextSequence) {
+                        MutableObject mo = _buffer.get(nextSequence);
+                        _consumer.set(nextSequence);
+                        ret = mo.o;
+                        mo.setObject(null);
+                    }
+                } catch (AlertException e) {
+                    LOG.error(e.getMessage(), e);
+                    throw new RuntimeException(e);
+                } catch (InterruptedException e) {
+                    LOG.error("InterruptedException " + e.getCause());
+                    // throw new RuntimeException(e);
+                    return null;
+                } catch (TimeoutException e) {
+                    // LOG.error(e.getCause(), e);
+                    return null;
+                }
+
+            }
+        }
+        handlerCallback();
         return ret;
     }
 
@@ -169,7 +151,7 @@ public class DisruptorQueueImpl extends DisruptorQueue {
                     Iterator<Callback> itr = _callbacks.iterator();
                     while (itr.hasNext()) {
                         Callback cb = itr.next();
-                        if((boolean) cb.execute()) {
+                        if ((boolean) cb.execute(this)) {
                             itr.remove();
                         }
                     }
@@ -184,7 +166,7 @@ public class DisruptorQueueImpl extends DisruptorQueue {
     public void consumeBatchWhenAvailable(EventHandler<Object> handler) {
         consumeBatchWhenAvailable(handler, true);
     }
-                
+
     public void consumeBatchWhenAvailableWithCallback(EventHandler<Object> handler) {
         consumeBatchWhenAvailable(handler);
         handlerCallback();
@@ -200,16 +182,16 @@ public class DisruptorQueueImpl extends DisruptorQueue {
     }
 
     public void consumeBatchWhenAvailable(EventHandler<Object> handler, boolean isSync) {
-    	List<Object> cache = null;
-    	synchronized (_cacheLock) {
-    		if (_cache.size() > 0) {
-    			cache = _cache;
-        	    _cache = new ArrayList<Object>();
-    		}
-    	}
+        List<Object> cache = null;
+        synchronized (_cacheLock) {
+            if (_cache.size() > 0) {
+                cache = _cache;
+                _cache = new ArrayList<>();
+            }
+        }
 
-    	if (cache != null) {
-    		for (int i = 0; i < cache.size(); i++) {
+        if (cache != null) {
+            for (int i = 0; i < cache.size(); i++) {
                 try {
                     handler.onEvent(cache.get(i), 0, i == (cache.size() - 1));
                 } catch (Exception e) {
@@ -219,46 +201,35 @@ public class DisruptorQueueImpl extends DisruptorQueue {
             }
         } else {
             try {
-                if (isSync) {
-                    final long nextSequence = _consumer.get() + 1;
-                    final long availableSequence = _barrier.waitFor(nextSequence);
-                    if (availableSequence >= nextSequence) {
-                        consumeBatchToCursor(availableSequence, handler);
-                    }
-                } else {
-                    List<Object> batch = retreiveAvailableBatch();
-                    if (batch.size() > 0) {
-                        for (int i = 0; i < batch.size(); i++) {
-                            try {
-                                handler.onEvent(batch.get(i), 0, i == (batch.size() - 1));
-                            } catch (Exception e) {
-                                LOG.error(e.getMessage(), e);
-                                throw new RuntimeException(e);
-                            }
-                        }
-                    } else {
-                        JStormUtils.sleepMs(1);
-                    }
-                }
+                if (isSync)
+                    consumeBatchToCursor(handler);
+                else
+                    asyncConsumeBatchToCursor(handler);
             } catch (AlertException e) {
                 LOG.error(e.getMessage(), e);
                 throw new RuntimeException(e);
             } catch (InterruptedException e) {
                 LOG.error("InterruptedException " + e.getCause());
-                return;
             } catch (TimeoutException e) {
                 // Do nothing
             }
         }
     }
 
-    public void consumeBatchToCursor(long cursor, EventHandler<Object> handler) {
-        for (long curr = _consumer.get() + 1; curr <= cursor; curr++) {
+    private long getAvailableConsumeCursor() throws AlertException, InterruptedException, TimeoutException {
+        final long nextSequence = _consumer.get() + 1;
+        return _barrier.waitFor(nextSequence);
+    }
+
+    public void consumeBatchToCursor(EventHandler<Object> handler) throws AlertException, InterruptedException, TimeoutException {
+        long endCursor = getAvailableConsumeCursor();
+        long curr = _consumer.get() + 1;     
+        for (; curr <= endCursor; curr++) {
             try {
                 MutableObject mo = _buffer.get(curr);
                 Object o = mo.o;
                 mo.setObject(null);
-                handler.onEvent(o, curr, curr == cursor);
+                handler.onEvent(o, curr, curr == endCursor);
             } catch (InterruptedException e) {
                 LOG.error(e.getMessage(), e);
                 return;
@@ -268,30 +239,49 @@ public class DisruptorQueueImpl extends DisruptorQueue {
             }
         }
         // TODO: only set this if the consumer cursor has changed?
-        _consumer.set(cursor);
+        _consumer.set(endCursor);
     }
 
-    synchronized public List<Object> retreiveAvailableBatch() throws AlertException, InterruptedException, TimeoutException {
-        final long nextSequence = _consumer.get() + 1;
-        final long availableSequence = _barrier.waitFor(nextSequence);
-        final Long availableNum = availableSequence - nextSequence + 1;
-        List<Object> ret = new ArrayList<Object>(availableNum.intValue());
-        if (availableSequence >= nextSequence) {
-            for (long curr = _consumer.get() + 1; curr <= availableSequence; curr++) {
-                try {
-                    MutableObject mo = _buffer.get(curr);
-                    Object o = mo.o;
-                    mo.setObject(null);
-                    ret.add(o);
-                } catch (Exception e) {
-                    LOG.error(e.getMessage(), e);
-                    throw new RuntimeException(e);
-                }
-            }
-            _consumer.set(availableSequence);
-        }
+    public void asyncConsumeBatchToCursor(EventHandler<Object> handler) throws AlertException, InterruptedException, TimeoutException {
+        List<Object> batch = getConsumeBatch();
+        if (batch == null)
+            return;
 
-        return ret;
+        for (int i = 0; i < batch.size(); i++) {
+            try {
+                handler.onEvent(batch.get(i), 0, i == (batch.size() - 1));
+            } catch (Exception e) {
+                LOG.error(e.getMessage(), e);
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    private synchronized List<Object> getConsumeBatch() throws AlertException, InterruptedException, TimeoutException {
+        long endCursor = getAvailableConsumeCursor();
+        long currCursor = _consumer.get();
+        long eventNumber = endCursor - currCursor;
+        List<Object> batch = new ArrayList<>((int) eventNumber);
+        for (long curr = currCursor + 1; curr <= endCursor; curr++) {
+            try {
+                MutableObject mo = _buffer.get(curr);
+                Object o = mo.o;
+                mo.setObject(null);
+                batch.add(o);
+            } catch (Exception e) {
+                LOG.error(e.getMessage(), e);
+                throw new RuntimeException(e);
+            }
+        }
+        _consumer.set(endCursor);
+
+        return batch;
+    }
+
+    @Override
+    public List<Object> retreiveAvailableBatch() throws AlertException, InterruptedException, TimeoutException {
+        // get all events in disruptor queue
+        return getConsumeBatch();
     }
 
     /*
@@ -315,28 +305,28 @@ public class DisruptorQueueImpl extends DisruptorQueue {
 
     public void publishDirect(List<Object> batch, boolean block) throws InsufficientCapacityException {
         int size = 0;
-        if (batch != null){
+        if (batch != null) {
             size = batch.size();
             if (block) {
-            	int left = size;
-            	int batchIndex = 0;
-            	while (left > 0) {
-           	        int availableCapacity = (int) _buffer.remainingCapacity();
-           	        if (availableCapacity > 0) {
-           	            int n = availableCapacity >= left ? left : availableCapacity;
-           	            final long end = _buffer.next(n);
-           	            publishBuffer(batch, batchIndex, end - n + 1, end);
+                int left = size;
+                int batchIndex = 0;
+                while (left > 0) {
+                    int availableCapacity = (int) _buffer.remainingCapacity();
+                    if (availableCapacity > 0) {
+                        int n = availableCapacity >= left ? left : availableCapacity;
+                        final long end = _buffer.next(n);
+                        publishBuffer(batch, batchIndex, end - n + 1, end);
 
-           	            left -= n;
-           	            batchIndex += n; 
-           	        } else {
-           	        	JStormUtils.sleepMs(1);
-           	        }
-            	}
+                        left -= n;
+                        batchIndex += n;
+                    } else {
+                        JStormUtils.sleepMs(1);
+                    }
+                }
             } else {
                 final long end = _buffer.tryNext(size);
-       	        publishBuffer(batch, 0, end - size + 1, end);
-       	    }
+                publishBuffer(batch, 0, end - size + 1, end);
+            }
         }
     }
 
@@ -372,15 +362,15 @@ public class DisruptorQueueImpl extends DisruptorQueue {
     }
 
     public void publishCache(Object obj) {
-    	synchronized (_cacheLock) {
-    		_cache.add(obj);
-    	}
+        synchronized (_cacheLock) {
+            _cache.add(obj);
+        }
     }
 
     public int cacheSize() {
-    	synchronized (_cacheLock) {
-    		return _cache.size();
-    	}
+        synchronized (_cacheLock) {
+            return _cache.size();
+        }
     }
 
     public void clear() {
@@ -433,7 +423,7 @@ public class DisruptorQueueImpl extends DisruptorQueue {
         if (cb != null) {
             synchronized (_callbackLock) {
                 if (_callbacks == null) {
-                    _callbacks = new ArrayList<Callback>();
+                    _callbacks = new ArrayList<>();
                 }
                 _callbacks.add(cb);
             }
@@ -452,7 +442,7 @@ public class DisruptorQueueImpl extends DisruptorQueue {
         private ArrayList<Object> _batcher;
 
         public ThreadLocalBatch() {
-            _batcher = new ArrayList<Object>(_inputBatchSize);
+            _batcher = new ArrayList<>(_inputBatchSize);
         }
 
         public synchronized void addAndFlush(Object obj) {
@@ -471,21 +461,20 @@ public class DisruptorQueueImpl extends DisruptorQueue {
             _batcher.add(obj);
             if (_batcher.size() >= _inputBatchSize) {
                 ret = _batcher;
-                _batcher = new ArrayList<Object>(_inputBatchSize);
+                _batcher = new ArrayList<>(_inputBatchSize);
             }
             return ret;
         }
 
-        //May be called by a background thread
+        // May be called by a background thread
         public synchronized void flush() {
-            List<Object> cache = null;
             try {
-            	if (_batcher != null && _batcher.size() > 0) {
+                if (_batcher != null && _batcher.size() > 0) {
                     publishDirect(_batcher, true);
-                    _batcher = new ArrayList<Object>(_inputBatchSize);
+                    _batcher = new ArrayList<>(_inputBatchSize);
                 }
             } catch (InsufficientCapacityException e) {
-                //Ignored we should not block
+                // Ignored we should not block
             }
         }
     }
@@ -494,7 +483,7 @@ public class DisruptorQueueImpl extends DisruptorQueue {
         private AtomicBoolean _isFlushing = new AtomicBoolean(false);
 
         public DisruptorFlusher(long flushInterval) {
-            _flushIntervalMs = flushInterval;
+            flushIntervalMs = flushInterval;
         }
 
         public void run() {

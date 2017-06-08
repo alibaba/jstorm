@@ -41,7 +41,7 @@ public class PrepareBatchBolt extends BaseBasicBolt {
     @Override
     public void execute(Tuple input, BasicOutputCollector collector) {
         long id = Utils.secureRandomLong();
-        List<Object> toEmit = new ArrayList<Object>();
+        List<Object> toEmit = new ArrayList<>();
         toEmit.add(id);
         toEmit.addAll(input.getValues());
         collector.emit(toEmit);

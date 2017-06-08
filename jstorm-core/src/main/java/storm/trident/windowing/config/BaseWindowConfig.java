@@ -18,9 +18,6 @@
  */
 package storm.trident.windowing.config;
 
-/**
- *
- */
 public abstract class BaseWindowConfig implements WindowConfig {
     protected final int windowLength;
     protected final int slideLength;
@@ -42,7 +39,8 @@ public abstract class BaseWindowConfig implements WindowConfig {
 
     public void validate() {
         if (slideLength > windowLength) {
-            throw new IllegalArgumentException("slideLength '" + slideLength + "' should always be less than windowLegth '" + windowLength + "'");
+            throw new IllegalArgumentException("slideLength '" + slideLength +
+                    "' should always be less than windowLegth '" + windowLength + "'");
         }
     }
 }

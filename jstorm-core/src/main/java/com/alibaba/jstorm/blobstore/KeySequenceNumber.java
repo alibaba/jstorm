@@ -129,7 +129,7 @@ public class KeySequenceNumber {
     }
 
     public synchronized int getKeySequenceNumber(Map conf) {
-        TreeSet<Integer> sequenceNumbers = new TreeSet<Integer>();
+        TreeSet<Integer> sequenceNumbers = new TreeSet<>();
         CuratorFramework zkClient = null;
         try {
             zkClient = BlobStoreUtils.createZKClient(conf);

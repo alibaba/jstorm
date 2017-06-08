@@ -17,6 +17,10 @@
  */
 package backtype.storm.topology;
 
+import com.alibaba.jstorm.cluster.Common;
+import com.alibaba.jstorm.window.BaseWindowedBolt;
+import com.alibaba.jstorm.window.WindowAssigner;
+import com.alibaba.jstorm.window.WindowedBoltExecutor;
 import java.io.NotSerializableException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -55,42 +59,42 @@ import backtype.storm.windowing.TupleWindow;
 /**
  * TopologyBuilder exposes the Java API for specifying a topology for Storm to execute. Topologies are Thrift structures in the end, but since the Thrift API is
  * so verbose, TopologyBuilder greatly eases the process of creating topologies. The template for creating and submitting a topology looks something like:
- * 
+ *
  * <pre>
  * TopologyBuilder builder = new TopologyBuilder();
- * 
+ *
  * builder.setSpout(&quot;1&quot;, new TestWordSpout(true), 5);
  * builder.setSpout(&quot;2&quot;, new TestWordSpout(true), 3);
  * builder.setBolt(&quot;3&quot;, new TestWordCounter(), 3).fieldsGrouping(&quot;1&quot;, new Fields(&quot;word&quot;)).fieldsGrouping(&quot;2&quot;, new Fields(&quot;word&quot;));
  * builder.setBolt(&quot;4&quot;, new TestGlobalCount()).globalGrouping(&quot;1&quot;);
- * 
+ *
  * Map conf = new HashMap();
  * conf.put(Config.TOPOLOGY_WORKERS, 4);
- * 
+ *
  * StormSubmitter.submitTopology(&quot;mytopology&quot;, conf, builder.createTopology());
  * </pre>
- * 
+ *
  * Running the exact same topology in local mode (in process), and configuring it to log all tuples emitted, looks like the following. Note that it lets the
  * topology run for 10 seconds before shutting down the local cluster.
- * 
+ *
  * <pre>
  * TopologyBuilder builder = new TopologyBuilder();
- * 
+ *
  * builder.setSpout(&quot;1&quot;, new TestWordSpout(true), 5);
  * builder.setSpout(&quot;2&quot;, new TestWordSpout(true), 3);
  * builder.setBolt(&quot;3&quot;, new TestWordCounter(), 3).fieldsGrouping(&quot;1&quot;, new Fields(&quot;word&quot;)).fieldsGrouping(&quot;2&quot;, new Fields(&quot;word&quot;));
  * builder.setBolt(&quot;4&quot;, new TestGlobalCount()).globalGrouping(&quot;1&quot;);
- * 
+ *
  * Map conf = new HashMap();
  * conf.put(Config.TOPOLOGY_WORKERS, 4);
  * conf.put(Config.TOPOLOGY_DEBUG, true);
- * 
+ *
  * LocalCluster cluster = new LocalCluster();
  * cluster.submitTopology(&quot;mytopology&quot;, conf, builder.createTopology());
  * Utils.sleep(10000);
  * cluster.shutdown();
  * </pre>
- * 
+ *
  * <p>
  * The pattern for TopologyBuilder is to map component ids to components using the setSpout and setBolt methods. Those methods return objects that are then used
  * to declare the inputs for that component.
@@ -107,6 +111,9 @@ public class TopologyBuilder {
     private Map<String, StateSpoutSpec> _stateSpouts = new HashMap<>();
     private List<ByteBuffer> _workerHooks = new ArrayList<>();
 
+    // configuration generated during topology building
+    private static Map<String, Object> conf = new HashMap<>();
+
     public StormTopology createTopology() {
         Map<String, Bolt> boltSpecs = new HashMap<>();
         Map<String, SpoutSpec> spoutSpecs = new HashMap<>();
@@ -115,15 +122,19 @@ public class TopologyBuilder {
             IRichBolt bolt = _bolts.get(boltId);
             bolt = maybeAddCheckpointTupleForwarder(bolt);
             ComponentCommon common = getComponentCommon(boltId, bolt);
-            try{
+            try {
                 maybeAddCheckpointInputs(common);
-            boltSpecs.put(boltId, new Bolt(ComponentObject.serialized_java(Utils.javaSerialize(bolt)), common));
-            }catch(RuntimeException wrapperCause){
-                if (wrapperCause.getCause() != null && NotSerializableException.class.equals(wrapperCause.getCause().getClass())){
+                maybeAddWatermarkInputs(common, bolt);
+                boltSpecs.put(boltId, new Bolt(ComponentObject.serialized_java(Utils.javaSerialize(bolt)), common));
+            } catch (RuntimeException wrapperCause) {
+                if (wrapperCause.getCause() != null && NotSerializableException.class.equals(wrapperCause.getCause().getClass())) {
                     throw new IllegalStateException(
-                        "Bolt '" + boltId + "' contains a non-serializable field of type " + wrapperCause.getCause().getMessage() + ", " +
-                        "which was instantiated prior to topology creation. " + wrapperCause.getCause().getMessage() + " " +
-                        "should be instantiated within the prepare method of '" + boltId + " at the earliest.", wrapperCause);
+                            "Bolt '" + boltId + "' contains a non-serializable field of type "
+                                    + wrapperCause.getCause().getMessage() + ", " +
+                                    "which was instantiated prior to topology creation. "
+                                    + wrapperCause.getCause().getMessage() + " " +
+                                    "should be instantiated within the prepare method of '" + boltId +
+                                    " at the earliest.", wrapperCause);
                 }
                 throw wrapperCause;
             }
@@ -131,14 +142,14 @@ public class TopologyBuilder {
         for (String spoutId : _spouts.keySet()) {
             IRichSpout spout = _spouts.get(spoutId);
             ComponentCommon common = getComponentCommon(spoutId, spout);
-            try{
-            spoutSpecs.put(spoutId, new SpoutSpec(ComponentObject.serialized_java(Utils.javaSerialize(spout)), common));
-            }catch(RuntimeException wrapperCause){
-                if (wrapperCause.getCause() != null && NotSerializableException.class.equals(wrapperCause.getCause().getClass())){
+            try {
+                spoutSpecs.put(spoutId, new SpoutSpec(ComponentObject.serialized_java(Utils.javaSerialize(spout)), common));
+            } catch (RuntimeException wrapperCause) {
+                if (wrapperCause.getCause() != null && NotSerializableException.class.equals(wrapperCause.getCause().getClass())) {
                     throw new IllegalStateException(
-                        "Spout '" + spoutId + "' contains a non-serializable field of type " + wrapperCause.getCause().getMessage() + ", " +
-                        "which was instantiated prior to topology creation. " + wrapperCause.getCause().getMessage() + " " +
-                        "should be instantiated within the prepare method of '" + spoutId + " at the earliest.", wrapperCause);
+                            "Spout '" + spoutId + "' contains a non-serializable field of type " + wrapperCause.getCause().getMessage() + ", " +
+                                    "which was instantiated prior to topology creation. " + wrapperCause.getCause().getMessage() + " " +
+                                    "should be instantiated within the prepare method of '" + spoutId + " at the earliest.", wrapperCause);
                 }
                 throw wrapperCause;
             }
@@ -222,8 +233,33 @@ public class TopologyBuilder {
      * @throws IllegalArgumentException if {@code parallelism_hint} is not positive
      */
     public BoltDeclarer setBolt(String id, IWindowedBolt bolt, Number parallelism_hint) throws IllegalArgumentException {
+        return setBolt(id, new backtype.storm.topology.WindowedBoltExecutor(bolt), parallelism_hint);
+    }
+
+    public BoltDeclarer setBolt(String id, IWindowedBolt bolt) throws IllegalArgumentException {
+        return setBolt(id, new backtype.storm.topology.WindowedBoltExecutor(bolt), null);
+    }
+
+    /**
+     * Define a new bolt in this topology. This defines a windowed bolt, intended
+     * for windowing operations.
+     *
+     * @param id the id of this component. This id is referenced by other components that want to consume this bolt's outputs.
+     * @param bolt the windowed bolt
+     * @param parallelism_hint the number of tasks that should be assigned to execute this bolt. Each task will run on a thread in a process somwehere around the cluster.
+     * @return use the returned object to declare the inputs to this component
+     * @throws IllegalArgumentException if {@code parallelism_hint} is not positive
+     */
+    public BoltDeclarer setBolt(String id, BaseWindowedBolt<Tuple> bolt, Number parallelism_hint) throws
+            IllegalArgumentException {
+        boolean isEventTime = WindowAssigner.isEventTime(bolt.getWindowAssigner());
+        if (isEventTime && bolt.getTimestampExtractor() == null) {
+            throw new IllegalArgumentException("timestamp extractor must be defined in event time!");
+        }
         return setBolt(id, new WindowedBoltExecutor(bolt), parallelism_hint);
     }
+
+
     /**
      * Define a new bolt in this topology. This defines a stateful bolt, that requires its
      * state (of computation) to be saved. When this bolt is initialized, the {@link IStatefulBolt#initState(State)} method
@@ -252,7 +288,7 @@ public class TopologyBuilder {
      * @param id the id of this component. This id is referenced by other components that want to consume this bolt's outputs.
      * @param bolt the stateful windowed bolt
      * @param parallelism_hint the number of tasks that should be assigned to execute this bolt. Each task will run on a thread in a process somwehere around the cluster.
-     * @param <T> the type of the state (e.g. {@link org.apache.storm.state.KeyValueState})
+     * @param <T> the type of the state (e.g. {@link backtype.storm.state.KeyValueState})
      * @return use the returned object to declare the inputs to this component
      * @throws IllegalArgumentException if {@code parallelism_hint} is not positive
      */
@@ -371,6 +407,24 @@ public class TopologyBuilder {
     }
 
     /**
+     * Add watermark stream to source components of window bolts
+     */
+    private void maybeAddWatermarkInputs(ComponentCommon common, IRichBolt bolt) {
+        if (bolt instanceof WindowedBoltExecutor) {
+            Set<String> comps = new HashSet<>();
+            for (GlobalStreamId globalStreamId : common.get_inputs().keySet()) {
+                comps.add(globalStreamId.get_componentId());
+            }
+
+            for (String comp : comps) {
+                common.put_to_inputs(
+                        new GlobalStreamId(comp, Common.WATERMARK_STREAM_ID),
+                        Grouping.all(new NullStruct()));
+            }
+        }
+    }
+
+    /**
      * If the topology has at least one stateful bolt all the non-stateful bolts
      * are wrapped in {@link CheckpointTupleForwarder} so that the checkpoint
      * tuples can flow through the topology.
@@ -406,6 +460,8 @@ public class TopologyBuilder {
 
         OutputFieldsGetter getter = new OutputFieldsGetter();
         component.declareOutputFields(getter);
+        // declare watermark stream for all components
+        getter.declareStream(Common.WATERMARK_STREAM_ID, new Fields("watermark"));
         ret.set_streams(getter.getFieldsDeclaration());
         return ret;
     }
@@ -425,6 +481,18 @@ public class TopologyBuilder {
         Map conf = component.getComponentConfiguration();
         if(conf!=null) common.set_json_conf(JSONValue.toJSONString(conf));
         _commons.put(id, common);
+    }
+
+    public static void putStormConf(String key, Object value) {
+        conf.put(key, value);
+    }
+
+    public static void putStormConf(Map<String, Object> conf) {
+        conf.putAll(conf);
+    }
+
+    public static Map getStormConf() {
+        return conf;
     }
 
     protected class ConfigGetter<T extends ComponentConfigurationDeclarer> extends BaseConfigurationDeclarer<T> {
@@ -525,7 +593,7 @@ public class TopologyBuilder {
             return grouping(componentId, streamId, Grouping.direct(new NullStruct()));
         }
 
-        private BoltDeclarer grouping(String componentId, String streamId, Grouping grouping) {
+        protected BoltDeclarer grouping(String componentId, String streamId, Grouping grouping) {
             _commons.get(_boltId).put_to_inputs(new GlobalStreamId(componentId, streamId), grouping);
             return this;
         }

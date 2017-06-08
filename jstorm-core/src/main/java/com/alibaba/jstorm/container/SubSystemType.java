@@ -18,7 +18,6 @@
 package com.alibaba.jstorm.container;
 
 public enum SubSystemType {
-
     // net_cls,ns is not supposted in ubuntu
     blkio, cpu, cpuacct, cpuset, devices, freezer, memory, perf_event, net_cls, net_prio;
 

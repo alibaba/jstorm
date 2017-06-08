@@ -18,18 +18,16 @@
 package com.alibaba.jstorm.utils;
 
 /**
- * 
  * @author yannian
- * 
  */
 public interface SmartThread {
-    public void start();
+    void start();
 
-    public void join() throws InterruptedException;;
+    void join() throws InterruptedException;
 
-    public void interrupt();
+    void interrupt();
 
-    public Boolean isSleeping();
+    Boolean isSleeping();
 
-    public void cleanup();
+    void cleanup();
 }

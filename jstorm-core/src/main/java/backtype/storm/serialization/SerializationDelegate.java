@@ -25,7 +25,7 @@ import java.util.Map;
 public interface SerializationDelegate {
 
     /**
-     * Lifecycle step that will be called after instantiating with nullary constructor.
+     * Lifecycle step that will be called after instantiating with nullable constructor.
      */
     void prepare(Map stormConf);
 

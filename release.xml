@@ -107,6 +107,34 @@
                 <include>**/*</include>
             </includes>
         </fileSet>
+        <fileSet>
+            <directory>jstorm-hbase-metrics-plugin/target/</directory>
+            <outputDirectory>lib/ext/hbase</outputDirectory>
+            <includes>
+                <include>jstorm-hbase-metrics-plugin-${project.version}.jar</include>
+            </includes>
+        </fileSet>
+        <fileSet>
+            <directory>jstorm-hbase-metrics-plugin/target/lib</directory>
+            <outputDirectory>lib/ext/hbase</outputDirectory>
+            <includes>
+                <include>**/*</include>
+            </includes>
+        </fileSet>
+        <fileSet>
+            <directory>jstorm-hdfs/target/</directory>
+            <outputDirectory>lib/ext/hdfs</outputDirectory>
+            <includes>
+                <include>jstorm-hdfs-${project.version}.jar</include>
+            </includes>
+        </fileSet>
+        <fileSet>
+            <directory>jstorm-hdfs/target/lib</directory>
+            <outputDirectory>lib/ext/hdfs</outputDirectory>
+            <includes>
+                <include>**/*</include>
+            </includes>
+        </fileSet>
     </fileSets>
     <moduleSets>
         <moduleSet>
@@ -149,93 +177,6 @@
                 </dependencySets>
             </binaries>
         </moduleSet>
-
-        <!--
-        <moduleSet>
-            <includes>
-                <include>com.alibaba.jstorm:jstorm-tddl-ext</include>
-            </includes>
-            <binaries>
-                <outputDirectory>lib/ext</outputDirectory>
-                <unpack>false</unpack>
-                <dependencySets>
-                    <dependencySet>
-                        <excludes>
-                            <exclude>com.alibaba.jstorm:jstorm-core</exclude>
-                            <exclude>com.alibaba.jstorm:jstorm-ui</exclude>
-                            <exclude>commons-io:commons-io</exclude>
-                            <exclude>commons-lang:commons-lang</exclude>
-                            <exclude>commons-logging:commons-logging</exclude>
-                            <exclude>com.google.guava:guava</exclude>
-                            <exclude>commons-codec:commons-codec</exclude>
-                            <exclude>com.lmax:disruptor</exclude>
-                            <exclude>org.apache.httpcomponents:httpclient</exclude>
-                            <exclude>org.apache.httpcomponents:httpcore</exclude>
-                            <exclude>org.slf4j:slf4j-api</exclude>
-                            <exclude>log4j:log4j</exclude>
-                        </excludes>
-                        <outputDirectory>lib/ext</outputDirectory>
-                    </dependencySet>
-                </dependencySets>
-            </binaries>
-        </moduleSet>
-        <moduleSet>
-            <includes>
-                <include>com.alibaba.jstorm:jstorm-ots-ext</include>
-            </includes>
-            <binaries>
-                <outputDirectory>lib/ext</outputDirectory>
-                <unpack>false</unpack>
-                <dependencySets>
-                    <dependencySet>
-                        <excludes>
-                            <exclude>com.alibaba.jstorm:jstorm-core</exclude>
-                            <exclude>com.alibaba.jstorm:jstorm-ui</exclude>
-                            <exclude>commons-io:commons-io</exclude>
-                            <exclude>commons-lang:commons-lang</exclude>
-                            <exclude>commons-logging:commons-logging</exclude>
-                            <exclude>com.google.guava:guava</exclude>
-                            <exclude>commons-codec:commons-codec</exclude>
-                            <exclude>com.lmax:disruptor</exclude>
-                            <exclude>org.apache.httpcomponents:httpclient</exclude>
-                            <exclude>org.apache.httpcomponents:httpcore</exclude>
-                            <exclude>org.slf4j:slf4j-api</exclude>
-                            <exclude>log4j:log4j</exclude>
-                        </excludes>
-                        <outputDirectory>lib/ext</outputDirectory>
-                    </dependencySet>
-                </dependencySets>
-            </binaries>
-        </moduleSet>
-        <moduleSet>
-            <includes>
-                <include>com.alibaba.jstorm:jstorm-hbase-ext</include>
-            </includes>
-            <binaries>
-                <outputDirectory>lib/ext</outputDirectory>
-                <unpack>false</unpack>
-                <dependencySets>
-                    <dependencySet>
-                        <excludes>
-                            <exclude>commons-io:commons-io</exclude>
-                            <exclude>commons-lang:commons-lang</exclude>
-                            <exclude>commons-logging:commons-logging</exclude>
-                            <exclude>com.google.guava:guava</exclude>
-                            <exclude>commons-codec:commons-codec</exclude>
-                            <exclude>com.lmax:disruptor</exclude>
-                            <exclude>org.apache.httpcomponents:httpclient</exclude>
-                            <exclude>org.apache.httpcomponents:httpcore</exclude>
-                            <exclude>org.apache.zookeeper:zookeeper</exclude>
-                            <exclude>org.slf4j:slf4j-api</exclude>
-                            <exclude>log4j:log4j</exclude>
-                        </excludes>
-                        <outputDirectory>lib/ext</outputDirectory>
-                    </dependencySet>
-                </dependencySets>
-            </binaries>
-        </moduleSet>
-        -->
-
     </moduleSets>
 
 </assembly>

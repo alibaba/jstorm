@@ -20,8 +20,8 @@ package backtype.storm.scheduler;
 import java.io.Serializable;
 
 public class WorkerSlot implements Comparable<WorkerSlot>, Serializable {
-
     private static final long serialVersionUID = -4451854497340313268L;
+
     String nodeId;
     int port;
 
@@ -31,7 +31,6 @@ public class WorkerSlot implements Comparable<WorkerSlot>, Serializable {
     }
 
     public WorkerSlot() {
-
     }
 
     public String getNodeId() {

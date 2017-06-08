@@ -45,7 +45,7 @@ public class ReturnResults extends BaseRichBolt {
     OutputCollector _collector;
     boolean local;
     Map _conf;
-    Map<List, DRPCInvocationsClient> _clients = new HashMap<List, DRPCInvocationsClient>();
+    Map<List, DRPCInvocationsClient> _clients = new HashMap<>();
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
@@ -101,7 +101,7 @@ public class ReturnResults extends BaseRichBolt {
                     }
                 }
             } catch (TException e) {
-                LOG.error("Failed to return results to DRPC server "  + hostPort, e);
+                LOG.error("Failed to return results to DRPC server " + hostPort, e);
                 _collector.fail(input);
                 if (client instanceof DRPCInvocationsClient) {
                     try {

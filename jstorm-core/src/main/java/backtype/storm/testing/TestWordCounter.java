@@ -35,7 +35,7 @@ public class TestWordCounter extends BaseBasicBolt {
     Map<String, Integer> _counts;
 
     public void prepare(Map stormConf, TopologyContext context) {
-        _counts = new HashMap<String, Integer>();
+        _counts = new HashMap<>();
     }
 
     public void execute(Tuple input, BasicOutputCollector collector) {

@@ -22,9 +22,8 @@ import java.io.FileFilter;
 
 /**
  * filter the older file, skip the files' modify time which is less sec than now
- * 
+ *
  * @author lixin
- * 
  */
 public class OlderFileFilter implements FileFilter {
 
@@ -36,28 +35,26 @@ public class OlderFileFilter implements FileFilter {
 
     @Override
     public boolean accept(File pathname) {
-
         long current_time = System.currentTimeMillis();
-
-        return (pathname.lastModified() + seconds * 1000 <= current_time) ;
+        return (pathname.lastModified() + seconds * 1000 <= current_time);
     }
-    
-    
-    public static void main(String[] args) {
-    	long current_time = System.currentTimeMillis();
-    	String test = "test";
-    	
-    	
-    	File file = new File(test);
-    	file.delete();
-    	file.mkdir();
-    	file.setLastModified(current_time);
-    	
-    	JStormUtils.sleepMs(10 * 1000);
 
-    	File newFile = new File(test);
-    	System.out.println("modify time: " + newFile.lastModified() + ", raw:" + current_time);
-    	
+
+    public static void main(String[] args) {
+        long current_time = System.currentTimeMillis();
+        String test = "test";
+
+
+        File file = new File(test);
+        file.delete();
+        file.mkdir();
+        file.setLastModified(current_time);
+
+        JStormUtils.sleepMs(10 * 1000);
+
+        File newFile = new File(test);
+        System.out.println("modify time: " + newFile.lastModified() + ", raw:" + current_time);
+
     }
 
 }

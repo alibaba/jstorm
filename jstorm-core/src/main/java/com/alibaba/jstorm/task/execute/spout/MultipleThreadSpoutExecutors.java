@@ -25,19 +25,15 @@ import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.task.Task;
 import com.alibaba.jstorm.task.TaskStatus;
 import com.alibaba.jstorm.task.acker.Acker;
-import com.alibaba.jstorm.task.comm.TupleInfo;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.RotatingMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-
 /**
- * spout executor
- * <p/>
- * All spout actions will be done here
- * 
+ * multi-thread spout executor, all spout msgs will be handled here
+ *
  * @author yannian/Longda
  */
 public class MultipleThreadSpoutExecutors extends SpoutExecutors {
@@ -45,18 +41,17 @@ public class MultipleThreadSpoutExecutors extends SpoutExecutors {
 
     public MultipleThreadSpoutExecutors(Task task) {
         super(task);
-
         ackerRunnableThread = new AsyncLoopThread(new AckerRunnable(), false, Thread.NORM_PRIORITY, false);
     }
-    
+
     public void mkPending() {
-    	pending = new RotatingMap<Long, TupleInfo>(Acker.TIMEOUT_BUCKET_NUM, null, false);
+        pending = new RotatingMap<>(Acker.TIMEOUT_BUCKET_NUM, null, false);
     }
-    
-    @Override 
+
+    @Override
     public void init() throws Exception {
-    	super.init();
-    	ackerRunnableThread.start();
+        super.init();
+        ackerRunnableThread.start();
     }
 
     @Override
@@ -64,37 +59,37 @@ public class MultipleThreadSpoutExecutors extends SpoutExecutors {
         return idStr + "-" + MultipleThreadSpoutExecutors.class.getSimpleName();
     }
 
-	@Override
-	public void run() {
-		if (checkTopologyFinishInit == false) {
-			initWrapper();
+    @Override
+    public void run() {
+        if (!checkTopologyFinishInit) {
+            initWrapper();
             int delayRun = ConfigExtension.getSpoutDelayRunSeconds(storm_conf);
             long now = System.currentTimeMillis();
-            while (!checkTopologyFinishInit){
+            while (!checkTopologyFinishInit) {
                 // wait other bolt is ready,
                 JStormUtils.sleepMs(100);
-                if (System.currentTimeMillis() - now > delayRun *  1000){
+                if (System.currentTimeMillis() - now > delayRun * 1000) {
                     executorStatus.setStatus(TaskStatus.RUN);
                     this.checkTopologyFinishInit = true;
-                    LOG.info("wait {} timeout, begin operate nextTuple", delayRun);
+                    LOG.info("wait {} timeout, begin to call nextTuple", delayRun);
                     break;
                 }
             }
-            while (true){
+            while (true) {
                 JStormUtils.sleepMs(10);
-                if (taskStatus.isRun()){
+                if (taskStatus.isRun()) {
                     this.spout.activate();
                     break;
-                }else if (taskStatus.isPause()){
+                } else if (taskStatus.isPause()) {
                     this.spout.deactivate();
                     break;
                 }
             }
-            LOG.info(idStr + " is ready, due to the topology finish init.");
-		}
+            LOG.info(idStr + " finishes init and is ready.");
+        }
 
-		super.nextTuple();
-	}
+        super.nextTuple();
+    }
 
     class AckerRunnable extends RunnableCallback {
 
@@ -118,26 +113,22 @@ public class MultipleThreadSpoutExecutors extends SpoutExecutors {
         @Override
         public void run() {
             LOG.info("Successfully start Spout's acker thread " + idStr);
-
-            while (shutdown.get() == false) {
+            while (!shutdown.get()) {
                 try {
-                    //Asynchronous release the queue, but still is single thread
-                    controlQueue.consumeBatchWhenAvailable(MultipleThreadSpoutExecutors.this);
-                    exeQueue.consumeBatchWhenAvailable(MultipleThreadSpoutExecutors.this);
-       /*             processControlEvent();*/
+                    consumeBatch(MultipleThreadSpoutExecutors.this);
                 } catch (Exception e) {
-                    if (shutdown.get() == false) {
-                        LOG.error("Actor occur unknow exception ", e);
-                        report_error.report(e);
+                    if (!shutdown.get()) {
+                        LOG.error("unknown exception:", e);
+                        reportError.report(e);
                     }
                 }
             }
 
-            LOG.info("Successfully shutdown Spout's acker thread " + idStr);
+            LOG.info("Successfully shutdown spout's acker thread " + idStr);
         }
 
         public Object getResult() {
-            LOG.info("Begin to shutdown Spout's acker thread " + idStr);
+            LOG.info("Begin to shutdown spout's acker thread " + idStr);
             return -1;
         }
 

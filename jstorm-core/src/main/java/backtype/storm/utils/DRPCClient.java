@@ -17,17 +17,13 @@
  */
 package backtype.storm.utils;
 
-import backtype.storm.Config;
-import backtype.storm.generated.DRPCExecutionException;
 import backtype.storm.generated.DistributedRPC;
-import backtype.storm.generated.AuthorizationException;
-import org.apache.thrift.TException;
-import org.apache.thrift.transport.TTransport;
 import backtype.storm.security.auth.ThriftClient;
 import backtype.storm.security.auth.ThriftConnectionType;
-import org.apache.thrift.transport.TTransportException;
-
 import java.util.Map;
+import org.apache.thrift.TException;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 
 public class DRPCClient extends ThriftClient implements DistributedRPC.Iface {
     private TTransport conn;
@@ -55,7 +51,7 @@ public class DRPCClient extends ThriftClient implements DistributedRPC.Iface {
         return port;
     }
 
-    public String execute(String func, String args) throws TException, DRPCExecutionException, AuthorizationException {
+    public String execute(String func, String args) throws TException {
         return client.execute(func, args);
     }
 

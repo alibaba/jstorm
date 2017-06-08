@@ -1,9 +1,25 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.alibaba.jstorm.yarn.container;
 
-import com.alibaba.jstorm.yarn.appmaster.JstormMaster;
 import com.alibaba.jstorm.yarn.constants.JOYConstants;
-import com.alibaba.jstorm.yarn.constants.JstormKeys;
-import com.alibaba.jstorm.yarn.registry.SlotPortsView;
+import com.alibaba.jstorm.yarn.model.ExecutorMeta;
+import com.alibaba.jstorm.yarn.model.STARTType;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.Path;
@@ -13,8 +29,6 @@ import org.apache.hadoop.registry.client.api.RegistryOperationsFactory;
 import org.apache.hadoop.registry.client.binding.RegistryUtils;
 import org.apache.hadoop.registry.client.types.ServiceRecord;
 import org.apache.hadoop.registry.server.integration.RMRegistryOperationsService;
-import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.hadoop.yarn.api.records.Container;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 
 import java.io.*;
@@ -28,33 +42,32 @@ import java.util.Vector;
 
 /**
  * Created by fengjian on 16/4/18.
- * in running container the executor will launch in which will manage real worker for operations
+ * the executor will launch in and manage real worker for operations
  */
 public class Executor {
     private static final Log LOG = LogFactory.getLog(Executor.class);
     private ExecutorMeta executorMeta;
-    private String starttype = "supervisor";
-    private String logDir = "";
-    private String containerDir = "";
+    private String startType = JOYConstants.SUPERVISOR;
+    private String logDir = JOYConstants.EMPTY;
     private YarnConfiguration conf;
     private RegistryOperations registryOperations;
 
-    public Executor(String instancName, String shellCommand, JstormMaster.STARTType startType, String runningContainer,
+    public Executor(String instancName, String shellCommand, STARTType startType, String runningContainer,
                     String localDir, String deployPath,
                     String hadoopHome, String javaHome, String pythonHome, String dstPath, String portList, String shellArgs,
                     String ExecShellStringPath, String applicationId, String supervisorLogviewPort, String nimbusThriftPort) {
         executorMeta = new ExecutorMeta(instancName, shellCommand, startType, runningContainer,
                 localDir, deployPath, hadoopHome, javaHome, pythonHome, dstPath, portList, shellArgs,
                 ExecShellStringPath, applicationId, supervisorLogviewPort, nimbusThriftPort);
-        logDir = hadoopHome + "/logs/userlogs/" + applicationId + "/" + runningContainer;
-        logDir = "/dev/nm-logs/" + applicationId + "/" + runningContainer;
 
         conf = new YarnConfiguration();
-        Path yarnSite = new Path(hadoopHome + "/etc/hadoop/yarn-site.xml");
+        Path yarnSite = new Path(hadoopHome + JOYConstants.YARN_SITE_PATH);
         conf.addResource(yarnSite);
 
+        //get first log dir
+        logDir = conf.get(JOYConstants.YARN_NM_LOG, JOYConstants.YARN_NM_LOG_DIR).split(JOYConstants.COMMA)[0] + JOYConstants.BACKLASH + applicationId + JOYConstants.BACKLASH + runningContainer;
         //Setup RegistryOperations
-        registryOperations = RegistryOperationsFactory.createInstance("YarnRegistry", conf);
+        registryOperations = RegistryOperationsFactory.createInstance(JOYConstants.YARN_REGISTRY, conf);
         try {
             setupInitialRegistryPaths();
         } catch (IOException e) {
@@ -69,26 +82,19 @@ public class Executor {
      * @return
      */
     public boolean checkHeartBeat() {
-//        if (starttype.equals("nimbus"))
-//            return true;
 
         String dataPath = executorMeta.getLocalDir();
-        File localstate = new File(dataPath + "/data/" + starttype + "/" + starttype + ".heartbeat/");
-//        File localstate = new File(dataPath + "/data/" + starttype + "/localstate/");
-//        LOG.info("heartbeat path:" + dataPath + "/data/" + starttype + "/" + starttype + ".heartbeat/");
+        File localstate = new File(dataPath + "/data/" + startType + "/" + startType + ".heartbeat/");
         Long modefyTime = localstate.lastModified();
-
 
         if (System.currentTimeMillis() - modefyTime > JOYConstants.EXECUTOR_HEARTBEAT_TIMEOUT) {
 
             LOG.info("----------------------");
-            LOG.info(modefyTime.toString());
             modefyTime = localstate.lastModified();
             LOG.info(modefyTime.toString());
 
-            LOG.info(Long.toString(System.currentTimeMillis()));
             LOG.info(Long.toString(new Date().getTime()));
-            LOG.info(dataPath + "/data/" + starttype + "/" + starttype + ".heartbeat/");
+            LOG.info(dataPath + "/data/" + startType + "/" + startType + ".heartbeat/");
 
             LOG.info("can't get heartbeat over " + String.valueOf(JOYConstants.EXECUTOR_HEARTBEAT_TIMEOUT) + " seconds");
             return false;
@@ -131,9 +137,9 @@ public class Executor {
 
     public String getPid() {
         String dataPath = executorMeta.getLocalDir();
-        File pids = new File(dataPath + "/data/" + starttype + "/pids/");
+        File pids = new File(dataPath + "/data/" + startType + "/pids/");
         if (pids.listFiles() == null || pids.listFiles().length == 0) {
-            LOG.error("cant get pid of " + dataPath + "/data/" + starttype + "/pids/");
+            LOG.error("cant get pid of " + dataPath + "/data/" + startType + "/pids/");
             return null;
         }
         File pidfile = pids.listFiles()[0];
@@ -174,17 +180,16 @@ public class Executor {
 
     public boolean needUpgrade() {
         String containerPath = RegistryUtils.componentPath(
-                JstormKeys.APP_TYPE, this.executorMeta.getInstanceName(),
+                JOYConstants.APP_TYPE, this.executorMeta.getInstanceName(),
                 this.executorMeta.getApplicationId(), this.executorMeta.getRunningContainer());
-//        LOG.info(containerPath);
 
         try {
             if (registryOperations.exists(containerPath)) {
                 ServiceRecord sr = registryOperations.resolve(containerPath);
-                if (sr.get("needUpgrade") != null && sr.get("needUpgrade").equals("true")) {
-                    sr.set("needUpgrade", "false");
+                if (sr.get(JOYConstants.NEED_UPGRADE) != null && sr.get(JOYConstants.NEED_UPGRADE).equals(JOYConstants.TRUE)) {
+                    sr.set(JOYConstants.NEED_UPGRADE, JOYConstants.FALSE);
                     registryOperations.bind(containerPath, sr, BindFlags.OVERWRITE);
-                    LOG.info("need upgrade");
+                    LOG.info(JOYConstants.NEED_UPGRADE);
                     return true;
                 }
             }
@@ -201,19 +206,16 @@ public class Executor {
         vargs.add(executorMeta.getExecShellStringPath());
 
         // start type specified to be excute by shell script to start jstorm process
-        if (executorMeta.getStartType() == JstormMaster.STARTType.NIMBUS) {
-            starttype = "nimbus";
-            vargs.add("nimbus");
+        if (executorMeta.getStartType() == STARTType.NIMBUS) {
+            startType = JOYConstants.NIMBUS;
         } else {
-            starttype = "supervisor";
-            vargs.add("supervisor");
+            startType = JOYConstants.SUPERVISOR;
         }
+        vargs.add(startType);
         vargs.add(executorMeta.getLocalDir());
         vargs.add(executorMeta.getDeployPath());
-
         String portListStr = executorMeta.getPortList();
         vargs.add(portListStr);
-
         String hadoopHome = executorMeta.getHadoopHome();
         String javaHome = executorMeta.getJavaHome();
         String pythonHome = executorMeta.getPythonHome();
@@ -222,49 +224,37 @@ public class Executor {
         vargs.add(pythonHome);//$7
 
         String deployDst = executorMeta.getDstPath();
-//        if (deployDst == null) {
-//            deployDst = nimbusDataDirPrefix;
-//        }
-        String dstPath = deployDst + executorMeta.getRunningContainer();
+        String dstPath = deployDst;
         vargs.add(dstPath);//$8
-
-
         String supervisorLogviewPort = executorMeta.getSupervisorLogviewPort();
         vargs.add(supervisorLogviewPort);//$9
 
         String nimbusThriftPort = executorMeta.getNimbusThriftPort();
         vargs.add(nimbusThriftPort);//$10
-
         vargs.add(logDir + "/stderr");//$11
-
-
-        // Set args for the shell command if any
         vargs.add(executorMeta.getShellArgs());
-
         // Get final commmand
         StringBuilder command = new StringBuilder();
         for (CharSequence str : vargs) {
-            command.append(str).append(" ");
+            command.append(str).append(JOYConstants.BLANK);
         }
 
         List<String> commands = new ArrayList<String>();
         commands.add(command.toString());
         LOG.info("container command is :" + command.toString());
-
-
         try {
-            LOG.info("start process1");
+            LOG.info("start process");
             //set system env
-            LOG.info(JOYConstants.CONTAINER_SUPERVISOR_HEARTBEAT + "=" + executorMeta.getLocalDir() + "/data/supervisor/supervisor.heartbeat");
+            LOG.info(JOYConstants.CONTAINER_SUPERVISOR_HEARTBEAT + JOYConstants.EQUAL + executorMeta.getLocalDir() + JOYConstants.JSTORM_SUPERVISOR_HEARTBEAT_PATH);
             Process p = Runtime.getRuntime().exec(command.toString(),
-                    new String[]{JOYConstants.CONTAINER_SUPERVISOR_HEARTBEAT + "=" + executorMeta.getLocalDir() + "/data/supervisor/supervisor.heartbeat",
-                            JOYConstants.CONTAINER_NIMBUS_HEARTBEAT + "=" + executorMeta.getLocalDir() + "/data/nimbus/nimbus.heartbeat"});
+                    new String[]{JOYConstants.CONTAINER_SUPERVISOR_HEARTBEAT + JOYConstants.EQUAL + executorMeta.getLocalDir() + JOYConstants.JSTORM_SUPERVISOR_HEARTBEAT_PATH,
+                            JOYConstants.CONTAINER_NIMBUS_HEARTBEAT + JOYConstants.EQUAL + executorMeta.getLocalDir() + JOYConstants.JSTORM_NIMBUS_HEARTBEAT_PATH});
             //wait 30 seconds
-            Thread.sleep(30 * 1000);
+            Thread.sleep(JOYConstants.EXECUTOR_LOOP_TIME);
         } catch (Exception err) {
             err.printStackTrace();
         }
-        LOG.info("executor was running");
+        LOG.info("the executor is running");
 
     }
 
@@ -275,7 +265,7 @@ public class Executor {
                     Thread.sleep(3000);
                 } else {
                     killProcess();
-                    LOG.error(starttype + " 's process is dead");
+                    LOG.error(startType + " 's process is dead");
                     run();
                 }
             } catch (InterruptedException e) {
@@ -327,7 +317,7 @@ public class Executor {
             shellArgs = args[14];
 
         try {
-            Executor executor = new Executor(instanceName, shellCommand, startType.equals("nimbus") ? JstormMaster.STARTType.NIMBUS : JstormMaster.STARTType.SUPERVISOR,
+            Executor executor = new Executor(instanceName, shellCommand, startType.equals(JOYConstants.NIMBUS) ? STARTType.NIMBUS : STARTType.SUPERVISOR,
                     runningcontainerId,
                     localDir, deployPath, hadoopHome, javaHome, pythonHome, dstPath, portList, shellArgs, ExecShellStringPath, applicationId, supervisorLogView, nimbusThriftPort);
             executor.run();
@@ -335,13 +325,13 @@ public class Executor {
             LOG.info("Initializing Client");
         } catch (Throwable t) {
             LOG.fatal("Error running Executor", t);
-            System.exit(1);
+            System.exit(JOYConstants.EXIT_FAIL);
         }
         if (result) {
             LOG.info("Application completed successfully");
-            System.exit(0);
+            System.exit(JOYConstants.EXIT_SUCCESS);
         }
         LOG.error("Application failed to complete successfully");
-        System.exit(2);
+        System.exit(JOYConstants.EXIT_FAIL);
     }
 }

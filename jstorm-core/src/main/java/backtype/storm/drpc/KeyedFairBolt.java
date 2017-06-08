@@ -48,15 +48,14 @@ public class KeyedFairBolt implements IRichBolt, FinishedCallback {
             _callback = (FinishedCallback) _delegate;
         }
         _delegate.prepare(stormConf, context, collector);
-        _rrQueue = new KeyedRoundRobinQueue<Tuple>();
+        _rrQueue = new KeyedRoundRobinQueue<>();
         _executor = new Thread(new Runnable() {
             public void run() {
                 try {
                     while (true) {
                         _delegate.execute(_rrQueue.take());
                     }
-                } catch (InterruptedException e) {
-
+                } catch (InterruptedException ignored) {
                 }
             }
         });
@@ -86,6 +85,6 @@ public class KeyedFairBolt implements IRichBolt, FinishedCallback {
 
     @Override
     public Map<String, Object> getComponentConfiguration() {
-        return new HashMap<String, Object>();
+        return new HashMap<>();
     }
 }

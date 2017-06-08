@@ -136,7 +136,8 @@ abstract public class ShellUtils {
     }
 
     /**
-     * a Unix command to get a given user's groups list. If the OS is not WINDOWS, the command will get the user's primary group first and finally get the
+     * a Unix command to get a given user's groups list. If the OS is not WINDOWS,
+     * the command will get the user's primary group first and finally get the
      * groups list which includes the primary group. i.e. the user's primary group will be included twice.
      */
     public static String[] getGroupsForUserCommand(final String user) {
@@ -157,7 +158,7 @@ abstract public class ShellUtils {
     private void runCommand() throws IOException {
         ProcessBuilder builder = new ProcessBuilder(getExecString());
         Timer timeOutTimer = null;
-        ShellTimeoutTimerTask timeoutTimerTask = null;
+        ShellTimeoutTimerTask timeoutTimerTask;
         timedOut = new AtomicBoolean(false);
         completed = new AtomicBoolean(false);
 
@@ -204,7 +205,8 @@ abstract public class ShellUtils {
         };
         try {
             errThread.start();
-        } catch (IllegalStateException ise) { }
+        } catch (IllegalStateException ignored) {
+        }
         try {
             parseExecResult(inReader); // parse the output
             // clear the input stream buffer

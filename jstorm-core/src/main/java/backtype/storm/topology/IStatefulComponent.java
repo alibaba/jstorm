@@ -20,9 +20,8 @@ package backtype.storm.topology;
 import backtype.storm.state.State;
 
 /**
- * <p>
  * Common methods for stateful components in the topology.
- * </p>
+ *
  * A stateful component is one that has state (e.g. the result of some computation in a bolt)
  * and wants the framework to manage its state.
  */

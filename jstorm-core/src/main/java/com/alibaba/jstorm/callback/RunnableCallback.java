@@ -21,9 +21,8 @@ import backtype.storm.daemon.Shutdownable;
 
 /**
  * Base Runnable/Callback function
- * 
+ *
  * @author yannian
- * 
  */
 public class RunnableCallback implements Runnable, Callback, Shutdownable {
 
@@ -33,16 +32,13 @@ public class RunnableCallback implements Runnable, Callback, Shutdownable {
     }
 
     public void preRun() {
-
     }
 
     @Override
     public void run() {
-
     }
 
     public void postRun() {
-
     }
 
     public Exception error() {
@@ -54,7 +50,6 @@ public class RunnableCallback implements Runnable, Callback, Shutdownable {
     }
 
     public void shutdown() {
-
     }
 
     public String getThreadName() {

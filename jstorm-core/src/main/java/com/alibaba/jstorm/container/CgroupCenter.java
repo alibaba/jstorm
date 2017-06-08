@@ -35,19 +35,15 @@ import com.alibaba.jstorm.container.cgroup.CgroupCommon;
 import com.alibaba.jstorm.utils.SystemOperation;
 
 public class CgroupCenter implements CgroupOperation {
-
-    public static Logger LOG = LoggerFactory.getLogger(CgroupCenter.class);
+    private static Logger LOG = LoggerFactory.getLogger(CgroupCenter.class);
 
     private static CgroupCenter instance;
 
     private CgroupCenter() {
-
     }
 
     /**
      * Thread unsafe
-     * 
-     * @return
      */
     public synchronized static CgroupCenter getInstance() {
         if (instance == null)
@@ -57,14 +53,13 @@ public class CgroupCenter implements CgroupOperation {
 
     @Override
     public List<Hierarchy> getHierarchies() {
-        // TODO Auto-generated method stub
-        Map<String, Hierarchy> hierarchies = new HashMap<String, Hierarchy>();
+        Map<String, Hierarchy> hierarchies = new HashMap<>();
         FileReader reader = null;
         BufferedReader br = null;
         try {
             reader = new FileReader(Constants.MOUNT_STATUS_FILE);
             br = new BufferedReader(reader);
-            String str = null;
+            String str;
             while ((str = br.readLine()) != null) {
                 String[] strSplit = str.split(" ");
                 if (!strSplit[2].equals("cgroup"))
@@ -72,11 +67,10 @@ public class CgroupCenter implements CgroupOperation {
                 String name = strSplit[0];
                 String type = strSplit[3];
                 String dir = strSplit[1];
-                Hierarchy h = hierarchies.get(type);
-                h = new Hierarchy(name, CgroupUtils.analyse(type), dir);
+                Hierarchy h = new Hierarchy(name, CgroupUtils.analyse(type), dir);
                 hierarchies.put(type, h);
             }
-            return new ArrayList<Hierarchy>(hierarchies.values());
+            return new ArrayList<>(hierarchies.values());
         } catch (Exception e) {
             LOG.error("Get hierarchies error", e);
         } finally {
@@ -87,21 +81,20 @@ public class CgroupCenter implements CgroupOperation {
 
     @Override
     public Set<SubSystem> getSubSystems() {
-        // TODO Auto-generated method stub
-        Set<SubSystem> subSystems = new HashSet<SubSystem>();
+        Set<SubSystem> subSystems = new HashSet<>();
         FileReader reader = null;
         BufferedReader br = null;
         try {
             reader = new FileReader(Constants.CGROUP_STATUS_FILE);
             br = new BufferedReader(reader);
-            String str = null;
+            String str;
             while ((str = br.readLine()) != null) {
                 String[] split = str.split("\t");
                 SubSystemType type = SubSystemType.getSubSystem(split[0]);
                 if (type == null)
                     continue;
-                subSystems.add(new SubSystem(type, Integer.valueOf(split[1]), Integer.valueOf(split[2]), Integer.valueOf(split[3]).intValue() == 1 ? true
-                        : false));
+                subSystems.add(new SubSystem(type, Integer.valueOf(split[1]), Integer.valueOf(split[2]),
+                        Integer.valueOf(split[3]) == 1));
             }
             return subSystems;
         } catch (Exception e) {
@@ -114,7 +107,6 @@ public class CgroupCenter implements CgroupOperation {
 
     @Override
     public boolean enabled(SubSystemType subsystem) {
-        // TODO Auto-generated method stub
         Set<SubSystem> subSystems = this.getSubSystems();
         for (SubSystem subSystem : subSystems) {
             if (subSystem.getType() == subsystem)
@@ -137,7 +129,6 @@ public class CgroupCenter implements CgroupOperation {
 
     @Override
     public Hierarchy mounted(Hierarchy hierarchy) {
-        // TODO Auto-generated method stub
         List<Hierarchy> hierarchies = this.getHierarchies();
         if (CgroupUtils.dirExists(hierarchy.getDir())) {
             for (Hierarchy h : hierarchies) {
@@ -150,7 +141,6 @@ public class CgroupCenter implements CgroupOperation {
 
     @Override
     public void mount(Hierarchy hierarchy) throws IOException {
-        // TODO Auto-generated method stub
         if (this.mounted(hierarchy) != null) {
             LOG.error(hierarchy.getDir() + " is mounted");
             return;
@@ -173,7 +163,6 @@ public class CgroupCenter implements CgroupOperation {
 
     @Override
     public void umount(Hierarchy hierarchy) throws IOException {
-        // TODO Auto-generated method stub
         if (this.mounted(hierarchy) != null) {
             hierarchy.getRootCgroups().delete();
             SystemOperation.umount(hierarchy.getDir());
@@ -183,7 +172,6 @@ public class CgroupCenter implements CgroupOperation {
 
     @Override
     public void create(CgroupCommon cgroup) throws SecurityException {
-        // TODO Auto-generated method stub
         if (cgroup.isRoot()) {
             LOG.error("You can't create rootCgroup in this function");
             return;
@@ -191,7 +179,7 @@ public class CgroupCenter implements CgroupOperation {
         CgroupCommon parent = cgroup.getParent();
         while (parent != null) {
             if (!CgroupUtils.dirExists(parent.getDir())) {
-                LOG.error(parent.getDir() + "is not existed");
+                LOG.error(parent.getDir() + " does not exist");
                 return;
             }
             parent = parent.getParent();
@@ -202,7 +190,7 @@ public class CgroupCenter implements CgroupOperation {
             return;
         }
         if (CgroupUtils.dirExists(cgroup.getDir())) {
-            LOG.error(cgroup.getDir() + " is existed");
+            LOG.error(cgroup.getDir() + " exists");
             return;
         }
         (new File(cgroup.getDir())).mkdir();
@@ -210,7 +198,6 @@ public class CgroupCenter implements CgroupOperation {
 
     @Override
     public void delete(CgroupCommon cgroup) throws IOException {
-        // TODO Auto-generated method stub
         cgroup.delete();
     }
 

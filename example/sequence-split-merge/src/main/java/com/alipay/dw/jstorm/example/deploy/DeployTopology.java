@@ -1,3 +1,20 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.alipay.dw.jstorm.example.deploy;
 
 import backtype.storm.Config;
@@ -22,11 +39,7 @@ public class DeployTopology {
     //message size
     private final static String TOPOLOGY_MESSAGE_SIZES = "topology.messagesize";
 
-    public final static String TOPOLOGY_FINISH_STREAM = "topology.finish.stream";
-
-
-    private static Map conf = new HashMap<Object, Object>();
-
+    private static Map conf = new HashMap<>();
 
     public void realMain(String[] args) throws Exception {
 
@@ -43,7 +56,7 @@ public class DeployTopology {
         int _numTopologies = JStormUtils.parseInt(conf.get(TOPOLOGY_NUMS), 1);
         int _spoutParallel = JStormUtils.parseInt(conf.get(TOPOLOGY_SPOUT_PARALLELISM_HINT), 2);
         int _boltParallel = JStormUtils.parseInt(conf.get(TOPOLOGY_BOLT_PARALLELISM_HINT), 4);
-        int _messageSize =  JStormUtils.parseInt(conf.get(TOPOLOGY_MESSAGE_SIZES), 10);
+        int _messageSize = JStormUtils.parseInt(conf.get(TOPOLOGY_MESSAGE_SIZES), 10);
         int _numAcker = JStormUtils.parseInt(conf.get(Config.TOPOLOGY_ACKER_EXECUTORS), 2);
         int _boltNum = JStormUtils.parseInt(conf.get(TOPOLOGY_BOLTS_NUMS), 3);
         boolean _ackEnabled = false;

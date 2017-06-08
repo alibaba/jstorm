@@ -1,3 +1,20 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.alibaba.jstorm.daemon.nimbus.metric.update;
 
 import java.util.HashMap;
@@ -60,37 +77,56 @@ public class UpdateEvent extends MetricEvent {
             return;
         }
 
-        TopologyMetricDataInfo summary = new TopologyMetricDataInfo();
-        int total = 0;
-        summary.topologyId = topologyId;
-        summary.timestamp = timestamp;
-        if (topologyId.equals(JStormMetrics.NIMBUS_METRIC_KEY) || topologyId.equals(JStormMetrics.CLUSTER_METRIC_KEY)) {
-            summary.type = MetricUploader.METRIC_TYPE_TOPLOGY;
-        } else {
-            total += topologyMetrics.get_topologyMetric().get_metrics_size()
-                    + topologyMetrics.get_componentMetric().get_metrics_size();
-            if (total > 0) {
-                int sub = topologyMetrics.get_taskMetric().get_metrics_size()
-                        + topologyMetrics.get_workerMetric().get_metrics_size()
-                        + topologyMetrics.get_nettyMetric().get_metrics_size()
-                        + topologyMetrics.get_streamMetric().get_metrics_size();
-                if (sub > 0) {
-                    total += sub;
-                    summary.type = MetricUploader.METRIC_TYPE_ALL;
-                } else {
-                    summary.type = MetricUploader.METRIC_TYPE_TOPLOGY;
-                }
+        try {
+            TopologyMetricDataInfo summary = new TopologyMetricDataInfo();
+            int total = 0;
+            summary.topologyId = topologyId;
+            summary.timestamp = timestamp;
+            if (topologyId.equals(JStormMetrics.NIMBUS_METRIC_KEY) || topologyId.equals(JStormMetrics.CLUSTER_METRIC_KEY)) {
+                summary.type = MetricUploader.METRIC_TYPE_TOPLOGY;
             } else {
-                summary.type = MetricUploader.METRIC_TYPE_TASK;
-                total += topologyMetrics.get_taskMetric().get_metrics_size();
+                total += topologyMetrics.get_topologyMetric().get_metrics_size()
+                        + topologyMetrics.get_componentMetric().get_metrics_size();
+
+                int compStream = 0;
+                if (topologyMetrics.is_set_compStreamMetric()) {
+                    compStream = topologyMetrics.get_compStreamMetric().get_metrics_size();
+                    total += compStream;
+                }
+                if (total > 0) {
+                    int sub = topologyMetrics.get_taskMetric().get_metrics_size()
+                            + topologyMetrics.get_workerMetric().get_metrics_size()
+                            + topologyMetrics.get_nettyMetric().get_metrics_size()
+                            + topologyMetrics.get_streamMetric().get_metrics_size();
+                    if (sub > 0) {
+                        total += sub;
+                        summary.type = MetricUploader.METRIC_TYPE_ALL;
+                    } else {
+                        summary.type = MetricUploader.METRIC_TYPE_TOPLOGY;
+                    }
+
+                    LOG.debug("tp:{}, comp:{}, comp_stream:{}, task:{}, worker:{}, netty:{}, stream:{}",
+                            topologyMetrics.get_topologyMetric().get_metrics_size(),
+                            topologyMetrics.get_componentMetric().get_metrics_size(),
+                            compStream,
+                            topologyMetrics.get_taskMetric().get_metrics_size(),
+                            topologyMetrics.get_workerMetric().get_metrics_size(),
+                            topologyMetrics.get_nettyMetric().get_metrics_size(),
+                            topologyMetrics.get_streamMetric().get_metrics_size());
+                } else {
+                    summary.type = MetricUploader.METRIC_TYPE_TASK;
+                    total += topologyMetrics.get_taskMetric().get_metrics_size();
+                }
             }
+
+            context.getMetricCache().put(ClusterMetricsContext.PENDING_UPLOAD_METRIC_DATA_INFO + idx, summary);
+            context.getMetricCache().put(ClusterMetricsContext.PENDING_UPLOAD_METRIC_DATA + idx, topologyMetrics);
+            context.markSet(idx);
+            LOG.debug("Put metric data to local cache, topology:{}, idx:{}, total:{}", topologyId, idx, total);
+        } catch (Exception ex) {
+            LOG.error("Error", ex);
+            context.forceMarkUploaded(idx);
         }
-
-        context.getMetricCache().put(ClusterMetricsContext.PENDING_UPLOAD_METRIC_DATA_INFO + idx, summary);
-        context.getMetricCache().put(ClusterMetricsContext.PENDING_UPLOAD_METRIC_DATA + idx, topologyMetrics);
-        context.markSet(idx);
-        LOG.debug("Put metric data to local cache, topology:{}, idx:{}, total:{}", topologyId, idx, total);
-
     }
 
     //update cluster metrics local cache

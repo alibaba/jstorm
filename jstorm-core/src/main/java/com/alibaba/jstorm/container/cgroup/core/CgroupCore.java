@@ -21,6 +21,6 @@ import com.alibaba.jstorm.container.SubSystemType;
 
 public interface CgroupCore {
 
-    public SubSystemType getType();
+    SubSystemType getType();
 
 }

@@ -18,11 +18,10 @@
 package com.alibaba.jstorm.daemon.worker;
 
 /**
- * Worker's status
- * 
+ * Worker status
+ *
  * @author chenjun
- * 
  */
 public enum State {
-    valid, disallowed, notStarted, timedOut;
+    valid, disallowed, notStarted, timedOut
 }

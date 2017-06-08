@@ -95,7 +95,7 @@ public class LocalFsBlobStoreFile extends BlobStoreFile {
         if (!isTmp()) {
             throw new IllegalStateException("Can only write to a temporary part file.");
         }
-        boolean success = false;
+        boolean success;
         try {
             success = _path.createNewFile();
         } catch (IOException e) {

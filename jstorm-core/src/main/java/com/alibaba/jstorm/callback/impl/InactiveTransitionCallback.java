@@ -22,16 +22,14 @@ import com.alibaba.jstorm.cluster.StormStatus;
 import com.alibaba.jstorm.daemon.nimbus.StatusType;
 
 /**
- * 
- * set Topology status as inactive
- * 
- * Here just return inactive status Later, it will set inactive status to ZK
+ * set topology status to inactive
+ *
+ * just return inactive status, it will set inactive status to ZK later
  */
 public class InactiveTransitionCallback extends BaseCallback {
 
     @Override
     public <T> Object execute(T... args) {
-
         return new StormStatus(StatusType.inactive);
     }
 

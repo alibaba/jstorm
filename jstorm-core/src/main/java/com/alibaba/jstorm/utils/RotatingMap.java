@@ -25,8 +25,9 @@ import java.util.concurrent.LinkedBlockingDeque;
 /**
  * RotatingMap must be used under thread-safe environment
  *
- * Expires keys that have not been updated in the configured number of seconds. The algorithm used will take between expirationSecs and expirationSecs * (1 + 1
- * / (numBuckets-1)) to actually expire the message.
+ * Expires keys that have not been updated in the configured number of seconds.
+ * The algorithm used will take between expirationSecs and expirationSecs * (1 + 1/ (numBuckets-1))
+ * to actually expire the message.
  *
  * get, put, remove, containsKey, and size take O(numBuckets) time to run.
  */
@@ -34,32 +35,32 @@ public class RotatingMap<K, V> implements TimeOutMap<K, V> {
     // this default ensures things expire at most 50% past the expiration time
     private static final int DEFAULT_NUM_BUCKETS = 3;
 
-    private Deque<Map<K, V>> _buckets;
+    private Deque<Map<K, V>> buckets;
 
-    private ExpiredCallback _callback;
+    private ExpiredCallback callback;
 
     private final Object lock = new Object();
 
     private boolean isSingleThread;
 
     public RotatingMap(int numBuckets, ExpiredCallback<K, V> callback, boolean isSingleThread) {
-    	this.isSingleThread = isSingleThread;
+        this.isSingleThread = isSingleThread;
 
         if (numBuckets < 2) {
             throw new IllegalArgumentException("numBuckets must be >= 2");
         }
         if (isSingleThread) {
-            _buckets = new LinkedList<Map<K, V>>();
+            buckets = new LinkedList<>();
             for (int i = 0; i < numBuckets; i++) {
-                _buckets.add(new HashMap<K, V>());
+                buckets.add(new HashMap<K, V>());
             }
         } else {
-            _buckets = new LinkedBlockingDeque<>();
+            buckets = new LinkedBlockingDeque<>();
             for (int i = 0; i < numBuckets; i++) {
-                _buckets.add(new ConcurrentHashMap<K, V>());
+                buckets.add(new ConcurrentHashMap<K, V>());
             }
         }
-        _callback = callback;
+        this.callback = callback;
     }
 
     public RotatingMap(ExpiredCallback<K, V> callback) {
@@ -70,20 +71,20 @@ public class RotatingMap<K, V> implements TimeOutMap<K, V> {
         this(numBuckets, null, false);
     }
 
-    public RotatingMap(int numBuckets, boolean isSingleThread){
+    public RotatingMap(int numBuckets, boolean isSingleThread) {
         this(numBuckets, null, isSingleThread);
     }
 
     public Map<K, V> rotate() {
-        Map<K, V> dead = _buckets.removeLast();
+        Map<K, V> dead = buckets.removeLast();
         if (isSingleThread) {
-        	_buckets.addFirst(new HashMap<K, V>());
+            buckets.addFirst(new HashMap<K, V>());
         } else {
-            _buckets.addFirst(new ConcurrentHashMap<K, V>());
+            buckets.addFirst(new ConcurrentHashMap<K, V>());
         }
-        if (_callback != null) {
+        if (callback != null) {
             for (Entry<K, V> entry : dead.entrySet()) {
-                _callback.expire(entry.getKey(), entry.getValue());
+                callback.expire(entry.getKey(), entry.getValue());
             }
         }
         return dead;
@@ -91,7 +92,7 @@ public class RotatingMap<K, V> implements TimeOutMap<K, V> {
 
     @Override
     public boolean containsKey(K key) {
-        for (Map<K, V> bucket : _buckets) {
+        for (Map<K, V> bucket : buckets) {
             if (bucket.containsKey(key)) {
                 return true;
             }
@@ -99,9 +100,17 @@ public class RotatingMap<K, V> implements TimeOutMap<K, V> {
         return false;
     }
 
+    public Set<K> keySet() {
+        Set<K> keys = new HashSet<K>();
+        for (Map<K, V> bucket : buckets) {
+            keys.addAll(bucket.keySet());
+        }
+        return keys;
+    }
+
     @Override
     public V get(K key) {
-        for (Map<K, V> bucket : _buckets) {
+        for (Map<K, V> bucket : buckets) {
             V v = bucket.get(key);
             if (v != null) {
                 return v;
@@ -112,12 +121,12 @@ public class RotatingMap<K, V> implements TimeOutMap<K, V> {
 
     @Override
     public void putHead(K key, V value) {
-        _buckets.peekFirst().put(key, value);
+        buckets.peekFirst().put(key, value);
     }
 
     @Override
     public void put(K key, V value) {
-        Iterator<Map<K, V>> it = _buckets.iterator();
+        Iterator<Map<K, V>> it = buckets.iterator();
         Map<K, V> bucket = it.next();
         bucket.put(key, value);
         while (it.hasNext()) {
@@ -127,16 +136,11 @@ public class RotatingMap<K, V> implements TimeOutMap<K, V> {
     }
 
     /**
-     * Remove item from Rotate
-     *
-     * On the side of performance, scanning from header is faster On the side of logic, it should scan from the end to first.
-     *
-     * @param key
-     * @return
+     * On the side of performance, scanning from header is faster on the side of logic, it should scan from the end to first.
      */
     @Override
     public Object remove(K key) {
-        for (Map<K, V> bucket : _buckets) {
+        for (Map<K, V> bucket : buckets) {
             Object value = bucket.remove(key);
             if (value != null) {
                 return value;
@@ -148,20 +152,20 @@ public class RotatingMap<K, V> implements TimeOutMap<K, V> {
     @Override
     public int size() {
         int size = 0;
-        for (Map<K, V> bucket : _buckets) {
+        for (Map<K, V> bucket : buckets) {
             size += bucket.size();
         }
         return size;
     }
 
     public void clear() {
-        for (Map<K, V> bucket : _buckets) {
+        for (Map<K, V> bucket : buckets) {
             bucket.clear();
         }
     }
 
     @Override
     public String toString() {
-        return _buckets.toString();
+        return buckets.toString();
     }
 }

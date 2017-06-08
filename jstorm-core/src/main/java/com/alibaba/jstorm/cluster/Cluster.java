@@ -38,11 +38,9 @@ import com.alibaba.jstorm.utils.TimeUtils;
  * storm operation ZK
  *
  * @author yannian/longda/zhiyuan.ls
- *
  */
 public class Cluster {
-
-    // TODO Need Migrate constants to ZkConstant
+    // TODO: need to move constants to ZkConstant
 
     private static Logger LOG = LoggerFactory.getLogger(Cluster.class);
 
@@ -58,13 +56,17 @@ public class Cluster {
     public static final String MASTER_ROOT = "nimbus_master";
     public static final String NIMBUS_SLAVE_ROOT = "nimbus_slave";
     public static final String METRIC_ROOT = "metrics";
+    public static final String GRAY_UPGRADE_ROOT = "gray_upgrade";
 
     public static final String LAST_ERROR = "last_error";
-    public static final String NIMBUS_SLAVE_DETAIL_ROOT= "nimbus_slave_detail";
+    public static final String NIMBUS_SLAVE_DETAIL_ROOT = "nimbus_slave_detail";
     public static final String BLOBSTORE_ROOT = "blobstore";
     public static final String BLACKLIST_ROOT = "blacklist";
     // stores the latest update sequence for a blob
     public static final String BLOBSTORE_MAX_KEY_SEQUENCE_NUMBER_ROOT = "blobstoremaxkeysequencenumber";
+    public static final String CONF = "conf";
+    public static final String UPGRADED_WORKERS = "upgraded_workers";
+    public static final String UPGRADING_WORKERS = "upgrading_workers";
 
     public static final String ASSIGNMENTS_SUBTREE;
     public static final String ASSIGNMENTS_BAK_SUBTREE;
@@ -76,6 +78,7 @@ public class Cluster {
     public static final String MASTER_SUBTREE;
     public static final String NIMBUS_SLAVE_SUBTREE;
     public static final String METRIC_SUBTREE;
+    public static final String GRAY_UPGRADE_SUBTREE;
     public static final String NIMBUS_SLAVE_DETAIL_SUBTREE;
     // Blobstore subtree /storm/blobstore
     public static final String BLOBSTORE_SUBTREE;
@@ -93,6 +96,7 @@ public class Cluster {
         MASTER_SUBTREE = ZK_SEPERATOR + MASTER_ROOT;
         NIMBUS_SLAVE_SUBTREE = ZK_SEPERATOR + NIMBUS_SLAVE_ROOT;
         METRIC_SUBTREE = ZK_SEPERATOR + METRIC_ROOT;
+        GRAY_UPGRADE_SUBTREE = ZK_SEPERATOR + GRAY_UPGRADE_ROOT;
         NIMBUS_SLAVE_DETAIL_SUBTREE = ZK_SEPERATOR + NIMBUS_SLAVE_DETAIL_ROOT;
         BLOBSTORE_SUBTREE = ZK_SEPERATOR + BLOBSTORE_ROOT;
         BLOBSTORE_MAX_KEY_SEQUENCE_NUMBER_SUBTREE = ZK_SEPERATOR + BLOBSTORE_MAX_KEY_SEQUENCE_NUMBER_ROOT;
@@ -133,6 +137,30 @@ public class Cluster {
 
     public static String metric_path(String topology_id) {
         return METRIC_SUBTREE + ZK_SEPERATOR + topology_id;
+    }
+
+    public static String gray_upgrade_base_path(String topology_id) {
+        return GRAY_UPGRADE_SUBTREE + ZK_SEPERATOR + topology_id;
+    }
+
+    public static String gray_upgrade_conf_path(String topologyId) {
+        return gray_upgrade_base_path(topologyId) + ZK_SEPERATOR + CONF;
+    }
+
+    public static String gray_upgrade_upgrading_workers_path(String topologyId) {
+        return Cluster.gray_upgrade_base_path(topologyId) + ZK_SEPERATOR + UPGRADING_WORKERS;
+    }
+
+    public static String gray_upgrade_upgraded_workers_path(String topologyId) {
+        return Cluster.gray_upgrade_base_path(topologyId) + ZK_SEPERATOR + UPGRADED_WORKERS;
+    }
+
+    public static String gray_upgrade_upgrading_worker_path(String topologyId, String hostPort) {
+        return Cluster.gray_upgrade_upgrading_workers_path(topologyId) + ZK_SEPERATOR + hostPort;
+    }
+
+    public static String gray_upgrade_upgraded_worker_path(String topologyId, String hostPort) {
+        return Cluster.gray_upgrade_upgraded_workers_path(topologyId) + ZK_SEPERATOR + hostPort;
     }
 
     public static String assignment_bak_path(String id) {
@@ -177,7 +205,8 @@ public class Cluster {
         return Common.getTaskToComponent(taskInfoMap);
     }
 
-    public static Map<Integer, String> get_all_task_type(StormClusterState zkCluster, String topologyId, Map<Integer, TaskInfo> taskInfoMap) throws Exception {
+    public static Map<Integer, String> get_all_task_type(StormClusterState zkCluster, String topologyId,
+                                                         Map<Integer, TaskInfo> taskInfoMap) throws Exception {
         if (taskInfoMap == null) {
             taskInfoMap = get_all_taskInfo(zkCluster, topologyId);
         }
@@ -190,12 +219,7 @@ public class Cluster {
     }
 
     /**
-     * if one topology's name equal the input storm_name, then return the topology id, otherwise return null
-     *
-     * @param zkCluster
-     * @param storm_name
-     * @return
-     * @throws Exception
+     * if a topology's name is equal to the input storm_name, then return the topology id, otherwise return null
      */
     public static String get_topology_id(StormClusterState zkCluster, String storm_name) throws Exception {
         List<String> active_storms = zkCluster.active_storms();
@@ -203,7 +227,7 @@ public class Cluster {
         if (active_storms != null) {
             for (String topology_id : active_storms) {
 
-                if (topology_id.indexOf(storm_name) < 0) {
+                if (!topology_id.contains(storm_name)) {
                     continue;
                 }
                 StormBase base = zkCluster.storm_base(topology_id, null);
@@ -211,7 +235,6 @@ public class Cluster {
                     rtn = topology_id;
                     break;
                 }
-
             }
         }
         return rtn;
@@ -220,12 +243,11 @@ public class Cluster {
     /**
      * get all topology's StormBase
      *
-     * @param zkCluster
-     * @return <topology_id, StormBase>
-     * @throws Exception
+     * @param zkCluster zk cluster state
+     * @return map[topology_id, StormBase]
      */
     public static HashMap<String, StormBase> get_all_StormBase(StormClusterState zkCluster) throws Exception {
-        HashMap<String, StormBase> rtn = new HashMap<String, StormBase>();
+        HashMap<String, StormBase> rtn = new HashMap<>();
         List<String> active_storms = zkCluster.active_storms();
         if (active_storms != null) {
             for (String topology_id : active_storms) {
@@ -241,13 +263,13 @@ public class Cluster {
     /**
      * get all SupervisorInfo of storm cluster
      *
-     * @param stormClusterState
-     * @param callback
-     * @return Map<String, SupervisorInfo> String: supervisorId SupervisorInfo: [time-secs hostname worker-ports uptime-secs]
-     * @throws Exception
+     * @param stormClusterState storm cluster state
+     * @param callback          watcher callback
+     * @return Map[supervisorId, SupervisorInfo]
      */
-    public static Map<String, SupervisorInfo> get_all_SupervisorInfo(StormClusterState stormClusterState, RunnableCallback callback) throws Exception {
-        Map<String, SupervisorInfo> rtn = new TreeMap<String, SupervisorInfo>();
+    public static Map<String, SupervisorInfo> get_all_SupervisorInfo(
+            StormClusterState stormClusterState, RunnableCallback callback) throws Exception {
+        Map<String, SupervisorInfo> rtn = new TreeMap<>();
         // get /ZK/supervisors
         List<String> supervisorIds = stormClusterState.supervisors(callback);
         // ignore any supervisors in blacklist
@@ -255,7 +277,6 @@ public class Cluster {
 
         if (supervisorIds != null) {
             for (Iterator<String> iter = supervisorIds.iterator(); iter.hasNext(); ) {
-
                 String supervisorId = iter.next();
                 // get /supervisors/supervisorid
                 SupervisorInfo supervisorInfo = stormClusterState.supervisor_info(supervisorId);
@@ -264,7 +285,6 @@ public class Cluster {
                 } else if (blacklist.contains(supervisorInfo.getHostName())) {
                     LOG.warn(" hostname:" + supervisorInfo.getHostName() + " is in blacklist");
                 } else {
-
                     rtn.put(supervisorId, supervisorInfo);
                 }
             }
@@ -275,8 +295,9 @@ public class Cluster {
         return rtn;
     }
 
-    public static Map<String, Assignment> get_all_assignment(StormClusterState stormClusterState, RunnableCallback callback) throws Exception {
-        Map<String, Assignment> ret = new HashMap<String, Assignment>();
+    public static Map<String, Assignment> get_all_assignment(
+            StormClusterState stormClusterState, RunnableCallback callback) throws Exception {
+        Map<String, Assignment> ret = new HashMap<>();
 
         // get /assignments {topology_id}
         List<String> assignments = stormClusterState.assignments(callback);
@@ -286,9 +307,7 @@ public class Cluster {
         }
 
         for (String topology_id : assignments) {
-
             Assignment assignment = stormClusterState.assignment_info(topology_id, callback);
-
             if (assignment == null) {
                 LOG.error("Failed to get Assignment of " + topology_id + " from ZK");
                 continue;
@@ -306,7 +325,7 @@ public class Cluster {
             return null;
         }
 
-        Map<String, String> ret = new HashMap<String, String>();
+        Map<String, String> ret = new HashMap<>();
         for (String host : hosts) {
             String time = stormClusterState.get_nimbus_slave_time(host);
             ret.put(host, time);
@@ -325,7 +344,6 @@ public class Cluster {
     }
 
     public static boolean is_topology_exist_error(StormClusterState stormClusterState, String topologyId) throws Exception {
-
         Map<Integer, String> lastErrMap = stormClusterState.topo_lastErr_time(topologyId);
         if (lastErrMap == null || lastErrMap.size() == 0) {
             return false;
@@ -345,7 +363,7 @@ public class Cluster {
     }
 
     public static Map<Integer, List<TaskError>> get_all_task_errors(StormClusterState stormClusterState, String topologyId) {
-        Map<Integer, List<TaskError>> ret = new HashMap<Integer, List<TaskError>>();
+        Map<Integer, List<TaskError>> ret = new HashMap<>();
         try {
             List<String> errorTasks = stormClusterState.task_error_ids(topologyId);
             if (errorTasks == null || errorTasks.size() == 0) {
@@ -353,7 +371,7 @@ public class Cluster {
             }
 
             for (String taskIdStr : errorTasks) {
-                Integer taskId = -1;
+                Integer taskId;
                 try {
                     taskId = Integer.valueOf(taskIdStr);
                 } catch (Exception e) {
@@ -364,12 +382,9 @@ public class Cluster {
                 List<TaskError> taskErrorList = stormClusterState.task_errors(topologyId, taskId);
                 ret.put(taskId, taskErrorList);
             }
-            return ret;
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            return ret;
+        } catch (Exception ignored) {
         }
-
+        return ret;
     }
 
 }

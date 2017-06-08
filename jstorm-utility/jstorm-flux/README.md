@@ -315,7 +315,7 @@ components:
 
 ### 构造函数, 引用, 属性和方法 
 
-####构造函数
+#### 构造函数
 构造函数的形参可以通过`contructorArgs`来指定，`contructorArgs`是一个list，将会被传递到构造函数用来创建对象。比如下面的创建一个zkHosts
 对象：
 
@@ -327,7 +327,7 @@ components:
       - true
 ```
 
-####引用
+#### 引用
 每一个实例对象生成都必须指定一个唯一性ID，这样的话我们就可以在其他实例对象的创建或者调用过程中，利用该ID达到对其对应的实例引用。但是注意的是
 要在对象B中引用A对象的话，那么应该在定义创建B对象的配置文件中，用`ref` 来标识对象A所对应ID。
 下面的这个例子，就是一个实例对象率先被创建，其ID是`"stringScheme"` ，过后另外一个对象的构造函数要用到StringScheme作为形参，那么它就需要
@@ -345,7 +345,7 @@ components:
 ```
 **N.B.:** References can only be used after (below) the object they point to has been declared.
 
-####属性
+#### 属性
 除了调用构造函数来初始化对象的一些属性以外， Flux还支持用户可以通过配置文件来设置对象属性的值，前提是这些属性都有一个set方法，及该方法都是
 `public`：
 
@@ -377,7 +377,7 @@ look for a public instance variable with the name `forceFromStart` and attempt t
 References may also be used as property values.
 备注： 引用的方式也支持在yaml属性替换中使用
 
-####配置方法调用
+#### 配置方法调用
 在配置文件中配置对象的一些方法后，就自动会在实例化对象后，马上去调用这些方法。比如你不想通过构造函数的方式或者直接赋值的方式来设置某些属性的话，
 可以自定义一些方法来设置这些属性，这样做可以避免暴露一些属性的名称。
 

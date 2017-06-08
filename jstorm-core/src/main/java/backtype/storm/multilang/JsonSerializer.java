@@ -17,6 +17,8 @@
  */
 package backtype.storm.multilang;
 
+import backtype.storm.task.TopologyContext;
+import backtype.storm.utils.Utils;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -24,21 +26,16 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
-
-import backtype.storm.task.TopologyContext;
-import backtype.storm.tuple.Tuple;
-import backtype.storm.utils.Utils;
 
 /**
  * JsonSerializer implements the JSON multilang protocol.
  */
+@SuppressWarnings("unchecked")
 public class JsonSerializer implements ISerializer {
     private DataOutputStream processIn;
     private BufferedReader processOut;
@@ -59,8 +56,7 @@ public class JsonSerializer implements ISerializer {
         setupInfo.put("context", context);
         writeMessage(setupInfo);
 
-        Number pid = (Number) ((JSONObject) readMessage()).get("pid");
-        return pid;
+        return (Number) ((JSONObject) readMessage()).get("pid");
     }
 
     public void writeBoltMsg(BoltMsg boltMsg) throws IOException {
@@ -121,7 +117,7 @@ public class JsonSerializer implements ISerializer {
         }
 
         Object need_task_ids = msg.get("need_task_ids");
-        if (need_task_ids == null || ((Boolean) need_task_ids).booleanValue()) {
+        if (need_task_ids == null || (Boolean) need_task_ids) {
             shellMsg.setNeedTaskIds(true);
         } else {
             shellMsg.setNeedTaskIds(false);

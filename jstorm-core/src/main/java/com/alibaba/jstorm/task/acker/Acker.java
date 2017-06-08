@@ -24,20 +24,18 @@ import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.Tuple;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.RotatingMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author yannian/Longda
  */
 public class Acker implements IBolt {
+    private static final long serialVersionUID = 4430906880683183091L;
 
     private static final Logger LOG = LoggerFactory.getLogger(Acker.class);
-
-    private static final long serialVersionUID = 4430906880683183091L;
 
     public static final String ACKER_COMPONENT_ID = "__acker";
     public static final String ACKER_INIT_STREAM_ID = "__ack_init";
@@ -57,7 +55,7 @@ public class Acker implements IBolt {
         this.collector = collector;
         // pending = new TimeCacheMap<Object, AckObject>(timeoutSec,
         // TIMEOUT_BUCKET_NUM);
-        this.pending = new RotatingMap<Object, AckObject>(TIMEOUT_BUCKET_NUM, true);
+        this.pending = new RotatingMap<>(TIMEOUT_BUCKET_NUM, true);
         this.rotateTime = 1000L * JStormUtils.parseInt(stormConf.get(Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS), 30) / (TIMEOUT_BUCKET_NUM - 1);
     }
 
@@ -99,7 +97,7 @@ public class Acker implements IBolt {
             }
             curr.failed = true;
         } else {
-            LOG.info("Unknow source stream, " + stream_id + " from task-" + input.getSourceTask());
+            LOG.info("Unknown source stream, " + stream_id + " from task-" + input.getSourceTask());
             return;
         }
 
@@ -116,18 +114,18 @@ public class Acker implements IBolt {
                     collector.emitDirect(task, Acker.ACKER_FAIL_STREAM_ID, values);
                 }
             }
-        } else {
-
         }
 
-        // add this operation to update acker's ACK statics
+        // add this operation to update acker stats
         collector.ack(input);
 
         long now = System.currentTimeMillis();
         if (now - lastRotate > rotateTime) {
             lastRotate = now;
             Map<Object, AckObject> tmp = pending.rotate();
-            LOG.info("Acker's timeout item size:{}", tmp.size());
+            if (tmp.size() > 0) {
+                LOG.warn("Acker's timeout item size:{}", tmp.size());
+            }
         }
 
     }

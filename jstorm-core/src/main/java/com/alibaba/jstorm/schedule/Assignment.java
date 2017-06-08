@@ -29,9 +29,12 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import com.alibaba.jstorm.schedule.default_assign.ResourceWorkerSlot;
 
 /**
- * Assignment of one Toplogy, stored in /ZK-DIR/assignments/{topologyid} nodeHost {supervisorid: hostname} -- assigned supervisor Map taskStartTimeSecs:
- * {taskid, taskStartSeconds} masterCodeDir: topology source code's dir in Nimbus taskToResource: {taskid, ResourceAssignment}
- * 
+ * Assignment of one topology, stored in /ZK-DIR/assignments/{topologyId}
+ * nodeHost {supervisorId: hostname} -- assigned supervisor
+ * Map taskStartTimeSecs: {taskId, taskStartSeconds}
+ * masterCodeDir: topology source code's dir in Nimbus
+ * taskToResource: {taskId, ResourceAssignment}
+ *
  * @author Lixin/Longda
  */
 public class Assignment implements Serializable {
@@ -43,7 +46,7 @@ public class Assignment implements Serializable {
 
     private final String masterCodeDir;
     /**
-     * @@@ nodeHost store <supervisorId, hostname>, this will waste some zk storage
+     * nodeHost which will be stored in zk
      */
     private final Map<String, String> nodeHost;
     private final Map<Integer, Integer> taskStartTimeSecs;
@@ -55,14 +58,15 @@ public class Assignment implements Serializable {
 
     public Assignment() {
         masterCodeDir = null;
-        this.nodeHost = new HashMap<String, String>();
-        this.taskStartTimeSecs = new HashMap<Integer, Integer>();
-        this.workers = new HashSet<ResourceWorkerSlot>();
+        this.nodeHost = new HashMap<>();
+        this.taskStartTimeSecs = new HashMap<>();
+        this.workers = new HashSet<>();
         this.timeStamp = System.currentTimeMillis();
         this.type = AssignmentType.Assign;
     }
 
-    public Assignment(String masterCodeDir, Set<ResourceWorkerSlot> workers, Map<String, String> nodeHost, Map<Integer, Integer> taskStartTimeSecs) {
+    public Assignment(String masterCodeDir, Set<ResourceWorkerSlot> workers,
+                      Map<String, String> nodeHost, Map<Integer, Integer> taskStartTimeSecs) {
         this.workers = workers;
         this.nodeHost = nodeHost;
         this.taskStartTimeSecs = taskStartTimeSecs;
@@ -96,14 +100,13 @@ public class Assignment implements Serializable {
     }
 
     /**
-     * find workers for every supervisorId (node)
-     * 
-     * @param supervisorId
-     * @return Map<Integer, WorkerSlot>
+     * get workers for every supervisorId (node)
+     *
+     * @param supervisorId supervisor
+     * @return Map[Integer, WorkerSlot]
      */
     public Map<Integer, ResourceWorkerSlot> getTaskToNodePortbyNode(String supervisorId) {
-
-        Map<Integer, ResourceWorkerSlot> result = new HashMap<Integer, ResourceWorkerSlot>();
+        Map<Integer, ResourceWorkerSlot> result = new HashMap<>();
         for (ResourceWorkerSlot worker : workers) {
             if (worker.getNodeId().equals(supervisorId)) {
                 result.put(worker.getPort(), worker);
@@ -113,35 +116,29 @@ public class Assignment implements Serializable {
     }
 
     public Set<Integer> getCurrentSuperviosrTasks(String supervisorId) {
-        Set<Integer> Tasks = new HashSet<Integer>();
-
+        Set<Integer> Tasks = new HashSet<>();
         for (ResourceWorkerSlot worker : workers) {
             if (worker.getNodeId().equals(supervisorId))
                 Tasks.addAll(worker.getTasks());
         }
-
         return Tasks;
     }
 
     public Set<Integer> getCurrentSuperviosrWorkers(String supervisorId) {
-        Set<Integer> workerSet = new HashSet<Integer>();
-
+        Set<Integer> workerSet = new HashSet<>();
         for (ResourceWorkerSlot worker : workers) {
             if (worker.getNodeId().equals(supervisorId))
                 workerSet.add(worker.getPort());
         }
-
         return workerSet;
     }
 
     public Set<Integer> getCurrentWorkerTasks(String supervisorId, int port) {
-
         for (ResourceWorkerSlot worker : workers) {
             if (worker.getNodeId().equals(supervisorId) && worker.getPort() == port)
                 return worker.getTasks();
         }
-
-        return new HashSet<Integer>();
+        return new HashSet<>();
     }
 
     public ResourceWorkerSlot getWorkerByTaskId(Integer taskId) {
@@ -158,8 +155,10 @@ public class Assignment implements Serializable {
 
     public boolean isTopologyChange(long oldTimeStamp) {
         boolean isChange = false;
-        if (timeStamp > oldTimeStamp && (type.equals(AssignmentType.UpdateTopology) || type.equals(AssignmentType.ScaleTopology)))
+        if (timeStamp > oldTimeStamp && (type.equals(AssignmentType.UpdateTopology) ||
+                type.equals(AssignmentType.ScaleTopology))) {
             isChange = true;
+        }
         return isChange;
     }
 

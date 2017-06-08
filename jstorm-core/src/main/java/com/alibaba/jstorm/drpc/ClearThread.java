@@ -17,19 +17,16 @@
  */
 package com.alibaba.jstorm.drpc;
 
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Semaphore;
-
-import backtype.storm.generated.DRPCRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import backtype.storm.Config;
-
+import backtype.storm.generated.DRPCRequest;
 import com.alibaba.jstorm.callback.RunnableCallback;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.TimeUtils;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Semaphore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ClearThread extends RunnableCallback {
     private static final Logger LOG = LoggerFactory.getLogger(ClearThread.class);
@@ -43,20 +40,19 @@ public class ClearThread extends RunnableCallback {
         drpcService = drpc;
 
         REQUEST_TIMEOUT_SECS = JStormUtils.parseInt(drpcService.getConf().get(Config.DRPC_REQUEST_TIMEOUT_SECS), 60);
-        LOG.info("Drpc timeout seconds is " + REQUEST_TIMEOUT_SECS);
+        LOG.info("Drpc timeout seconds: " + REQUEST_TIMEOUT_SECS);
     }
 
     @Override
     public void run() {
-
-        for (Entry<String, Integer> e : drpcService.getIdtoStart().entrySet()) {
+        for (Entry<String, Integer> e : drpcService.getIdToStart().entrySet()) {
             if (TimeUtils.time_delta(e.getValue()) > REQUEST_TIMEOUT_SECS) {
                 String id = e.getKey();
 
-                LOG.warn("Timeout DRPC request id: {} start at {}", id, e.getValue());
-                ConcurrentLinkedQueue<DRPCRequest> queue = drpcService.acquireQueue(drpcService.getIdtoFunction().get(id));
-                queue.remove(drpcService.getIdtoRequest().get(id));     //remove timeout request
-                Semaphore s = drpcService.getIdtoSem().get(id);
+                LOG.warn("DRPC request timed out, id: {} start at {}", id, e.getValue());
+                ConcurrentLinkedQueue<DRPCRequest> queue = drpcService.acquireQueue(drpcService.getIdToFunction().get(id));
+                queue.remove(drpcService.getIdToRequest().get(id)); //remove timeout request
+                Semaphore s = drpcService.getIdToSem().get(id);
                 if (s != null) {
                     s.release();
                 }
@@ -64,14 +60,10 @@ public class ClearThread extends RunnableCallback {
                 LOG.info("Clear request " + id);
             }
         }
-
         JStormUtils.sleepMs(10);
-
     }
 
     public Object getResult() {
         return TIMEOUT_CHECK_SECS;
-
     }
-
 }

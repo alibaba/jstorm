@@ -32,15 +32,13 @@ import org.slf4j.LoggerFactory;
 import com.alibaba.jstorm.utils.SystemOperation;
 
 public class CgroupUtils {
-
-    public static final Logger LOG = LoggerFactory.getLogger(CgroupUtils.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CgroupUtils.class);
 
     public static void deleteDir(String dir) {
         try {
             String cmd = "rmdir " + dir;
             SystemOperation.exec(cmd);
         } catch (IOException e) {
-            // TODO Auto-generated catch block
             LOG.error("rm " + dir + " fail!", e);
         }
     }
@@ -56,7 +54,7 @@ public class CgroupUtils {
     }
 
     public static Set<SubSystemType> analyse(String str) {
-        Set<SubSystemType> result = new HashSet<SubSystemType>();
+        Set<SubSystemType> result = new HashSet<>();
         String[] subSystems = str.split(",");
         for (String subSystem : subSystems) {
             SubSystemType type = SubSystemType.getSubSystem(subSystem);
@@ -81,14 +79,14 @@ public class CgroupUtils {
     }
 
     public static List<String> readFileByLine(String fileDir) throws IOException {
-        List<String> result = new ArrayList<String>();
+        List<String> result = new ArrayList<>();
         FileReader fileReader = null;
         BufferedReader reader = null;
         try {
             File file = new File(fileDir);
             fileReader = new FileReader(file);
             reader = new BufferedReader(fileReader);
-            String tempString = null;
+            String tempString;
             while ((tempString = reader.readLine()) != null) {
                 result.add(tempString);
             }
@@ -145,9 +143,7 @@ public class CgroupUtils {
                 reader.close();
             if (br != null)
                 br.close();
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-
+        } catch (IOException ignored) {
         }
     }
 
@@ -157,17 +153,14 @@ public class CgroupUtils {
                 writer.close();
             if (bw != null)
                 bw.close();
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-
+        } catch (IOException ignored) {
         }
     }
 
     public static void sleep(long s) {
         try {
             Thread.sleep(s);
-        } catch (InterruptedException e) {
-            // TODO Auto-generated catch block
+        } catch (InterruptedException ignored) {
         }
     }
 }

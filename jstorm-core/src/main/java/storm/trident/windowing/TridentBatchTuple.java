@@ -20,9 +20,6 @@ package storm.trident.windowing;
 
 import storm.trident.tuple.TridentTuple;
 
-/**
- *
- */
 public class TridentBatchTuple {
     final String effectiveBatchId;
     final long timeStamp;

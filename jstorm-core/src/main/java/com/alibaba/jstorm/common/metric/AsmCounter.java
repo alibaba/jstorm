@@ -23,6 +23,7 @@ import com.alibaba.jstorm.common.metric.snapshot.AsmSnapshot;
 import com.alibaba.jstorm.metric.MetricUtils;
 import com.codahale.metrics.Counter;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -46,6 +47,16 @@ public class AsmCounter extends AsmMetric<Counter> {
         update(1);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @VisibleForTesting
+    public Object getValue(Integer win) {
+        synchronized (this) {
+            return unFlushed.getCount() + counterMap.get(win).getCount();
+        }
+    }
+
     @Override
     public void update(Number val) {
         this.unFlushed.inc(val.longValue());
@@ -67,13 +78,11 @@ public class AsmCounter extends AsmMetric<Counter> {
         for (Counter counter : counterMap.values()) {
             counter.inc(v);
         }
-        if (MetricUtils.metricAccurateCal){
+        if (MetricUtils.metricAccurateCal) {
             for (AsmMetric assocMetric : assocMetrics) {
                 assocMetric.updateDirectly(v);
             }
-
         }
-
         this.unFlushed.dec(v);
     }
 

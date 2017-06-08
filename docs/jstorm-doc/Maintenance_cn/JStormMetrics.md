@@ -295,3 +295,126 @@ myHistogram = metricClient.registerHistogram("myHistogram");
 ## TODO
 1. 简化发往nimbus的metrics数据
 
+
+## 附录一: Metrics含义
+
+### Topology Metrics
+
+#### MemoryUsed
+cluster/topology/worker使用到的物理内存
+
+#### HeapMemory
+cluster/topology/worker JVM使用到的堆内存
+
+#### CpuUsedRatio 
+cluster/topology/worker cpu利用率，62.000 表示使用0.62个cpu，200.00表示使用2个cpu
+
+#### NettyCliSendSpeed
+cluster/topology/worker当前发送流量,单位字节/每秒
+
+#### NettySrvRecvSpeed
+cluster/topology/worker当前接收流量,单位字节/每秒
+
+#### FullGc
+cluster/topology/worker当前1分钟 full gc 次数
+
+#### RecvTps
+cluster/topology/component/task/stream 接收到的tuple的tps。
+
+#### SendTps
+cluster/topology/component/task/stream 发送tuple的tps。
+
+#### Emitted
+cluster/topology/component/task/stream 当前1分钟发送的消息数，包括业务消息和acker消息。
+
+#### Acked
+cluster/topology/component/task/stream 当前1分钟被ack的消息数。注意这个和Emitted的区别：
+如果打开了acker机制， emitted的消息里面含有acker消息， 经常emitted 消息数量是acker消息数量的2倍。
+
+#### Failed
+cluster/topology/component/task/stream 当前1分钟 被ack失败的消息数（可能是没有完全处理，也可能是超时）。
+
+
+### Component 级别
+
+#### EmitTime
+component/task/stream, 这是spout/bolt将消息发布到disruptor队列中的时间，单位为微秒，
+JStorm从2.1.0开始所有时间相关的单位均为微秒。
+
+#### DeserializeTime
+component/task/stream, TaskReceiver中对一个tuple做反序列化的时间，单位为微秒。
+
+#### SerializeTime
+component/task/stream, TaskTransfer中对一个tuple做序列化的时间，单位为微秒。
+
+#### ExecutorTime
+component/task/stream, 只在spout中存在，nextTuple所花费的时间，单位为微秒。
+
+#### ProcessLatency
+component/task/stream, 这个是bolt execute消耗的时间，单位为微秒，
+具体来说，就是从processTuple时，tuple被放进pending map时会给一个时间，
+到调用ack的时候从pending map中取出来，用当前时间减去放入的时间，即为ProcessLatency。
+
+如果是spout，则为从消息最初从spout发出，一直到最后收到acker的ack消息的完整时间。
+在spout中，由于ProcessLatency意味着一个tuple走完了所有的bolt最后被ack，
+因此通常会比较大（一般会比TupleLifeCycle还要大）。
+
+#### TupleLifeCycle
+component/task/stream, 这个是一个tuple或者一个batch从上一级component中被emit出来，单位为微秒，
+到当前component接收到这个tuple或者batch的时间，这段时间包括了上游序列化时间、网络发送和下游反序列化时间的总和
+
+
+### Task 级别
+
+#### DeserializeQueue
+反序列化队列堆积情况。补充说明，一个task 有4个队列， 反序列化队列，执行队列，控制消息队列，序列化队列。
+
+#### SerializeQueue
+序列化队列堆积情况。补充说明，一个task 有4个队列， 反序列化队列，执行队列，控制消息队列，序列化队列。
+
+#### ExecutorQueue
+执行队列堆积情况。补充说明，一个task 有4个队列， 反序列化队列，执行队列，控制消息队列，序列化队列。
+
+#### CtrlQueue
+控制执行队列的堆积情况。补充说明，一个task 有4个队列， 反序列化队列，执行队列，控制消息队列，序列化队列。
+
+#### PendingNum
+只对spout有效，表示 spout 中已经发送了但还没有ack的tuple数量
+
+#### BatchInterval
+性能调优使用， 表示2次batch打满时，间隔微秒
+
+
+### Worker 级别
+
+#### GCCount
+当前1分钟gc的次数
+
+#### GCTime
+当前1分钟gc所花费的时间之和，单位是微妙
+
+#### NettyCliSendBatchSize
+当前1分钟worker 发送netty包的平均大小(Bytes)
+
+#### NettySrvTransmitTime
+当前1分钟，worker 解析netty包的耗时，单位微秒。
+
+#### RecvCtrlQueue
+worker级别的总接受控制队列堆积情况
+
+#### SendCtrlQueue
+worker级别的总发送控制队列堆积情况
+
+### supervisor 级别
+
+#### DiskUsage
+当前jstorm账户所在文件磁盘空间的利用率；
+
+#### MemoryUsage
+当前机器的内存利用率
+
+#### CpuUsedRatio
+当前机器的cpu利用率
+
+#### NettyCliSendSpeed/NettySrvRecvSpeed
+当前机器网卡每秒接收和发送字节数

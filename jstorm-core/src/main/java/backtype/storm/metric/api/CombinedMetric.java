@@ -17,6 +17,7 @@
  */
 package backtype.storm.metric.api;
 
+@Deprecated
 public class CombinedMetric implements IMetric {
     private final ICombiner _combiner;
     private Object _value;

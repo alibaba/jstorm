@@ -29,7 +29,7 @@ import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.SmartThread;
 
 /**
- * Wrapper Timer thread Every several seconds execute afn, if something is run, run kill_fn
+ * wraps timer thread to execute afn every several seconds, if an exception is thrown, run killFn
  *
  * @author yannian
  */
@@ -37,7 +37,6 @@ public class AsyncLoopThread implements SmartThread {
     private static final Logger LOG = LoggerFactory.getLogger(AsyncLoopThread.class);
 
     private Thread thread;
-
     private RunnableCallback afn;
 
     public AsyncLoopThread(RunnableCallback afn) {
@@ -84,7 +83,6 @@ public class AsyncLoopThread implements SmartThread {
         if (start) {
             thread.start();
         }
-
     }
 
     @Override

@@ -120,7 +120,7 @@ public class StatefulWindowedBoltExecutor<T extends State> extends WindowedBoltE
                 super.execute(input);
             } else {
                 LOG.debug("Tuple msg id {} > lastEvaluated id {}, adding to pendingTuples and clearing recovery state " +
-                                  "for taskStream {}", msgId, state.lastEvaluated, taskStream);
+                        "for taskStream {}", msgId, state.lastEvaluated, taskStream);
                 pendingTuples.add(input);
                 clearRecoveryState(taskStream);
             }
@@ -211,7 +211,7 @@ public class StatefulWindowedBoltExecutor<T extends State> extends WindowedBoltE
             public void onActivation(List<Tuple> events, List<Tuple> newEvents, List<Tuple> expired) {
                 if (isRecovering()) {
                     String msg = String.format("Unexpected activation with events %s, newEvents %s, expired %s in recovering state. " +
-                                                       "recoveryStates %s ", events, newEvents, expired, recoveryStates);
+                            "recoveryStates %s ", events, newEvents, expired, recoveryStates);
                     LOG.error(msg);
                     throw new IllegalStateException(msg);
                 } else {
@@ -251,7 +251,7 @@ public class StatefulWindowedBoltExecutor<T extends State> extends WindowedBoltE
                 streamState.put(taskStream, newState);
             } else {
                 WindowState updatedState = new WindowState(Math.max(newState.lastExpired, curState.lastExpired),
-                                                           Math.max(newState.lastEvaluated, curState.lastEvaluated));
+                        Math.max(newState.lastEvaluated, curState.lastEvaluated));
                 LOG.debug("Update window state, taskStream {}, curState {}, newState {}", taskStream, curState, updatedState);
                 streamState.put(taskStream, updatedState);
             }

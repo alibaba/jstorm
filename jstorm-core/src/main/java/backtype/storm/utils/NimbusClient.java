@@ -54,7 +54,6 @@ public class NimbusClient extends ThriftClient {
         try {
             serverVersion = client.getClient().getVersion();
         } catch (TException e) {
-            // TODO Auto-generated catch block
             LOG.warn("Failed to get nimbus version ");
             return;
         }
@@ -67,8 +66,8 @@ public class NimbusClient extends ThriftClient {
         try {
             if (conf.containsKey(Config.STORM_DO_AS_USER)) {
                 if (asUser != null && !asUser.isEmpty()) {
-                    LOG.warn("You have specified a doAsUser as param {} and a doAsParam as config, config will take precedence.", asUser,
-                            conf.get(Config.STORM_DO_AS_USER));
+                    LOG.warn("You have specified a doAsUser as param {} and a doAsParam as config, " +
+                            "config will take precedence.", asUser, conf.get(Config.STORM_DO_AS_USER));
                 }
                 asUser = (String) conf.get(Config.STORM_DO_AS_USER);
             }

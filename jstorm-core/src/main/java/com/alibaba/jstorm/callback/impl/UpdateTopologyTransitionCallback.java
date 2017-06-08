@@ -32,14 +32,11 @@ import com.alibaba.jstorm.schedule.Assignment.AssignmentType;
 
 /**
  * Update user configuration
- * 
+ *
  * @author Basti.lj
  */
 public class UpdateTopologyTransitionCallback extends BaseCallback {
-
-    private static Logger LOG = LoggerFactory.getLogger(DelayStatusTransitionCallback.class);
-
-    public static final int DEFAULT_DELAY_SECONDS = 30;
+    private static final Logger LOG = LoggerFactory.getLogger(DelayStatusTransitionCallback.class);
 
     private NimbusData data;
     private String topologyId;
@@ -62,7 +59,7 @@ public class UpdateTopologyTransitionCallback extends BaseCallback {
             assignment.setAssignmentType(AssignmentType.UpdateTopology);
             assignment.updateTimeStamp();
             clusterState.set_assignment(topologyId, assignment);
-            LOG.info("Successfully update topology information to ZK for " + topologyId);
+            LOG.info("Successfully updated topology information to ZK for " + topologyId);
         } catch (Exception e) {
             LOG.error("Failed to update topology.", e);
         }

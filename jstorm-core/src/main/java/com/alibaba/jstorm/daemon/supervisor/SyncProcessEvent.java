@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
+ * <p>
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,12 +17,14 @@
  */
 package com.alibaba.jstorm.daemon.supervisor;
 
+import com.alibaba.jstorm.cluster.StormClusterState;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -33,7 +35,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 import com.alibaba.jstorm.daemon.worker.*;
+import com.alibaba.jstorm.oversold.GcStrategy;
+import com.alibaba.jstorm.oversold.GcStrategyManager;
 import com.alibaba.jstorm.task.error.ErrorConstants;
+import com.alibaba.jstorm.utils.*;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -47,15 +52,11 @@ import backtype.storm.utils.LocalState;
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.cluster.Common;
 import com.alibaba.jstorm.cluster.StormConfig;
-import com.alibaba.jstorm.utils.JStormUtils;
-import com.alibaba.jstorm.utils.Pair;
-import com.alibaba.jstorm.utils.PathUtils;
-import com.alibaba.jstorm.utils.ProcessLauncher;
-import com.alibaba.jstorm.utils.TimeFormat;
-import com.alibaba.jstorm.utils.TimeUtils;
 
 /**
- * SyncProcesses (1) kill bad worker (2) start new worker
+ * SyncProcessesEvent:
+ * 1. kill bad workers
+ * 2. start new workers
  *
  * @author Johnfang (xiaojian.fxj@alibaba-inc.com)
  */
@@ -64,17 +65,11 @@ class SyncProcessEvent extends ShutdownWork {
     private static Logger LOG = LoggerFactory.getLogger(SyncProcessEvent.class);
 
     private LocalState localState;
-
     private Map conf;
-
     private ConcurrentHashMap<String, String> workerThreadPids;
-
     private String supervisorId;
-
     private IContext sharedContext;
-
     private CgroupManager cgroupManager;
-
     private SandBoxMaker sandBoxMaker;
 
     /**
@@ -86,56 +81,57 @@ class SyncProcessEvent extends ShutdownWork {
      */
     private Map<Integer, String> portToWorkerId = new HashMap<>();
 
-    private AtomicReference<Set> needDownloadTopologys;
+    private AtomicReference<Set> needDownloadTopologies;
+
+    private boolean isJstormOnYarn;
 
     // workers under killing, Map<workerId, time of kill start>;
     private Map<String, Integer> killingWorkers;
+    private Map<String, Set<Pair<String, Integer>>> upgradingTopologyPorts;
 
     // private Supervisor supervisor;
     private int lastTime;
 
     private WorkerReportError workerReportError;
+    private StormClusterState stormClusterState;
 
     public SyncProcessEvent(String supervisorId, Map conf, LocalState localState,
                             ConcurrentHashMap<String, String> workerThreadPids,
-                            IContext sharedContext, WorkerReportError workerReportError) {
-
+                            IContext sharedContext, WorkerReportError workerReportError,
+                            StormClusterState stormClusterState) {
         this.supervisorId = supervisorId;
-
         this.conf = conf;
-
         this.localState = localState;
-
         this.workerThreadPids = workerThreadPids;
 
         // right now, sharedContext is null
         this.sharedContext = sharedContext;
-
         this.sandBoxMaker = new SandBoxMaker(conf);
-
         this.workerIdToStartTimeAndPort = new HashMap<>();
-
-        this.needDownloadTopologys = new AtomicReference<>();
-
-
+        this.needDownloadTopologies = new AtomicReference<>();
+        this.isJstormOnYarn = JStormUtils.parseBoolean(System.getProperty("jstorm-on-yarn"), false) ||
+                ConfigExtension.isJStormOnYarn(conf);
         if (ConfigExtension.isEnableCgroup(conf)) {
             cgroupManager = new CgroupManager(conf);
         }
-        killingWorkers = new HashMap<>();
+        this.killingWorkers = new HashMap<>();
+        this.upgradingTopologyPorts = new HashMap<>();
         this.workerReportError = workerReportError;
+        this.stormClusterState = stormClusterState;
     }
 
     /**
-     * @@@ Change the old logic In the old logic, it will store LS_LOCAL_ASSIGNMENTS Map<String, Integer> into LocalState
-     *
-     * But I don't think LS_LOCAL_ASSIGNMENTS is useful, so remove this logic
+     * Note: Changed the old logic. In the old logic, it will store LS_LOCAL_ASSIGNMENTS Map<String, Integer>
+     * into LocalState but I don't think LS_LOCAL_ASSIGNMENTS is useful
      */
     @Override
     public void run() {
     }
 
-    public void run(Map<Integer, LocalAssignment> localAssignments, Set<String> downloadFailedTopologyIds) {
-        LOG.debug("Syncing processes, interval seconds:" + TimeUtils.time_delta(lastTime));
+    public void run(Map<Integer, LocalAssignment> localAssignments,
+                    Set<String> downloadFailedTopologyIds,
+                    Map<String, Set<Pair<String, Integer>>> upgradeTopologyPorts) {
+        LOG.debug("Syncing processes, interval (sec): " + TimeUtils.time_delta(lastTime));
         lastTime = TimeUtils.current_time_secs();
         try {
 
@@ -154,7 +150,7 @@ class SyncProcessEvent extends ShutdownWork {
             try {
                 localWorkerStats = getLocalWorkerStats(conf, localState, localAssignments);
             } catch (Exception e) {
-                LOG.error("Failed to get Local worker stats");
+                LOG.error("Failed to get local worker stats");
                 throw e;
             }
             LOG.debug("Allocated: " + localWorkerStats);
@@ -176,24 +172,101 @@ class SyncProcessEvent extends ShutdownWork {
             checkNewWorkers(conf);
 
             // check which topology need update
-            checkNeedUpdateTopologys(localWorkerStats, localAssignments);
+            checkNeedUpdateTopologies(localWorkerStats, localAssignments);
 
             // start new workers
             startNewWorkers(keepPorts, localAssignments, downloadFailedTopologyIds);
 
+            // restart upgraded workers
+            restartUpgradingWorkers(localAssignments, localWorkerStats, upgradeTopologyPorts);
+
         } catch (Exception e) {
-            LOG.error("Failed Sync Process", e);
+            LOG.error("Failed to init SyncProcessEvent", e);
             // throw e
         }
+    }
 
+    private void restartUpgradingWorkers(Map<Integer, LocalAssignment> assignments,
+                                         Map<String, StateHeartbeat> localWorkerStats,
+                                         Map<String, Set<Pair<String, Integer>>> upgradeTopologyPorts) throws Exception {
+        if (upgradeTopologyPorts.size() == 0) {
+            return;
+        }
+
+        Map<Integer, String> portToWorkerId = new HashMap<>();
+        for (Entry<String, StateHeartbeat> entry : localWorkerStats.entrySet()) {
+            String workerId = entry.getKey();
+            StateHeartbeat heartbeat = entry.getValue();
+            if (heartbeat != null) {
+                portToWorkerId.put(heartbeat.getHeartbeat().getPort(), workerId);
+            }
+        }
+
+        Map<String, String> workerIdToTopology = new HashMap<>();
+        Map<String, String> workerIdToHostPort = new HashMap<>();
+        for (Entry<String, Set<Pair<String, Integer>>> entry : upgradeTopologyPorts.entrySet()) {
+            String topologyId = entry.getKey();
+            Set<Pair<String, Integer>> hostPorts = entry.getValue();
+            for (Pair<String, Integer> hostPort : hostPorts) {
+                String workerId = portToWorkerId.get(hostPort.getSecond());
+                if (workerId == null) {
+                    LOG.error("Failed to get worker id for port:{}", hostPort.getSecond());
+                } else {
+                    Set<Pair<String, Integer>> upgradingHostPorts = upgradingTopologyPorts.get(topologyId);
+                    if (upgradingHostPorts == null) {
+                        upgradingHostPorts = new HashSet<>();
+                        upgradingTopologyPorts.put(topologyId, upgradingHostPorts);
+                    }
+                    if (!upgradingHostPorts.contains(hostPort)) {
+                        killingWorkers.put(workerId, TimeUtils.current_time_secs());
+                        workerIdToTopology.put(workerId, topologyId);
+                        workerIdToHostPort.put(workerId,
+                                topologyId + "[" + hostPort.getFirst() + ":" + hostPort.getSecond() + "]");
+                        upgradingHostPorts.add(hostPort);
+                    }
+                }
+            }
+        }
+
+        LOG.info("\n***********************************************\n" +
+                "Upgrading following workers:{}\n" +
+                "***********************************************", workerIdToHostPort);
+        shutWorker(conf, supervisorId, workerIdToTopology, null, null, false, null, null);
+
+        Map<Integer, LocalAssignment> portToAssignment = new HashMap<>();
+        for (Set<Pair<String, Integer>> hostPorts : upgradeTopologyPorts.values()) {
+            for (Pair<String, Integer> hostPort : hostPorts) {
+                Integer port = hostPort.getSecond();
+                LocalAssignment assignment = assignments.get(port);
+                if (assignment == null) {
+                    LOG.error("Failed to get local assignment for port:{}", port);
+                } else {
+                    portToAssignment.put(port, assignment);
+                }
+            }
+        }
+
+        LOG.info("Starting workers...");
+        startWorkers(portToAssignment);
+
+        LOG.info("Updating upgrading workers on zk...");
+        for (Entry<String, Set<Pair<String, Integer>>> entry : upgradeTopologyPorts.entrySet()) {
+            String topologyId = entry.getKey();
+            for (Pair<String, Integer> hostPort : entry.getValue()) {
+                String hp = hostPort.getFirst() + ":" + hostPort.getSecond();
+                stormClusterState.remove_upgrading_worker(topologyId, hp);
+                stormClusterState.add_upgraded_worker(topologyId, hp);
+            }
+        }
+        upgradingTopologyPorts.clear();
     }
 
     /**
      * check all workers is failed or not
      */
     @SuppressWarnings("unchecked")
-    public void checkNeedUpdateTopologys(Map<String, StateHeartbeat> localWorkerStats,
-                                         Map<Integer, LocalAssignment> localAssignments) throws Exception {
+    private void checkNeedUpdateTopologies(Map<String, StateHeartbeat> localWorkerStats,
+                                           Map<Integer, LocalAssignment> localAssignments) throws Exception {
         Set<String> topologies = new HashSet<>();
 
         for (Map.Entry<Integer, LocalAssignment> entry : localAssignments.entrySet()) {
@@ -211,22 +284,22 @@ class SyncProcessEvent extends ShutdownWork {
         Set<String> needRemoveTopologies = new HashSet<>();
         for (String topologyId : topologies) {
             try {
-                long lastModifytime = StormConfig.get_supervisor_topology_Bianrymodify_time(conf, topologyId);
-                if ((currTime - lastModifytime) / 1000 < (JStormUtils.MIN_1 * 2)) {
-                    LOG.debug("less 2 minute ,so removed " + topologyId);
+                long lastModifyTime = StormConfig.get_supervisor_topology_Bianrymodify_time(conf, topologyId);
+                if ((currTime - lastModifyTime) / 1000 < (JStormUtils.MIN_1 * 2)) {
+                    LOG.debug("less than 2 minute, removing " + topologyId);
                     needRemoveTopologies.add(topologyId);
                 }
             } catch (Exception e) {
-                LOG.error("Failed to get the time of file last modification for topology" + topologyId, e);
+                LOG.error("Failed to get last modified time for topology" + topologyId, e);
                 needRemoveTopologies.add(topologyId);
             }
         }
         topologies.removeAll(needRemoveTopologies);
 
         if (topologies.size() > 0) {
-            LOG.debug("Following topologies are going to re-download the jars, " + topologies);
+            LOG.debug("Following topologies are going to re-download jars, " + topologies);
         }
-        needDownloadTopologys.set(topologies);
+        needDownloadTopologies.set(topologies);
     }
 
     /**
@@ -240,8 +313,8 @@ class SyncProcessEvent extends ShutdownWork {
             if (oldWorkerIds != null) {
                 workerIdToStartTimeAndPort.remove(oldWorkerIds);
                 // update portToWorkerId
-                LOG.info("exit port is still occupied by old workerId, so remove useless "
-                        + oldWorkerIds + " form workerIdToStartTimeAndPort");
+                LOG.info("A port is still occupied by an old worker, remove useless "
+                        + oldWorkerIds + " from workerIdToStartTimeAndPort");
             }
             portToWorkerId.put(entry.getKey(), entry.getValue());
             workerIdToStartTimeAndPort.put(entry.getValue(), new Pair<>(startTime, entry.getKey()));
@@ -249,7 +322,7 @@ class SyncProcessEvent extends ShutdownWork {
     }
 
     /**
-     * check new workers if the time is not > * SUPERVISOR_WORKER_START_TIMEOUT_SECS, otherwise info failed
+     * check whether timestamp of new workers is not > SUPERVISOR_WORKER_START_TIMEOUT_SECS, otherwise mark as failed
      */
     public void checkNewWorkers(Map conf) throws IOException, InterruptedException {
         Set<String> workers = new HashSet<>();
@@ -267,7 +340,7 @@ class SyncProcessEvent extends ShutdownWork {
                     workers.add(workerId);
                 }
             } else {
-                LOG.info("Successfully start worker " + workerId);
+                LOG.info("Successfully started worker " + workerId);
                 workers.add(workerId);
             }
         }
@@ -283,14 +356,13 @@ class SyncProcessEvent extends ShutdownWork {
     }
 
     /**
-     * get localstat approved workerId's map
+     * get localStat of approved workerId's map
      *
-     * @return Map<workerid [workerheart, state]> [workerheart, state] is also a map, key is "workheartbeat" and "state"
-     * @throws IOException
+     * @return Map[workerId, [worker heartbeat, state]]
      */
     public Map<String, StateHeartbeat> getLocalWorkerStats(
             Map conf, LocalState localState, Map<Integer, LocalAssignment> assignedTasks) throws Exception {
-        Map<String, StateHeartbeat> workerIdHbstate = new HashMap<>();
+        Map<String, StateHeartbeat> workerIdHbState = new HashMap<>();
         int now = TimeUtils.current_time_secs();
 
         /**
@@ -308,7 +380,7 @@ class SyncProcessEvent extends ShutdownWork {
                 if (timeToPort != null) {
                     LocalAssignment localAssignment = assignedTasks.get(timeToPort.getSecond());
                     if (localAssignment == null) {
-                        LOG.info("Following worker don't exit assignment, so remove this port=" + timeToPort.getSecond());
+                        LOG.info("Following worker doesn't exist in the assignment, remove port=" + timeToPort.getSecond());
                         state = State.disallowed;
                         // workerId is disallowed ,so remove it from workerIdToStartTimeAndPort
                         Integer port = this.workerIdToStartTimeAndPort.get(workerId).getSecond();
@@ -317,13 +389,11 @@ class SyncProcessEvent extends ShutdownWork {
                     }
                 }
             } else if (!matchesAssignment(whb, assignedTasks)) {
-                // workerId isn't approved or
-                // isn't assigned task
+                // workerId isn't approved or isn't assigned task
                 state = State.disallowed;
-
             } else if ((now - whb.getTimeSecs()) > JStormUtils.parseInt(conf.get(Config.SUPERVISOR_WORKER_TIMEOUT_SECS))) {
                 if (!killingWorkers.containsKey(workerId)) {
-                    String outTimeInfo = " it is likely to be out of memory, the worker is time out ";
+                    String outTimeInfo = " it is likely to be out of memory, the worker heartbeat has timed out ";
                     workerReportError.report(whb.getTopologyId(), whb.getPort(),
                             whb.getTaskIds(), outTimeInfo, ErrorConstants.CODE_WORKER_TIMEOUT);
                 }
@@ -351,10 +421,10 @@ class SyncProcessEvent extends ShutdownWork {
                         + " at supervisor time-secs " + now);
             }
 
-            workerIdHbstate.put(workerId, new StateHeartbeat(state, whb));
+            workerIdHbState.put(workerId, new StateHeartbeat(state, whb));
         }
 
-        return workerIdHbstate;
+        return workerIdHbState;
     }
 
     /**
@@ -367,7 +437,6 @@ class SyncProcessEvent extends ShutdownWork {
     public boolean matchesAssignment(WorkerHeartbeat whb, Map<Integer, LocalAssignment> assignedTasks) {
         boolean isMatch = true;
         LocalAssignment localAssignment = assignedTasks.get(whb.getPort());
-
         if (localAssignment == null) {
             LOG.debug("Following worker has been removed, port=" + whb.getPort() + ", assignedTasks=" + assignedTasks);
             isMatch = false;
@@ -420,27 +489,22 @@ class SyncProcessEvent extends ShutdownWork {
     public WorkerHeartbeat readWorkerHeartbeat(Map conf, String workerId) throws Exception {
         try {
             LocalState ls = StormConfig.worker_state(conf, workerId);
-
             return (WorkerHeartbeat) ls.get(Common.LS_WORKER_HEARTBEAT);
         } catch (Exception e) {
-            LOG.error("Failed to get worker Heartbeat", e);
+            LOG.error("Failed to get heartbeat for worker:{}", workerId, e);
             return null;
         }
-
     }
 
     /**
      * launch a worker in local mode
      */
-    public void launchWorker(Map conf, IContext sharedcontext, String topologyId,
+    public void launchWorker(Map conf, IContext sharedContext, String topologyId,
                              String supervisorId, Integer port, String workerId,
                              ConcurrentHashMap<String, String> workerThreadPidsAtom) throws Exception {
         String pid = UUID.randomUUID().toString();
-
-        WorkerShutdown worker = Worker.mk_worker(conf, sharedcontext, topologyId, supervisorId, port, workerId, null);
-
+        WorkerShutdown worker = Worker.mk_worker(conf, sharedContext, topologyId, supervisorId, port, workerId, null);
         ProcessSimulator.registerProcess(pid, worker);
-
         workerThreadPidsAtom.put(workerId, pid);
     }
 
@@ -499,19 +563,15 @@ class SyncProcessEvent extends ShutdownWork {
     }
 
     public AtomicReference<Set> getTopologyIdNeedDownload() {
-        return needDownloadTopologys;
+        return needDownloadTopologies;
     }
 
     private String getClassPath(String stormHome, Map totalConf) {
         // String classpath = JStormUtils.current_classpath() + ":" + stormjar;
         // return classpath;
-
         String classpath = JStormUtils.current_classpath();
-
         String[] classPaths = classpath.split(":");
-
         Set<String> classSet = new HashSet<>();
-
         for (String classJar : classPaths) {
             if (StringUtils.isBlank(classJar)) {
                 continue;
@@ -536,9 +596,7 @@ class SyncProcessEvent extends ShutdownWork {
                 }
             }
         }
-
         Set<String> filterJars = setFilterJars(totalConf);
-
         StringBuilder sb = new StringBuilder();
         for (String jar : classSet) {
             if (isKeyContain(filterJars, jar)) {
@@ -547,7 +605,6 @@ class SyncProcessEvent extends ShutdownWork {
             }
             sb.append(jar).append(":");
         }
-
         return sb.toString();
     }
 
@@ -558,7 +615,6 @@ class SyncProcessEvent extends ShutdownWork {
             sb.append(totalConf.get(Config.TOPOLOGY_CLASSPATH)).append(":");
         }
         List<String> otherLibs = (List<String>) totalConf.get(GenericOptionsParser.TOPOLOGY_LIB_NAME);
-
         if (otherLibs != null) {
             for (String libName : otherLibs) {
                 sb.append(StormConfig.stormlib_path(stormRoot, libName)).append(":");
@@ -669,9 +725,6 @@ class SyncProcessEvent extends ShutdownWork {
 
     /**
      * Get worker's JVM memory setting
-     *
-     * @param assignment
-     * @return
      */
     public String getWorkerMemParameter(LocalAssignment assignment,
                                         Map totalConf,
@@ -682,31 +735,54 @@ class SyncProcessEvent extends ShutdownWork {
         long memGsize = memSize / JStormUtils.SIZE_1_G;
         int gcThreadsNum = memGsize > 4 ? (int) (memGsize * 1.5) : 4;
         String childOpts = getChildOpts(totalConf);
-
         childOpts += getGcDumpParam(topologyId, port, totalConf);
 
         StringBuilder commandSB = new StringBuilder();
-
         memMinSize = memMinSize < memSize ? memMinSize : memSize;
-
         commandSB.append(" -Xms").append(memMinSize).append(" -Xmx").append(memSize).append(" ");
-        if (memMinSize <= (memSize / 2))
+        if (memMinSize <= (memSize / 2)) {
             commandSB.append(" -Xmn").append(memMinSize / 2).append(" ");
-        else
-            commandSB.append(" -Xmn").append(memSize / 2).append(" ");
-        if (memGsize >= 2) {
-            commandSB.append(" -XX:PermSize=").append(memSize / 32);
         } else {
-            commandSB.append(" -XX:PermSize=").append(memSize / 16);
+            commandSB.append(" -Xmn").append(memSize / 2).append(" ");
         }
-        commandSB.append(" -XX:MaxPermSize=").append(memSize / 16);
+
+        // PermSize is deprecated in jdk1.8
+        if (JDKInfo.isJdk7() || JDKInfo.lessThanJdk7()) {
+            if (memGsize >= 2) {
+                commandSB.append(" -XX:PermSize=").append(memSize / 32);
+            } else {
+                commandSB.append(" -XX:PermSize=").append(memSize / 16);
+            }
+            commandSB.append(" -XX:MaxPermSize=").append(memSize / 16);
+        } else if (JDKInfo.isJdk8()) {
+            if (memGsize >= 2) {
+                commandSB.append(" -XX:MetaspaceSize=").append(memSize / 32);
+            } else {
+                commandSB.append(" -XX:MetaspaceSize=").append(memSize / 16);
+            }
+            commandSB.append(" -XX:MaxMetaspaceSize=").append(memSize / 16);
+        }
+
         commandSB.append(" -XX:ParallelGCThreads=").append(gcThreadsNum);
         commandSB.append(" ").append(childOpts);
-        if (StringUtils.isBlank(assignment.getJvm()) == false) {
+        if (!StringUtils.isBlank(assignment.getJvm())) {
             commandSB.append(" ").append(assignment.getJvm());
         }
 
         return commandSB.toString();
+    }
+
+    /**
+     * Get worker's JVM gc setting
+     */
+    public String getWorkerGcParameter(LocalAssignment assignment,
+                                       Map totalConf,
+                                       String topologyId,
+                                       Integer port) {
+
+        StringBuilder commandSB = new StringBuilder();
+        GcStrategy gcStrategy = GcStrategyManager.getGcStrategy(totalConf);
+        return gcStrategy.toString();
     }
 
     public String getSandBoxParameter(String classpath, String workerClassPath, String workerId)
@@ -731,19 +807,17 @@ class SyncProcessEvent extends ShutdownWork {
         String stormJar = StormConfig.stormjar_path(stormRoot);
 
         StringBuilder commandSB = new StringBuilder();
-
         try {
             if (this.cgroupManager != null) {
                 commandSB.append(cgroupManager.startNewWorker(totalConf, assignment.getCpu(), workerId));
             }
         } catch (Exception e) {
-            LOG.error("Failed to prepare cgroup to workerId: " + workerId, e);
+            LOG.error("Failed to prepare cgroup for workerId: " + workerId, e);
             commandSB = new StringBuilder();
         }
-
-        // commandSB.append("java -server -Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n ");
         commandSB.append("java -server ");
         commandSB.append(getWorkerMemParameter(assignment, totalConf, topologyId, port));
+        commandSB.append(getWorkerGcParameter(assignment, totalConf, topologyId, port));
 
         commandSB.append(" -Djava.library.path=").append((String) totalConf.get(Config.JAVA_LIBRARY_PATH));
         commandSB.append(" -Djstorm.home=").append(stormHome);
@@ -765,9 +839,9 @@ class SyncProcessEvent extends ShutdownWork {
             commandSB.append(":").append(externalClassPath);
         }
 
+        //todo: use worker fqn
         commandSB.append(" com.alibaba.jstorm.daemon.worker.Worker ");
         commandSB.append(topologyId);
-
         commandSB.append(" ").append(supervisorId);
         commandSB.append(" ").append(port);
         commandSB.append(" ").append(workerId);
@@ -777,34 +851,28 @@ class SyncProcessEvent extends ShutdownWork {
 
     }
 
-    public String getLauncherParameter(LocalAssignment assignment,
-                                       Map totalConf,
-                                       String stormHome,
-                                       String topologyId,
-                                       int port) throws IOException {
-
+    public String getLauncherParameter(
+            LocalAssignment assignment, Map totalConf, String stormHome, String topologyId, int port) throws IOException {
         boolean isEnable = ConfigExtension.isProcessLauncherEnable(totalConf);
-        if (isEnable == false) {
+        if (!isEnable) {
             return "";
         }
 
         // STORM-LOCAL-DIR/supervisor/stormdist/topologyId
         String stormRoot = StormConfig.supervisor_stormdist_root(conf, topologyId);
-
         // STORM-LOCAL-DIR/supervisor/stormdist/topologyId/stormjar.jar
         String stormJar = StormConfig.stormjar_path(stormRoot);
 
         StringBuilder sb = new StringBuilder();
-
         sb.append(" java ");
         sb.append(ConfigExtension.getProcessLauncherChildOpts(totalConf));
         sb.append(getLogParameter(totalConf, stormHome, assignment.getTopologyName(), port));
         sb.append(" -cp ");
         sb.append(getClassPath(stormHome, totalConf));
         if (ConfigExtension.isEnableTopologyClassLoader(totalConf)) {
-            // dont't append stormJar
+            // don't append storm jar when classloader is enabled
         } else {
-            // Due to user defined log configuration is likely to be in the stormJar
+            // user defined log configuration is likely to be bundled in the storm jar
             sb.append(":").append(stormJar);
         }
         sb.append(" ").append(ProcessLauncher.class.getName()).append(" ");
@@ -826,8 +894,6 @@ class SyncProcessEvent extends ShutdownWork {
      */
     public void launchWorker(Map conf, IContext sharedContext, String topologyId, String supervisorId,
                              Integer port, String workerId, LocalAssignment assignment) throws IOException {
-
-
         // get supervisor conf
         Map stormConf = StormConfig.read_supervisor_topology_conf(conf, topologyId);
         String stormHome = System.getProperty("jstorm.home");
@@ -845,11 +911,9 @@ class SyncProcessEvent extends ShutdownWork {
         totalConf.putAll(workerConf);
 
         /**
-         * Here doesn't use System.getenv
-         * environment.putAll(System.getenv);
-         *
+         * don't use environment.putAll(System.getenv);
          */
-        Map<String, String> environment = new HashMap<String, String>();
+        Map<String, String> environment = new HashMap<>();
         if (ConfigExtension.getWorkerRedirectOutput(totalConf)) {
             environment.put("REDIRECT", "true");
         } else {
@@ -858,10 +922,9 @@ class SyncProcessEvent extends ShutdownWork {
         environment.put("LD_LIBRARY_PATH", (String) totalConf.get(Config.JAVA_LIBRARY_PATH));
         environment.put("jstorm.home", stormHome);
         environment.put("jstorm.workerId", workerId);
-
+        environment.put("jstorm.on.yarn", isJstormOnYarn ? "1" : "0");
 
         String launcherCmd = getLauncherParameter(assignment, totalConf, stormHome, topologyId, port);
-
         String workerCmd = getWorkerParameter(assignment,
                 totalConf,
                 stormHome,
@@ -875,7 +938,12 @@ class SyncProcessEvent extends ShutdownWork {
         LOG.info("Launching worker with command: " + cmd);
         LOG.info("Environment:" + environment.toString());
 
-        JStormUtils.launchProcess(cmd, environment, true);
+        /**
+         * if run on yarn, set backend false, otherwise set true
+         */
+        boolean backend = !isJstormOnYarn;
+        LOG.info("backend mode is " + backend);
+        JStormUtils.launchProcess(cmd, environment, backend);
     }
 
     private Set<Integer> killUselessWorkers(Map<String, StateHeartbeat> localWorkerStats,
@@ -902,11 +970,7 @@ class SyncProcessEvent extends ShutdownWork {
                 }
 
                 if (!killingWorkers.containsKey(workerId)) {
-                    StringBuilder sb = new StringBuilder();
-                    sb.append("Shutting down and clearing state for id ").append(workerId);
-                    sb.append(";State:").append(hbState);
-
-                    LOG.info(sb.toString());
+                    LOG.info("Shutting down and clearing state for id {}, State:{}", workerId, hbState);
                 }
             }
         }
@@ -920,13 +984,13 @@ class SyncProcessEvent extends ShutdownWork {
                 activeTopologies.add(entry.getValue().getTopologyId());
             }
 
-            Set<String> obsoleteTopologys = new HashSet<>();
+            Set<String> obsoleteTopologies = new HashSet<>();
             for (String topologyId : taskCleanupTimeoutMap.keySet()) {
                 if (!activeTopologies.contains(topologyId)) {
-                    obsoleteTopologys.add(topologyId);
+                    obsoleteTopologies.add(topologyId);
                 }
             }
-            for (String topologyId : obsoleteTopologys) {
+            for (String topologyId : obsoleteTopologies) {
                 taskCleanupTimeoutMap.remove(topologyId);
             }
         }
@@ -973,19 +1037,30 @@ class SyncProcessEvent extends ShutdownWork {
         /**
          * Step 5: generate new work ids
          */
-        Map<Integer, String> newWorkerIds = new HashMap<>();
 
-        for (Entry<Integer, LocalAssignment> entry : newWorkers.entrySet()) {
+        for (Iterator<Entry<Integer, LocalAssignment>> entryItr = newWorkers.entrySet().iterator();
+             entryItr.hasNext(); ) {
+            Entry<Integer, LocalAssignment> entry = entryItr.next();
             Integer port = entry.getKey();
             LocalAssignment assignment = entry.getValue();
-            if (assignment != null && assignment.getTopologyId() != null &&
-                    downloadFailedTopologyIds.contains(assignment.getTopologyId())) {
-                LOG.info("Can't start this worker: " + port + " about the topology: " + assignment.getTopologyId()
-                        + ", due to the damaged binary !!");
-                continue;
+            if (assignment != null && downloadFailedTopologyIds.contains(assignment.getTopologyId())) {
+                LOG.info("Can't start this worker: {} of topology: {} due to the damaged binary!!",
+                        port, assignment.getTopologyId());
+                entryItr.remove();
             }
-            String workerId = UUID.randomUUID().toString();
+        }
 
+        startWorkers(newWorkers);
+    }
+
+    private void startWorkers(Map<Integer, LocalAssignment> portToAssignment) throws Exception {
+        Map<Integer, String> newWorkerIds = new HashMap<>();
+
+        for (Entry<Integer, LocalAssignment> entry : portToAssignment.entrySet()) {
+            Integer port = entry.getKey();
+            LocalAssignment assignment = entry.getValue();
+
+            String workerId = UUID.randomUUID().toString();
             newWorkerIds.put(port, workerId);
 
             // create new worker Id directory
@@ -993,45 +1068,34 @@ class SyncProcessEvent extends ShutdownWork {
             try {
                 StormConfig.worker_pids_root(conf, workerId);
             } catch (IOException e1) {
-                LOG.error("Failed to create " + workerId + " localdir", e1);
+                LOG.error("Failed to create local dir for worker:" + workerId, e1);
                 throw e1;
             }
 
-            StringBuilder sb = new StringBuilder();
-            sb.append("Launching worker with assiangment ");
-            sb.append(assignment).append(" for the supervisor ").append(supervisorId)
-                    .append(" on port ").append(port).append(" with id ").append(workerId);
-            LOG.info(sb.toString());
-
+            LOG.info("Launching worker with assignment {} for the supervisor {} on port {} with worker id {}",
+                    assignment, supervisorId, port, workerId);
             try {
-                String clusterMode = StormConfig.cluster_mode(conf);
-
-                if (clusterMode.equals("distributed")) {
-                    launchWorker(conf, sharedContext, assignment.getTopologyId(), supervisorId, port, workerId, assignment);
-                } else if (clusterMode.equals("local")) {
-                    launchWorker(conf, sharedContext, assignment.getTopologyId(), supervisorId, port, workerId, workerThreadPids);
-                }
+                doLaunchWorker(assignment, port, workerId);
             } catch (Exception e) {
                 workerReportError.report(assignment.getTopologyId(), port,
                         assignment.getTaskIds(), JStormUtils.getErrorInfo(e), ErrorConstants.CODE_WORKER_EX);
-                String errorMsg = "Failed to launchWorker workerId:" + workerId + ":" + port;
-                LOG.error(errorMsg, e);
+                LOG.error("Failed to launchWorker workerId:" + workerId + ":" + port, e);
                 throw e;
             }
-
         }
 
-        /**
-         * FIXME, workerIds should be Set, not Collection, but here simplify the logic
-         */
         markAllNewWorkers(newWorkerIds);
-        // try {
-        // waitForWorkersLaunch(conf, workerIds);
-        // } catch (IOException e) {
-        // LOG.error(e + " waitForWorkersLaunch failed");
-        // } catch (InterruptedException e) {
-        // LOG.error(e + " waitForWorkersLaunch failed");
-        // }
+    }
+
+    private void doLaunchWorker(LocalAssignment assignment, Integer port, String workerId)
+            throws Exception {
+        String clusterMode = StormConfig.cluster_mode(conf);
+        String topologyId = assignment.getTopologyId();
+        if (clusterMode.equals("distributed")) {
+            launchWorker(conf, sharedContext, topologyId, supervisorId, port, workerId, assignment);
+        } else if (clusterMode.equals("local")) {
+            launchWorker(conf, sharedContext, topologyId, supervisorId, port, workerId, workerThreadPids);
+        }
     }
 
     boolean isWorkerDead(String workerId) {
@@ -1049,7 +1113,7 @@ class SyncProcessEvent extends ShutdownWork {
             for (String pid : pids) {
                 boolean isDead = JStormUtils.isProcDead(pid);
                 if (isDead) {
-                    LOG.info("Found " + workerId + " is dead ");
+                    LOG.info("Found worker {} is dead ", workerId);
                 } else {
                     return false;
                 }
@@ -1060,7 +1124,5 @@ class SyncProcessEvent extends ShutdownWork {
             LOG.info("Failed to check whether worker is dead through /proc/pid", e);
             return false;
         }
-
     }
-
 }

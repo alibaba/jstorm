@@ -1,3 +1,20 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.alibaba.jstorm.ons.producer;
 
 import backtype.storm.task.OutputCollector;
@@ -51,16 +68,16 @@ public class ProducerBolt implements IRichBolt {
         			producerConfig.getTopic(),
         			producerConfig.getSubExpress(),
         			//Message Body
-        			//ÈÎºÎ¶ş½øÖÆĞÎÊ½µÄÊı¾İ£¬ONS²»×öÈÎºÎ¸ÉÔ¤£¬ĞèÒªProducerÓëConsumerĞ­ÉÌºÃÒ»ÖÂµÄĞòÁĞ»¯ºÍ·´ĞòÁĞ»¯·½Ê½
+        			//ä»»ä½•äºŒè¿›åˆ¶å½¢å¼çš„æ•°æ®ï¼ŒONSä¸åšä»»ä½•å¹²é¢„ï¼Œéœ€è¦Producerä¸Consumeråå•†å¥½ä¸€è‡´çš„åºåˆ—åŒ–å’Œååºåˆ—åŒ–æ–¹å¼
         			msgTuple.getMessage().getBody());
         	
-        	// ÉèÖÃ´ú±íÏûÏ¢µÄÒµÎñ¹Ø¼üÊôĞÔ£¬Çë¾¡¿ÉÄÜÈ«¾ÖÎ¨Ò»¡£
-        	// ÒÔ·½±ãÄúÔÚÎŞ·¨Õı³£ÊÕµ½ÏûÏ¢Çé¿öÏÂ£¬¿ÉÍ¨¹ıONS Console²éÑ¯ÏûÏ¢²¢²¹·¢¡£
-        	// ×¢Òâ£º²»ÉèÖÃÒ²²»»áÓ°ÏìÏûÏ¢Õı³£ÊÕ·¢
+        	// è®¾ç½®ä»£è¡¨æ¶ˆæ¯çš„ä¸šåŠ¡å…³é”®å±æ€§ï¼Œè¯·å°½å¯èƒ½å…¨å±€å”¯ä¸€ã€‚
+        	// ä»¥æ–¹ä¾¿æ‚¨åœ¨æ— æ³•æ­£å¸¸æ”¶åˆ°æ¶ˆæ¯æƒ…å†µä¸‹ï¼Œå¯é€šè¿‡ONS ConsoleæŸ¥è¯¢æ¶ˆæ¯å¹¶è¡¥å‘ã€‚
+        	// æ³¨æ„ï¼šä¸è®¾ç½®ä¹Ÿä¸ä¼šå½±å“æ¶ˆæ¯æ­£å¸¸æ”¶å‘
         	if (msgTuple.getMessage().getKey() != null) {
         		msg.setKey(msgTuple.getMessage().getKey());
         	}
-        	//·¢ËÍÏûÏ¢£¬Ö»Òª²»Å×Òì³£¾ÍÊÇ³É¹¦
+        	//å‘é€æ¶ˆæ¯ï¼Œåªè¦ä¸æŠ›å¼‚å¸¸å°±æ˜¯æˆåŠŸ
         	sendResult = producer.send(msg);
         	
             LOG.info("Success send msg of " + msgTuple.getMessage().getMsgID());

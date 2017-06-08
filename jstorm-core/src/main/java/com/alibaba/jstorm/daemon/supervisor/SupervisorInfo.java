@@ -49,6 +49,8 @@ public class SupervisorInfo implements Serializable {
     private Set<Integer> workerPorts;
     private Map<Object, Object> supervisorConf;
 
+    private String errorMessage;
+
     private transient Set<Integer> availableWorkerPorts;
 
     public SupervisorInfo(String hostName, String supervisorId, Set<Integer> workerPorts, Map<Object, Object> conf) {
@@ -57,6 +59,14 @@ public class SupervisorInfo implements Serializable {
         this.workerPorts = workerPorts;
         this.supervisorConf = conf;
         this.port = ConfigExtension.getSupervisorDeamonHttpserverPort(conf);
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
     }
 
     public String getHostName() {
@@ -89,13 +99,13 @@ public class SupervisorInfo implements Serializable {
 
     public void setAvailableWorkerPorts(Set<Integer> workerPorts) {
         if (availableWorkerPorts == null)
-            availableWorkerPorts = new HashSet<Integer>();
+            availableWorkerPorts = new HashSet<>();
         availableWorkerPorts.addAll(workerPorts);
     }
 
     public Set<Integer> getAvailableWorkerPorts() {
         if (availableWorkerPorts == null)
-            availableWorkerPorts = new HashSet<Integer>();
+            availableWorkerPorts = new HashSet<>();
         return availableWorkerPorts;
     }
 
@@ -196,11 +206,11 @@ public class SupervisorInfo implements Serializable {
      * get Map<supervisorId, hostname>
      */
     public static Map<String, String> getNodeHost(Map<String, SupervisorInfo> supInfos) {
-        Map<String, String> rtn = new HashMap<String, String>();
+        Map<String, String> rtn = new HashMap<>();
         for (Entry<String, SupervisorInfo> entry : supInfos.entrySet()) {
-            SupervisorInfo superinfo = entry.getValue();
-            String supervisorid = entry.getKey();
-            rtn.put(supervisorid, superinfo.getHostName());
+            SupervisorInfo superInfo = entry.getValue();
+            String supervisorId = entry.getKey();
+            rtn.put(supervisorId, superInfo.getHostName());
         }
         return rtn;
     }

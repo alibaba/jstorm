@@ -24,9 +24,8 @@ import com.alibaba.jstorm.cluster.StormClusterState;
 
 /**
  * Task error report callback
- * 
+ *
  * @author yannian
- * 
  */
 public class TaskReportError implements ITaskReportErr {
     private static Logger LOG = LoggerFactory.getLogger(TaskReportError.class);
@@ -42,24 +41,21 @@ public class TaskReportError implements ITaskReportErr {
 
     @Override
     public void report(Throwable error) {
-
-        LOG.error("Report error to /ZK/taskerrors/" + topology_id + "/" + task_id + "\n", error);
+        LOG.error("Report error to /ZK/taskerrors/" + topology_id + "/" + task_id, error);
         try {
             zkCluster.report_task_error(topology_id, task_id, error);
         } catch (Exception e) {
-            // TODO Auto-generated catch block
-            LOG.error("Failed update error to /ZK/taskerrors/" + topology_id + "/" + task_id + "\n", e);
+            LOG.error("Failed to update error to /ZK/taskerrors/" + topology_id + "/" + task_id, e);
         }
     }
 
     @Override
     public void report(String error) {
-
         LOG.error("Report error to /ZK/taskerrors/" + topology_id + "/" + task_id + ": " + error);
         try {
             zkCluster.report_task_error(topology_id, task_id, error, ErrorConstants.ERROR, ErrorConstants.CODE_USER);
         } catch (Exception e) {
-            LOG.error("Failed update error to /ZK/taskerrors/" + topology_id + "/" + task_id + "\n", e);
+            LOG.error("Failed to update error to /ZK/taskerrors/" + topology_id + "/" + task_id, e);
         }
     }
 
@@ -69,7 +65,7 @@ public class TaskReportError implements ITaskReportErr {
         try {
             zkCluster.report_task_error(topology_id, task_id, error, errorLevel, errorCode, duration);
         } catch (Exception e) {
-            LOG.error("Failed update error to /ZK/taskerrors/" + topology_id + "/" + task_id + "\n", e);
+            LOG.error("Failed to update error to /ZK/taskerrors/" + topology_id + "/" + task_id, e);
         }
     }
 }

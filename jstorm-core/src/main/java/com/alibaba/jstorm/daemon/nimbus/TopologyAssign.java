@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
+ * <p>
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,7 +17,9 @@
  */
 package com.alibaba.jstorm.daemon.nimbus;
 
+import backtype.storm.utils.Utils;
 import com.alibaba.jstorm.metric.JStormMetrics;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -65,10 +67,9 @@ public class TopologyAssign implements Runnable {
     private final static Logger LOG = LoggerFactory.getLogger(TopologyAssign.class);
 
     /**
-     * private constructor function to avoid multiple instance
+     * private constructor function to ensure singleton
      */
     private TopologyAssign() {
-
     }
 
     private static TopologyAssign instance = null;
@@ -79,26 +80,17 @@ public class TopologyAssign implements Runnable {
                 instance = new TopologyAssign();
             }
             return instance;
-
         }
     }
 
     protected NimbusData nimbusData;
-
     protected Map<String, IToplogyScheduler> schedulers;
-
     private Thread thread;
-
-    private int cleanupTimeoutSec = 60;
-
     public static final String DEFAULT_SCHEDULER_NAME = "default";
 
     public void init(NimbusData nimbusData) {
         this.nimbusData = nimbusData;
-
-        // this.cleanupTimeoutSec = 60;
-
-        this.schedulers = new HashMap<String, IToplogyScheduler>();
+        this.schedulers = new HashMap<>();
 
         IToplogyScheduler defaultScheduler = new DefaultTopologyScheduler();
         defaultScheduler.prepare(nimbusData.getConf());
@@ -140,20 +132,17 @@ public class TopologyAssign implements Runnable {
             }
 
             boolean isSuccess = doTopologyAssignment(event);
-
-            if (isSuccess == false) {
-            } else {
+            if (isSuccess) {
                 try {
                     cleanupDisappearedTopology();
                 } catch (Exception e) {
-                    LOG.error("Failed to do cleanup disappear topology ", e);
-                    continue;
+                    LOG.error("Failed to do cleanup disappeared topology ", e);
                 }
             }
         }
 
     }
-    
+
     protected void pushTaskStartEvent(Assignment oldAssignment, Assignment newAssignment, TopologyAssignEvent event)
             throws Exception {
         // notify jstorm monitor on task assign/reassign/rebalance
@@ -161,7 +150,7 @@ public class TopologyAssign implements Runnable {
         taskEvent.setOldAssignment(oldAssignment);
         taskEvent.setNewAssignment(newAssignment);
         taskEvent.setTopologyId(event.getTopologyId());
-        
+
         Map<Integer, String> task2Component;
         // get from nimbus cache first
         Map<Integer, TaskInfo> taskInfoMap = Cluster.get_all_taskInfo(nimbusData.getStormClusterState(),
@@ -178,9 +167,6 @@ public class TopologyAssign implements Runnable {
 
     /**
      * Create/Update topology assignment set topology status
-     * 
-     * @param event
-     * @return
      */
     protected boolean doTopologyAssignment(TopologyAssignEvent event) {
         Assignment assignment;
@@ -211,34 +197,26 @@ public class TopologyAssign implements Runnable {
 
     /**
      * cleanup the topologies which are not in ZK /topology, but in other place
-     * 
-     * @throws Exception
      */
     public void cleanupDisappearedTopology() throws Exception {
         StormClusterState clusterState = nimbusData.getStormClusterState();
 
-        List<String> active_topologys = clusterState.active_storms();
-        if (active_topologys == null) {
+        List<String> activeTopologies = clusterState.active_storms();
+        if (activeTopologies == null) {
             return;
         }
 
-//        Map<String, List<String>> topoIdToKeys = new HashMap<>();
-        Set<String> cleanupIds = get_cleanup_ids(clusterState, active_topologys);
+        Set<String> cleanupIds = get_cleanup_ids(clusterState, activeTopologies);
         for (String sysTopology : JStormMetrics.SYS_TOPOLOGIES) {
             cleanupIds.remove(sysTopology);
         }
-
         for (String topologyId : cleanupIds) {
-
             LOG.info("Cleaning up " + topologyId);
-
             clusterState.try_remove_storm(topologyId);
-
             nimbusData.getTaskHeartbeatsCache().remove(topologyId);
             nimbusData.getTasksHeartbeat().remove(topologyId);
 
             NimbusUtils.removeTopologyTaskTimeout(nimbusData, topologyId);
-
 
             // delete topology files in blobstore
             List<String> deleteKeys = BlobStoreUtils.getKeyListFromId(nimbusData, topologyId);
@@ -249,27 +227,20 @@ public class TopologyAssign implements Runnable {
     }
 
     /**
-     * get topology ids which need to be cleanup
-     * 
-     * @param clusterState
-     * @return
-     * @throws Exception
+     * get topology ids that need to be cleaned up
      */
-    private Set<String> get_cleanup_ids(StormClusterState clusterState, List<String> active_topologys) throws Exception {
-
+    private Set<String> get_cleanup_ids(StormClusterState clusterState, List<String> activeTopologies) throws Exception {
         List<String> task_ids = clusterState.task_storms();
         List<String> heartbeat_ids = clusterState.heartbeat_storms();
         List<String> error_ids = clusterState.task_error_storms();
         List<String> assignment_ids = clusterState.assignments(null);
         List<String> metric_ids = clusterState.get_metrics();
 
-        HashSet<String> latest_code_ids = new HashSet<String>();
+        HashSet<String> latest_code_ids = new HashSet<>();
 
         Set<String> code_ids = BlobStoreUtils.code_ids(nimbusData.getBlobStore());
-
-
-        Set<String> to_cleanup_ids = new HashSet<String>();
-        Set<String> pendingTopologys = nimbusData.getPendingSubmitTopologies().buildMap().keySet();
+        Set<String> to_cleanup_ids = new HashSet<>();
+        Set<String> pendingTopologies = nimbusData.getPendingSubmitTopologies().buildMap().keySet();
 
         if (task_ids != null) {
             to_cleanup_ids.addAll(task_ids);
@@ -295,21 +266,18 @@ public class TopologyAssign implements Runnable {
             to_cleanup_ids.addAll(metric_ids);
         }
 
-        if (active_topologys != null) {
-            to_cleanup_ids.removeAll(active_topologys);
-            latest_code_ids.removeAll(active_topologys);
+        if (activeTopologies != null) {
+            to_cleanup_ids.removeAll(activeTopologies);
+            latest_code_ids.removeAll(activeTopologies);
         }
 
-        if (pendingTopologys != null) {
-            to_cleanup_ids.removeAll(pendingTopologys);
-        }
+        to_cleanup_ids.removeAll(pendingTopologies);
 
         /**
          * Why need to remove latest code. Due to competition between Thrift.threads and TopologyAssign thread
-         * 
          */
         to_cleanup_ids.removeAll(latest_code_ids);
-        LOG.info("Skip remove topology of " + latest_code_ids);
+        LOG.info("Skip removing topology of " + latest_code_ids);
 
         return to_cleanup_ids;
     }
@@ -330,15 +298,12 @@ public class TopologyAssign implements Runnable {
         }
 
         boolean isEnable = ConfigExtension.isEnablePerformanceMetrics(nimbusData.getConf());
-
         StormBase stormBase = stormClusterState.storm_base(topologyId, null);
         if (stormBase == null) {
             stormBase = new StormBase(topologyName, TimeUtils.current_time_secs(), status, group);
             stormBase.setEnableMonitor(isEnable);
             stormClusterState.activate_storm(topologyId, stormBase);
-
         } else {
-
             stormClusterState.update_storm(topologyId, status);
             stormClusterState.set_storm_monitor(topologyId, isEnable);
 
@@ -350,7 +315,6 @@ public class TopologyAssign implements Runnable {
         }
 
         LOG.info("Update " + topologyId + " " + status);
-
     }
 
     protected TopologyAssignContext prepareTopologyAssign(TopologyAssignEvent event) throws Exception {
@@ -370,6 +334,9 @@ public class TopologyAssign implements Runnable {
         ret.setRawTopology(rawTopology);
 
         Map stormConf = new HashMap();
+        LOG.info("GET RESERVE_WORKERS from ={}", Utils.readDefaultConfig());
+        LOG.info("RESERVE_WORKERS ={}", Utils.readDefaultConfig().get(Config.RESERVE_WORKERS));
+        stormConf.put(Config.RESERVE_WORKERS, Utils.readDefaultConfig().get(Config.RESERVE_WORKERS));
         stormConf.putAll(nimbusConf);
         stormConf.putAll(topologyConf);
         ret.setStormConf(stormConf);
@@ -395,41 +362,35 @@ public class TopologyAssign implements Runnable {
 
         // get taskids /ZK/tasks/topologyId
         Set<Integer> allTaskIds = taskToComponent.keySet();
-        if (allTaskIds == null || allTaskIds.size() == 0) {
+        if (allTaskIds.size() == 0) {
             String errMsg = "Failed to get all task ID list from /ZK-dir/tasks/" + topologyId;
             LOG.warn(errMsg);
             throw new IOException(errMsg);
         }
         ret.setAllTaskIds(allTaskIds);
 
-        Set<Integer> aliveTasks = new HashSet<Integer>();
+        Set<Integer> aliveTasks = new HashSet<>();
         // unstoppedTasks are tasks which are alive on no supervisor's(dead)
         // machine
-        Set<Integer> unstoppedTasks = new HashSet<Integer>();
-        Set<Integer> deadTasks = new HashSet<Integer>();
-        Set<ResourceWorkerSlot> unstoppedWorkers = new HashSet<ResourceWorkerSlot>();
+        Set<Integer> unstoppedTasks = new HashSet<>();
+        Set<Integer> deadTasks = new HashSet<>();
+        Set<ResourceWorkerSlot> unstoppedWorkers;
 
         Assignment existingAssignment = stormClusterState.assignment_info(topologyId, null);
         if (existingAssignment != null) {
-            aliveTasks = getAliveTasks(topologyId, allTaskIds);
-
             /*
              * Check if the topology master task is alive first since all task 
              * heartbeat info is reported by topology master. 
              * If master is dead, do reassignment for topology master first.
              */
-            if (aliveTasks.contains(topoMasterId) == false) {
-                ResourceWorkerSlot worker = existingAssignment.getWorkerByTaskId(topoMasterId);
-                deadTasks.addAll(worker.getTasks());
-
-                Set<Integer> tempSet = new HashSet<Integer>(allTaskIds);
-                tempSet.removeAll(deadTasks);
-                aliveTasks.addAll(tempSet);
-                aliveTasks.removeAll(deadTasks);
+            if (NimbusUtils.isTaskDead(nimbusData, topologyId, topoMasterId)) {
+                ResourceWorkerSlot tmWorker = existingAssignment.getWorkerByTaskId(topoMasterId);
+                deadTasks.addAll(tmWorker.getTasks());
             } else {
-                deadTasks.addAll(allTaskIds);
-                deadTasks.removeAll(aliveTasks);
+                deadTasks = getDeadTasks(topologyId, allTaskIds, existingAssignment.getWorkers());
             }
+            aliveTasks.addAll(allTaskIds);
+            aliveTasks.removeAll(deadTasks);
 
             unstoppedTasks = getUnstoppedSlots(aliveTasks, supInfos, existingAssignment);
         }
@@ -472,40 +433,34 @@ public class TopologyAssign implements Runnable {
 
     /**
      * make assignments for a topology The nimbus core function, this function has been totally rewrite
-     * 
+     *
      * @throws Exception
      */
     public Assignment mkAssignment(TopologyAssignEvent event) throws Exception {
         String topologyId = event.getTopologyId();
-
         LOG.info("Determining assignment for " + topologyId);
-
         TopologyAssignContext context = prepareTopologyAssign(event);
-
-        Set<ResourceWorkerSlot> assignments = null;
-
+        Set<ResourceWorkerSlot> assignments;
         if (!StormConfig.local_mode(nimbusData.getConf())) {
-
             IToplogyScheduler scheduler = schedulers.get(DEFAULT_SCHEDULER_NAME);
-
             assignments = scheduler.assignTasks(context);
-
         } else {
             assignments = mkLocalAssignment(context);
         }
 
         Assignment assignment = null;
         if (assignments != null && assignments.size() > 0) {
-            Map<String, String> nodeHost = getTopologyNodeHost(context.getCluster(), context.getOldAssignment(), assignments);
-
-            Map<Integer, Integer> startTimes = getTaskStartTimes(context, nimbusData, topologyId, context.getOldAssignment(), assignments);
+            Map<String, String> nodeHost = getTopologyNodeHost(
+                    context.getCluster(), context.getOldAssignment(), assignments);
+            Map<Integer, Integer> startTimes = getTaskStartTimes(
+                    context, nimbusData, topologyId, context.getOldAssignment(), assignments);
 
             String codeDir = (String) nimbusData.getConf().get(Config.STORM_LOCAL_DIR);
 
             assignment = new Assignment(codeDir, assignments, nodeHost, startTimes);
 
             //  the topology binary changed.
-            if (event.isScaleTopology()){
+            if (event.isScaleTopology()) {
                 assignment.setAssignmentType(Assignment.AssignmentType.ScaleTopology);
             }
             StormClusterState stormClusterState = nimbusData.getStormClusterState();
@@ -514,8 +469,6 @@ public class TopologyAssign implements Runnable {
 
             // update task heartbeat's start time
             NimbusUtils.updateTaskHbStartTime(nimbusData, assignment, topologyId);
-
-            // @@@ TODO
 
             // Update metrics information in ZK when rebalance or reassignment
             // Only update metrics monitor status when creating topology
@@ -532,9 +485,8 @@ public class TopologyAssign implements Runnable {
         return assignment;
     }
 
-    private static Set<ResourceWorkerSlot> mkLocalAssignment(
-            TopologyAssignContext context) throws Exception {
-        Set<ResourceWorkerSlot> result = new HashSet<ResourceWorkerSlot>();
+    private static Set<ResourceWorkerSlot> mkLocalAssignment(TopologyAssignContext context) throws Exception {
+        Set<ResourceWorkerSlot> result = new HashSet<>();
         Map<String, SupervisorInfo> cluster = context.getCluster();
         if (cluster.size() != 1)
             throw new RuntimeException();
@@ -544,26 +496,26 @@ public class TopologyAssign implements Runnable {
             supervisorId = entry.getKey();
             localSupervisor = entry.getValue();
         }
-        int port = -1;
+        int port;
         if (localSupervisor.getAvailableWorkerPorts().iterator().hasNext()) {
             port = localSupervisor.getAvailableWorkerPorts().iterator().next();
         } else {
-            LOG.info(" amount of worker's ports is not enough");
+            LOG.info("The amount of worker ports is not enough");
             throw new FailedAssignTopologyException(
                     "Failed to make assignment " + ", due to no enough ports");
         }
 
         ResourceWorkerSlot worker = new ResourceWorkerSlot(supervisorId, port);
-        worker.setTasks(new HashSet<Integer>(context.getAllTaskIds()));
+        worker.setTasks(new HashSet<>(context.getAllTaskIds()));
         worker.setHostname(localSupervisor.getHostName());
         result.add(worker);
         return result;
     }
 
-    public static Map<Integer, Integer> getTaskStartTimes(TopologyAssignContext context, NimbusData nimbusData, String topologyId,
-            Assignment existingAssignment, Set<ResourceWorkerSlot> workers) throws Exception {
-
-        Map<Integer, Integer> startTimes = new TreeMap<Integer, Integer>();
+    public static Map<Integer, Integer> getTaskStartTimes(TopologyAssignContext context, NimbusData nimbusData,
+                                                          String topologyId, Assignment existingAssignment,
+                                                          Set<ResourceWorkerSlot> workers) throws Exception {
+        Map<Integer, Integer> startTimes = new TreeMap<>();
 
         if (context.getAssignType() == TopologyAssignContext.ASSIGN_TYPE_NEW) {
             int nowSecs = TimeUtils.current_time_secs();
@@ -576,8 +528,7 @@ public class TopologyAssign implements Runnable {
             return startTimes;
         }
 
-        Set<ResourceWorkerSlot> oldWorkers = new HashSet<ResourceWorkerSlot>();
-
+        Set<ResourceWorkerSlot> oldWorkers = new HashSet<>();
         if (existingAssignment != null) {
             Map<Integer, Integer> taskStartTimeSecs = existingAssignment.getTaskStartTimeSecs();
             if (taskStartTimeSecs != null) {
@@ -589,7 +540,6 @@ public class TopologyAssign implements Runnable {
             }
         }
 
-        StormClusterState zkClusterState = nimbusData.getStormClusterState();
         Set<Integer> changedTaskIds = getNewOrChangedTaskIds(oldWorkers, workers);
         int nowSecs = TimeUtils.current_time_secs();
         for (Integer changedTaskId : changedTaskIds) {
@@ -607,19 +557,16 @@ public class TopologyAssign implements Runnable {
         return startTimes;
     }
 
-    public static Map<String, String> getTopologyNodeHost(Map<String, SupervisorInfo> supervisorMap, Assignment existingAssignment,
-            Set<ResourceWorkerSlot> workers) {
-
+    public static Map<String, String> getTopologyNodeHost(
+            Map<String, SupervisorInfo> supervisorMap, Assignment existingAssignment, Set<ResourceWorkerSlot> workers) {
         // the following is that remove unused node from allNodeHost
-        Set<String> usedNodes = new HashSet<String>();
+        Set<String> usedNodes = new HashSet<>();
         for (ResourceWorkerSlot worker : workers) {
-
             usedNodes.add(worker.getNodeId());
         }
 
         // map<supervisorId, hostname>
-        Map<String, String> allNodeHost = new HashMap<String, String>();
-
+        Map<String, String> allNodeHost = new HashMap<>();
         if (existingAssignment != null) {
             allNodeHost.putAll(existingAssignment.getNodeHost());
         }
@@ -630,8 +577,7 @@ public class TopologyAssign implements Runnable {
             allNodeHost.putAll(nodeHost);
         }
 
-        Map<String, String> ret = new HashMap<String, String>();
-
+        Map<String, String> ret = new HashMap<>();
         for (String supervisorId : usedNodes) {
             if (allNodeHost.containsKey(supervisorId)) {
                 ret.put(supervisorId, allNodeHost.get(supervisorId));
@@ -644,13 +590,10 @@ public class TopologyAssign implements Runnable {
     }
 
     /**
-     * get all taskids which are assigned newly or reassigned
-     * 
-     * @return Set<Integer> taskid which is assigned newly or reassigned
+     * get all task ids which are newly assigned or reassigned
      */
     public static Set<Integer> getNewOrChangedTaskIds(Set<ResourceWorkerSlot> oldWorkers, Set<ResourceWorkerSlot> workers) {
-
-        Set<Integer> rtn = new HashSet<Integer>();
+        Set<Integer> rtn = new HashSet<>();
         HashMap<String, ResourceWorkerSlot> workerPortMap = HostPortToWorkerMap(oldWorkers);
         for (ResourceWorkerSlot worker : workers) {
             ResourceWorkerSlot oldWorker = workerPortMap.get(worker.getHostPort());
@@ -670,8 +613,7 @@ public class TopologyAssign implements Runnable {
     }
 
     public static Set<Integer> getRemovedTaskIds(Set<ResourceWorkerSlot> oldWorkers, Set<ResourceWorkerSlot> workers) {
-
-        Set<Integer> rtn = new HashSet<Integer>();
+        Set<Integer> rtn = new HashSet<>();
         Set<Integer> oldTasks = getTaskSetFromWorkerSet(oldWorkers);
         Set<Integer> newTasks = getTaskSetFromWorkerSet(workers);
         for (Integer taskId : oldTasks) {
@@ -683,7 +625,7 @@ public class TopologyAssign implements Runnable {
     }
 
     private static Set<Integer> getTaskSetFromWorkerSet(Set<ResourceWorkerSlot> workers) {
-        Set<Integer> rtn = new HashSet<Integer>();
+        Set<Integer> rtn = new HashSet<>();
         for (ResourceWorkerSlot worker : workers) {
             rtn.addAll(worker.getTasks());
         }
@@ -691,7 +633,7 @@ public class TopologyAssign implements Runnable {
     }
 
     private static HashMap<String, ResourceWorkerSlot> HostPortToWorkerMap(Set<ResourceWorkerSlot> workers) {
-        HashMap<String, ResourceWorkerSlot> rtn = new HashMap<String, ResourceWorkerSlot>();
+        HashMap<String, ResourceWorkerSlot> rtn = new HashMap<>();
         for (ResourceWorkerSlot worker : workers) {
             rtn.put(worker.getHostPort(), worker);
         }
@@ -700,53 +642,45 @@ public class TopologyAssign implements Runnable {
 
     /**
      * sort slots, the purpose is to ensure that the tasks are assigned in balancing
-     * 
-     * @param allSlots
+     *
      * @return List<WorkerSlot>
      */
     public static List<WorkerSlot> sortSlots(Set<WorkerSlot> allSlots, int needSlotNum) {
-
-        Map<String, List<WorkerSlot>> nodeMap = new HashMap<String, List<WorkerSlot>>();
+        Map<String, List<WorkerSlot>> nodeMap = new HashMap<>();
 
         // group by first
         for (WorkerSlot np : allSlots) {
             String node = np.getNodeId();
-
             List<WorkerSlot> list = nodeMap.get(node);
             if (list == null) {
-                list = new ArrayList<WorkerSlot>();
+                list = new ArrayList<>();
                 nodeMap.put(node, list);
             }
 
             list.add(np);
-
         }
 
         for (Entry<String, List<WorkerSlot>> entry : nodeMap.entrySet()) {
             List<WorkerSlot> ports = entry.getValue();
-
             Collections.sort(ports, new Comparator<WorkerSlot>() {
 
                 @Override
                 public int compare(WorkerSlot first, WorkerSlot second) {
                     String firstNode = first.getNodeId();
                     String secondNode = second.getNodeId();
-                    if (firstNode.equals(secondNode) == false) {
+                    if (!firstNode.equals(secondNode)) {
                         return firstNode.compareTo(secondNode);
                     } else {
                         return first.getPort() - second.getPort();
                     }
-
                 }
 
             });
         }
 
         // interleave
-        List<List<WorkerSlot>> splitup = new ArrayList<List<WorkerSlot>>(nodeMap.values());
-
+        List<List<WorkerSlot>> splitup = new ArrayList<>(nodeMap.values());
         Collections.sort(splitup, new Comparator<List<WorkerSlot>>() {
-
             public int compare(List<WorkerSlot> o1, List<WorkerSlot> o2) {
                 return o2.size() - o1.size();
             }
@@ -756,7 +690,6 @@ public class TopologyAssign implements Runnable {
 
         if (sortedFreeSlots.size() <= needSlotNum) {
             return sortedFreeSlots;
-
         }
 
         // sortedFreeSlots > needSlotNum
@@ -766,36 +699,32 @@ public class TopologyAssign implements Runnable {
     /**
      * Get unstopped slots from alive task list
      */
-    public Set<Integer> getUnstoppedSlots(Set<Integer> aliveTasks, Map<String, SupervisorInfo> supInfos, Assignment existAssignment) {
-        Set<Integer> ret = new HashSet<Integer>();
+    public Set<Integer> getUnstoppedSlots(Set<Integer> aliveTasks, Map<String, SupervisorInfo> supInfos,
+                                          Assignment existAssignment) {
+        Set<Integer> ret = new HashSet<>();
 
         Set<ResourceWorkerSlot> oldWorkers = existAssignment.getWorkers();
-
         Set<String> aliveSupervisors = supInfos.keySet();
-
         for (ResourceWorkerSlot worker : oldWorkers) {
             for (Integer taskId : worker.getTasks()) {
-                if (aliveTasks.contains(taskId) == false) {
+                if (!aliveTasks.contains(taskId)) {
                     // task is dead
                     continue;
                 }
 
                 String oldTaskSupervisorId = worker.getNodeId();
-
-                if (aliveSupervisors.contains(oldTaskSupervisorId) == false) {
+                if (!aliveSupervisors.contains(oldTaskSupervisorId)) {
                     // supervisor is dead
                     ret.add(taskId);
-                    continue;
                 }
             }
         }
 
         return ret;
-
     }
 
     private Set<ResourceWorkerSlot> getUnstoppedWorkers(Set<Integer> aliveTasks, Assignment existAssignment) {
-        Set<ResourceWorkerSlot> ret = new HashSet<ResourceWorkerSlot>();
+        Set<ResourceWorkerSlot> ret = new HashSet<>();
         for (ResourceWorkerSlot worker : existAssignment.getWorkers()) {
             boolean alive = true;
             for (Integer task : worker.getTasks()) {
@@ -813,23 +742,14 @@ public class TopologyAssign implements Runnable {
 
     /**
      * Get free resources
-     * 
-     * @param supervisorInfos
-     * @param stormClusterState
-     * @throws Exception
      */
-    public static void getFreeSlots(Map<String, SupervisorInfo> supervisorInfos, StormClusterState stormClusterState) throws Exception {
-
+    public static void getFreeSlots(Map<String, SupervisorInfo> supervisorInfos,
+                                    StormClusterState stormClusterState) throws Exception {
         Map<String, Assignment> assignments = Cluster.get_all_assignment(stormClusterState, null);
-
         for (Entry<String, Assignment> entry : assignments.entrySet()) {
-            String topologyId = entry.getKey();
             Assignment assignment = entry.getValue();
-
             Set<ResourceWorkerSlot> workers = assignment.getWorkers();
-
             for (ResourceWorkerSlot worker : workers) {
-
                 SupervisorInfo supervisorInfo = supervisorInfos.get(worker.getNodeId());
                 if (supervisorInfo == null) {
                     // the supervisor is dead
@@ -838,39 +758,53 @@ public class TopologyAssign implements Runnable {
                 supervisorInfo.getAvailableWorkerPorts().remove(worker.getPort());
             }
         }
-
     }
 
     /**
-     * find all alived taskid Does not assume that clocks are synchronized. Task heartbeat is only used so that nimbus knows when it's received a new heartbeat.
+     * find all alive task ids. Do not assume that clocks are synchronized.
+     * Task heartbeat is only used so that nimbus knows when it's received a new heartbeat.
      * All timing is done by nimbus and tracked through task-heartbeat-cache
-     * 
-     * @return Set<Integer> : taskid
-     * @throws Exception
+     *
+     * @return Set<Integer> : task id set
      */
     public Set<Integer> getAliveTasks(String topologyId, Set<Integer> taskIds) throws Exception {
-
-        Set<Integer> aliveTasks = new HashSet<Integer>();
+        Set<Integer> aliveTasks = new HashSet<>();
 
         // taskIds is the list from ZK /ZK-DIR/tasks/topologyId
         for (int taskId : taskIds) {
-
             boolean isDead = NimbusUtils.isTaskDead(nimbusData, topologyId, taskId);
-            if (isDead == false) {
+            if (!isDead) {
                 aliveTasks.add(taskId);
             }
-
         }
-
         return aliveTasks;
     }
 
+    public Set<Integer> getDeadTasks(String topologyId, Set<Integer> allTaskIds, Set<ResourceWorkerSlot> allWorkers) throws Exception {
+        Set<Integer> deadTasks = new HashSet<>();
+        // Get all tasks whose heartbeat timeout
+        for (int taskId : allTaskIds) {
+            if (NimbusUtils.isTaskDead(nimbusData, topologyId, taskId))
+                deadTasks.add(taskId);
+        }
+
+        // Mark the tasks, which were assigned into the same worker with the timeout tasks, as dead task
+        for (ResourceWorkerSlot worker : allWorkers) {
+            Set<Integer> tasks =  worker.getTasks();
+            for (Integer task : tasks) {
+                if (deadTasks.contains(task)) {
+                    deadTasks.addAll(tasks);
+                    break;
+                }
+            }
+        }
+        return deadTasks;
+    }
+
     /**
-     * Backup the toplogy's Assignment to ZK
-     * 
-     * @param assignment
-     * @param event
-     * @@@ Question Do we need to do backup operation every time?
+     * Backup topology assignment to ZK
+     *
+     * todo: Do we need to do backup operation every time?
      */
     public void backupAssignment(Assignment assignment, TopologyAssignEvent event) {
         String topologyId = event.getTopologyId();
@@ -885,14 +819,11 @@ public class TopologyAssign implements Runnable {
 
             for (Entry<String, List<Integer>> entry : componentTasks.entrySet()) {
                 List<Integer> keys = entry.getValue();
-
                 Collections.sort(keys);
-
             }
 
             AssignmentBak assignmentBak = new AssignmentBak(componentTasks, assignment);
             zkClusterState.backup_assignment(topologyName, assignmentBak);
-
         } catch (Exception e) {
             LOG.warn("Failed to backup " + topologyId + " assignment " + assignment, e);
         }
@@ -901,7 +832,7 @@ public class TopologyAssign implements Runnable {
     private void getAliveSupervsByHb(Map<String, SupervisorInfo> supervisorInfos, Map conf) {
         int currentTime = TimeUtils.current_time_secs();
         int hbTimeout = JStormUtils.parseInt(conf.get(Config.NIMBUS_SUPERVISOR_TIMEOUT_SECS), (JStormUtils.MIN_1 * 3));
-        Set<String> supervisorTobeRemoved = new HashSet<String>();
+        Set<String> supervisorTobeRemoved = new HashSet<>();
 
         for (Entry<String, SupervisorInfo> entry : supervisorInfos.entrySet()) {
             SupervisorInfo supInfo = entry.getValue();
@@ -916,11 +847,4 @@ public class TopologyAssign implements Runnable {
             supervisorInfos.remove(name);
         }
     }
-
-    /**
-     * @param args
-     */
-    public static void main(String[] args) {
-    }
-
 }

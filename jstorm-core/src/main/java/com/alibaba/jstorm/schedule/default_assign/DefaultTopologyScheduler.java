@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.Set;
 
 import com.alibaba.jstorm.client.ConfigExtension;
-import com.alibaba.jstorm.utils.JStormUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +35,7 @@ import com.alibaba.jstorm.utils.FailedAssignTopologyException;
 public class DefaultTopologyScheduler implements IToplogyScheduler {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultTopologyScheduler.class);
 
+    @SuppressWarnings("unused")
     private Map nimbusConf;
 
     @Override
@@ -44,12 +44,12 @@ public class DefaultTopologyScheduler implements IToplogyScheduler {
     }
 
     /**
-     * @@@ Here maybe exist one problem, some dead slots have been free
-     * 
-     * @param context
+     * TODO: problematic: some dead slots have been freed
+     *
+     * @param context topology assign context
      */
     protected void freeUsed(TopologyAssignContext context) {
-        Set<Integer> canFree = new HashSet<Integer>();
+        Set<Integer> canFree = new HashSet<>();
         canFree.addAll(context.getAllTaskIds());
         canFree.removeAll(context.getUnstoppedTaskIds());
 
@@ -58,7 +58,7 @@ public class DefaultTopologyScheduler implements IToplogyScheduler {
         for (Integer task : canFree) {
             ResourceWorkerSlot worker = oldAssigns.getWorkerByTaskId(task);
             if (worker == null) {
-                LOG.warn("When free rebalance resource, no ResourceAssignment of task " + task);
+                LOG.warn("No ResourceWorkerSlot of task " + task + " is found when freeing resource");
                 continue;
             }
 
@@ -71,7 +71,7 @@ public class DefaultTopologyScheduler implements IToplogyScheduler {
     }
 
     private Set<Integer> getNeedAssignTasks(DefaultTopologyAssignContext context) {
-        Set<Integer> needAssign = new HashSet<Integer>();
+        Set<Integer> needAssign = new HashSet<>();
 
         int assignType = context.getAssignType();
         if (assignType == TopologyAssignContext.ASSIGN_TYPE_NEW) {
@@ -88,19 +88,18 @@ public class DefaultTopologyScheduler implements IToplogyScheduler {
     }
 
     /**
-     * Get the task Map which the task is alive and will be kept Only when type is ASSIGN_TYPE_MONITOR, it is valid
-     * 
-     * @param defaultContext
-     * @param needAssigns
-     * @return
+     * Get the task Map which the task is alive and will be kept only when type is ASSIGN_TYPE_MONITOR, it is valid
+     *
+     * @param defaultContext default topology context
+     * @param needAssigns    a set of tasks to be assigned
+     * @return a set of assigned slots
      */
     public Set<ResourceWorkerSlot> getKeepAssign(DefaultTopologyAssignContext defaultContext, Set<Integer> needAssigns) {
-
-        Set<Integer> keepAssignIds = new HashSet<Integer>();
+        Set<Integer> keepAssignIds = new HashSet<>();
         keepAssignIds.addAll(defaultContext.getAllTaskIds());
         keepAssignIds.removeAll(defaultContext.getUnstoppedTaskIds());
         keepAssignIds.removeAll(needAssigns);
-        Set<ResourceWorkerSlot> keeps = new HashSet<ResourceWorkerSlot>();
+        Set<ResourceWorkerSlot> keeps = new HashSet<>();
         if (keepAssignIds.isEmpty()) {
             return keeps;
         }
@@ -123,17 +122,14 @@ public class DefaultTopologyScheduler implements IToplogyScheduler {
 
     @Override
     public Set<ResourceWorkerSlot> assignTasks(TopologyAssignContext context) throws FailedAssignTopologyException {
-
         int assignType = context.getAssignType();
-        if (TopologyAssignContext.isAssignTypeValid(assignType) == false) {
-            throw new FailedAssignTopologyException("Invalide Assign Type " + assignType);
+        if (!TopologyAssignContext.isAssignTypeValid(assignType)) {
+            throw new FailedAssignTopologyException("Invalid assign type " + assignType);
         }
 
         DefaultTopologyAssignContext defaultContext = new DefaultTopologyAssignContext(context);
         if (assignType == TopologyAssignContext.ASSIGN_TYPE_REBALANCE) {
-            /**
-             * Mark all current assigned worker as available. Current assignment will be restored in task scheduler.
-             */
+            // Mark all current assigned worker as available. Current assignment will be restored in task scheduler.
             freeUsed(defaultContext);
         }
         LOG.info("Dead tasks:" + defaultContext.getDeadTaskIds());
@@ -143,34 +139,35 @@ public class DefaultTopologyScheduler implements IToplogyScheduler {
 
         Set<ResourceWorkerSlot> keepAssigns = getKeepAssign(defaultContext, needAssignTasks);
 
-        // please use tree map to make task sequence
-        Set<ResourceWorkerSlot> ret = new HashSet<ResourceWorkerSlot>();
+        // todo: use tree map to sort tasks
+        Set<ResourceWorkerSlot> ret = new HashSet<>();
         ret.addAll(keepAssigns);
         ret.addAll(defaultContext.getUnstoppedWorkers());
 
         int allocWorkerNum = defaultContext.getTotalWorkerNum() - defaultContext.getUnstoppedWorkerNum() - keepAssigns.size();
-        LOG.info("allocWorkerNum=" + allocWorkerNum + ", totalWorkerNum=" + defaultContext.getTotalWorkerNum() + ", keepWorkerNum=" + keepAssigns.size());
+        LOG.info("allocWorkerNum=" + allocWorkerNum + ", totalWorkerNum=" +
+                defaultContext.getTotalWorkerNum() + ", keepWorkerNum=" + keepAssigns.size());
 
         if (allocWorkerNum <= 0) {
             LOG.warn("Don't need assign workers, all workers are fine " + defaultContext.toDetailString());
             throw new FailedAssignTopologyException("Don't need assign worker, all workers are fine ");
         }
 
-        List<ResourceWorkerSlot> availableWorkers = WorkerScheduler.getInstance().getAvailableWorkers(defaultContext, needAssignTasks, allocWorkerNum);
+        List<ResourceWorkerSlot> availableWorkers = WorkerScheduler.getInstance().getAvailableWorkers(
+                defaultContext, needAssignTasks, allocWorkerNum);
         TaskScheduler taskScheduler = new TaskScheduler(defaultContext, needAssignTasks, availableWorkers);
-        Set<ResourceWorkerSlot> assignment = new HashSet<ResourceWorkerSlot>(taskScheduler.assign());
+        Set<ResourceWorkerSlot> assignment = new HashSet<>(taskScheduler.assign());
 
         //setting worker's memory for TM
         int topologyMasterId = defaultContext.getTopologyMasterTaskId();
         Long tmWorkerMem = ConfigExtension.getMemSizePerTopologyMasterWorker(defaultContext.getStormConf());
-        if (tmWorkerMem != null){
-            for (ResourceWorkerSlot resourceWorkerSlot : assignment){
-                if (resourceWorkerSlot.getTasks().contains(topologyMasterId)){
+        if (tmWorkerMem != null) {
+            for (ResourceWorkerSlot resourceWorkerSlot : assignment) {
+                if (resourceWorkerSlot.getTasks().contains(topologyMasterId)) {
                     resourceWorkerSlot.setMemSize(tmWorkerMem);
                 }
             }
         }
-
         ret.addAll(assignment);
 
         LOG.info("Keep Alive slots:" + keepAssigns);

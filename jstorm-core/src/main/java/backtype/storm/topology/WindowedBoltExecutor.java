@@ -97,16 +97,16 @@ public class WindowedBoltExecutor implements IRichBolt {
     private void ensureDurationLessThanTimeout(int duration, int timeout) {
         if (duration > timeout) {
             throw new IllegalArgumentException("Window duration (length + sliding interval) value " + duration +
-                                                       " is more than " + Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS +
-                                                       " value " + timeout);
+                    " is more than " + Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS +
+                    " value " + timeout);
         }
     }
 
     private void ensureCountLessThanMaxPending(int count, int maxPending) {
         if (count > maxPending) {
             throw new IllegalArgumentException("Window count (length + sliding interval) value " + count +
-                                                       " is more than " + Config.TOPOLOGY_MAX_SPOUT_PENDING +
-                                                       " value " + maxPending);
+                    " is more than " + Config.TOPOLOGY_MAX_SPOUT_PENDING +
+                    " value " + maxPending);
         }
     }
 
@@ -177,15 +177,13 @@ public class WindowedBoltExecutor implements IRichBolt {
                 watermarkInterval = DEFAULT_WATERMARK_EVENT_INTERVAL_MS;
             }
             waterMarkEventGenerator = new WaterMarkEventGenerator<>(manager, watermarkInterval,
-                                                                    maxLagMs, getComponentStreams(context));
+                    maxLagMs, getComponentStreams(context));
         }
         // validate
         validate(stormConf, windowLengthCount, windowLengthDuration,
-                 slidingIntervalCount, slidingIntervalDuration);
-        evictionPolicy = getEvictionPolicy(windowLengthCount, windowLengthDuration,
-                                                                 manager);
-        triggerPolicy = getTriggerPolicy(slidingIntervalCount, slidingIntervalDuration,
-                                                              manager, evictionPolicy);
+                slidingIntervalCount, slidingIntervalDuration);
+        evictionPolicy = getEvictionPolicy(windowLengthCount, windowLengthDuration, manager);
+        triggerPolicy = getTriggerPolicy(slidingIntervalCount, slidingIntervalDuration, manager, evictionPolicy);
         manager.setEvictionPolicy(evictionPolicy);
         manager.setTriggerPolicy(triggerPolicy);
         return manager;

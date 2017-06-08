@@ -39,7 +39,6 @@ public class NetPrioCore implements CgroupCore {
 
     @Override
     public SubSystemType getType() {
-        // TODO Auto-generated method stub
         return SubSystemType.net_prio;
     }
 
@@ -56,7 +55,7 @@ public class NetPrioCore implements CgroupCore {
     }
 
     public Map<String, Integer> getIfPrioMap() throws IOException {
-        Map<String, Integer> result = new HashMap<String, Integer>();
+        Map<String, Integer> result = new HashMap<>();
         List<String> strs = CgroupUtils.readFileByLine(Constants.getDir(this.dir, NET_PRIO_IFPRIOMAP));
         for (String str : strs) {
             String[] strArgs = str.split(" ");

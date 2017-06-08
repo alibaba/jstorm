@@ -36,13 +36,11 @@ import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
 /**
- * Wraps {@link IRichBolt} and forwards checkpoint tuples in a
- * stateful topology.
- * <p>
+ * Wraps {@link IRichBolt} and forwards checkpoint tuples in a stateful topology.
+ *
  * When a storm topology contains one or more {@link IStatefulBolt} all non-stateful
  * bolts are wrapped in {@link CheckpointTupleForwarder} so that the checkpoint tuples
  * can flow through the entire topology DAG.
- * </p>
  */
 public class CheckpointTupleForwarder implements IRichBolt {
     private static final Logger LOG = LoggerFactory.getLogger(CheckpointTupleForwarder.class);
@@ -85,7 +83,8 @@ public class CheckpointTupleForwarder implements IRichBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         bolt.declareOutputFields(declarer);
-        declarer.declareStream(CheckpointSpout.CHECKPOINT_STREAM_ID, new Fields(CheckpointSpout.CHECKPOINT_FIELD_TXID, CheckpointSpout.CHECKPOINT_FIELD_ACTION));
+        declarer.declareStream(CheckpointSpout.CHECKPOINT_STREAM_ID,
+                new Fields(CheckpointSpout.CHECKPOINT_FIELD_TXID, CheckpointSpout.CHECKPOINT_FIELD_ACTION));
     }
 
     @Override
@@ -97,9 +96,9 @@ public class CheckpointTupleForwarder implements IRichBolt {
      * Forwards the checkpoint tuple downstream. Sub-classes can override
      * with the logic for handling checkpoint tuple.
      *
-     * @param checkpointTuple  the checkpoint tuple
-     * @param action the action (prepare, commit, rollback or initstate)
-     * @param txid   the transaction id.
+     * @param checkpointTuple the checkpoint tuple
+     * @param action          the action (prepare, commit, rollback or initstate)
+     * @param txid            the transaction id.
      */
     protected void handleCheckpoint(Tuple checkpointTuple, Action action, long txid) {
         collector.emit(CheckpointSpout.CHECKPOINT_STREAM_ID, checkpointTuple, new Values(txid, action));
@@ -148,7 +147,7 @@ public class CheckpointTupleForwarder implements IRichBolt {
             }
         } else {
             LOG.debug("Waiting for action {}, txid {} from all input tasks. checkPointInputTaskCount {}, " +
-                              "transactionRequestCount {}", action, txid, checkPointInputTaskCount, transactionRequestCount);
+                    "transactionRequestCount {}", action, txid, checkPointInputTaskCount, transactionRequestCount);
             collector.ack(input);
         }
     }

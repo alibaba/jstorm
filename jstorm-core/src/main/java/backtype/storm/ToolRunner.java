@@ -22,11 +22,10 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.commons.cli.ParseException;
 
-import backtype.storm.utils.Utils;
 
 /**
- * A utility to help run {@link Tool}s
- * 
+ * A utility class to help run {@link Tool}s
+ *
  * <p>
  * <code>ToolRunner</code> can be used to run classes extending the <code>Tool</code> abstract class. It works in conjunction with {@link GenericOptionsParser} to parse the <a
  * href="{@docRoot} to parse the <a href="{@docRoot} to parse the <a href="{@docRoot} to parse the <a
@@ -36,7 +35,7 @@ import backtype.storm.utils.Utils;
  * href="{@docRoot} to parse the <a href="{@docRoot} to parse the <a href="{@docRoot} to parse the <a href="{@docRoot}
  * /backtype/storm/GenericOptionsParser.html#GenericOptions"> generic storm command line arguments</a> and modifies the <code>Config</code> of the
  * <code>Tool</code>. The application-specific options are passed along without being modified.
- * 
+ *
  * @see Tool
  * @see GenericOptionsParser
  */

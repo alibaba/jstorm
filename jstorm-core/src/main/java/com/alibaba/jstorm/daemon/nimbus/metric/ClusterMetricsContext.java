@@ -1,7 +1,24 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.alibaba.jstorm.daemon.nimbus.metric;
 
 import com.alibaba.jstorm.common.metric.MetricMeta;
-import com.alibaba.jstorm.daemon.nimbus.metric.uploader.BaseMetricUploaderWithFlowControl;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -73,7 +90,10 @@ public class ClusterMetricsContext {
 
     protected StormClusterState stormClusterState;
 
-    protected MetricUploader metricUploader;
+    private MetricUploaderDelegate metricUploaderDelegate;
+    protected final List<MetricUploader> metricUploaders = new ArrayList<>();
+    private MetricUploader lastMetricUploader;
+    private final AtomicBoolean readyToUpload = new AtomicBoolean(false);
 
     protected AtomicBoolean isShutdown;
     protected String clusterName;
@@ -142,27 +162,36 @@ public class ClusterMetricsContext {
     }
 
     public void initPlugin() {
+        // init rate controller
+        MetricUploader.rateController.init(nimbusData.getConf());
+
         String metricUploadClass = ConfigExtension.getMetricUploaderClass(nimbusData.getConf());
         if (StringUtils.isBlank(metricUploadClass)) {
             metricUploadClass = DefaultMetricUploader.class.getName();
         }
         // init metric uploader
-        LOG.info("metric uploader class:{}", metricUploadClass);
-        Object instance = Utils.newInstance(metricUploadClass);
-        if (!(instance instanceof MetricUploader)) {
-            throw new RuntimeException(metricUploadClass + " isn't MetricUploader class ");
-        }
-        this.metricUploader = (MetricUploader) instance;
-        try {
-            metricUploader.init(nimbusData);
-            if (metricUploader instanceof BaseMetricUploaderWithFlowControl) {
-                ((BaseMetricUploaderWithFlowControl) metricUploader).setMaxConcurrentUploadingNum(
-                        ConfigExtension.getMaxConcurrentUploadingNum(nimbusData.getConf()));
+        LOG.info("metric uploader classes:{}", metricUploadClass);
+        String[] classes = metricUploadClass.split(",");
+        for (String klass : classes) {
+            klass = klass.trim();
+            if (StringUtils.isBlank(klass)) {
+                continue;
             }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+
+            Object instance = Utils.newInstance(klass);
+            if (!(instance instanceof MetricUploader)) {
+                throw new RuntimeException(klass + " isn't MetricUploader class ");
+            }
+            MetricUploader metricUploader = (MetricUploader) instance;
+            try {
+                metricUploader.init(nimbusData);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            metricUploaders.add(metricUploader);
+            LOG.info("Successfully init metric uploaders:{}", metricUploaders);
         }
-        LOG.info("Successfully init {}", metricUploadClass);
+        this.lastMetricUploader = metricUploaders.get(metricUploaders.size() - 1);
 
         // init metric query client
         String metricQueryClientClass = ConfigExtension.getMetricQueryClientClass(nimbusData.getConf());
@@ -179,6 +208,9 @@ public class ClusterMetricsContext {
             throw new RuntimeException(e);
         }
         LOG.info("Successfully init MetricQureyClient ");
+
+        this.metricUploaderDelegate = new MetricUploaderDelegate();
+        this.readyToUpload.set(true);
     }
 
     public void pushRefreshEvent() {
@@ -219,7 +251,7 @@ public class ClusterMetricsContext {
 
     public void shutdown() {
         LOG.info("Begin to shutdown");
-        metricUploader.cleanup();
+        getMetricUploaderDelegate().cleanup();
 
         LOG.info("Successfully shutdown");
     }
@@ -268,8 +300,7 @@ public class ClusterMetricsContext {
         final TopologyMetricContext context = topologyMetricContexts.get(topologyId);
         if (context != null) {
             for (String id : idList) {
-                MetricMeta meta = metricQueryClient.getMetricMeta(clusterName, topologyId, MetaType.parse(metaType),
-                        Long.valueOf(id));
+                MetricMeta meta = metricQueryClient.getMetricMeta(clusterName, topologyId, MetaType.parse(metaType), id);
                 if (meta != null) {
                     LOG.warn("deleting metric meta:{}", meta);
                     metricQueryClient.deleteMeta(meta);
@@ -377,12 +408,18 @@ public class ClusterMetricsContext {
         return -1;
     }
 
-    public void markUploaded(int idx) {
+    public void markUploaded(MetricUploader curUploader, int idx) {
+        if (curUploader == lastMetricUploader) {
+            forceMarkUploaded(idx);
+        }
+    }
+
+    public void forceMarkUploaded(int idx) {
         this.metricCache.remove(PENDING_UPLOAD_METRIC_DATA + idx);
         this.metricCache.remove(PENDING_UPLOAD_METRIC_DATA_INFO + idx);
         this.metricStat.set(idx, UNSET);
-        if (metricUploader instanceof BaseMetricUploaderWithFlowControl) {
-            ((BaseMetricUploaderWithFlowControl) metricUploader).decrUploadingNum();
+        if (MetricUploader.rateController.isEnableRateControl()) {
+            MetricUploader.rateController.decrUploadingNum();
         }
     }
 
@@ -406,8 +443,12 @@ public class ClusterMetricsContext {
         return stormClusterState;
     }
 
-    public MetricUploader getMetricUploader() {
-        return metricUploader;
+    public boolean isReadyToUpload() {
+        return this.readyToUpload.get();
+    }
+
+    public MetricUploaderDelegate getMetricUploaderDelegate() {
+        return metricUploaderDelegate;
     }
 
     public NimbusData getNimbusData() {
@@ -426,4 +467,70 @@ public class ClusterMetricsContext {
         return clusterName;
     }
 
+
+    public class MetricUploaderDelegate {
+
+        public boolean isUnderFlowControl() {
+            return MetricUploader.rateController.isEnableRateControl() &&
+                    !MetricUploader.rateController.syncToUpload();
+        }
+
+        public void cleanup() {
+            for (MetricUploader metricUploader : metricUploaders) {
+                metricUploader.cleanup();
+            }
+        }
+
+        /**
+         * register metrics to external metric plugin
+         */
+        public boolean registerMetrics(String clusterName, String topologyId, Map<String, Long> metrics) throws
+                Exception {
+            boolean ret = true;
+            for (MetricUploader metricUploader : metricUploaders) {
+                ret &= metricUploader.registerMetrics(clusterName, topologyId, metrics);
+            }
+            return ret;
+        }
+
+        /**
+         * upload topologyMetric to external metric plugin (such as database plugin)
+         *
+         * @return true means success, false means failure
+         */
+        public boolean upload(String clusterName, String topologyId, TopologyMetric tpMetric, Map<String, Object>
+                metricContext) {
+            boolean ret = true;
+            for (MetricUploader metricUploader : metricUploaders) {
+                ret &= metricUploader.upload(clusterName, topologyId, tpMetric, metricContext);
+            }
+            return ret;
+        }
+
+        /**
+         * upload metrics with given key and metric context. the implementation can
+         * retrieve metric data from rocks db
+         * in the handler thread, which is kind of lazy-init, making it more
+         * GC-friendly
+         */
+        public boolean upload(String clusterName, String topologyId, Object key, Map<String, Object> metricContext) {
+            boolean ret = true;
+            for (MetricUploader metricUploader : metricUploaders) {
+                ret &= metricUploader.upload(clusterName, topologyId, key, metricContext);
+            }
+            return ret;
+        }
+
+        /**
+         * Send an event to underlying handler
+         */
+        public boolean sendEvent(String clusterName, MetricEvent event) {
+            boolean ret = true;
+            for (MetricUploader metricUploader : metricUploaders) {
+                ret &= metricUploader.sendEvent(clusterName, event);
+            }
+            return ret;
+        }
+
+    }
 }
