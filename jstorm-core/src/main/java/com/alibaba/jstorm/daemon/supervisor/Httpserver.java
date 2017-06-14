@@ -46,8 +46,7 @@ import java.util.concurrent.Executors;
  * @author Johnfang (xiaojian.fxj@alibaba-inc.com)
  */
 public class Httpserver implements Shutdownable {
-
-    private static Logger LOG = LoggerFactory.getLogger(Httpserver.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Httpserver.class);
 
     private HttpServer hs;
     private int port;
@@ -61,7 +60,7 @@ public class Httpserver implements Shutdownable {
     static class LogHandler implements HttpHandler {
         private String logDir;
         private String stormHome;
-        private ArrayList<String> accessDirs = new ArrayList<String>();
+        private ArrayList<String> accessDirs = new ArrayList<>();
         Map conf;
         private final int pageSize;
         private boolean debug = false;
@@ -95,8 +94,7 @@ public class Httpserver implements Shutdownable {
             }
 
             this.conf = conf;
-
-            LOG.info("logview logDir=" + logDir); // +++
+            LOG.info("logview log dir=" + logDir);
         }
 
         @VisibleForTesting
@@ -119,11 +117,11 @@ public class Httpserver implements Shutdownable {
         public void handle(HttpExchange t) throws IOException {
             URI uri = t.getRequestURI();
             Map<String, String> paramMap = parseRawQuery(uri.getRawQuery());
-            LOG.info("Receive command " + paramMap);
+            LOG.info("Received command " + paramMap);
 
             String cmd = paramMap.get(HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_CMD);
             if (StringUtils.isBlank(cmd)) {
-                handlFailure(t, "Bad Request, Not set command type");
+                handlFailure(t, "Bad Request, please specify command!");
                 return;
             }
 
@@ -139,10 +137,10 @@ public class Httpserver implements Shutdownable {
                 handleShowConf(t, paramMap);
             } else if (HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_CMD_SEARCH_LOG.equals(cmd)) {
                 handleSearchLog(t, paramMap);
-            } else if (HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_CMD_DOWNLOAD.equals(cmd)){
+            } else if (HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_CMD_DOWNLOAD.equals(cmd)) {
                 handleDownloadLog(t, paramMap);
             } else {
-                handlFailure(t, "Bad Request, Not support command type " + cmd);
+                handlFailure(t, "Bad Request, unsupported command " + cmd);
             }
         }
 
@@ -188,13 +186,13 @@ public class Httpserver implements Shutdownable {
             }
 
             String size = String.format(HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_SIZE_FORMAT, logPair.getFirst());
-            byte[] sizeByts = size.getBytes();
+            byte[] sizeBytes = size.getBytes();
 
             byte[] logData = logPair.getSecond();
 
-            t.sendResponseHeaders(HttpURLConnection.HTTP_OK, sizeByts.length + logData.length);
+            t.sendResponseHeaders(HttpURLConnection.HTTP_OK, sizeBytes.length + logData.length);
             OutputStream os = t.getResponseBody();
-            os.write(sizeByts);
+            os.write(sizeBytes);
             os.write(logData);
             os.close();
         }
@@ -206,7 +204,6 @@ public class Httpserver implements Shutdownable {
 
 
         private Pair<Long, byte[]> queryLog(HttpExchange t, Map<String, String> paramMap) throws IOException {
-
             String fileParam = paramMap.get(HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_LOGFILE);
             String _pageSize = paramMap.get(HttpserverUtils.HTTPSERVER_LOGVIEW_PAGE_SIZE);
             if (StringUtils.isBlank(fileParam)) {
@@ -225,9 +222,7 @@ public class Httpserver implements Shutdownable {
             byte[] ret;
             try {
                 fc = new RandomAccessFile(logFile, "r").getChannel();
-
                 fileSize = fc.size();
-
                 long position = fileSize - pageSize;
                 try {
                     String posStr = paramMap.get(HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_POS);
@@ -235,7 +230,7 @@ public class Httpserver implements Shutdownable {
                         position = Long.valueOf(posStr);
                     }
                 } catch (Exception e) {
-                    LOG.warn("Invalide position " + position);
+                    LOG.warn("Invalid position " + position);
                 }
                 if (position < 0) {
                     position = 0L;
@@ -269,34 +264,29 @@ public class Httpserver implements Shutdownable {
         }
 
         byte[] getJSonFiles(String dir) throws Exception {
-            Map<String, FileAttribute> fileMap = new HashMap<String, FileAttribute>();
+            Map<String, FileAttribute> fileMap = new HashMap<>();
 
             String path = logDir;
             if (dir != null) {
                 path = path + File.separator + dir;
             }
             accessCheck(path);
-
             LOG.info("List dir " + path);
 
             File file = new File(path);
-
             String[] files = file.list();
             if (files == null) {
-            	files = new String[] {};
+                files = new String[]{};
             }
 
             for (String fileName : files) {
                 String logFile = Joiner.on(File.separator).join(path, fileName);
-
                 FileAttribute fileAttribute = new FileAttribute();
                 fileAttribute.setFileName(fileName);
 
                 File subFile = new File(logFile);
-
                 Date modify = new Date(subFile.lastModified());
                 fileAttribute.setModifyTime(TimeFormat.getSecond(modify));
-
                 if (subFile.isFile()) {
                     fileAttribute.setIsDir(String.valueOf(false));
                     fileAttribute.setSize(String.valueOf(subFile.length()));
@@ -308,9 +298,7 @@ public class Httpserver implements Shutdownable {
 
                     fileMap.put(logFile, fileAttribute);
                 }
-
             }
-
             String fileJsonStr = JStormUtils.to_json(fileMap);
             return fileJsonStr.getBytes();
         }
@@ -360,7 +348,7 @@ public class Httpserver implements Shutdownable {
             int maxBlocks = ConfigExtension.getMaxBlocksPerLogSearch(conf);
             int blockSize = HttpserverUtils.LOG_SEARCH_BLOCK_SIZE;
             String key = paramMap.get("key");
-            if (caseIgnore){
+            if (caseIgnore) {
                 key = key.toLowerCase();
             }
             key = URLDecoder.decode(key, "UTF-8");
@@ -384,7 +372,7 @@ public class Httpserver implements Shutdownable {
 
             //search
             String searchFrom = paramMap.get("search_from");
-            if (searchFrom != null && searchFrom.equals("head")){
+            if (searchFrom != null && searchFrom.equals("head")) {
                 ret = searchFromHead(logFile, offset, key, maxMatch, lookBack, lookAhead, maxBlocks, blockSize, caseIgnore);
             } else {
                 ret = searchFromTail(logFile, offset, key, maxMatch, lookBack, lookAhead, maxBlocks, blockSize, caseIgnore);
@@ -396,7 +384,7 @@ public class Httpserver implements Shutdownable {
 
 
         private Map<Object, Object> searchFromTail(String logFile, long offset, String key, int maxMatch, int lookBack,
-                           int lookAhead, int maxBlocks, int blockSize, boolean caseIgnore) throws IOException {
+                                                   int lookAhead, int maxBlocks, int blockSize, boolean caseIgnore) throws IOException {
             Map<Object, Object> ret = new HashMap<>();
             Map<Long, String> matchResults = new HashMap<>();   //<offset, match content>
             int match = 0;
@@ -451,7 +439,7 @@ public class Httpserver implements Shutdownable {
                             if (isMatch) {
                                 int start = Math.max(0, j - lookBack);
                                 j += lookAhead;
-                                matchOffset = start > 0 ? pos + line2pos[start-1] : pos;
+                                matchOffset = start > 0 ? pos + line2pos[start - 1] : pos;
                                 // jumps out of current block
                                 if (j >= lines.length) {
                                     jumpLines = j - lines.length + 1;
@@ -513,12 +501,12 @@ public class Httpserver implements Shutdownable {
             return ret;
         }
 
-        private void readJumpLines(RandomAccessFile randomAccessFile, long pos, int lines, StringBuilder matchContent){
+        private void readJumpLines(RandomAccessFile randomAccessFile, long pos, int lines, StringBuilder matchContent) {
             try {
                 randomAccessFile.seek(pos);
-                while(lines-- > 0){
+                while (lines-- > 0) {
                     String line = randomAccessFile.readLine();
-                    if (line != null){
+                    if (line != null) {
                         matchContent.append(line).append("\n");
                     }
                 }
@@ -528,7 +516,7 @@ public class Httpserver implements Shutdownable {
         }
 
         private Map<Object, Object> searchFromHead(String logFile, long offset, String key, int maxMatch, int lookBack,
-                            int lookAhead, int maxBlocks, int blockSize, boolean caseIgnore) throws IOException {
+                                                   int lookAhead, int maxBlocks, int blockSize, boolean caseIgnore) throws IOException {
             Map<Object, Object> ret = new HashMap<>();
             Map<Long, String> matchResults = new HashMap<>();   //<offset, match content>
             int match = 0;
@@ -589,11 +577,11 @@ public class Httpserver implements Shutdownable {
                             if (isMatch) {
                                 int start = Math.max(0, j - lookBack);
                                 j += lookAhead;
-                                matchOffset = start > 0 ? pos + line2pos[start-1] : pos;
+                                matchOffset = start > 0 ? pos + line2pos[start - 1] : pos;
                                 // jumps out of current block
                                 if (j >= lines.length) {
                                     jumpLines = j - lines.length + 1;
-                                    j = lines.length -1 ;
+                                    j = lines.length - 1;
                                 }
                                 // search finishes
                                 if (++match >= maxMatch) {
@@ -617,7 +605,6 @@ public class Httpserver implements Shutdownable {
                                 } else {
                                     j++;
                                 }
-
                             } else {
                                 j++;
                             }
@@ -661,12 +648,10 @@ public class Httpserver implements Shutdownable {
 
         void handleJstack(StringBuilder sb, Integer pid) {
             String cmd = "jstack " + pid;
-
             try {
                 LOG.info("Begin to execute " + cmd);
                 String output = JStormUtils.launchProcess(cmd, new HashMap<String, String>(), false);
                 sb.append(output);
-                
                 LOG.info("Successfully get output of " + cmd);
             } catch (IOException e) {
                 LOG.info("Failed to execute " + cmd, e);
@@ -678,9 +663,8 @@ public class Httpserver implements Shutdownable {
         }
 
 
-        void handleJstat (StringBuilder sb, Integer pid) {
+        void handleJstat(StringBuilder sb, Integer pid) {
             String cmd = "jstat -gc " + pid;
-
             try {
                 LOG.info("Begin to execute " + cmd);
                 String output = JStormUtils.launchProcess(cmd, new HashMap<String, String>(), false);
@@ -699,7 +683,7 @@ public class Httpserver implements Shutdownable {
         void handleJstack(HttpExchange t, Map<String, String> paramMap) throws IOException {
             String workerPort = paramMap.get(HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_WORKER_PORT);
             if (workerPort == null) {
-                handlFailure(t, "Not set worker's port");
+                handlFailure(t, "worker port is not set!");
                 return;
             }
 
@@ -721,7 +705,7 @@ public class Httpserver implements Shutdownable {
         void handleJstat(HttpExchange t, Map<String, String> paramMap) throws IOException {
             String workerPort = paramMap.get(HttpserverUtils.HTTPSERVER_LOGVIEW_PARAM_WORKER_PORT);
             if (workerPort == null) {
-                handlFailure(t, "Not set worker's port");
+                handlFailure(t, "worker port is not set!");
                 return;
             }
 
@@ -776,23 +760,21 @@ public class Httpserver implements Shutdownable {
         int numHandler = 3;
         InetSocketAddress socketAddr = new InetSocketAddress(port);
         Executor executor = Executors.newFixedThreadPool(numHandler);
-
         try {
             hs = HttpServer.create(socketAddr, 0);
             hs.createContext(HttpserverUtils.HTTPSERVER_CONTEXT_PATH_LOGVIEW, new LogHandler(conf));
             hs.setExecutor(executor);
             hs.start();
-
         } catch (BindException e) {
-            LOG.info("HttpServer Already start!");
+            LOG.info("HttpServer has started already!");
             hs = null;
             return;
         } catch (IOException e) {
-            LOG.error("HttpServer Start Failed", e);
+            LOG.error("Failed to start HttpServer", e);
             hs = null;
             return;
         }
-        LOG.info("Success start HttpServer at port:" + port);
+        LOG.info("Success started HttpServer at port:" + port);
 
     }
 
@@ -800,9 +782,8 @@ public class Httpserver implements Shutdownable {
     public void shutdown() {
         if (hs != null) {
             hs.stop(0);
-            LOG.info("Successfully stop http server");
+            LOG.info("Successfully stopped http server");
         }
-
     }
 
     public static void main(String[] args) throws Exception {

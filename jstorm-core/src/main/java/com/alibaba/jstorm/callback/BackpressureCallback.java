@@ -17,58 +17,36 @@
  */
 package com.alibaba.jstorm.callback;
 
-import java.nio.ByteBuffer;
 import java.util.Map;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Set;
 
 import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import backtype.storm.messaging.TaskMessage;
 import backtype.storm.utils.DisruptorQueue;
 
-import com.alibaba.jstorm.message.netty.StormChannelGroup;
+import com.alibaba.jstorm.message.netty.NettyServerFlowCtrlHandler;
 
 public class BackpressureCallback implements Callback {
     private static final Logger LOG = LoggerFactory.getLogger(BackpressureCallback.class);
 
-    private StormChannelGroup stormChannelGroup;
-    private DisruptorQueue monitorQueue;
-    private float lowMark;
+    private NettyServerFlowCtrlHandler handler;
     private int taskId;
-    private Map<Integer, HashSet<String>> remoteClientsUnderFlowCtrl;
 
-    public BackpressureCallback(StormChannelGroup channelGroup, DisruptorQueue queue, float lowMark, int taskId,
-    		Map<Integer, HashSet<String>> remoteClientsUnderFlowCtrl) {
-        this.stormChannelGroup = channelGroup;
-        this.monitorQueue = queue;
-        this.lowMark = lowMark;
+    public BackpressureCallback(NettyServerFlowCtrlHandler handler, int taskId) {
         this.taskId = taskId;
-        this.remoteClientsUnderFlowCtrl = remoteClientsUnderFlowCtrl;
+        this.handler = handler;
     }
 
     public <T> Object execute(T... args) {
-        if (monitorQueue.pctFull() < lowMark && monitorQueue.cacheSize() == 0) {
-        	HashSet<String> remoteAddrs = remoteClientsUnderFlowCtrl.get(taskId);
-            //LOG.debug("Release flow ctrl for task-{} for {}", taskId, remoteAddrs);
-
-            synchronized (remoteAddrs) {
-           	    for (String remoteAddr : remoteAddrs) {
-           	        Channel channel = stormChannelGroup.getChannel(remoteAddr);
-           	        if (channel == null) {
-           	        	continue;
-           	        }
-                    // send back backpressure flow control request to source client
-                    ByteBuffer buffer = ByteBuffer.allocate(Integer.SIZE + 1);
-                    buffer.put((byte) 0); // 1-> start flow control; 0-> stop flow control
-                    buffer.putInt(taskId);
-                    TaskMessage flowCtrlMsg = new TaskMessage(TaskMessage.BACK_PRESSURE_REQUEST, 0, buffer.array());
-                    channel.write(flowCtrlMsg);
-           	    }
-           	    remoteAddrs.clear();
+        DisruptorQueue queue = (DisruptorQueue) args[0];
+        if (handler.checkIfUnderFlowCtrl(queue)) {
+            try {
+                handler.releaseFlowCtrl(taskId);
+            } catch (InterruptedException e) {
+                LOG.warn("Failed to release flow control for task-{}", taskId);
+                return false;
             }
             return true;
         } else {

@@ -51,7 +51,7 @@ public class TransactionalSpoutCoordinator extends BaseRichSpout {
     private TransactionalState _state;
     private RotatingTransactionalState _coordinatorState;
 
-    TreeMap<BigInteger, TransactionStatus> _activeTx = new TreeMap<BigInteger, TransactionStatus>();
+    TreeMap<BigInteger, TransactionStatus> _activeTx = new TreeMap<>();
 
     private SpoutOutputCollector _collector;
     private Random _rand;
@@ -169,7 +169,7 @@ public class TransactionalSpoutCoordinator extends BaseRichSpout {
         return ret;
     }
 
-    private static enum AttemptStatus {
+    private enum AttemptStatus {
         PROCESSING, PROCESSED, COMMITTING
     }
 

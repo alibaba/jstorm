@@ -17,6 +17,7 @@
  */
 package backtype.storm.metric.api;
 
+@Deprecated
 public interface IReducer<T> {
     T init();
 

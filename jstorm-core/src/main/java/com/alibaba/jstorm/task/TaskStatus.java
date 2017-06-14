@@ -27,6 +27,8 @@ public class TaskStatus {
     // task is init
     public static final byte INIT = 3;
 
+    public static final byte UPGRADING = 4;
+
     private volatile byte status = TaskStatus.INIT;
 
     public byte getStatus() {
@@ -49,19 +51,16 @@ public class TaskStatus {
         return status == TaskStatus.PAUSE;
     }
 
-    public boolean isInit(){return status == TaskStatus.INIT;}
+    public boolean isInit() {
+        return status == TaskStatus.INIT;
+    }
+
+    public boolean isUpgrading() {
+        return status == TaskStatus.UPGRADING;
+    }
 
     @Override
     public String toString() {
         return String.valueOf(status);
     }
-
-    /**
-     * @param args
-     */
-    public static void main(String[] args) {
-        // TODO Auto-generated method stub
-
-    }
-
 }

@@ -28,8 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Inmemory store implementation of {@code WindowsStore} which can be backed by persistent store.
- *
+ * In-memory store implementation of {@code WindowsStore} which can be backed by persistent store.
  */
 public class InMemoryWindowsStore implements WindowsStore, Serializable {
 
@@ -43,8 +42,7 @@ public class InMemoryWindowsStore implements WindowsStore, Serializable {
     }
 
     /**
-     *
-     * @param maxSize maximum size of inmemory store
+     * @param maxSize      maximum size of in-memory store
      * @param backingStore backing store containing the entries
      */
     public InMemoryWindowsStore(int maxSize, WindowsStore backingStore) {
@@ -57,7 +55,7 @@ public class InMemoryWindowsStore implements WindowsStore, Serializable {
     public Object get(String key) {
         Object value = store.get(key);
 
-        if(value == null && backingStore != null) {
+        if (value == null && backingStore != null) {
             value = backingStore.get(key);
         }
 
@@ -75,7 +73,7 @@ public class InMemoryWindowsStore implements WindowsStore, Serializable {
 
     @Override
     public Iterable<String> getAllKeys() {
-        if(backingStore != null) {
+        if (backingStore != null) {
             return backingStore.getAllKeys();
         }
 
@@ -88,7 +86,7 @@ public class InMemoryWindowsStore implements WindowsStore, Serializable {
 
             @Override
             public String next() {
-                return  storeEnumeration.nextElement();
+                return storeEnumeration.nextElement();
             }
 
             @Override
@@ -109,13 +107,13 @@ public class InMemoryWindowsStore implements WindowsStore, Serializable {
     public void put(String key, Object value) {
         _put(key, value);
 
-        if(backingStore != null) {
+        if (backingStore != null) {
             backingStore.put(key, value);
         }
     }
 
     private void _put(String key, Object value) {
-        if(!canAdd()) {
+        if (!canAdd()) {
             return;
         }
 
@@ -124,7 +122,7 @@ public class InMemoryWindowsStore implements WindowsStore, Serializable {
     }
 
     private void incrementCurrentSize() {
-        if(backingStore != null) {
+        if (backingStore != null) {
             currentSize.incrementAndGet();
         }
     }
@@ -138,7 +136,7 @@ public class InMemoryWindowsStore implements WindowsStore, Serializable {
         for (Entry entry : entries) {
             _put(entry.key, entry.value);
         }
-        if(backingStore != null) {
+        if (backingStore != null) {
             backingStore.putAll(entries);
         }
     }
@@ -147,7 +145,7 @@ public class InMemoryWindowsStore implements WindowsStore, Serializable {
     public void remove(String key) {
         _remove(key);
 
-        if(backingStore != null) {
+        if (backingStore != null) {
             backingStore.remove(key);
         }
     }
@@ -155,9 +153,9 @@ public class InMemoryWindowsStore implements WindowsStore, Serializable {
     private void _remove(String key) {
         Object oldValue = store.remove(key);
 
-        if(oldValue != null) {
+        if (oldValue != null) {
             decrementSize();
-            if(backingStore != null) {
+            if (backingStore != null) {
                 backingStore.remove(key);
             }
         }
@@ -165,7 +163,7 @@ public class InMemoryWindowsStore implements WindowsStore, Serializable {
     }
 
     private void decrementSize() {
-        if(backingStore != null) {
+        if (backingStore != null) {
             currentSize.decrementAndGet();
         }
     }
@@ -176,7 +174,7 @@ public class InMemoryWindowsStore implements WindowsStore, Serializable {
             _remove(key);
         }
 
-        if(backingStore != null) {
+        if (backingStore != null) {
             backingStore.removeAll(keys);
         }
     }
@@ -185,7 +183,7 @@ public class InMemoryWindowsStore implements WindowsStore, Serializable {
     public void shutdown() {
         store.clear();
 
-        if(backingStore != null) {
+        if (backingStore != null) {
             backingStore.shutdown();
         }
     }

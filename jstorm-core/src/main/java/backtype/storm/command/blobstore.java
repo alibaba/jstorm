@@ -36,7 +36,7 @@ import java.util.*;
 
 /**
  * this tool is used to migrate stormdist to blobstore
- * when upgrade jstorm cluster at the first time
+ * when upgrading jstorm cluster for the first time
  *
  * @author Jark (wuchong.wc@alibaba-inc.com)
  */
@@ -152,7 +152,6 @@ public class blobstore {
         }
 
         String flag = args[0].toLowerCase();
-
         try {
             if (flag.equals(MIGRATE_FLAG) || flag.equals(MIGRATE_FULL_FLAG)) {
                 migrateOldTopologyFiles();

@@ -29,6 +29,7 @@ import java.util.Date;
  *
  * @author yannian
  */
+@SuppressWarnings("unused")
 public class TimeUtils {
 
     public static final long NS_PER_MS = 1000000L;

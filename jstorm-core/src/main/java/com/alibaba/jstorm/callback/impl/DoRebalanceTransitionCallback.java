@@ -39,26 +39,27 @@ import java.util.Map.Entry;
 
 /**
  * Do real rebalance action.
- * 
- * After nimbus receive one rebalance command, it will do as following: 1. set topology status as rebalancing 2. delay 2 * timeout seconds 3. do this callback
- * 
+ *
+ * After nimbus receives a rebalance command, it will do the following:
+ * 1. set topology status to rebalancing
+ * 2. delay 2 * timeout seconds
+ * 3. execute this callback
+ *
  * @author Xin.Li/Longda
- * 
  */
 public class DoRebalanceTransitionCallback extends BaseCallback {
-
-    private static Logger LOG = LoggerFactory.getLogger(DoRebalanceTransitionCallback.class);
+    private static final Logger LOG = LoggerFactory.getLogger(DoRebalanceTransitionCallback.class);
 
     private NimbusData data;
-    private String topologyid;
+    private String topologyId;
     private StormStatus oldStatus;
     private Set<Integer> newTasks;
 
-    public DoRebalanceTransitionCallback(NimbusData data, String topologyid, StormStatus status) {
+    public DoRebalanceTransitionCallback(NimbusData data, String topologyId, StormStatus status) {
         this.data = data;
-        this.topologyid = topologyid;
+        this.topologyId = topologyId;
         this.oldStatus = status;
-        this.newTasks = new HashSet<Integer>();
+        this.newTasks = new HashSet<>();
     }
 
     @Override
@@ -66,19 +67,14 @@ public class DoRebalanceTransitionCallback extends BaseCallback {
         boolean isSetTaskInfo = false;
         try {
             Boolean reassign = (Boolean) args[1];
-            Map<Object, Object> conf = (Map<Object, Object>) args[2]; // args[0]:
-                                                                      // delay,
-                                                                      // args[1]:
-                                                                      // reassign_flag,
-                                                                      // args[2]:
-                                                                      // conf
+            // args[0]: delay, args[1]: reassign_flag, args[2]: conf
+            Map<Object, Object> conf = (Map<Object, Object>) args[2];
             if (conf != null) {
                 boolean isConfUpdate = false;
-                Map stormConf = data.getConf();
 
                 // Update topology code
-                Map topoConf = StormConfig.read_nimbus_topology_conf(topologyid, data.getBlobStore());
-                StormTopology rawOldTopology = StormConfig.read_nimbus_topology_code(topologyid, data.getBlobStore());
+                Map topoConf = StormConfig.read_nimbus_topology_conf(topologyId, data.getBlobStore());
+                StormTopology rawOldTopology = StormConfig.read_nimbus_topology_code(topologyId, data.getBlobStore());
                 StormTopology rawNewTopology = NimbusUtils.normalizeTopology(conf, rawOldTopology, true);
                 StormTopology sysOldTopology = rawOldTopology.deepCopy();
                 StormTopology sysNewTopology = rawNewTopology.deepCopy();
@@ -97,7 +93,7 @@ public class DoRebalanceTransitionCallback extends BaseCallback {
                 isSetTaskInfo = true;
 
                 // If everything is OK, write topology code into disk
-                StormConfig.write_nimbus_topology_code(topologyid, Utils.serialize(rawNewTopology), data);
+                StormConfig.write_nimbus_topology_code(topologyId, Utils.serialize(rawNewTopology), data);
 
                 // Update topology conf if worker num has been updated
                 Set<Object> keys = conf.keySet();
@@ -115,13 +111,13 @@ public class DoRebalanceTransitionCallback extends BaseCallback {
                 }
 
                 if (isConfUpdate) {
-                    StormConfig.write_nimbus_topology_conf(topologyid, topoConf, data);
+                    StormConfig.write_nimbus_topology_conf(topologyId, topoConf, data);
                 }
             }
 
             TopologyAssignEvent event = new TopologyAssignEvent();
 
-            event.setTopologyId(topologyid);
+            event.setTopologyId(topologyId);
             event.setScratch(true);
             event.setOldStatus(oldStatus);
             event.setReassign(reassign);
@@ -135,7 +131,7 @@ public class DoRebalanceTransitionCallback extends BaseCallback {
             if (isSetTaskInfo) {
                 try {
                     StormClusterState clusterState = data.getStormClusterState();
-                    clusterState.remove_task(topologyid, newTasks);
+                    clusterState.remove_task(topologyId, newTasks);
                 } catch (Exception e1) {
                     LOG.error("Failed to rollback the changes on ZK for task-" + newTasks, e);
                 }
@@ -143,21 +139,22 @@ public class DoRebalanceTransitionCallback extends BaseCallback {
         }
 
         DelayStatusTransitionCallback delayCallback =
-                new DelayStatusTransitionCallback(data, topologyid, oldStatus, StatusType.rebalancing, StatusType.done_rebalance);
+                new DelayStatusTransitionCallback(data, topologyId, oldStatus, StatusType.rebalancing, StatusType.done_rebalance);
         return delayCallback.execute();
     }
 
     private void setTaskInfo(StormTopology oldTopology, StormTopology newTopology) throws Exception {
         StormClusterState clusterState = data.getStormClusterState();
         // Retrieve the max task ID
-        TreeSet<Integer> taskIds = new TreeSet<Integer>(clusterState.task_ids(topologyid));
+        TreeSet<Integer> taskIds = new TreeSet<>(clusterState.task_ids(topologyId));
         int cnt = taskIds.descendingIterator().next();
 
         cnt = setBoltInfo(oldTopology, newTopology, cnt, clusterState);
         cnt = setSpoutInfo(oldTopology, newTopology, cnt, clusterState);
     }
 
-    private int setBoltInfo(StormTopology oldTopology, StormTopology newTopology, int cnt, StormClusterState clusterState) throws Exception {
+    private int setBoltInfo(StormTopology oldTopology, StormTopology newTopology,
+                            int cnt, StormClusterState clusterState) throws Exception {
         Map<String, Bolt> oldBolts = oldTopology.get_bolts();
         Map<String, Bolt> bolts = newTopology.get_bolts();
         for (Entry<String, Bolt> entry : oldBolts.entrySet()) {
@@ -166,34 +163,35 @@ public class DoRebalanceTransitionCallback extends BaseCallback {
             Bolt bolt = bolts.get(boltName);
             if (oldBolt.get_common().get_parallelism_hint() > bolt.get_common().get_parallelism_hint()) {
                 int removedTaskNum = oldBolt.get_common().get_parallelism_hint() - bolt.get_common().get_parallelism_hint();
-                TreeSet<Integer> taskIds = new TreeSet<Integer>(clusterState.task_ids_by_componentId(topologyid, boltName));
+                TreeSet<Integer> taskIds = new TreeSet<>(clusterState.task_ids_by_componentId(topologyId, boltName));
                 Iterator<Integer> descendIterator = taskIds.descendingIterator();
                 while (--removedTaskNum >= 0) {
                     int taskId = descendIterator.next();
-                    removeTask(topologyid, taskId, clusterState);
+                    removeTask(topologyId, taskId, clusterState);
                     LOG.info("Remove bolt task, taskId=" + taskId + " for " + boltName);
                 }
             } else if (oldBolt.get_common().get_parallelism_hint() == bolt.get_common().get_parallelism_hint()) {
                 continue;
             } else {
                 int delta = bolt.get_common().get_parallelism_hint() - oldBolt.get_common().get_parallelism_hint();
-                Map<Integer, TaskInfo> taskInfoMap = new HashMap<Integer, TaskInfo>();
+                Map<Integer, TaskInfo> taskInfoMap = new HashMap<>();
 
                 for (int i = 1; i <= delta; i++) {
                     cnt++;
-                    TaskInfo taskInfo = new TaskInfo((String) entry.getKey(), "bolt");
+                    TaskInfo taskInfo = new TaskInfo(entry.getKey(), "bolt");
                     taskInfoMap.put(cnt, taskInfo);
                     newTasks.add(cnt);
                     LOG.info("Setup new bolt task, taskId=" + cnt + " for " + boltName);
                 }
-                clusterState.add_task(topologyid, taskInfoMap);
+                clusterState.add_task(topologyId, taskInfoMap);
             }
         }
 
         return cnt;
     }
 
-    private int setSpoutInfo(StormTopology oldTopology, StormTopology newTopology, int cnt, StormClusterState clusterState) throws Exception {
+    private int setSpoutInfo(StormTopology oldTopology, StormTopology newTopology,
+                             int cnt, StormClusterState clusterState) throws Exception {
         Map<String, SpoutSpec> oldSpouts = oldTopology.get_spouts();
         Map<String, SpoutSpec> spouts = newTopology.get_spouts();
         for (Entry<String, SpoutSpec> entry : oldSpouts.entrySet()) {
@@ -202,28 +200,27 @@ public class DoRebalanceTransitionCallback extends BaseCallback {
             SpoutSpec spout = spouts.get(spoutName);
             if (oldSpout.get_common().get_parallelism_hint() > spout.get_common().get_parallelism_hint()) {
                 int removedTaskNum = oldSpout.get_common().get_parallelism_hint() - spout.get_common().get_parallelism_hint();
-                TreeSet<Integer> taskIds = new TreeSet<Integer>(clusterState.task_ids_by_componentId(topologyid, spoutName));
+                TreeSet<Integer> taskIds = new TreeSet<>(clusterState.task_ids_by_componentId(topologyId, spoutName));
                 Iterator<Integer> descendIterator = taskIds.descendingIterator();
                 while (--removedTaskNum >= 0) {
                     int taskId = descendIterator.next();
-                    removeTask(topologyid, taskId, clusterState);
+                    removeTask(topologyId, taskId, clusterState);
                     LOG.info("Remove spout task, taskId=" + taskId + " for " + spoutName);
                 }
-
             } else if (oldSpout.get_common().get_parallelism_hint() == spout.get_common().get_parallelism_hint()) {
                 continue;
             } else {
                 int delta = spout.get_common().get_parallelism_hint() - oldSpout.get_common().get_parallelism_hint();
-                Map<Integer, TaskInfo> taskInfoMap = new HashMap<Integer, TaskInfo>();
+                Map<Integer, TaskInfo> taskInfoMap = new HashMap<>();
 
                 for (int i = 1; i <= delta; i++) {
                     cnt++;
-                    TaskInfo taskInfo = new TaskInfo((String) entry.getKey(), "spout");
+                    TaskInfo taskInfo = new TaskInfo(entry.getKey(), "spout");
                     taskInfoMap.put(cnt, taskInfo);
                     newTasks.add(cnt);
                     LOG.info("Setup new spout task, taskId=" + cnt + " for " + spoutName);
                 }
-                clusterState.add_task(topologyid, taskInfoMap);
+                clusterState.add_task(topologyId, taskInfoMap);
             }
         }
 
@@ -231,11 +228,11 @@ public class DoRebalanceTransitionCallback extends BaseCallback {
     }
 
     private void removeTask(String topologyId, int taskId, StormClusterState clusterState) throws Exception {
-        Set<Integer> taskIds = new HashSet<Integer>(taskId);
-        clusterState.remove_task(topologyid, taskIds);
-        Map<Integer, TkHbCacheTime> TkHbs = data.getTaskHeartbeatsCache(topologyid, false);
-        if (TkHbs != null) {
-            TkHbs.remove(taskId);
+        Set<Integer> taskIds = new HashSet<>(taskId);
+        clusterState.remove_task(this.topologyId, taskIds);
+        Map<Integer, TkHbCacheTime> tkHbs = data.getTaskHeartbeatsCache(this.topologyId, false);
+        if (tkHbs != null) {
+            tkHbs.remove(taskId);
         }
     }
 }

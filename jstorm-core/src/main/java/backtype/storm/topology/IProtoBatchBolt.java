@@ -17,8 +17,10 @@
  */
 package backtype.storm.topology;
 
-import java.util.List;
+import backtype.storm.serialization.KryoTupleDeserializer;
+import backtype.storm.utils.DisruptorQueue;
+import com.alibaba.jstorm.task.TaskReceiver;
 
 public interface IProtoBatchBolt extends IRichBatchBolt{
-    List<byte[]> protoExecute(byte[] data);
+    void protoExecute(TaskReceiver receiver, KryoTupleDeserializer deserializer, DisruptorQueue queue, byte[] data);
 }

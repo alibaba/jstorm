@@ -17,18 +17,18 @@
  */
 package com.alibaba.jstorm.task.execute.spout;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-
+import backtype.storm.Config;
+import backtype.storm.spout.ISpout;
 import backtype.storm.spout.SpoutOutputCollectorCb;
 import backtype.storm.task.ICollectorCallback;
-
+import backtype.storm.task.TopologyContext;
+import backtype.storm.tuple.MessageId;
+import backtype.storm.tuple.TupleImplExt;
+import backtype.storm.utils.DisruptorQueue;
 import backtype.storm.utils.Utils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import com.alibaba.jstorm.client.spout.IAckValueSpout;
+import com.alibaba.jstorm.client.spout.IFailValueSpout;
 import com.alibaba.jstorm.common.metric.AsmHistogram;
 import com.alibaba.jstorm.metric.JStormMetrics;
 import com.alibaba.jstorm.metric.MetricDef;
@@ -45,13 +45,13 @@ import com.alibaba.jstorm.task.error.ITaskReportErr;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.TimeOutMap;
 
-import backtype.storm.Config;
-import backtype.storm.spout.ISpout;
-import backtype.storm.task.TopologyContext;
-import backtype.storm.tuple.MessageId;
-import backtype.storm.tuple.TupleImplExt;
-import backtype.storm.tuple.Values;
-import backtype.storm.utils.DisruptorQueue;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -67,6 +67,7 @@ public class SpoutCollector extends SpoutOutputCollectorCb {
     protected TaskTransfer transfer_fn;
     // protected TimeCacheMap pending;
     protected TimeOutMap<Long, TupleInfo> pending;
+    protected boolean isCacheTuple;
     // topology_context is system topology context
     protected TopologyContext topology_context;
 
@@ -81,7 +82,7 @@ public class SpoutCollector extends SpoutOutputCollectorCb {
     protected AsmHistogram emitTotalTimer;
     protected Random random;
 
-    //Integer task_id, backtype.storm.spout.ISpout spout, TaskBaseMetric task_stats, TaskSendTargets sendTargets, Map _storm_conf,
+    //Integer taskId, backtype.storm.spout.ISpout spout, TaskBaseMetric taskStats, TaskSendTargets sendTargets, Map _storm_conf,
     //TaskTransfer _transfer_fn, TimeOutMap<Long, TupleInfo> pending, TopologyContext topology_context, DisruptorQueue disruptorAckerQueue,
     //ITaskReportErr _report_error
     public SpoutCollector(Task task, TimeOutMap<Long, TupleInfo> pending, DisruptorQueue disruptorAckerQueue) {
@@ -101,7 +102,11 @@ public class SpoutCollector extends SpoutOutputCollectorCb {
         ackerNum = JStormUtils.parseInt(storm_conf.get(Config.TOPOLOGY_ACKER_EXECUTORS));
 
         random = new Random(Utils.secureRandomLong());
-/*        random.setSeed(System.currentTimeMillis());*/
+
+        if (spout instanceof IAckValueSpout || spout instanceof IFailValueSpout)
+            isCacheTuple = true;
+        else
+            isCacheTuple = false;
 
         String componentId = topology_context.getThisComponentId();
         emitTotalTimer = (AsmHistogram) JStormMetrics.registerTaskMetric(MetricUtils.taskMetricName(
@@ -125,64 +130,58 @@ public class SpoutCollector extends SpoutOutputCollectorCb {
         return sendSpoutMsg(streamId, tuple, messageId, null, callback);
     }
 
+    @Override
     public void emitDirect(int taskId, String streamId, List<Object> tuple, Object messageId, ICollectorCallback callback) {
         sendSpoutMsg(streamId, tuple, messageId, taskId, callback);
     }
 
+    @Override
     public void emitDirectCtrl(int taskId, String streamId, List<Object> tuple, Object messageId) {
         sendCtrlMsg(streamId, tuple, messageId, taskId);
     }
 
+    @Override
     public List<Integer> emitCtrl(String streamId, List<Object> tuple, Object messageId) {
         return sendCtrlMsg(streamId, tuple, messageId, null);
     }
 
-    protected List<Integer> sendSpoutMsg(String outStreamId, List<Object> values, Object messageId, Integer outTaskId, ICollectorCallback callback) {
-        java.util.List<Integer> outTasks = null;
+    protected List<Integer> sendSpoutMsg(String outStreamId, List<Object> values, Object messageId,
+                                         Integer outTaskId, ICollectorCallback callback) {
+        java.util.List<Integer> outTasks;
         outTasks = sendMsg(outStreamId, values, messageId, outTaskId, callback);
         return outTasks;
     }
 
-    void unanchoredSend(TopologyContext topologyContext, TaskSendTargets taskTargets, TaskTransfer transfer_fn, String stream, List<Object> values){
+    void unanchoredSend(TopologyContext topologyContext, TaskSendTargets taskTargets, TaskTransfer transfer_fn,
+                        String stream, List<Object> values) {
         UnanchoredSend.send(topologyContext, taskTargets, transfer_fn, stream, values);
     }
 
-    void transferCtr(TupleImplExt tupleExt){
+    void transferCtr(TupleImplExt tupleExt) {
         transfer_fn.transferControl(tupleExt);
     }
 
-    protected void sendMsgToAck(String out_stream_id, List<Object> values, Object message_id, Long root_id, List<Long> ackSeq, boolean needAck){
+    protected void sendMsgToAck(String outStreamId, List<Object> values, Object messageId, Long rootId,
+                                List<Long> ackSeq, boolean needAck) {
         if (needAck) {
-            TupleInfo info = new TupleInfo();
-            info.setStream(out_stream_id);
-            info.setValues(values);
-            info.setMessageId(message_id);
-            info.setTimestamp(System.currentTimeMillis());
-
-            pending.putHead(root_id, info);
-
-            List<Object> ackerTuple = JStormUtils.mk_list((Object) root_id, JStormUtils.bit_xor_vals(ackSeq), task_id);
-
+            TupleInfo info = TupleInfo.buildTupleInfo(outStreamId, messageId, values, System.currentTimeMillis(), isCacheTuple);
+            pending.putHead(rootId, info);
+            List<Object> ackerTuple = JStormUtils.mk_list((Object) rootId, JStormUtils.bit_xor_vals(ackSeq), task_id);
             unanchoredSend(topology_context, sendTargets, transfer_fn, Acker.ACKER_INIT_STREAM_ID, ackerTuple);
-
-        } else if (message_id != null) {
-            TupleInfo info = new TupleInfo();
-            info.setStream(out_stream_id);
-            info.setValues(values);
-            info.setMessageId(message_id);
-            info.setTimestamp(0);
-
-            AckSpoutMsg ack = new AckSpoutMsg(root_id, spout, null, info, task_stats);
+        } else if (messageId != null) {
+            TupleInfo info = TupleInfo.buildTupleInfo(outStreamId, messageId, values, 0, isCacheTuple);
+            AckSpoutMsg ack = new AckSpoutMsg(rootId, spout, null, info, task_stats);
             ack.run();
         }
     }
 
-    public List<Integer> sendMsg(String out_stream_id, List<Object> values, Object message_id, Integer out_task_id,  ICollectorCallback callback) {
+    public List<Integer> sendMsg(String out_stream_id, List<Object> values, Object message_id,
+                                 Integer out_task_id, ICollectorCallback callback) {
         final long startTime = emitTotalTimer.getTime();
         try {
             boolean needAck = (message_id != null) && (ackerNum > 0);
             Long root_id = getRootId(message_id);
-            List<Integer> outTasks = null;
+            List<Integer> outTasks;
 
             if (out_task_id != null) {
                 outTasks = sendTargets.get(out_task_id, out_stream_id, values, null, root_id);
@@ -190,23 +189,23 @@ public class SpoutCollector extends SpoutOutputCollectorCb {
                 outTasks = sendTargets.get(out_stream_id, values, null, root_id);
             }
 
-            List<Long> ackSeq = new ArrayList<Long>();
+            List<Long> ackSeq = new ArrayList<>();
             for (Integer t : outTasks) {
-                MessageId msgid;
+                MessageId msgId;
                 if (needAck) {
                     // Long as = MessageId.generateId();
                     Long as = MessageId.generateId(random);
-                    msgid = MessageId.makeRootId(root_id, as);
+                    msgId = MessageId.makeRootId(root_id, as);
                     ackSeq.add(as);
                 } else {
-                    msgid = null;
+                    msgId = null;
                 }
 
-                TupleImplExt tp = new TupleImplExt(topology_context, values, task_id, out_stream_id, msgid);
+                TupleImplExt tp = new TupleImplExt(topology_context, values, task_id, out_stream_id, msgId);
                 tp.setTargetTaskId(t);
                 transfer_fn.transfer(tp);
             }
-            sendMsgToAck(out_stream_id, values,  message_id,  root_id, ackSeq, needAck);
+            sendMsgToAck(out_stream_id, values, message_id, root_id, ackSeq, needAck);
             if (callback != null)
                 callback.execute(out_stream_id, outTasks, values);
             return outTasks;
@@ -220,7 +219,7 @@ public class SpoutCollector extends SpoutOutputCollectorCb {
         try {
             boolean needAck = (message_id != null) && (ackerNum > 0);
             Long root_id = getRootId(message_id);
-            java.util.List<Integer> out_tasks = null;
+            java.util.List<Integer> out_tasks;
 
             if (out_task_id != null) {
                 out_tasks = sendTargets.get(out_task_id, out_stream_id, values, null, root_id);
@@ -228,23 +227,23 @@ public class SpoutCollector extends SpoutOutputCollectorCb {
                 out_tasks = sendTargets.get(out_stream_id, values, null, root_id);
             }
 
-            List<Long> ackSeq = new ArrayList<Long>();
+            List<Long> ackSeq = new ArrayList<>();
             for (Integer t : out_tasks) {
-                MessageId msgid;
+                MessageId msgId;
                 if (needAck) {
                     // Long as = MessageId.generateId();
                     Long as = MessageId.generateId(random);
-                    msgid = MessageId.makeRootId(root_id, as);
+                    msgId = MessageId.makeRootId(root_id, as);
                     ackSeq.add(as);
                 } else {
-                    msgid = null;
+                    msgId = null;
                 }
 
-                TupleImplExt tp = new TupleImplExt(topology_context, values, task_id, out_stream_id, msgid);
+                TupleImplExt tp = new TupleImplExt(topology_context, values, task_id, out_stream_id, msgId);
                 tp.setTargetTaskId(t);
                 transferCtr(tp);
             }
-            sendMsgToAck(out_stream_id, values,  message_id,  root_id, ackSeq, needAck);
+            sendMsgToAck(out_stream_id, values, message_id, root_id, ackSeq, needAck);
             return out_tasks;
         } finally {
             emitTotalTimer.updateTime(startTime);

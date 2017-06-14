@@ -26,16 +26,12 @@ import com.lmax.disruptor.dsl.ProducerType;
 import java.util.List;
 
 /**
- * 
- * A single consumer queue that uses the LMAX Disruptor. They key to the performance is the ability to catch up to the producer by processing tuples in batches.
+ * A single consumer queue that uses the LMAX Disruptor.
+ * The key to the performance is the ability to catch up to the producer by processing tuples in batches.
  */
 public abstract class DisruptorQueue implements IStatefulObject {
-    public static void setUseSleep(boolean useSleep) {
-        DisruptorQueueImpl.setUseSleep(useSleep);
-    }
-
-    public static DisruptorQueue mkInstance(String queueName, ProducerType producerType, int bufferSize, WaitStrategy wait, boolean isBatch,
-                                            int batchSize, long flushMs) {
+    public static DisruptorQueue mkInstance(String queueName, ProducerType producerType, int bufferSize,
+                                            WaitStrategy wait, boolean isBatch, int batchSize, long flushMs) {
         return new DisruptorQueueImpl(queueName, producerType, bufferSize, wait, isBatch, batchSize, flushMs);
     }
 
@@ -52,11 +48,11 @@ public abstract class DisruptorQueue implements IStatefulObject {
     public abstract void consumeBatchWhenAvailable(EventHandler<Object> handler);
 
     public abstract void consumeBatchWhenAvailableWithCallback(EventHandler<Object> handler);
-    
+
     public abstract void multiConsumeBatchWhenAvailable(EventHandler<Object> handler);
 
     public abstract void multiConsumeBatchWhenAvailableWithCallback(EventHandler<Object> handler);
-    
+
     public abstract void consumeBatchWhenAvailable(EventHandler<Object> handler, boolean isSync);
 
     public abstract void publish(Object obj);
@@ -76,12 +72,12 @@ public abstract class DisruptorQueue implements IStatefulObject {
     public abstract long readPos();
 
     public abstract float pctFull();
-    
+
     public abstract int cacheSize();
 
     public abstract List<Object> retreiveAvailableBatch() throws AlertException, InterruptedException, TimeoutException;
 
     public abstract void publishCallback(Callback cb);
-    
+
     public abstract void publishCache(Object obj);
 }

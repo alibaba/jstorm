@@ -25,9 +25,10 @@ import java.util.Map;
 
 import com.alibaba.jstorm.utils.JStormUtils;
 
-public abstract class BaseConfigurationDeclarer<T extends ComponentConfigurationDeclarer> implements ComponentConfigurationDeclarer<T> {
-	private Map conf = Utils.readStormConfig();
-	
+public abstract class BaseConfigurationDeclarer<T extends ComponentConfigurationDeclarer>
+        implements ComponentConfigurationDeclarer<T> {
+    private Map conf = Utils.readStormConfig();
+
     @Override
     public T addConfiguration(String config, Object value) {
         Map configMap = new HashMap();
@@ -60,7 +61,7 @@ public abstract class BaseConfigurationDeclarer<T extends ComponentConfiguration
             val = val.intValue();
         return addConfiguration(Config.TOPOLOGY_TASKS, val);
     }
-    
+
     @Override
     public T setMemoryLoad(Number onHeap) {
         return setMemoryLoad(onHeap, JStormUtils.parseDouble(conf.get(Config.TOPOLOGY_COMPONENT_RESOURCES_OFFHEAP_MEMORY_MB)));
@@ -68,12 +69,12 @@ public abstract class BaseConfigurationDeclarer<T extends ComponentConfiguration
 
     @Override
     public T setMemoryLoad(Number onHeap, Number offHeap) {
-    	Map configMap = new HashMap();
+        Map configMap = new HashMap();
         if (onHeap != null) {
             onHeap = onHeap.doubleValue();
             configMap.put(Config.TOPOLOGY_COMPONENT_RESOURCES_ONHEAP_MEMORY_MB, onHeap);
         }
-        if (offHeap!=null) {
+        if (offHeap != null) {
             offHeap = offHeap.doubleValue();
             configMap.put(Config.TOPOLOGY_COMPONENT_RESOURCES_OFFHEAP_MEMORY_MB, offHeap);
         }
@@ -82,9 +83,9 @@ public abstract class BaseConfigurationDeclarer<T extends ComponentConfiguration
 
     @Override
     public T setCPULoad(Number amount) {
-    	Map configMap = new HashMap();
-        if(amount != null) {
-        	configMap.put(Config.TOPOLOGY_COMPONENT_CPU_PCORE_PERCENT, amount);
+        Map configMap = new HashMap();
+        if (amount != null) {
+            configMap.put(Config.TOPOLOGY_COMPONENT_CPU_PCORE_PERCENT, amount);
         }
         return addConfigurations(configMap);
     }

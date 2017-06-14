@@ -53,16 +53,15 @@ import com.alibaba.jstorm.client.ConfigExtension;
 
 /**
  * Trident subsumes the functionality provided by transactional topologies, so this class is deprecated.
- * 
  */
 @Deprecated
 public class TransactionalTopologyBuilder {
     String _id;
     String _spoutId;
     ITransactionalSpout _spout;
-    Map<String, Component> _bolts = new HashMap<String, Component>();
+    Map<String, Component> _bolts = new HashMap<>();
     Integer _spoutParallelism;
-    List<Map> _spoutConfs = new ArrayList();
+    List<Map> _spoutConfs = new ArrayList<>();
 
     // id is used to store the state of this transactionalspout in zookeeper
     // it would be very dangerous to have 2 topologies active with the same id in the same cluster
@@ -134,7 +133,7 @@ public class TransactionalTopologyBuilder {
         // Transaction is not compatible with jstorm batch mode(task.batch.tuple)
         // so we close batch mode via system property
         System.setProperty(ConfigExtension.TASK_BATCH_TUPLE, "false");
-        
+
         String coordinator = _spoutId + "/coordinator";
         TopologyBuilder builder = new TopologyBuilder();
         SpoutDeclarer declarer = builder.setSpout(coordinator, new TransactionalSpoutCoordinator(_spout));
@@ -152,7 +151,7 @@ public class TransactionalTopologyBuilder {
         }
         for (String id : _bolts.keySet()) {
             Component component = _bolts.get(id);
-            Map<String, SourceArgs> coordinatedArgs = new HashMap<String, SourceArgs>();
+            Map<String, SourceArgs> coordinatedArgs = new HashMap<>();
             for (String c : componentBoltSubscriptions(component)) {
                 coordinatedArgs.put(c, SourceArgs.all());
             }
@@ -183,7 +182,7 @@ public class TransactionalTopologyBuilder {
     }
 
     private Set<String> componentBoltSubscriptions(Component component) {
-        Set<String> ret = new HashSet<String>();
+        Set<String> ret = new HashSet<>();
         for (InputDeclaration d : component.declarations) {
             ret.add(d.getComponent());
         }
@@ -193,8 +192,8 @@ public class TransactionalTopologyBuilder {
     private static class Component {
         public IRichBolt bolt;
         public Integer parallelism;
-        public List<InputDeclaration> declarations = new ArrayList<InputDeclaration>();
-        public List<Map> componentConfs = new ArrayList<Map>();
+        public List<InputDeclaration> declarations = new ArrayList<>();
+        public List<Map> componentConfs = new ArrayList<>();
         public boolean committer;
 
         public Component(IRichBolt bolt, Integer parallelism, boolean committer) {
@@ -204,7 +203,7 @@ public class TransactionalTopologyBuilder {
         }
     }
 
-    private static interface InputDeclaration {
+    private interface InputDeclaration {
         void declare(InputDeclarer declarer);
 
         String getComponent();

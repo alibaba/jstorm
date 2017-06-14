@@ -1,50 +1,68 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.alibaba.jstorm.transactional.bolt;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.alibaba.jstorm.cluster.Common;
-import com.alibaba.jstorm.task.master.ctrlevent.TopoMasterCtrlEvent;
-import com.alibaba.jstorm.task.master.ctrlevent.TopoMasterCtrlEvent.EventType;
-import com.alibaba.jstorm.transactional.BatchCache;
-import com.alibaba.jstorm.transactional.BatchGroupId;
-import com.alibaba.jstorm.transactional.BatchSnapshot;
-import com.alibaba.jstorm.transactional.TransactionCommon;
-import com.alibaba.jstorm.transactional.TransactionOutputFieldsDeclarer;
-import com.alibaba.jstorm.transactional.state.TransactionState.State;
-import com.alibaba.jstorm.transactional.state.TransactionState;
-import com.alibaba.jstorm.utils.JStormUtils;
-import com.alibaba.jstorm.utils.Pair;
-import com.esotericsoftware.kryo.io.Input;
 
 import backtype.storm.generated.GlobalStreamId;
 import backtype.storm.generated.InvalidTopologyException;
 import backtype.storm.generated.StormTopology;
 import backtype.storm.generated.StreamInfo;
+import backtype.storm.serialization.KryoTupleDeserializer;
 import backtype.storm.serialization.SerializationFactory;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.IProtoBatchBolt;
 import backtype.storm.topology.OutputFieldsDeclarer;
+import backtype.storm.topology.OutputFieldsGetter;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.MessageId;
 import backtype.storm.tuple.Tuple;
+import backtype.storm.tuple.TupleExt;
 import backtype.storm.tuple.TupleImplExt;
 import backtype.storm.tuple.Values;
+import backtype.storm.utils.DisruptorQueue;
+
+import com.alibaba.jstorm.cluster.Common;
+import com.alibaba.jstorm.task.TaskReceiver;
+import com.alibaba.jstorm.task.master.ctrlevent.TopoMasterCtrlEvent;
+import com.alibaba.jstorm.task.master.ctrlevent.TopoMasterCtrlEvent.EventType;
+import com.alibaba.jstorm.transactional.BatchCache;
+import com.alibaba.jstorm.transactional.BatchSnapshot;
+import com.alibaba.jstorm.transactional.PendingBatch;
+import com.alibaba.jstorm.transactional.TransactionCommon;
+import com.alibaba.jstorm.transactional.state.TransactionState;
+import com.alibaba.jstorm.transactional.state.TransactionState.State;
+import com.alibaba.jstorm.utils.Pair;
+import com.alibaba.jstorm.transactional.utils.CountValue;
+import com.esotericsoftware.kryo.io.Input;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TransactionBolt implements IProtoBatchBolt {
     private static final long serialVersionUID = 7839725373060318309L;
 
-    public static Logger LOG = LoggerFactory.getLogger(TransactionBolt.class);
+    private static Logger LOG = LoggerFactory.getLogger(TransactionBolt.class);
 
     protected Map conf;
     protected TopologyContext topologyContext;
@@ -52,50 +70,54 @@ public class TransactionBolt implements IProtoBatchBolt {
     protected String topologyId;
     protected int taskId;
     protected String componentId;
-    protected Set<Integer> upstreamTasks;
-    protected Set<Integer> downstreamTasks;
+    protected Set<String> upstreamComponents = new HashSet<String>();
+    protected Set<Integer> upstreamTasks = new HashSet<Integer>();
+    protected Set<String> downstreamComponents = new HashSet<String>();
+    protected Set<Integer> downstreamTasks = new HashSet<Integer>();
     protected int topologyMasterId;
     protected boolean isEndBolt = false;
 
     protected ITransactionBoltExecutor boltExecutor;
     protected TransactionOutputCollector outputCollector;
 
+    protected boolean init = false;
     protected volatile State boltStatus;
     // Information of current in progress batches
     protected BatchTracker currentBatchTracker;
-    protected ConcurrentHashMap<Integer, Long> lastSuccessfulBatch;
-    protected HashMap<Integer, Map<Long, BatchTracker>> processingBatches;
-    protected BatchCache batchCache;
+    protected volatile long lastSuccessfulBatch;
+    protected Map<Long, BatchTracker> processingBatches;
+    protected BatchCache batchCache; // cache for the messages of inter-worker
+    protected BatchCache intraBatchCache; // cache for the messages of intra-worker
 
     protected SerializationFactory.IdDictionary streamIds;
     protected Input kryoInput;
     protected Set<Integer> inputStreamIds;
 
     public static class BatchTracker {
-        private BatchGroupId bactchGroupId = new BatchGroupId();
+        private long batchId;
         private TransactionState state;
 
-        private Set<Integer> expectedReceivedSnapshot = new HashSet<Integer>();
+        private Set<Integer> expectedReceivedSnapshot = new HashSet<>();
         private int expectedTupleCount;
         private int receivedTupleCount;
 
-        public HashMap<Integer, CountValue> sendMsgCount = new HashMap<Integer, CountValue>();
+        public HashMap<Integer, CountValue> sendMsgCount = new HashMap<>();
 
-        public BatchTracker(BatchGroupId id, Set<Integer> upstreamTasks, Set<Integer> downstreamTasks) {
-            setBatchGroupId(id);
+        public BatchTracker(long id, Set<Integer> upstreamTasks, Set<Integer> downstreamTasks) {
+            setBatchId(id);
             expectedReceivedSnapshot.addAll(upstreamTasks);
             expectedTupleCount = 0;
             receivedTupleCount = 0;
             for (Integer task : downstreamTasks) {
                 this.sendMsgCount.put(task, new CountValue());
             }
-            state = new TransactionState(id.groupId, id.batchId, null, null);
+            state = new TransactionState(batchId, null, null);
         }
 
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
-            sb.append("bactchGroupId=" + bactchGroupId);
+            sb.append("batchId=" + batchId);
             sb.append(", expectedReceivedSnapshot=" + expectedReceivedSnapshot);
             sb.append(", expectedTupleCount=" + expectedTupleCount);
             sb.append(", receivedTupleCount=" + receivedTupleCount);
@@ -104,24 +126,20 @@ public class TransactionBolt implements IProtoBatchBolt {
             return sb.toString();
         }
 
-        public boolean isBatchInprogress() {
-            return bactchGroupId.groupId != 0;
+        public void setBatchId(long id) {
+            batchId = id;
         }
 
-        public void setBatchGroupId(BatchGroupId id) {
-            this.bactchGroupId.setBatchGroupId(id);;
-        }
-
-        public BatchGroupId getBatchGroupId() {
-            return bactchGroupId;
+        public long getBatchId() {
+            return batchId;
         }
 
         public boolean isAllBarriersReceived() {
             return expectedReceivedSnapshot.size() == 0;
         }
 
-        public void receiveBarrier(int sourceTaskId) {
-            expectedReceivedSnapshot.remove(sourceTaskId);
+        public boolean receiveBarrier(int sourceTaskId) {
+            return expectedReceivedSnapshot.remove(sourceTaskId);
         }
 
         public TransactionState getState() {
@@ -129,14 +147,7 @@ public class TransactionBolt implements IProtoBatchBolt {
         }
 
         public boolean checkFinish() {
-            boolean ret = true;
-            if (isAllBarriersReceived()) {
-                ret = (expectedTupleCount == receivedTupleCount);
-            } else {
-                ret = false;
-            }
-
-            return ret;
+            return isAllBarriersReceived() && (expectedTupleCount == receivedTupleCount);
         }
 
         public void incrementReceivedCount() {
@@ -148,30 +159,12 @@ public class TransactionBolt implements IProtoBatchBolt {
         }
     }
 
-    public static class CountValue {
-        public int count = 0;
-
-        public CountValue() {
-            
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof CountValue) {
-                return ((CountValue) obj).count == count;
-            } else {
-                return false; 
-            }
-        }
-
-        @Override
-        public String toString() {
-            return String.valueOf(count);
-        }
-    }
-
     public TransactionBolt(ITransactionBoltExecutor boltExecutor) {
         this.boltExecutor = boltExecutor;
+    }
+
+    public ITransactionBoltExecutor getBoltExecutor() {
+        return this.boltExecutor;
     }
 
     @Override
@@ -181,127 +174,156 @@ public class TransactionBolt implements IProtoBatchBolt {
         this.topologyId = topologyContext.getTopologyId();
         this.taskId = topologyContext.getThisTaskId();
         this.componentId = topologyContext.getThisComponentId();
-        this.upstreamTasks = TransactionCommon.getUpstreamTasks(componentId, topologyContext);
-        this.downstreamTasks = TransactionCommon.getDownstreamTasks(componentId, topologyContext);
         this.topologyMasterId = context.getTopologyMasterId();
-        LOG.info("TransactionBolt: upstreamTasks=" + upstreamTasks + ", downstreamTasks=" + downstreamTasks);
 
         this.outputCollector = new TransactionOutputCollector(this, collector);
         this.boltExecutor.prepare(conf, context, new OutputCollector(outputCollector));
 
-        this.boltStatus = State.INIT;
         if (sysTopology == null) {
             try {
                 sysTopology = Common.system_topology(stormConf, context.getRawTopology());
             } catch (InvalidTopologyException e) {
                 LOG.error("Failed to build system topology", e);
                 throw new RuntimeException(e);
-            } 
+            }
         }
-        this.lastSuccessfulBatch = new ConcurrentHashMap<Integer, Long>();
-        this.processingBatches = new HashMap<Integer, Map<Long, BatchTracker>>();
-        Set<String> upstreamSpoutNames = TransactionCommon.getUpstreamSpouts(componentId, topologyContext);
-        for (String spoutName : upstreamSpoutNames) {
-            int groupId = TransactionCommon.groupIndex(topologyContext.getRawTopology(), spoutName);
-            lastSuccessfulBatch.put(groupId, TransactionCommon.INIT_BATCH_ID);
-            processingBatches.put(groupId, new HashMap<Long, BatchTracker>());
-        }
-        this.batchCache = new BatchCache(context, upstreamSpoutNames, sysTopology);
+        this.lastSuccessfulBatch = TransactionCommon.INIT_BATCH_ID;
+        this.processingBatches = new HashMap<>();
+
+        // Get upstream components
+        upstreamComponents = TransactionCommon.getUpstreamComponents(componentId, topologyContext);
+        upstreamTasks.addAll(new HashSet<Integer>(context.getComponentsTasks(upstreamComponents)));
+        // Get downstream components which are belong to this group
+        downstreamComponents = TransactionCommon.getDownstreamComponents(componentId, topologyContext.getRawTopology());
+        downstreamTasks.addAll(new HashSet<Integer>(context.getComponentsTasks(downstreamComponents)));
+
+        boltStatus = State.INIT;
+
+        this.batchCache = new BatchCache(context, sysTopology, false);
+        this.intraBatchCache = new BatchCache(context, sysTopology, true);
+        LOG.info("TransactionBolt: upstreamComponents=" + upstreamComponents + ", downstreamComponents=" + downstreamComponents);
 
         this.kryoInput = new Input(1);
         this.streamIds = new SerializationFactory.IdDictionary(sysTopology);
-        this.inputStreamIds = new HashSet<Integer>();
+        this.inputStreamIds = new HashSet<>();
         Set<GlobalStreamId> inputs = topologyContext.getThisSources().keySet();
         for (GlobalStreamId stream : inputs) {
             inputStreamIds.add(streamIds.getStreamId(stream.get_componentId(), stream.get_streamId()));
         }
-        for (String upstreamComponentId : TransactionCommon.getUpstreamComponents(componentId, topologyContext)) {
+        Set<String> upstreamComponents = TransactionCommon.getUpstreamComponents(componentId, topologyContext);
+        for (String upstreamComponentId : upstreamComponents) {
             inputStreamIds.add(streamIds.getStreamId(upstreamComponentId, TransactionCommon.BARRIER_STREAM_ID));
         }
-        //LOG.info("Stream info prepare: streamIds={}, inputStreams={}, inputStreamIds={}", streamIds, inputs, inputStreamIds);
+        // LOG.info("Stream info prepare: streamIds={}, inputStreams={}, inputStreamIds={}", streamIds, inputs, inputStreamIds);
 
         startInitState();
+        init = true;
     }
 
     @Override
     public void execute(Tuple input) {
+        String stream = input.getSourceStreamId();
         try {
-            String stream = input.getSourceStreamId();
             if (stream.equals(Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID)) {
                 processTransactionEvent(input);
             } else {
-                List<Object> firstTupleValue = ((Pair<MessageId, List<Object>>) input.getValues().get(0)).getSecond();
-                BatchGroupId batchGroupId = (BatchGroupId) firstTupleValue.get(0);
-                if (isDiscarded(batchGroupId)) {
-                    LOG.debug("Tuple was discarded. {}", input);
-                    return;
-                } else if (batchCache.isPendingBatch(batchGroupId, lastSuccessfulBatch)) {
-                    if (batchCache.cachePendingBatch(batchGroupId, input, lastSuccessfulBatch)) {
-                        return;
+                long batchId = ((TupleExt) input).getBatchId();
+                if (batchId != -1) {
+                    // process batch event
+                    if (boltStatus.equals(State.INIT)) {
+                        /**
+                         *  If bolt has not finished initialization, just cache the incoming batch.
+                         *  The cache batches will be processed when bolt becomes active.
+                         */
+                        intraBatchCache.cachePendingBatch(batchId, input);
+                    } else if (isDiscarded(batchId)) {
+                        LOG.debug("Tuple was discarded. {}", input);
+                    } else if (intraBatchCache.isPendingBatch(batchId, lastSuccessfulBatch)) {
+                        intraBatchCache.cachePendingBatch(batchId, input);
+                    } else {
+                        currentBatchTracker = getProcessingBatchTracker(batchId, true);
+                        outputCollector.setCurrBatchTracker(currentBatchTracker);
+                        processBatchTuple(input);
                     }
+                } else {
+                    boltExecutor.execute(input);
                 }
-
-                currentBatchTracker = getProcessingBatch(batchGroupId, true);
-                outputCollector.setCurrBatchTracker(currentBatchTracker);
-                processBatchTuple(input);
             }
         } catch (Exception e) {
-            LOG.info("Failed to process input={}", input, e);
+            LOG.info("Failed to process input: " + input, e);
+            if (!stream.equals(Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID)) {
+                try {
+                    long batchId = ((TupleExt) input).getBatchId();
+                    if (batchId != -1)
+                        fail(batchId);
+                } catch (Exception e1) {
+                    LOG.error("Failed to fail batch", e1);
+                }
+            }
             throw new RuntimeException(e);
         }
     }
 
     protected void processTransactionEvent(Tuple input) {
         TopoMasterCtrlEvent event = (TopoMasterCtrlEvent) input.getValues().get(0);
-        TransactionState state = null;
+        TransactionState state;
         switch (event.getEventType()) {
-            case transactionInitState:
-                state = (TransactionState) event.getEventValue().get(0);
-                initState(state);
-                boltStatus = State.ACTIVE;
-                break;
-            case transactionRollback:
-                boltStatus = State.ROLLBACK;
-                state = (TransactionState) event.getEventValue().get(0);
-                rollback(state);
-                break;
-            case transactionCommit:
-                BatchGroupId batchGroupId = (BatchGroupId) event.getEventValue().get(0);
-                ackCommit(batchGroupId);
-                break;
-            default:
-                LOG.warn("Received unexpected transaction event, {}" + event.toString());
-                break;
+        case transactionInitState:
+            state = (TransactionState) event.getEventValue().get(0);
+            boltStatus = State.ACTIVE;
+            initState(state);
+            // process the pending caches and remove expired ones
+            LOG.info("Pending batches when bolt init: {}", intraBatchCache);
+            processNextPendingBatch();
+            intraBatchCache.removeExpiredBatches(lastSuccessfulBatch);
+            break;
+        case transactionRollback:
+            state = (TransactionState) event.getEventValue().get(0);
+            boltStatus = State.ROLLBACK;
+            rollback(state);
+            break;
+        case transactionCommit:
+            ackCommit(event.getEventValue());
+            break;
+        default:
+            LOG.warn("Received unexpected transaction event, {}" + event.toString());
+            break;
         }
     }
 
-    public void processBatch(BatchGroupId batchGroupId, List<Tuple> batch) {
-        currentBatchTracker = getProcessingBatch(batchGroupId, true);
+    protected void processBatch(long batchId, PendingBatch batch) {
+        currentBatchTracker = getProcessingBatchTracker(batchId, true);
         outputCollector.setCurrBatchTracker(currentBatchTracker);
-        for (Tuple batchTuple : batch) {
-            processBatchTuple(batchTuple);
+        List<byte[]> datas = batch.getTuples();
+        while (datas != null) {
+            for (byte[] data : datas) {
+                processBatchTuple(intraBatchCache.getPendingTuple(data));
+            }
+            datas = batch.getTuples();
         }
     }
 
-    public void processBatchTuple(Tuple batchEvent) {
+    protected void processBatchTuple(Tuple batchEvent) {
         String stream = batchEvent.getSourceStreamId();
         if (stream.equals(TransactionCommon.BARRIER_STREAM_ID)) {
             Pair<MessageId, List<Object>> val = (Pair<MessageId, List<Object>>) batchEvent.getValue(0);
-            BatchSnapshot snapshot = (BatchSnapshot) val.getSecond().get(1);
-            currentBatchTracker.receiveBarrier(batchEvent.getSourceTask());
-            currentBatchTracker.expectedTupleCount += snapshot.getTupleCount();
-            LOG.debug("Received batch, stream={}, batchGroupId={}, sourceTask={}, values={}", stream, currentBatchTracker.bactchGroupId, batchEvent.getSourceTask(), snapshot);
-            LOG.debug("currentBatchTracker={}, processingBatches={}, pendingBatches={}", currentBatchTracker, processingBatches, batchCache);
+            BatchSnapshot snapshot = (BatchSnapshot) val.getSecond().get(0);
+            if (currentBatchTracker.receiveBarrier(batchEvent.getSourceTask()))
+                currentBatchTracker.expectedTupleCount += snapshot.getTupleCount();
+            else
+                LOG.warn("Received expired or unexpected barrier={} from task-{}", snapshot, batchEvent.getSourceTask());
+            // LOG.debug("Received batch, stream={}, batchId={}, sourceTask={}, values={}", stream, currentBatchTracker.bactchId,
+            // batchEvent.getSourceTask(), snapshot);
+            LOG.debug("currentBatchTracker={}\n  processingBatches={}\n  PendingBatches={}\n  intraPendingBatches={}", currentBatchTracker, processingBatches,
+                    batchCache, intraBatchCache);
+
+            /*
+             * if (currentBatchTracker.isAllBarriersReceived()) { if (currentBatchTracker.checkFinish()) finishCurrentBatch(); else
+             * outputCollector.fail(batchEvent); }
+             */
         } else {
             for (Object value : batchEvent.getValues()) {
-                /*List<Object> firstTupleValue = ((Pair<MessageId, List<Object>>) value).getSecond();
-                BatchGroupId batchGroupId = (BatchGroupId) firstTupleValue.get(0);
-                if (!batchGroupId.equals(currentBatchTracker.bactchGroupId)) {
-                    LOG.warn("batchgroupid-{} is not equal to the once of current batch tracker-{}!", batchGroupId, currentBatchTracker.bactchGroupId);
-                }*/
-
                 Pair<MessageId, List<Object>> val = (Pair<MessageId, List<Object>>) value;
-                val.getSecond().remove(0);
                 TupleImplExt tuple = new TupleImplExt(topologyContext, val.getSecond(), val.getFirst(), ((TupleImplExt) batchEvent));
                 boltExecutor.execute(tuple);
             }
@@ -312,25 +334,28 @@ public class TransactionBolt implements IProtoBatchBolt {
         }
     }
 
+    protected void processNextPendingBatch() {
+        PendingBatch nextBatch = intraBatchCache.getNextPendingBatch(lastSuccessfulBatch);
+        if (nextBatch != null) {
+            long nextBatchId = lastSuccessfulBatch + 1;
+            //LOG.info("Get pending batch-{} which is going to be processed.", nextBatchId);
+            processBatch(nextBatchId, nextBatch);
+        }
+    }
+
     @Override
     public void cleanup() {
         boltExecutor.cleanup();
         batchCache.cleanup();
+        intraBatchCache.cleanup();
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        TransactionOutputFieldsDeclarer transactionDeclarer = new TransactionOutputFieldsDeclarer();
-        boltExecutor.declareOutputFields(transactionDeclarer);
-        Map<String, StreamInfo> streams = transactionDeclarer.getFieldsDeclaration();
-        for (Entry<String, StreamInfo> entry : streams.entrySet()) {
-            String streamName = entry.getKey();
-            StreamInfo streamInfo = entry.getValue();
-            declarer.declareStream(streamName, streamInfo.is_direct(), new Fields(streamInfo.get_output_fields()));
-        }
-
+        boltExecutor.declareOutputFields(declarer);
+        Map<String, StreamInfo> streams = ((OutputFieldsGetter) declarer).getFieldsDeclaration();
         if (streams.size() > 0) {
-            declarer.declareStream(TransactionCommon.BARRIER_STREAM_ID, new Fields(TransactionCommon.BATCH_GROUP_ID_FIELD, TransactionCommon.BARRIER_SNAPSHOT_FIELD));
+            declarer.declareStream(TransactionCommon.BARRIER_STREAM_ID, new Fields(TransactionCommon.BARRIER_SNAPSHOT_FIELD));
         } else {
             isEndBolt = true;
         }
@@ -341,24 +366,29 @@ public class TransactionBolt implements IProtoBatchBolt {
         return boltExecutor.getComponentConfiguration();
     }
 
-    private BatchTracker getProcessingBatch(BatchGroupId batchGroupId, boolean createIfNotExsit) {
-        BatchTracker tracker = null;
-        Map<Long, BatchTracker> batches = processingBatches.get(batchGroupId.groupId);
-        if (batches != null) {
-            tracker = batches.get(batchGroupId.batchId);
-            if (tracker == null && createIfNotExsit) {
-                tracker = new BatchTracker(batchGroupId, upstreamTasks, downstreamTasks);
-                batches.put(batchGroupId.batchId, tracker);
-            }
-        } 
+    private BatchTracker getProcessingBatchTracker(long batchId, boolean createIfNotExsit) {
+        BatchTracker tracker = processingBatches.get(batchId);
+        if (tracker == null && createIfNotExsit) {
+            tracker = new BatchTracker(batchId, upstreamTasks, downstreamTasks);
+            processingBatches.put(batchId, tracker);
+        }
         return tracker;
     }
 
-    protected boolean isDiscarded(BatchGroupId batchGroupId) {
-        if (batchGroupId.batchId == TransactionCommon.INIT_BATCH_ID) {
+    /**
+     * Check if the incoming batch would be discarded. 
+     * Generally, the incoming batch shall be discarded while bolt is under rollback, or it is expired. 
+     * @param batchId
+     * @return 
+     */
+    protected boolean isDiscarded(long batchId) {
+        if (batchId == TransactionCommon.INIT_BATCH_ID) {
             return false;
-        } else if (boltStatus.equals(State.ACTIVE) == false) {
+        } else if (!boltStatus.equals(State.ACTIVE)) {
             LOG.debug("Bolt is not active, state={}, tuple is going to be discarded", boltStatus.toString());
+            return true;
+        } else if (batchId <= lastSuccessfulBatch) {
+            LOG.info("Received expired event of batch-{}, current batchId={}", batchId, lastSuccessfulBatch);
             return true;
         } else {
             return false;
@@ -369,134 +399,130 @@ public class TransactionBolt implements IProtoBatchBolt {
         LOG.info("Start to retrieve initialize state from topology master");
         // retrieve state from topology master
         TopoMasterCtrlEvent event = new TopoMasterCtrlEvent(EventType.transactionInitState);
-        outputCollector.emitDirectByDelegate(topologyMasterId, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null, new Values(event));
+        outputCollector.emitDirectCtrl(topologyMasterId, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null, new Values(event));
     }
 
     protected void initState(TransactionState state) {
-        BatchGroupId batchGroupId = state.getCurrBatchGroupId();
-        lastSuccessfulBatch.put(batchGroupId.groupId, batchGroupId.batchId);
+        lastSuccessfulBatch = state.getCurrBatchId();
         LOG.info("Init: state={}, lastSuccessfulBatch={}", state, lastSuccessfulBatch);
     }
 
     protected void commit() {
-        // Do nothing for non-stateful bolt
+        if (boltExecutor instanceof IRichTransactionBoltExecutor) {
+            ((IRichTransactionBoltExecutor) boltExecutor).finishBatch(currentBatchTracker.getBatchId());
+        }
     }
 
-    protected void ackCommit(BatchGroupId batchGroupId) {
+    protected void ackCommit(List<Object> value) {
         // Do nothing for non-stateful bolt
     }
 
     protected void rollback(TransactionState state) {
-        BatchGroupId batchGroupId = state.getCurrBatchGroupId();
-        LOG.info("Start to rollback to batch-{}, currentBatchStateus={}", batchGroupId, currentBatchStatusInfo());
-        lastSuccessfulBatch.put(batchGroupId.groupId, batchGroupId.batchId);
-        cleanupBuffer(state.getCurrBatchGroupId().groupId);
+        long batchId = state.getCurrBatchId();
+        LOG.info("Start to rollback to batch-{}.\n  currentBatchStateus: {}", batchId, currentBatchStatusInfo());
+        lastSuccessfulBatch = batchId;
     }
 
-    protected void cleanupBuffer(int groupId) {
-        if (currentBatchTracker != null && currentBatchTracker.getBatchGroupId().groupId == groupId) {
+    protected void cleanupBuffer() {
+        if (currentBatchTracker != null) {
             currentBatchTracker = null;
         }
-        Map<Long, BatchTracker> batches = processingBatches.get(groupId);
-        batches.clear();
-        batchCache.cleanup(groupId);
-        LOG.info("cleanupBuffer: processingBatches={}, pendingBatches={}, currentBatchTracker={}", 
-                  processingBatches, batchCache, currentBatchTracker);
+        processingBatches.clear();
+        batchCache.cleanup();
+        intraBatchCache.cleanup();
+        LOG.debug("cleanupBuffer: processingBatches={}\n  pendingBatches={}\n  intraPendingBatches={}\n  currentBatchTracker={}", processingBatches,
+                batchCache, intraBatchCache, currentBatchTracker);
     }
 
-    private void ackBatch(BatchGroupId batchGroupId) {
+    private void ackBatch(long batchId) {
         TopoMasterCtrlEvent event = new TopoMasterCtrlEvent(EventType.transactionAck);
-        event.addEventValue(batchGroupId);
-        outputCollector.emitDirectByDelegate(topologyMasterId, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null, new Values(event));
+        event.addEventValue(batchId);
+        outputCollector.emitDirectCtrl(topologyMasterId, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null, new Values(event));
+        outputCollector.flush();
     }
 
-    private void removeProcessingBatch(BatchGroupId batchGroupId) {
-        Map<Long, BatchTracker> batches = processingBatches.get(batchGroupId.groupId);
-        batches.remove(batchGroupId.batchId);
+    private void removeProcessingBatchTracker(long batchId) {
+        processingBatches.remove(batchId);
     }
 
     private void finishCurrentBatch() {
-        BatchGroupId batchGroupId = currentBatchTracker.bactchGroupId;
-        if (batchGroupId.batchId == TransactionCommon.INIT_BATCH_ID) {
+        long currbatchId = currentBatchTracker.batchId;
+        if (currbatchId == TransactionCommon.INIT_BATCH_ID) {
             LOG.info("Received all init events");
-            cleanupBuffer(batchGroupId.groupId);
+            cleanupBuffer();
             boltStatus = State.ACTIVE;
         } else {
             commit();
-            lastSuccessfulBatch.put(batchGroupId.groupId, batchGroupId.batchId);
+            lastSuccessfulBatch = currbatchId;
         }
 
         if (downstreamTasks.size() == 0) {
-            ackBatch(batchGroupId);
+            ackBatch(currbatchId);
         } else {
             outputCollector.flushBarrier();
         }
 
-        removeProcessingBatch(batchGroupId);
+        removeProcessingBatchTracker(currbatchId);
         currentBatchTracker = null;
-        LOG.debug("finishCurrentBatch, {}", currentBatchStatusInfo());
+        // LOG.debug("finishCurrentBatch, {}", currentBatchStatusInfo());
 
-        List<Tuple> goingtoProcessBatch = batchCache.getNextPendingTuples(lastSuccessfulBatch);
-        if (goingtoProcessBatch != null) {
-            BatchGroupId nextGroupBatchId = new BatchGroupId(batchGroupId.groupId, batchGroupId.batchId + 1);
-            //LOG.info("Get pending batch-{} which is going to be processed. size={}", nextGroupBatchId, goingtoProcessBatch.size());
-            processBatch(nextGroupBatchId, goingtoProcessBatch);
-        }
+        processNextPendingBatch();
     }
 
-    public void fail(BatchGroupId id) {
-        // If any failure, send rollback request to TM 
+    public void fail(long id) {
+        // If any failure, send rollback request to TM
         TopoMasterCtrlEvent event = new TopoMasterCtrlEvent(EventType.transactionRollback);
         event.addEventValue(id);
-        outputCollector.emitDirectByDelegate(topologyMasterId, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null, new Values(event));
+        outputCollector.emitDirectCtrl(topologyMasterId, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null, new Values(event));
     }
 
     @Override
-    public List<byte[]> protoExecute(byte[] data) {
-        if (batchCache == null || !batchCache.isExactlyOnceMode()) {
-            return null;
-        }
-
-        List<byte[]> ret = new ArrayList<byte[]>();
-        if (kryoInput == null) {
-            // Bolt has not finished initialize
-            ret.add(data);
-            return ret;
-        }
-        
-        kryoInput.setBuffer(data);
-        kryoInput.setPosition(13); // Skip targetTaskId, timeStamp, isBatch
-        int sourceTaskId = kryoInput.readInt(true); // Skip sourceTaskId
-        int streamId = kryoInput.readInt(true);
-        // LOG.info("ProtoExecute: receive init msg from task-{} on stream-{}, data={}", sourceTaskId, streamId, JStormUtils.toPrintableString(data)); 
-        if (inputStreamIds.contains(streamId)) {
-            kryoInput.readInt(true); // Skip length of batch
-            kryoInput.readInt(true); // Skip type of tuple value
-            kryoInput.readInt(true); // Skip length of tuple value
-            kryoInput.readInt(true); // Skip registration id of BatchGroupId class
-            // Read BatchGroupId
-            BatchGroupId batchGroupId = new BatchGroupId(kryoInput.readInt(true), kryoInput.readLong(true));
-            //LOG.info("ProtoExecute: receive msg for batchGroupId-{}", batchGroupId);
-            if (batchGroupId.batchId == TransactionCommon.INIT_BATCH_ID) {
-                ret.add(data);
-            } else {
-                if (batchCache.isPendingBatch(batchGroupId, lastSuccessfulBatch)) {
-                    //LOG.info("Cache batch-{}", batchGroupId);
-                    if (!batchCache.cachePendingBatch(batchGroupId, data, lastSuccessfulBatch)) {
-                        ret.add(data);
+    public void protoExecute(TaskReceiver receiver, KryoTupleDeserializer deserializer, DisruptorQueue queue, byte[] data) {
+        boolean isCached = false;
+        if (!init || (batchCache != null && !batchCache.isExactlyOnceMode())) {
+            // If bolt has not finished initialization or was not exactly once mode, just process the tuple immediately
+        } else {
+            PendingBatch batch = batchCache.getNextPendingBatch(lastSuccessfulBatch);
+            if (batch != null) {
+                // If there are any pending batches, process them first.
+                List<byte[]> pendingMsgs = batch.getTuples();
+                while (pendingMsgs != null) {
+                    for (byte[] msg : pendingMsgs) {
+                        receiver.deserializeTuple(deserializer, msg, queue);
                     }
-                } else {
-                    ret.add(data);
+                    pendingMsgs = batch.getTuples();
                 }
             }
-        } else {
-            ret.add(data);
+
+            kryoInput.setBuffer(data);
+            kryoInput.setPosition(13); // Skip targetTaskId, timeStamp, isBatch
+            kryoInput.readInt(true); // Skip sourceTaskId
+            int streamId = kryoInput.readInt(true);
+            // LOG.info("ProtoExecute: receive init msg from task-{} on stream-{}, data={}", sourceTaskId, streamId, JStormUtils.toPrintableString(data));
+            if (inputStreamIds.contains(streamId)) {
+                // Read BatchId
+                long batchId = kryoInput.readLong(true);
+                // LOG.info("ProtoExecute: receive msg for batchId-{}", batchId);
+                if (batchCache.isPendingBatch(batchId, lastSuccessfulBatch)) {
+                    // LOG.info("Cache batch-{}", batchId);
+                    isCached = true;
+                    batchCache.cachePendingBatch(batchId, data);
+                }
+            }
         }
 
-        return ret;
+        if (!isCached)
+            receiver.deserializeTuple(deserializer, data, queue);
     }
 
     protected String currentBatchStatusInfo() {
-        return "processingBatches=" + processingBatches + ", pendingBatches=" + batchCache + ", lastSuccessfulBatch=" + lastSuccessfulBatch;
+        // Because of the concurrent problem here, just catch the exception as temporary solution.
+        try {
+            return "processingBatches=" + processingBatches + "\n  pendingBatches=" + batchCache + "\n  intraPendingBatches=" + intraBatchCache
+                    + "\n  lastSuccessfulBatch=" + lastSuccessfulBatch;
+        } catch (Exception e) {
+            LOG.warn("Failed to get current batch status", e);
+            return "";
+        }
     }
 }

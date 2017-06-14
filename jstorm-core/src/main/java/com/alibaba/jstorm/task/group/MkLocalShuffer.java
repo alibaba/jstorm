@@ -1,13 +1,29 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.alibaba.jstorm.task.group;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
 
 import com.alibaba.jstorm.daemon.worker.WorkerData;
 import com.alibaba.jstorm.utils.IntervalCheck;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.RandomRange;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,12 +36,11 @@ public class MkLocalShuffer extends Shuffer {
     private IntervalCheck intervalCheck;
     private WorkerData workerData;
     private boolean isLocal;
-    private final List<Integer> allTargetTasks = new ArrayList<Integer>();
+    private final List<Integer> allTargetTasks = new ArrayList<>();
 
-    public MkLocalShuffer(List<Integer> workerTasks, List<Integer> allOutTasks,
-                          WorkerData workerData) {
+    public MkLocalShuffer(List<Integer> workerTasks, List<Integer> allOutTasks, WorkerData workerData) {
         super(workerData);
-        List<Integer> localOutTasks = new ArrayList<Integer>();
+        List<Integer> localOutTasks = new ArrayList<>();
         allTargetTasks.addAll(allOutTasks);
 
         for (Integer outTask : allOutTasks) {
@@ -41,7 +56,7 @@ public class MkLocalShuffer extends Shuffer {
             this.outTasks = localOutTasks;
             isLocal = true;
         } else {
-            this.outTasks = new ArrayList<Integer>();
+            this.outTasks = new ArrayList<>();
             this.outTasks.addAll(allOutTasks);
             refreshLocalNodeTasks();
             isLocal = false;
@@ -50,19 +65,19 @@ public class MkLocalShuffer extends Shuffer {
     }
 
     /**
-     * Don't need to take care of multiple thread, One task one thread
+     * Don't need to take care of multiple thread racing condition, one thread per task
      */
     private void refreshLocalNodeTasks() {
         Set<Integer> localNodeTasks = workerData.getLocalNodeTasks();
 
-        if (localNodeTasks == null || localNodeTasks.equals(lastLocalNodeTasks) ) {
+        if (localNodeTasks == null || localNodeTasks.equals(lastLocalNodeTasks)) {
             return;
         }
         LOG.info("Old localNodeTasks:" + lastLocalNodeTasks + ", new:"
                 + localNodeTasks);
         lastLocalNodeTasks = localNodeTasks;
 
-        List<Integer> localNodeOutTasks = new ArrayList<Integer>();
+        List<Integer> localNodeOutTasks = new ArrayList<>();
 
         for (Integer outTask : allTargetTasks) {
             if (localNodeTasks.contains(outTask)) {
@@ -70,7 +85,7 @@ public class MkLocalShuffer extends Shuffer {
             }
         }
 
-        if (localNodeOutTasks.isEmpty() == false) {
+        if (!localNodeOutTasks.isEmpty()) {
             this.outTasks = localNodeOutTasks;
         }
         randomrange = new RandomRange(outTasks.size());
@@ -87,13 +102,4 @@ public class MkLocalShuffer extends Shuffer {
 
         return JStormUtils.mk_list(outTasks.get(index));
     }
-
-    /**
-     * @param args
-     */
-    public static void main(String[] args) {
-        // TODO Auto-generated method stub
-
-    }
-
 }

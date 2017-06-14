@@ -17,10 +17,7 @@
  */
 package com.alibaba.jstorm.cluster;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
+import backtype.storm.generated.TopologyTaskHbInfo;
 import backtype.storm.nimbus.NimbusInfo;
 import com.alibaba.jstorm.callback.RunnableCallback;
 import com.alibaba.jstorm.daemon.supervisor.SupervisorInfo;
@@ -28,147 +25,171 @@ import com.alibaba.jstorm.schedule.Assignment;
 import com.alibaba.jstorm.schedule.AssignmentBak;
 import com.alibaba.jstorm.task.TaskInfo;
 import com.alibaba.jstorm.task.error.TaskError;
-
-
-import backtype.storm.generated.TopologyTaskHbInfo;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * all storm in zk operation interface
  */
 public interface StormClusterState {
-    public void disconnect() throws Exception;
+    void disconnect() throws Exception;
 
-    public void remove_storm(String topology_id) throws Exception;
+    void remove_storm(String topology_id) throws Exception;
 
-    public void try_remove_storm(String topology_id);
+    void try_remove_storm(String topology_id);
 
-    public List<String> assignments(RunnableCallback callback) throws Exception;
+    List<String> assignments(RunnableCallback callback) throws Exception;
 
-    public Assignment assignment_info(String topology_id, RunnableCallback callback) throws Exception;
+    Assignment assignment_info(String topology_id, RunnableCallback callback) throws Exception;
 
-    public Integer assignment_version(String topology_id, RunnableCallback callback) throws Exception;
+    Integer assignment_version(String topology_id, RunnableCallback callback) throws Exception;
 
-    public void set_assignment(String topology_id, Assignment info) throws Exception;
+    void set_assignment(String topology_id, Assignment info) throws Exception;
 
-    public AssignmentBak assignment_bak(String topologyName) throws Exception;
+    AssignmentBak assignment_bak(String topologyName) throws Exception;
 
-    public void backup_assignment(String topology_id, AssignmentBak info) throws Exception;
+    void backup_assignment(String topology_id, AssignmentBak info) throws Exception;
 
-    public List<String> active_storms() throws Exception;
+    List<String> active_storms() throws Exception;
 
-    public StormBase storm_base(String topology_id, RunnableCallback callback) throws Exception;
+    StormBase storm_base(String topology_id, RunnableCallback callback) throws Exception;
 
-    public void activate_storm(String topology_id, StormBase storm_base) throws Exception;
+    void activate_storm(String topology_id, StormBase storm_base) throws Exception;
 
-    public void update_storm(String topology_id, StormStatus new_elems) throws Exception;
+    void update_storm(String topology_id, StormStatus new_elems) throws Exception;
 
-    public void set_storm_monitor(String topologyId, boolean isEnable) throws Exception;
+    void set_storm_monitor(String topologyId, boolean isEnable) throws Exception;
 
-    public void remove_storm_base(String topology_id) throws Exception;
+    void remove_storm_base(String topology_id) throws Exception;
 
-    public List<String> task_storms() throws Exception;
+    List<String> task_storms() throws Exception;
 
-    public Set<Integer> task_ids(String topology_id) throws Exception;
+    Set<Integer> task_ids(String topology_id) throws Exception;
 
-    public Set<Integer> task_ids_by_componentId(String topologyId, String componentId) throws Exception;
+    Set<Integer> task_ids_by_componentId(String topologyId, String componentId) throws Exception;
 
-    public void set_task(String topologyId, Map<Integer, TaskInfo> taskInfoMap) throws Exception;
+    void set_task(String topologyId, Map<Integer, TaskInfo> taskInfoMap) throws Exception;
 
-    public void add_task(String topology_id, Map<Integer, TaskInfo> taskInfoMap) throws Exception;
+    void add_task(String topology_id, Map<Integer, TaskInfo> taskInfoMap) throws Exception;
 
-    public void remove_task(String topologyId, Set<Integer> taskIds) throws Exception;
+    void remove_task(String topologyId, Set<Integer> taskIds) throws Exception;
 
-    public Map<Integer, TaskInfo> task_all_info(String topology_id) throws Exception;
+    Map<Integer, TaskInfo> task_all_info(String topology_id) throws Exception;
 
-    public List<String> heartbeat_storms() throws Exception;
+    List<String> heartbeat_storms() throws Exception;
 
-    public void topology_heartbeat(String topology_id, TopologyTaskHbInfo info) throws Exception;
+    void topology_heartbeat(String topology_id, TopologyTaskHbInfo info) throws Exception;
 
-    public TopologyTaskHbInfo topology_heartbeat(String topologyId) throws Exception;
+    TopologyTaskHbInfo topology_heartbeat(String topologyId) throws Exception;
 
-    public void teardown_heartbeats(String topology_id) throws Exception;
+    void teardown_heartbeats(String topology_id) throws Exception;
 
-    public List<String> task_error_storms() throws Exception;
+    List<String> task_error_storms() throws Exception;
 
-    public List<String> task_error_ids(String topologyId) throws Exception;
+    List<String> task_error_ids(String topologyId) throws Exception;
 
-    public void report_task_error(String topology_id, int task_id, Throwable error) throws Exception;
+    void report_task_error(String topology_id, int task_id, Throwable error) throws Exception;
 
-    public void report_task_error(String topology_id, int task_id, String error) throws Exception;
+    void report_task_error(String topology_id, int task_id, String error) throws Exception;
 
-    public void report_task_error(String topology_id, int task_id, String error, String error_level, int error_code) throws Exception;
+    void report_task_error(String topology_id, int task_id, String error, String error_level, int error_code) throws Exception;
 
-    public void report_task_error(String topology_id, int task_id, String error, String error_level, int error_code, int duration) throws Exception;
+    void report_task_error(String topology_id, int task_id, String error, String error_level, int error_code, int duration) throws Exception;
 
-    public void report_task_error(String topology_id, int task_id, String error, String error_level, int error_code, int duration, String tag) throws Exception;
+    void report_task_error(String topology_id, int task_id, String error, String error_level, int error_code, int duration, String tag) throws Exception;
 
-    public Map<Integer, String> topo_lastErr_time(String topologyId) throws Exception;
+    Map<Integer, String> topo_lastErr_time(String topologyId) throws Exception;
 
-    public void remove_lastErr_time(String topologyId) throws Exception;
+    void remove_lastErr_time(String topologyId) throws Exception;
 
-    public List<TaskError> task_errors(String topology_id, int task_id) throws Exception;
+    List<TaskError> task_errors(String topology_id, int task_id) throws Exception;
 
-    public void remove_task_error(String topologyId, int taskId) throws Exception;
+    void remove_task_error(String topologyId, int taskId) throws Exception;
 
-    public List<String> task_error_time(String topologyId, int taskId) throws Exception;
+    List<String> task_error_time(String topologyId, int taskId) throws Exception;
 
-    public TaskError task_error_info(String topologyId, int taskId, long timeStamp) throws Exception;
+    TaskError task_error_info(String topologyId, int taskId, long timeStamp) throws Exception;
 
-    public void teardown_task_errors(String topology_id) throws Exception;
+    void teardown_task_errors(String topology_id) throws Exception;
 
-    public List<String> supervisors(RunnableCallback callback) throws Exception;
+    List<String> supervisors(RunnableCallback callback) throws Exception;
 
-    public SupervisorInfo supervisor_info(String supervisor_id) throws Exception;
+    SupervisorInfo supervisor_info(String supervisor_id) throws Exception;
 
-    public void supervisor_heartbeat(String supervisor_id, SupervisorInfo info) throws Exception;
+    void supervisor_heartbeat(String supervisor_id, SupervisorInfo info) throws Exception;
 
-    public boolean try_to_be_leader(String path, String host, RunnableCallback callback) throws Exception;
+    boolean try_to_be_leader(String path, String host, RunnableCallback callback) throws Exception;
 
-    public String get_leader_host() throws Exception;
+    String get_leader_host() throws Exception;
 
-    public boolean leader_existed() throws Exception;
+    boolean leader_existed() throws Exception;
 
-    public List<String> get_nimbus_slaves() throws Exception;
+    List<String> get_nimbus_slaves() throws Exception;
 
-    public void update_nimbus_slave(String host, int time) throws Exception;
+    void update_nimbus_slave(String host, int time) throws Exception;
 
-    public String get_nimbus_slave_time(String host) throws Exception;
+    String get_nimbus_slave_time(String host) throws Exception;
 
-    public void unregister_nimbus_host(String host) throws Exception;
+    void unregister_nimbus_host(String host) throws Exception;
 
-    public void update_nimbus_detail(String hostPort, Map map) throws Exception;
+    void update_nimbus_detail(String hostPort, Map map) throws Exception;
 
-    public Map get_nimbus_detail(String hostPort, boolean watch) throws Exception;
+    Map get_nimbus_detail(String hostPort, boolean watch) throws Exception;
 
-    public void unregister_nimbus_detail(String hostPort) throws Exception;
+    void unregister_nimbus_detail(String hostPort) throws Exception;
 
-    public void set_topology_metric(String topologyId, Object metric) throws Exception;
+    void set_topology_metric(String topologyId, Object metric) throws Exception;
 
-    public Object get_topology_metric(String topologyId) throws Exception;
+    Object get_topology_metric(String topologyId) throws Exception;
 
-    public List<String> get_metrics() throws Exception;
+    List<String> get_metrics() throws Exception;
 
-    public List<String> list_dirs(String path, boolean watch) throws  Exception;
+    List<String> list_dirs(String path, boolean watch) throws Exception;
 
     // sets up information related to key consisting of nimbus
     // host:port and version info of the blob
-    public void setup_blobstore(String key, NimbusInfo nimbusInfo, int versionInfo) throws Exception;
-    public List<String> active_keys() throws Exception;
-    public List<String> blobstore(RunnableCallback callback) throws Exception;
-    public List<String> blobstoreInfo(String blobKey) throws Exception;
+    void setup_blobstore(String key, NimbusInfo nimbusInfo, int versionInfo) throws Exception;
+
+    List<String> active_keys() throws Exception;
+
+    List<String> blobstore(RunnableCallback callback) throws Exception;
+
+    List<String> blobstoreInfo(String blobKey) throws Exception;
+
     /**
      * Deletes the state inside the zookeeper for a key,
      * for which the contents of the key starts with nimbus host port information
      */
-    public void delete_node_blobstore(String parentPath, String hostPortInfo) throws Exception;
-    public void remove_blobstore_key(String blobKey) throws Exception;
-    public void remove_key_version(String blobKey) throws Exception;
-    public void mkdir(String path);
+    void delete_node_blobstore(String parentPath, String hostPortInfo) throws Exception;
 
-    public void set_in_blacklist(String host) throws Exception;
+    void remove_blobstore_key(String blobKey) throws Exception;
+
+    void remove_key_version(String blobKey) throws Exception;
+
+    void mkdir(String path);
+
+    void set_in_blacklist(String host) throws Exception;
 
     void remove_from_blacklist(String host) throws Exception;
 
-    public List<String> get_blacklist() throws Exception;
+    List<String> get_blacklist() throws Exception;
 
+    List<String> get_upgrading_topologies() throws Exception;
+
+    Object get_gray_upgrade_conf(String topologyId) throws Exception;
+
+    List<String> get_upgrading_workers(String topologyId) throws Exception;
+
+    List<String> get_upgraded_workers(String topoogyId) throws Exception;
+
+    void add_upgrading_worker(String topologyId, String hostPort) throws Exception;
+
+    void remove_upgrading_worker(String topologyId, String hostPort) throws Exception;
+
+    void add_upgraded_worker(String topologyId, String hostPort) throws Exception;
+
+    void set_gray_upgrade_conf(String topologyId, Object obj) throws Exception;
+
+    void remove_gray_upgrade_info(String topologyId) throws Exception;
 }

@@ -25,9 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 
  * @author longda
- * 
  */
 public class TimeFormat {
     public static Logger log = LoggerFactory.getLogger(TimeFormat.class);
@@ -44,10 +42,8 @@ public class TimeFormat {
 
     public static final long ONE_HOUR_MILLISECONDS = ONE_HOUR_MINUTES * ONE_MINUTE_MILLISECONDS;
 
-    public static final long ONE_DAY_MILLISECONDS = ONE_DAY_HOURS * ONE_HOUR_MILLISECONDS;
-
     public static Date convertDate(String dateStr, String format) {
-        Date date = null;
+        Date date;
         try {
             if (format != null) {
                 SimpleDateFormat simpleDateFormat = new SimpleDateFormat(format);
@@ -64,7 +60,7 @@ public class TimeFormat {
     }
 
     public static String convertStr(Date date, String format) {
-        String ret = null;
+        String ret;
         try {
 
             SimpleDateFormat sdf = new SimpleDateFormat(format);
@@ -136,7 +132,7 @@ public class TimeFormat {
     }
 
     public static String getHourMin(Date date) {
-        String output = null;
+        String output;
         try {
             SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
             output = sdf.format(date);
@@ -148,9 +144,7 @@ public class TimeFormat {
 
     public static Date getToday() {
         Date now = new Date();
-
         String todayStr = getDay(now);
-
         return getDay(todayStr);
     }
 
@@ -162,27 +156,18 @@ public class TimeFormat {
         yesterdayCal.add(Calendar.DATE, -1);
 
         String yesterdayStr = getDay(yesterdayCal.getTime());
-
         return getDay(yesterdayStr);
     }
 
     /**
      * get the days number pass from 1970-00-00
-     * 
-     * @return
      */
     public static long getDayNum(Date date) {
         long passMs = date.getTime() + (8 * 1000 * 60 * 60);
-
         return (passMs / 1000 / 60 / 60 / 24);
     }
 
-    /**
-     * @param args
-     */
     public static void main(String[] args) {
-        // TODO Auto-generated method stub
-
         Date date = new Date();
 
         String dateStr = getDay(date);

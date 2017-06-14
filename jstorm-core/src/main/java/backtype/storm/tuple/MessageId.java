@@ -29,9 +29,8 @@ import java.util.Set;
 
 public class MessageId {
     private Map<Long, Long> _anchorsToIds;
-    
+
     public MessageId() {
-    	
     }
 
     @Deprecated
@@ -52,7 +51,7 @@ public class MessageId {
     }
 
     public static MessageId makeRootId(long id, long val) {
-        Map<Long, Long> anchorsToIds = new HashMap<Long, Long>();
+        Map<Long, Long> anchorsToIds = new HashMap<>();
         anchorsToIds.put(id, val);
         return new MessageId(anchorsToIds);
     }
@@ -62,7 +61,7 @@ public class MessageId {
     }
 
     public boolean isAnchored() {
-    	return _anchorsToIds!= null && _anchorsToIds.size() > 0;
+        return _anchorsToIds != null && _anchorsToIds.size() > 0;
     }
 
     public Map<Long, Long> getAnchorsToIds() {
@@ -105,7 +104,7 @@ public class MessageId {
         if (numAnchors == 0) {
             return null;
         }
-        Map<Long, Long> anchorsToIds = new HashMap<Long, Long>();
+        Map<Long, Long> anchorsToIds = new HashMap<>();
         for (int i = 0; i < numAnchors; i++) {
             anchorsToIds.put(in.readLong(), in.readLong());
         }

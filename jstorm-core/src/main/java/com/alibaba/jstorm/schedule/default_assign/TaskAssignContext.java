@@ -25,20 +25,21 @@ import java.util.Set;
 
 public class TaskAssignContext {
     private final Map<Integer, String> taskToComponent;
-    
+
     private final Map<String, List<ResourceWorkerSlot>> supervisorToWorker;
 
     private final Map<String, Set<String>> relationship;
 
     // Map<worker, Map<component name, assigned task num in this worker>
-    private final Map<ResourceWorkerSlot, Map<String, Integer>> workerToComponentNum = new HashMap<ResourceWorkerSlot, Map<String, Integer>>();
+    private final Map<ResourceWorkerSlot, Map<String, Integer>> workerToComponentNum = new HashMap<>();
 
     // Map<available worker, assigned task num in this worker>
-    private final Map<ResourceWorkerSlot, Integer> workerToTaskNum = new HashMap<ResourceWorkerSlot, Integer>();
+    private final Map<ResourceWorkerSlot, Integer> workerToTaskNum = new HashMap<>();
 
-    private final Map<String, ResourceWorkerSlot> HostPortToWorkerMap = new HashMap<String, ResourceWorkerSlot>();
+    private final Map<String, ResourceWorkerSlot> HostPortToWorkerMap = new HashMap<>();
 
-    public TaskAssignContext(Map<String, List<ResourceWorkerSlot>> supervisorToWorker, Map<String, Set<String>> relationship, Map<Integer, String> taskToComponent) {
+    public TaskAssignContext(Map<String, List<ResourceWorkerSlot>> supervisorToWorker,
+                             Map<String, Set<String>> relationship, Map<Integer, String> taskToComponent) {
         this.taskToComponent = taskToComponent;
         this.supervisorToWorker = supervisorToWorker;
         this.relationship = relationship;
@@ -47,9 +48,9 @@ public class TaskAssignContext {
             for (ResourceWorkerSlot worker : entry.getValue()) {
                 workerToTaskNum.put(worker, (worker.getTasks() != null ? worker.getTasks().size() : 0));
                 HostPortToWorkerMap.put(worker.getHostPort(), worker);
-   
+
                 if (worker.getTasks() != null) {
-                    Map<String, Integer> componentToNum = new HashMap<String, Integer>();
+                    Map<String, Integer> componentToNum = new HashMap<>();
                     for (Integer taskId : worker.getTasks()) {
                         String componentId = taskToComponent.get(taskId);
                         int num = componentToNum.get(componentId) == null ? 0 : componentToNum.get(componentId);

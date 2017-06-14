@@ -1,295 +1,147 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.alibaba.jstorm.transactional;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-
-import org.rocksdb.Options;
-import org.rocksdb.util.SizeUnit;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import backtype.storm.generated.StormTopology;
 import backtype.storm.serialization.KryoTupleDeserializer;
 import backtype.storm.serialization.KryoTupleSerializer;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.Tuple;
+import backtype.storm.utils.Utils;
 
-import com.alibaba.jstorm.cache.RocksDBCache;
-import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.utils.JStormUtils;
 
-public class BatchCache extends RocksDBCache {
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class BatchCache {
     public static Logger LOG = LoggerFactory.getLogger(BatchCache.class);
 
-    protected class PendingBatch {
-        public String cacheKeyPrefix;
-        public volatile int cacheNum = 0;
-        public int cacheReadIndex = 0;
-        public List<byte[]> tuples = new ArrayList<byte[]>();
-        private int cacheSize = 0;
-        private Object lock = new Object();
-        private boolean isActive = true;
-
-        public void addData(byte[] data) {
-            tuples.add(data);
-            cacheSize += data.length;
-            if (cacheSize > maxFlushSize) {
-                for (byte[] cacheData : tuples) {
-                    put(cacheKeyPrefix + String.valueOf(cacheNum), cacheData);
-                    cacheNum++;
-                }
-                tuples = new ArrayList<byte[]>();
-                cacheSize = 0;
-            }
-        }/*
-        public void addData(byte[] data) {
-            tuples.add(data);
-        }*/
-
-        public boolean addTuples(byte[] data) {
-            synchronized (lock) {
-                if (isActive) {
-                    addData(data);
-                    return true;
-                } else {
-                    return false;
-                }
-            }
-        }
-
-        public boolean addTuples(KryoTupleSerializer serializer, Tuple tuple) {
-            byte[] data = serializer.serialize(tuple);
-            synchronized (lock) {
-                if (isActive) {
-                    addData(data);
-                    return true;
-                } else {
-                    return false;
-                }
-            }
-        }
-
-        public List<byte[]> getTuples() {
-            List<byte[]> cacheBatch = new ArrayList<byte[]>();
-            synchronized (lock) {
-                if (isActive) {
-                    for (; cacheReadIndex < cacheNum; cacheReadIndex++) {
-                        String key = cacheKeyPrefix + String.valueOf(cacheReadIndex);
-                        cacheBatch.add((byte[]) get(key));
-                        remove(key);
-                    }
-                    cacheBatch.addAll(tuples);
-                    tuples = new ArrayList<byte[]>();
-                    isActive = false;
-                } else {
-                    LOG.warn("Try to get cache tuples when cache has been read or removed!");
-                }
-            }
-            return cacheBatch;
-        }/*
-        public List<byte[]> getTuples() {
-            List<byte[]> ret;
-            synchronized (lock) {
-                if (isActive) {
-                    isActive = false;
-                }
-                ret = tuples;
-                tuples = null;
-            }
-            return ret;
-        }*/
-
-        public void removeTuples() {
-            synchronized (lock) {
-                for (; cacheReadIndex < cacheNum; cacheReadIndex++) {
-                    String key = cacheKeyPrefix + String.valueOf(cacheReadIndex);
-                    remove(key);
-                }
-                tuples = new ArrayList<byte[]>();
-                isActive = false;
-            }
-        }/*
-        public void removeTuples() {
-            synchronized (lock) {
-                tuples = null;
-                isActive = false;
-            }
-        }*/
-
-        @Override
-        public String toString() {
-            return "cacheNum: " + cacheNum + ", Pending tuple size:" + (tuples != null ? tuples.size() : 0);
-        }
-    }
-
-    protected Map stormConf;
-    protected String workerDir;
-    protected String cacheDir;
-    protected int taskId;
+    private TopologyContext context;
+    private Map stormConf;
 
     protected boolean isExactlyOnceMode;
-    protected Map<Integer, Map<Long, PendingBatch>> pendingBatches;
-    protected List<Integer> pendingBatchGroups;
-    protected int pendingBatchGroupIndex = 0;
-    protected int maxFlushSize;
+    protected ICacheOperator cacheOperator;
+    protected Map<Long, PendingBatch> pendingBatches;
 
     protected KryoTupleSerializer serializer;
     protected KryoTupleDeserializer deserializer;
 
-    public BatchCache(TopologyContext context, Set<String> upstreamSpoutIds, StormTopology sysTopology) {
+    public BatchCache(TopologyContext context, StormTopology sysTopology, boolean isIntraWorker) {
+        this.context = context;
         this.stormConf = context.getStormConf();
-        this.workerDir = context.getWorkerIdDir();
-        this.taskId = context.getThisTaskId();
+
         this.isExactlyOnceMode = JStormUtils.parseBoolean(stormConf.get("transaction.exactly.once.mode"), true);
 
-        this.cacheDir = this.workerDir + "/transactionCache/task-" + taskId;
-
-        this.pendingBatches = new HashMap<Integer, Map<Long, PendingBatch>>();
-        this.pendingBatchGroups = new ArrayList<Integer>();
-        for (String spoutId : upstreamSpoutIds) {
-            int id = TransactionCommon.groupIndex(context.getRawTopology(), spoutId);
-            pendingBatches.put(id, new HashMap<Long, PendingBatch>());
-            pendingBatchGroups.add(id);
-        }
-        this.maxFlushSize = ConfigExtension.getTransactionCacheBatchFlushSize(stormConf);
-
-        Options rocksDbOpt = new Options();
-        rocksDbOpt.setCreateMissingColumnFamilies(true).setCreateIfMissing(true);
-        long bufferSize = ConfigExtension.getTransactionCacheBlockSize(stormConf) != null ? 
-                ConfigExtension.getTransactionCacheBlockSize(stormConf) : (1 * SizeUnit.GB);
-        rocksDbOpt.setWriteBufferSize(bufferSize);
-        int maxBufferNum = ConfigExtension.getTransactionMaxCacheBlockNum(stormConf) != null ?
-                ConfigExtension.getTransactionMaxCacheBlockNum(stormConf) : 3;
-        rocksDbOpt.setMaxWriteBufferNumber(maxBufferNum);
-
-        try {
-            Map<Object, Object> conf = new HashMap<Object, Object>();
-            conf.put(ROCKSDB_ROOT_DIR, cacheDir);
-            conf.put(ROCKSDB_RESET, true);
-            initDir(conf);
-            initDb(null, rocksDbOpt);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        this.pendingBatches = new ConcurrentHashMap<>();
 
         serializer = new KryoTupleSerializer(stormConf, sysTopology);
         deserializer = new KryoTupleDeserializer(stormConf, context, sysTopology);
+
+        String cacheDir = context.getWorkerIdDir() + "/transactionCache/task-" + context.getThisTaskId();
+        if (isIntraWorker)
+            cacheDir += "/intra";
+        else
+            cacheDir += "/inter";
+        String cacheType = Utils.getString(stormConf.get("transaction.exactly.cache.type"), "default");
+        if (cacheType.equalsIgnoreCase("rocksDb")) {
+            cacheOperator = new RocksDbCacheOperator(context, cacheDir);
+        } else {
+            cacheOperator = new DefaultCacheOperator();
+        }
+        LOG.info("Cache config: isExactlyOnce={}, cacheType={}", isExactlyOnceMode, cacheType);
     }
 
     public boolean isExactlyOnceMode() {
         return isExactlyOnceMode;
     }
 
-    private synchronized PendingBatch getPendingBatch(BatchGroupId batchGroupId, boolean creatIfAbsent, boolean remove, Map<Integer, Long> lastSuccessfulBatch) {
-        Map<Long, PendingBatch> batches = pendingBatches.get(batchGroupId.groupId);
-        PendingBatch batch = batches.get(batchGroupId.batchId);
-        if (batch == null && creatIfAbsent && isPendingBatch(batchGroupId, lastSuccessfulBatch)) {
-            batch = new PendingBatch();
-            batch.cacheKeyPrefix = String.valueOf(batchGroupId.groupId) + String.valueOf(batchGroupId.batchId);
-            batches.put(batchGroupId.batchId, batch);
-        } else if (batch != null) {
-            if (remove) {
-                batches.remove(batchGroupId.batchId);
-            }
+    public void cachePendingBatch(long batchId, byte[] data) {
+        PendingBatch batch = pendingBatches.get(batchId);
+        if (batch == null) {
+            batch = cacheOperator.createPendingBatch(batchId);
+            pendingBatches.put(batchId, batch);
         }
-        return batch;
+
+        batch.addTuples(data);
     }
 
-    public boolean cachePendingBatch(BatchGroupId batchGroupId, byte[] data, Map<Integer, Long> lastSuccessfulBatch) {
-        PendingBatch batch = getPendingBatch(batchGroupId, true, false, lastSuccessfulBatch);
-        if (batch != null) {
-            return batch.addTuples(data);
-        } else {
-            return false;
-        }
+    public void cachePendingBatch(long batchId, Tuple tuple) {
+        cachePendingBatch(batchId, serializer.serialize(tuple));
     }
 
-    public boolean cachePendingBatch(BatchGroupId batchGroupId, Tuple tuple, Map<Integer, Long> lastSuccessfulBatch) {
-        PendingBatch batch = getPendingBatch(batchGroupId, true, false, lastSuccessfulBatch);
-        if (batch != null) {
-            byte[] data = serializer.serialize(tuple);
-            return batch.addTuples(data);
-        } else {
-            return false;
-        }
-    }
-
-    public boolean isPendingBatch(BatchGroupId batchGroupId, Map<Integer, Long> lastSuccessfulBatch) {
+    public boolean isPendingBatch(long batchId, long lastSuccessfulBatch) {
         boolean ret = false;
-        if (batchGroupId.batchId == TransactionCommon.INIT_BATCH_ID) {
+        if (batchId == TransactionCommon.INIT_BATCH_ID) {
             return ret;
         }
 
         if (isExactlyOnceMode) {
             // If it is not the same group with current in progress batch, just put incoming tuple into pending queue
-            Long successBatchId = lastSuccessfulBatch.get(batchGroupId.groupId);
-            if (batchGroupId.batchId > successBatchId + 1) {
+            if (batchId > lastSuccessfulBatch + 1) {
                 ret = true;
             }
         }
-        
+
         return ret;
     }
 
-    public List<Tuple> getNextPendingTuples(Map<Integer, Long> lastSuccessfulBatch) {
-        List<Tuple> ret = null;
-        List<byte[]> protoBatch = getNextPendingBatch(lastSuccessfulBatch);
-        if (protoBatch != null) {
-            ret = new ArrayList<Tuple>();
-            for (byte[] data : protoBatch) {
-                ret.add(deserializer.deserialize(data));
-            }
+    public Tuple getPendingTuple(byte[] data) {
+        return deserializer.deserialize(data);
+    }
+
+    public PendingBatch getNextPendingBatch(long lastSuccessfulBatch) {
+        long batchId = lastSuccessfulBatch + 1;
+        return pendingBatches.remove(batchId);
+    }
+
+    public void removeExpiredBatches(long lastSuccessfulBatch) {
+        SortedSet<Long> pendingBatchIds = new TreeSet<>(pendingBatches.keySet());
+        SortedSet<Long> expiredBatchIds = pendingBatchIds.headSet(lastSuccessfulBatch + 1);
+  
+        if (!expiredBatchIds.isEmpty())
+            LOG.info("Following expired batches will be removed: {}", expiredBatchIds);
+        for (Long expiredBatchId : expiredBatchIds) {
+            PendingBatch expiredBatch = pendingBatches.remove(expiredBatchId);
+            expiredBatch.removeTuples();
+        } 
+    }
+
+    public void cleanup() {
+        for (Entry<Long, PendingBatch> entry : pendingBatches.entrySet()) {
+            PendingBatch batch = entry.getValue();
+            batch.removeTuples();
         }
-        return ret;
-    }
-
-    public List<byte[]> getNextPendingBatch(Map<Integer, Long> lastSuccessfulBatch) {
-        List<byte[]> ret = null;
-        PendingBatch batch = null;
-        BatchGroupId batchGroupId = null;
-        for (int i = 0; i < pendingBatchGroups.size(); i++) {
-            int groupId = pendingBatchGroups.get(pendingBatchGroupIndex);
-            pendingBatchGroupIndex = (++pendingBatchGroupIndex) % pendingBatchGroups.size();
-            long batchId = lastSuccessfulBatch.get(groupId) + 1;
-            batchGroupId = new BatchGroupId(groupId, batchId);
-            batch = getPendingBatch(batchGroupId, false, true, lastSuccessfulBatch);
-            if (batch != null) {
-                // Found a non-empty pending batch, just break the loop and process it.
-                ret = batch.getTuples();
-                break;
-            }
-        }
-        return ret;
-    }
-
-    public synchronized void cleanup(int groupId) {
-        Map<Long, PendingBatch> batches = pendingBatches.get(groupId);
-        if (batches != null) {
-            for (Entry<Long, PendingBatch> entry : batches.entrySet()) {
-                PendingBatch batch = entry.getValue();
-                batch.removeTuples();
-            }
-            batches.clear();
-        }
-    }
-
-    @Override
-    protected byte[] serialize(Object data) {
-        return (byte[]) data;
-    }
-
-    @Override 
-    protected Object deserialize(byte[] data) {
-        return data;
+        pendingBatches.clear();
     }
 
     @Override
     public String toString() {
-        return "pendingBatches: " + pendingBatches.toString() + ", pendingBatchGroups: " + pendingBatchGroups;
+        return "pendingBatches: " + pendingBatches.toString();
     }
 }

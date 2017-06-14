@@ -21,9 +21,8 @@ import java.util.List;
 
 /**
  * This interface will list emit values when tuple success
- * 
- * if spout implement this interface, spout won't call ISpout.ack() when tuple success
- * 
+ * if a spout implements this interface, spout won't call ISpout.ack() when a tuple succeeds
+ *
  * @author longda
  */
 public interface IAckValueSpout {

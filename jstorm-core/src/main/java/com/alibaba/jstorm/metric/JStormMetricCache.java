@@ -1,3 +1,20 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.alibaba.jstorm.metric;
 
 import backtype.storm.generated.MetricInfo;
@@ -26,7 +43,6 @@ import java.util.*;
  */
 @SuppressWarnings("unchecked")
 public class JStormMetricCache {
-
     private static final Logger LOG = LoggerFactory.getLogger(JStormMetricCache.class);
 
     public static final String TIMEOUT_MEM_CACHE_CLASS = TimeoutMemCache.class.getName();
@@ -38,7 +54,6 @@ public class JStormMetricCache {
 
     protected static final String METRIC_META_PREFIX = "__metric.meta__";
     protected static final String SENT_METRIC_META_PREFIX = "__saved.metric.meta__";
-    protected static final String ALL_TOPOLOGIES_KEY = "__all.topologies__";
     protected static final String TOPOLOGY_SAMPLE_RATE = "__topology.sample.rate__";
 
     protected static final String METRIC_DATA_PREFIX = "__metric.data__";
@@ -48,6 +63,7 @@ public class JStormMetricCache {
     protected static final String METRIC_DATA_30M_WORKER = "__metric.data.worker__";
     protected static final String METRIC_DATA_30M_NETTY = "__metric.data.netty__";
     protected static final String METRIC_DATA_30M_TOPOLOGY = "__metric.data.topology__";
+    protected static final String METRIC_DATA_30M_COMP_STREAM = "__metric.data.comp.stream__";
 
     protected final StormClusterState zkCluster;
 
@@ -116,12 +132,16 @@ public class JStormMetricCache {
      */
     public JStormCache putMetricData(String topologyId, TopologyMetric tpMetric) {
         // map<key, [ts, metric_info]>
-        Map<String, Object> batchData = new HashMap<String, Object>();
+        Map<String, Object> batchData = new HashMap<>();
         long ts = System.currentTimeMillis();
-        int tp = 0, comp = 0, task = 0, stream = 0, worker = 0, netty = 0;
+        int tp = 0, comp = 0, compStream = 0, task = 0, stream = 0, worker = 0, netty = 0;
         if (tpMetric.get_componentMetric().get_metrics_size() > 0) {
             batchData.put(METRIC_DATA_30M_COMPONENT + topologyId, new Object[]{ts, tpMetric.get_componentMetric()});
             comp += tpMetric.get_componentMetric().get_metrics_size();
+        }
+        if (tpMetric.is_set_compStreamMetric() && tpMetric.get_compStreamMetric().get_metrics_size() > 0) {
+            batchData.put(METRIC_DATA_30M_COMP_STREAM + topologyId, new Object[]{ts, tpMetric.get_compStreamMetric()});
+            compStream += tpMetric.get_compStreamMetric().get_metrics_size();
         }
         if (tpMetric.get_taskMetric().get_metrics_size() > 0) {
             tryCombineMetricInfo(METRIC_DATA_30M_TASK + topologyId, tpMetric.get_taskMetric(), MetaType.TASK, ts);
@@ -148,8 +168,8 @@ public class JStormMetricCache {
             batchData.put(keyPrefix + page, new Object[]{ts, tpMetric.get_topologyMetric()});
             tp += tpMetric.get_topologyMetric().get_metrics_size();
         }
-        LOG.info("caching metric data for topology:{},tp:{},comp:{},task:{},stream:{},worker:{},netty:{},cost:{}",
-                topologyId, tp, comp, task, stream, worker, netty, System.currentTimeMillis() - ts);
+        LOG.info("caching metric data for topology:{},tp:{},comp:{},comp_stream:{},task:{},stream:{},worker:{},netty:{},cost:{}",
+                topologyId, tp, comp, compStream, task, stream, worker, netty, System.currentTimeMillis() - ts);
 
         return putBatch(batchData);
     }
@@ -198,7 +218,7 @@ public class JStormMetricCache {
     }
 
     public List<MetricInfo> getMetricData(String topologyId, MetaType metaType) {
-        Map<Long, MetricInfo> retMap = new TreeMap<Long, MetricInfo>();
+        Map<Long, MetricInfo> retMap = new TreeMap<>();
 
         String key = null;
         if (metaType == MetaType.COMPONENT) {
@@ -211,6 +231,8 @@ public class JStormMetricCache {
             key = METRIC_DATA_30M_WORKER + topologyId;
         } else if (metaType == MetaType.NETTY) {
             key = METRIC_DATA_30M_NETTY + topologyId;
+        } else if (metaType == MetaType.COMPONENT_STREAM) {
+            key = METRIC_DATA_30M_COMP_STREAM + topologyId;
         } else if (metaType == MetaType.TOPOLOGY) {
             String keyPrefix = METRIC_DATA_30M_TOPOLOGY + topologyId + "-";
             for (int i = 1; i <= 30; i++) {
@@ -276,6 +298,7 @@ public class JStormMetricCache {
         metricDataKeys.add(METRIC_DATA_30M_STREAM + topologyId);
         metricDataKeys.add(METRIC_DATA_30M_WORKER + topologyId);
         metricDataKeys.add(METRIC_DATA_30M_NETTY + topologyId);
+        metricDataKeys.add(METRIC_DATA_30M_COMP_STREAM + topologyId);
 
         cache.removeBatch(metricDataKeys);
         LOG.info("removing metric cache of topology:{}, cost:{}", topologyId, System.currentTimeMillis() - start);
@@ -288,7 +311,7 @@ public class JStormMetricCache {
             Map<String, Long> nodes = (Map<String, Long>) cache.get(METRIC_META_PREFIX + topologyId);
             if (nodes != null) {
                 Iterator<String> keyIterator = nodes.keySet().iterator();
-                while (keyIterator.hasNext()){
+                while (keyIterator.hasNext()) {
                     String metricName = keyIterator.next();
                     // remove metric type
                     metricName = metricName.charAt(0) + metricName.substring(2, metricName.length());

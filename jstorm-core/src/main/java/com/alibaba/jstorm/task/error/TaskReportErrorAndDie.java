@@ -20,34 +20,33 @@ package com.alibaba.jstorm.task.error;
 import com.alibaba.jstorm.callback.RunnableCallback;
 
 /**
- * Task report error to ZK and halt the process
- * 
+ * report task error to ZK and halt the process
+ *
  * @author yannian
- * 
  */
 public class TaskReportErrorAndDie implements ITaskReportErr {
-    private ITaskReportErr reporterror;
-    private RunnableCallback haltfn;
+    private ITaskReportErr reportError;
+    private RunnableCallback haltFn;
 
-    public TaskReportErrorAndDie(ITaskReportErr _reporterror, RunnableCallback _haltfn) {
-        this.reporterror = _reporterror;
-        this.haltfn = _haltfn;
+    public TaskReportErrorAndDie(ITaskReportErr reportError, RunnableCallback haltFn) {
+        this.reportError = reportError;
+        this.haltFn = haltFn;
     }
 
-    // If throwable error was caught, a error will be reported and current task will be shutdown.
+    // If a throwable was caught, the error will be reported to zk and current task will be shutdown.
     @Override
     public void report(Throwable error) {
-        this.reporterror.report(error);
-        this.haltfn.run();
+        this.reportError.report(error);
+        this.haltFn.run();
     }
 
     @Override
     public void report(String error) {
-        this.reporterror.report(error);
+        this.reportError.report(error);
     }
 
     @Override
     public void report(String error, String errorLevel, int errorCode, int duration) {
-        this.reporterror.report(error, errorLevel, errorCode, duration);
+        this.reportError.report(error, errorLevel, errorCode, duration);
     }
 }

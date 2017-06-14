@@ -35,8 +35,7 @@ public abstract class Shuffer {
     protected int getActiveTask(RandomRange randomrange, List<Integer> outTasks) {
         int index = randomrange.nextInt();
         int size = outTasks.size();
-        int i = 0;
-
+        int i;
         for (i = 0; i < size; i++) {
             if (workerData.isOutboundTaskActive(Integer.valueOf(outTasks.get(index))))
                 break;

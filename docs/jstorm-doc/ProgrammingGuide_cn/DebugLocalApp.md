@@ -77,4 +77,4 @@ JStorm 提供了两种运行模式：本地模式和分布式模式。本地模�
 
     1.如果在2.2.0中依赖了slf4j-log4j12，会跟jstorm自带的log4j-over-slf4j冲突，需要将slf4j-log4j12排除掉。
 
-    2.确认你打的日志是用slf4j-api打的，即LoggerFacgtory而不是log4j的Logger
+    2.确认你打的日志是用slf4j-api打的，即LoggerFactory而不是log4j的Logger

@@ -45,7 +45,7 @@ public class StateFactory {
     public static State getState(String namespace, Map stormConf, TopologyContext context) {
         State state;
         try {
-            String provider = null;
+            String provider;
             if (stormConf.containsKey(Config.TOPOLOGY_STATE_PROVIDER)) {
                 provider = (String) stormConf.get(Config.TOPOLOGY_STATE_PROVIDER);
             } else {

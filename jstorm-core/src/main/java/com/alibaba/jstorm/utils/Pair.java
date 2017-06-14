@@ -18,17 +18,17 @@
 package com.alibaba.jstorm.utils;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public class Pair<F, S> implements Serializable {
-	private static final long serialVersionUID = -5514532854805616133L;
+    private static final long serialVersionUID = -5514532854805616133L;
 
-	private F first;
+    private F first;
     private S second;
 
     public Pair() {
-    	
     }
-    
+
     public Pair(F first, S second) {
         this.first = first;
         this.second = second;
@@ -51,11 +51,30 @@ public class Pair<F, S> implements Serializable {
     }
 
     @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof Pair)) {
+            return false;
+        }
+        Pair<?, ?> otherPair = (Pair<?, ?>) other;
+        // Arrays are very common as values and keys, so deepEquals is mandatory
+        return Objects.deepEquals(this.first, otherPair.first)
+                && Objects.deepEquals(this.second, otherPair.second);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(first, second);
+    }
+
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("first:" + first);
         sb.append(":");
-        sb.append("sencond:" + second);
+        sb.append("second:" + second);
         return sb.toString();
     }
 }

@@ -18,6 +18,12 @@
 
 package backtype.storm.scheduler.multitenant;
 
+import backtype.storm.Config;
+import backtype.storm.scheduler.Cluster;
+import backtype.storm.scheduler.ExecutorDetails;
+import backtype.storm.scheduler.SchedulerAssignment;
+import backtype.storm.scheduler.TopologyDetails;
+import backtype.storm.scheduler.WorkerSlot;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -27,16 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import backtype.storm.Config;
-import backtype.storm.scheduler.Cluster;
-import backtype.storm.scheduler.ExecutorDetails;
-import backtype.storm.scheduler.SchedulerAssignment;
-import backtype.storm.scheduler.TopologyDetails;
-import backtype.storm.scheduler.WorkerSlot;
 
 /**
  * A pool of nodes that can be used to run topologies.
@@ -68,10 +66,10 @@ public abstract class NodePool {
 
         /**
          * Create a new scheduler for a given topology
-         * 
-         * @param td the topology to schedule
+         *
+         * @param td         the topology to schedule
          * @param slotsToUse the number of slots to use for the executors left to schedule.
-         * @param cluster the cluster to schedule this on.
+         * @param cluster    the cluster to schedule this on.
          */
         public RoundRobinSlotScheduler(TopologyDetails td, int slotsToUse, Cluster cluster) {
             _topId = td.getId();
@@ -79,7 +77,7 @@ public abstract class NodePool {
 
             Map<ExecutorDetails, String> execToComp = td.getExecutorToComponent();
             SchedulerAssignment assignment = _cluster.getAssignmentById(_topId);
-            _nodeToComps = new HashMap<String, Set<String>>();
+            _nodeToComps = new HashMap<>();
 
             if (assignment != null) {
                 Map<ExecutorDetails, WorkerSlot> execToSlot = assignment.getExecutorToSlot();
@@ -88,14 +86,14 @@ public abstract class NodePool {
                     String nodeId = entry.getValue().getNodeId();
                     Set<String> comps = _nodeToComps.get(nodeId);
                     if (comps == null) {
-                        comps = new HashSet<String>();
+                        comps = new HashSet<>();
                         _nodeToComps.put(nodeId, comps);
                     }
                     comps.add(execToComp.get(entry.getKey()));
                 }
             }
 
-            _spreadToSchedule = new HashMap<String, List<ExecutorDetails>>();
+            _spreadToSchedule = new HashMap<>();
             List<String> spreadComps = (List<String>) td.getConf().get(Config.TOPOLOGY_SPREAD_COMPONENTS);
             if (spreadComps != null) {
                 for (String comp : spreadComps) {
@@ -103,7 +101,7 @@ public abstract class NodePool {
                 }
             }
 
-            _slots = new LinkedList<Set<ExecutorDetails>>();
+            _slots = new LinkedList<>();
             for (int i = 0; i < slotsToUse; i++) {
                 _slots.add(new HashSet<ExecutorDetails>());
             }
@@ -116,7 +114,7 @@ public abstract class NodePool {
                     _spreadToSchedule.get(entry.getKey()).addAll(entry.getValue());
                 } else {
                     for (ExecutorDetails ed : entry.getValue()) {
-                        LOG.debug("Assigning {} {} to slot {}", new Object[] { entry.getKey(), ed, at });
+                        LOG.debug("Assigning {} {} to slot {}", new Object[]{entry.getKey(), ed, at});
                         _slots.get(at).add(ed);
                         at++;
                         if (at >= _slots.size()) {
@@ -130,7 +128,7 @@ public abstract class NodePool {
 
         /**
          * Assign a slot to the given node.
-         * 
+         *
          * @param n the node to assign a slot to.
          * @return true if there are more slots to assign else false.
          */
@@ -150,7 +148,7 @@ public abstract class NodePool {
                 String nodeId = n.getId();
                 Set<String> nodeComps = _nodeToComps.get(nodeId);
                 if (nodeComps == null) {
-                    nodeComps = new HashSet<String>();
+                    nodeComps = new HashSet<>();
                     _nodeToComps.put(nodeId, nodeComps);
                 }
                 for (Entry<String, List<ExecutorDetails>> entry : _spreadToSchedule.entrySet()) {
@@ -172,8 +170,8 @@ public abstract class NodePool {
 
     /**
      * Initialize the pool.
-     * 
-     * @param cluster the cluster
+     *
+     * @param cluster      the cluster
      * @param nodeIdToNode the mapping of node id to nodes
      */
     public void init(Cluster cluster, Map<String, Node> nodeIdToNode) {
@@ -183,14 +181,14 @@ public abstract class NodePool {
 
     /**
      * Add a topology to the pool
-     * 
+     *
      * @param td the topology to add.
      */
     public abstract void addTopology(TopologyDetails td);
 
     /**
      * Check if this topology can be added to this pool
-     * 
+     *
      * @param td the topology
      * @return true if it can else false
      */
@@ -203,7 +201,7 @@ public abstract class NodePool {
 
     /**
      * Take nodes from this pool that can fulfill possibly up to the slotsNeeded
-     * 
+     *
      * @param slotsNeeded the number of slots that are needed.
      * @return a Collection of nodes with the removed nodes in it. This may be empty, but should not be null.
      */
@@ -211,7 +209,7 @@ public abstract class NodePool {
 
     /**
      * Get the number of nodes and slots this would provide to get the slots needed
-     * 
+     *
      * @param slots the number of slots needed
      * @return the number of nodes and slots that would be returned.
      */
@@ -224,7 +222,7 @@ public abstract class NodePool {
 
     /**
      * Take up to nodesNeeded from this pool
-     * 
+     *
      * @param nodesNeeded the number of nodes that are needed.
      * @return a Collection of nodes with the removed nodes in it. This may be empty, but should not be null.
      */
@@ -232,7 +230,7 @@ public abstract class NodePool {
 
     /**
      * Reschedule any topologies as needed.
-     * 
+     *
      * @param lesserPools pools that may be used to steal nodes from.
      */
     public abstract void scheduleAsNeeded(NodePool... lesserPools);
@@ -255,7 +253,7 @@ public abstract class NodePool {
 
     public static Collection<Node> takeNodesBySlot(int slotsNeeded, NodePool[] pools) {
         LOG.debug("Trying to grab {} free slots from {}", slotsNeeded, pools);
-        HashSet<Node> ret = new HashSet<Node>();
+        HashSet<Node> ret = new HashSet<>();
         for (NodePool pool : pools) {
             Collection<Node> got = pool.takeNodesBySlots(slotsNeeded);
             ret.addAll(got);
@@ -270,7 +268,7 @@ public abstract class NodePool {
 
     public static Collection<Node> takeNodes(int nodesNeeded, NodePool[] pools) {
         LOG.debug("Trying to grab {} free nodes from {}", nodesNeeded, pools);
-        HashSet<Node> ret = new HashSet<Node>();
+        HashSet<Node> ret = new HashSet<>();
         for (NodePool pool : pools) {
             Collection<Node> got = pool.takeNodes(nodesNeeded);
             ret.addAll(got);

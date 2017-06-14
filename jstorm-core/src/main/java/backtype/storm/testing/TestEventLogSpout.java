@@ -18,6 +18,7 @@
 package backtype.storm.testing;
 
 import static backtype.storm.utils.Utils.get;
+
 import backtype.storm.topology.OutputFieldsDeclarer;
 
 import java.util.HashMap;
@@ -37,8 +38,8 @@ import backtype.storm.tuple.Values;
 public class TestEventLogSpout extends BaseRichSpout {
     public static Logger LOG = LoggerFactory.getLogger(TestEventLogSpout.class);
 
-    private static final Map<String, Integer> acked = new HashMap<String, Integer>();
-    private static final Map<String, Integer> failed = new HashMap<String, Integer>();
+    private static final Map<String, Integer> acked = new HashMap<>();
+    private static final Map<String, Integer> failed = new HashMap<>();
 
     private String uid;
     private long totalCount;

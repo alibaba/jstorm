@@ -21,10 +21,10 @@ import backtype.storm.task.TopologyContext;
 import java.util.Map;
 
 public interface ICommitterTransactionalSpout<X> extends ITransactionalSpout<X> {
-    public interface Emitter extends ITransactionalSpout.Emitter {
+    interface Emitter extends ITransactionalSpout.Emitter {
         void commit(TransactionAttempt attempt);
     }
 
     @Override
-    public Emitter getEmitter(Map conf, TopologyContext context);
+    Emitter getEmitter(Map conf, TopologyContext context);
 }

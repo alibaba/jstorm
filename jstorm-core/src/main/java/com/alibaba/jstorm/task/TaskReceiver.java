@@ -26,7 +26,6 @@ import backtype.storm.tuple.Tuple;
 import backtype.storm.utils.DisruptorQueue;
 import backtype.storm.utils.Utils;
 import backtype.storm.utils.WorkerClassLoader;
-
 import com.alibaba.jstorm.callback.AsyncLoopThread;
 import com.alibaba.jstorm.callback.RunnableCallback;
 import com.alibaba.jstorm.client.ConfigExtension;
@@ -34,7 +33,11 @@ import com.alibaba.jstorm.common.metric.AsmGauge;
 import com.alibaba.jstorm.common.metric.AsmHistogram;
 import com.alibaba.jstorm.common.metric.QueueGauge;
 import com.alibaba.jstorm.daemon.worker.JStormDebugger;
-import com.alibaba.jstorm.metric.*;
+import com.alibaba.jstorm.metric.JStormHealthCheck;
+import com.alibaba.jstorm.metric.JStormMetrics;
+import com.alibaba.jstorm.metric.MetricDef;
+import com.alibaba.jstorm.metric.MetricType;
+import com.alibaba.jstorm.metric.MetricUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.esotericsoftware.kryo.KryoException;
 import com.lmax.disruptor.EventHandler;
@@ -42,14 +45,12 @@ import com.lmax.disruptor.TimeoutBlockingWaitStrategy;
 import com.lmax.disruptor.TimeoutException;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TaskReceiver {
     private static Logger LOG = LoggerFactory.getLogger(TaskReceiver.class);
@@ -77,7 +78,8 @@ public class TaskReceiver {
     private float highMark;
     private volatile boolean backpressureStatus;
 
-    public TaskReceiver(Task task, int taskId, Map stormConf, TopologyContext topologyContext, Map<Integer, DisruptorQueue> innerTaskTransfer,
+    public TaskReceiver(Task task, int taskId, Map stormConf, TopologyContext topologyContext,
+                        Map<Integer, DisruptorQueue> innerTaskTransfer,
                         TaskStatus taskStatus, String taskName) {
         this.stormConf = stormConf;
         this.task = task;
@@ -97,10 +99,10 @@ public class TaskReceiver {
         boolean isDisruptorBatchMode = ConfigExtension.isDisruptorQueueBatchMode(stormConf);
         int disruptorBatch = ConfigExtension.getDisruptorBufferSize(stormConf);
         long flushMs = ConfigExtension.getDisruptorBufferFlushMs(stormConf);
-        this.deserializeQueue = DisruptorQueue.mkInstance("TaskDeserialize", ProducerType.MULTI, queueSize, waitStrategy, 
-        		isDisruptorBatchMode, disruptorBatch, flushMs);
+        this.deserializeQueue = DisruptorQueue.mkInstance("TaskDeserialize", ProducerType.MULTI, queueSize, waitStrategy,
+                isDisruptorBatchMode, disruptorBatch, flushMs);
         dserializeThreadNum = ConfigExtension.getTaskDeserializeThreadNum(stormConf);
-        deserializeThreads = new ArrayList<AsyncLoopThread>();
+        deserializeThreads = new ArrayList<>();
         setDeserializeThread();
         //this.deserializer = new KryoTupleDeserializer(stormConf, topologyContext);
 
@@ -123,7 +125,7 @@ public class TaskReceiver {
         this.lowMark = (float) ConfigExtension.getBackpressureWaterMarkLow(stormConf);
         this.backpressureStatus = false;
 
-        LOG.info("Successfully start TaskReceiver thread for {}, thread num: {}", idStr, dserializeThreadNum);
+        LOG.info("Successfully started TaskReceiver thread for {}, thread num: {}", idStr, dserializeThreadNum);
     }
 
     public List<AsyncLoopThread> getDeserializeThread() {
@@ -132,7 +134,8 @@ public class TaskReceiver {
 
     protected void setDeserializeThread() {
         for (int i = 0; i < dserializeThreadNum; i++) {
-            deserializeThreads.add(new AsyncLoopThread(new DeserializeRunnable(deserializeQueue, innerTaskTransfer.get(taskId), i)));
+            deserializeThreads.add(new AsyncLoopThread(
+                    new DeserializeRunnable(deserializeQueue, innerTaskTransfer.get(taskId), i)));
         }
     }
 
@@ -140,9 +143,7 @@ public class TaskReceiver {
         return deserializeQueue;
     }
 
-
     class DeserializeRunnable extends RunnableCallback implements EventHandler {
-
         DisruptorQueue deserializeQueue;
         DisruptorQueue exeQueue;
         int threadIndex;
@@ -175,16 +176,17 @@ public class TaskReceiver {
             WorkerClassLoader.restoreThreadContext();
         }
 
+        @SuppressWarnings("unchecked")
         @Override
         public void run() {
             //deserializeQueue.consumerStarted();
-            LOG.info("Successfully start recvThread of {}, {}", idStr, threadIndex);
+            LOG.info("Successfully started recvThread of {}, {}", idStr, threadIndex);
             while (!taskStatus.isShutdown()) {
                 try {
                     deserializeQueue.multiConsumeBatchWhenAvailableWithCallback(this);
                 } catch (Throwable e) {
                     if (!taskStatus.isShutdown()) {
-                        LOG.error("Unknow exception ", e);
+                        LOG.error("Unknown exception ", e);
                     }
                 }
             }
@@ -212,14 +214,14 @@ public class TaskReceiver {
                     isIdling = false;
                 } catch (InterruptedException e) {
                     LOG.error("InterruptedException " + e.getCause());
-                    return isIdling;
+                    return true;
                 } catch (TimeoutException e) {
-                    return isIdling;
+                    return true;
                 } catch (Throwable e) {
                     if (Utils.exceptionCauseIsInstanceOf(KryoException.class, e)) {
                         throw new RuntimeException(e);
                     } else if (!taskStatus.isShutdown()) {
-                        LOG.error("Unknow exception ", e);
+                        LOG.error("Unknown exception ", e);
                     }
                 }
             }
@@ -245,23 +247,16 @@ public class TaskReceiver {
 
             // ser_msg.length > 1
             if (bolt != null && bolt instanceof IProtoBatchBolt) {
-                List<byte[]> serMsgs = ((IProtoBatchBolt) bolt).protoExecute(serMsg);
-                if (serMsgs != null) {
-                    for (byte[] data : serMsgs) {
-                        deserializeTuple(deserializer, data, queue);
-                    }
-                } else {
-                    deserializeTuple(deserializer, serMsg, queue);
-                }
+                ((IProtoBatchBolt) bolt).protoExecute(this, deserializer, queue, serMsg);
             } else {
                 deserializeTuple(deserializer, serMsg, queue);
             }
-            
-        }  catch (Throwable e) {
+
+        } catch (Throwable e) {
             if (Utils.exceptionCauseIsInstanceOf(KryoException.class, e))
                 throw new RuntimeException(e);
             if (!taskStatus.isShutdown()) {
-                LOG.error(idStr + " recv thread error " + JStormUtils.toPrintableString(serMsg) + "\n", e);
+                LOG.error(idStr + " recv thread error " + JStormUtils.toPrintableString(serMsg), e);
             }
         } finally {
             if (MetricUtils.metricAccurateCal)
@@ -269,7 +264,7 @@ public class TaskReceiver {
         }
     }
 
-    protected void deserializeTuple(KryoTupleDeserializer deserializer, byte[] serMsg, DisruptorQueue queue) {
+    public void deserializeTuple(KryoTupleDeserializer deserializer, byte[] serMsg, DisruptorQueue queue) {
         Tuple tuple = deserializer.deserialize(serMsg);
         if (tuple != null) {
             if (JStormDebugger.isDebugRecv(tuple.getMessageId())) {
@@ -283,7 +278,7 @@ public class TaskReceiver {
                     }
                     queue.publish(tuple);
                     backpressureStatus = false;
-                } else  {
+                } else {
                     queue.publish(tuple);
                     if (queue.pctFull() > highMark) {
                         backpressureStatus = true;

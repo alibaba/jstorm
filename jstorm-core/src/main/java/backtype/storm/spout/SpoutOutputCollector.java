@@ -20,6 +20,7 @@ package backtype.storm.spout;
 import backtype.storm.task.ICollectorCallback;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.utils.Utils;
+
 import java.util.List;
 
 /**
@@ -59,6 +60,16 @@ public class SpoutOutputCollector extends SpoutOutputCollectorCb {
                 throw new RuntimeException("This method should not be called!");
             }
 
+            @Override
+            public List<Integer> emitCtrl(String streamId, List<Object> tuple, Object messageId) {
+                throw new RuntimeException("This method should not be called!");
+
+            }
+
+            @Override
+            public void emitDirectCtrl(int taskId, String streamId, List<Object> tuple, Object messageId) {
+                throw new RuntimeException("This method should not be called!");
+            }
         };
     }
 
@@ -203,9 +214,56 @@ public class SpoutOutputCollector extends SpoutOutputCollectorCb {
         _delegate.reportError(error);
     }
 
-    public void flush(){ _delegate.flush();}
+    @Override
+    public void flush(){
+        _delegate.flush();
+    }
+
+    @Override
+    public void setBatchId(long batchId) {
+        _delegate.setBatchId(batchId);
+    }
 
     public SpoutOutputCollectorCb getDelegate() {
         return _delegate;
+    }
+
+    public void emitDirectCtrl(int taskId, List<Object> tuple) {
+        _delegate.emitDirectCtrl(taskId, Utils.DEFAULT_STREAM_ID, tuple, null);
+    }
+
+    public void emitDirectCtrl(int taskId, List<Object> tuple, Object messageId) {
+        _delegate.emitDirectCtrl(taskId, Utils.DEFAULT_STREAM_ID, tuple, messageId);
+    }
+
+    public void emitDirectCtrl(int taskId, String streamId, List<Object> tuple) {
+        _delegate.emitDirectCtrl(taskId, streamId, tuple, null);
+    }
+
+    @Override
+    public void emitDirectCtrl(int taskId, String streamId, List<Object> tuple, Object messageId) {
+        _delegate.emitDirectCtrl(taskId, streamId, tuple, messageId);
+    }
+
+    public List<Integer> emitCtrl(List<Object> tuple) {
+        return _delegate.emitCtrl(Utils.DEFAULT_STREAM_ID, tuple, null);
+    }
+
+    public List<Integer> emitCtrl(List<Object> tuple, Object messageId) {
+        return _delegate.emitCtrl(Utils.DEFAULT_STREAM_ID, tuple, messageId);
+    }
+
+    public List<Integer> emitCtrl(String streamId, List<Object> tuple) {
+        return _delegate.emitCtrl(streamId, tuple, null);
+    }
+
+    @Override
+    public List<Integer> emitCtrl(String streamId, List<Object> tuple, Object messageId) {
+        return _delegate.emitCtrl(streamId, tuple, messageId);
+    }
+
+    @Override
+    public void emitBarrier() {
+        _delegate.emitBarrier();
     }
 }

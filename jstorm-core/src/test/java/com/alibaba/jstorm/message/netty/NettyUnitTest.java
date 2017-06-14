@@ -361,7 +361,7 @@ public class NettyUnitTest {
 
         IConnection server = null;
 
-        JStormUtils.sleepMs(7000);
+        JStormUtils.sleepMs(15000);
         System.out.println("!!server begin start!!!!!");
 
         server = initNettyServer();
@@ -499,7 +499,7 @@ public class NettyUnitTest {
                     list.add(message);
 
                     if (i % 1000 == 0) {
-                        System.out.println("send " + i);
+                        System.out.println("send " + req_msg);
                         client.send(list);
                         list = new ArrayList<TaskMessage>();
                     }
@@ -527,10 +527,9 @@ public class NettyUnitTest {
             byte[] message = (byte[]) server.recv(task, 0);
             JStormUtils.sleepMs(1);
 
-            Assert.assertEquals(String.valueOf(i + base), new String(message));
-
             if (i % 1000 == 0) {
-                // System.out.println("Receive " + new String(message));
+                Assert.assertEquals(String.valueOf(i + base), new String(message));
+                System.out.println("Receive " + new String(message));
             }
         }
 

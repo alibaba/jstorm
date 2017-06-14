@@ -33,17 +33,17 @@ import backtype.storm.scheduler.TopologyDetails;
 import backtype.storm.scheduler.WorkerSlot;
 
 /**
- * A pool of machines that anyone can use, but topologies are not isolated
+ * A pool of machines that anyone can use, topologies are not isolated
  */
 public class DefaultPool extends NodePool {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultPool.class);
-    private Set<Node> _nodes = new HashSet<Node>();
-    private HashMap<String, TopologyDetails> _tds = new HashMap<String, TopologyDetails>();
+    private Set<Node> _nodes = new HashSet<>();
+    private HashMap<String, TopologyDetails> _tds = new HashMap<>();
 
     @Override
     public void addTopology(TopologyDetails td) {
         String topId = td.getId();
-        LOG.debug("Adding in Topology {}", topId);
+        LOG.debug("Adding in topology {}", topId);
         _tds.put(topId, td);
         SchedulerAssignment assignment = _cluster.getAssignmentById(topId);
         if (assignment != null) {
@@ -61,8 +61,8 @@ public class DefaultPool extends NodePool {
 
     @Override
     public Collection<Node> takeNodes(int nodesNeeded) {
-        HashSet<Node> ret = new HashSet<Node>();
-        LinkedList<Node> sortedNodes = new LinkedList<Node>(_nodes);
+        HashSet<Node> ret = new HashSet<>();
+        LinkedList<Node> sortedNodes = new LinkedList<>(_nodes);
         Collections.sort(sortedNodes, Node.FREE_NODE_COMPARATOR_DEC);
         for (Node n : sortedNodes) {
             if (nodesNeeded <= ret.size()) {
@@ -96,7 +96,7 @@ public class DefaultPool extends NodePool {
     public NodeAndSlotCounts getNodeAndSlotCountIfSlotsWereTaken(int slotsNeeded) {
         int nodesFound = 0;
         int slotsFound = 0;
-        LinkedList<Node> sortedNodes = new LinkedList<Node>(_nodes);
+        LinkedList<Node> sortedNodes = new LinkedList<>(_nodes);
         Collections.sort(sortedNodes, Node.FREE_NODE_COMPARATOR_DEC);
         for (Node n : sortedNodes) {
             if (slotsNeeded <= 0) {
@@ -114,8 +114,8 @@ public class DefaultPool extends NodePool {
 
     @Override
     public Collection<Node> takeNodesBySlots(int slotsNeeded) {
-        HashSet<Node> ret = new HashSet<Node>();
-        LinkedList<Node> sortedNodes = new LinkedList<Node>(_nodes);
+        HashSet<Node> ret = new HashSet<>();
+        LinkedList<Node> sortedNodes = new LinkedList<>(_nodes);
         Collections.sort(sortedNodes, Node.FREE_NODE_COMPARATOR_DEC);
         for (Node n : sortedNodes) {
             if (slotsNeeded <= 0) {
@@ -149,8 +149,8 @@ public class DefaultPool extends NodePool {
                 }
                 int slotsToUse = Math.min(slotsRequested - slotsUsed, slotsFree + slotsAvailable);
                 int executorsNotRunning = _cluster.getUnassignedExecutors(td).size();
-                LOG.debug("Slots... requested {} used {} free {} available {} to be used {}, executors not running {}", new Object[] { slotsRequested,
-                        slotsUsed, slotsFree, slotsAvailable, slotsToUse, executorsNotRunning });
+                LOG.debug("Slots... requested {} used {} free {} available {} to be used {}, executors not running {}",
+                        new Object[]{slotsRequested, slotsUsed, slotsFree, slotsAvailable, slotsToUse, executorsNotRunning});
                 if (slotsToUse <= 0) {
                     if (executorsNotRunning > 0) {
                         _cluster.setStatus(topId, "Not fully scheduled (No free slots in default pool) " + executorsNotRunning + " executors not scheduled");
@@ -180,9 +180,9 @@ public class DefaultPool extends NodePool {
 
                 RoundRobinSlotScheduler slotSched = new RoundRobinSlotScheduler(td, slotsToUse, _cluster);
 
-                LinkedList<Node> nodes = new LinkedList<Node>(_nodes);
+                LinkedList<Node> nodes = new LinkedList<>(_nodes);
                 while (true) {
-                    Node n = null;
+                    Node n;
                     do {
                         if (nodes.isEmpty()) {
                             throw new IllegalStateException("This should not happen, we" + " messed up and did not get enough slots");

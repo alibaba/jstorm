@@ -24,13 +24,12 @@ import org.apache.commons.lang.builder.ToStringStyle;
 
 /**
  * Task error stored in Zk(/storm-zk-root/taskerrors/{topologyid}/{taskid})
- * 
+ *
  * @author yannian
- * 
  */
 public class TaskError implements Serializable {
-
     private static final long serialVersionUID = 5028789764629555542L;
+
     private String error;
     private String level;
     private int code;
@@ -94,52 +93,48 @@ public class TaskError implements Serializable {
     }
 
     @Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + code;
-		result = prime * result + durationSecs;
-		result = prime * result + ((error == null) ? 0 : error.hashCode());
-		result = prime * result + ((level == null) ? 0 : level.hashCode());
-		result = prime * result + timSecs;
-		return result;
-	}
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + code;
+        result = prime * result + durationSecs;
+        result = prime * result + ((error == null) ? 0 : error.hashCode());
+        result = prime * result + ((level == null) ? 0 : level.hashCode());
+        result = prime * result + timSecs;
+        return result;
+    }
 
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		TaskError other = (TaskError) obj;
-		if (code != other.code)
-			return false;
-		if (durationSecs != other.durationSecs)
-			return false;
-		if (error == null) {
-			if (other.error != null)
-				return false;
-		} else if (!error.equals(other.error))
-			return false;
-		if (level == null) {
-			if (other.level != null)
-				return false;
-		} else if (!level.equals(other.level))
-			return false;
-		if (timSecs != other.timSecs)
-			return false;
-		return true;
-	}
-    
-    
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        TaskError other = (TaskError) obj;
+        if (code != other.code)
+            return false;
+        if (durationSecs != other.durationSecs)
+            return false;
+        if (error == null) {
+            if (other.error != null)
+                return false;
+        } else if (!error.equals(other.error))
+            return false;
+        if (level == null) {
+            if (other.level != null)
+                return false;
+        } else if (!level.equals(other.level))
+            return false;
+        if (timSecs != other.timSecs)
+            return false;
+        return true;
+    }
+
 
     @Override
     public String toString() {
-        
         return ToStringBuilder.reflectionToString(this, ToStringStyle.SHORT_PREFIX_STYLE);
     }
-
-	
 }

@@ -20,31 +20,28 @@ package com.alibaba.jstorm.daemon.worker;
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
 /**
- * Worker's Heartbeat data woker will update the object to /LOCAL-DIR/workers/${woker-id}/heartbeats
- * 
+ * A class that contains worker heartbeat data.
+ * Worker will update the object to /LOCAL-DIR/workers/${woker-id}/heartbeats
+ *
  * @author yannian/Longda
- * 
  */
 public class WorkerHeartbeat implements Serializable {
-
     private static final long serialVersionUID = -914166726205534892L;
+
     private int timeSecs;
     private String topologyId;
     private Set<Integer> taskIds;
     private Integer port;
 
     public WorkerHeartbeat(int timeSecs, String topologyId, Set<Integer> taskIds, Integer port) {
-
         this.timeSecs = timeSecs;
         this.topologyId = topologyId;
-        this.taskIds = new HashSet<Integer>(taskIds);
+        this.taskIds = new HashSet<>(taskIds);
         this.port = port;
-
     }
 
     public int getTimeSecs() {

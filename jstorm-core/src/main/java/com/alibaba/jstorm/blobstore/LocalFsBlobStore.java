@@ -23,16 +23,14 @@ import backtype.storm.generated.ReadableBlobMeta;
 import backtype.storm.generated.SettableBlobMeta;
 import backtype.storm.nimbus.NimbusInfo;
 import com.alibaba.jstorm.utils.JStormUtils;
-
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.locks.ReentrantLock;
 import org.apache.curator.framework.CuratorFramework;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 
 /**
@@ -62,7 +60,8 @@ public class LocalFsBlobStore extends BlobStore {
     private FileBlobStoreImpl fbs;
     private Map conf;
     private CuratorFramework zkClient;
-    private final ConcurrentMap<String, ReentrantLock> topologyLock = new ConcurrentHashMap<>();
+    private final Map<String, ReentrantLock> topologyLock = new HashMap<>();
+    private final Map<String, AtomicInteger> topologyLockCounters = new HashMap<>();
 
     @Override
     public void prepare(Map conf, String overrideBase, NimbusInfo nimbusInfo) {
@@ -176,7 +175,7 @@ public class LocalFsBlobStore extends BlobStore {
     public void setBlobMeta(String key, SettableBlobMeta meta) throws KeyNotFoundException {
         validateKey(key);
         checkForBlobOrDownload(key);
-        SettableBlobMeta orig = getStoredBlobMeta(key);
+        //SettableBlobMeta orig = getStoredBlobMeta(key);
         BlobStoreFileOutputStream mOut = null;
         try {
             mOut = new BlobStoreFileOutputStream(fbs.write(META_PREFIX + key, false));
@@ -212,8 +211,15 @@ public class LocalFsBlobStore extends BlobStore {
     @Override
     public InputStreamWithMeta getBlob(String key) throws KeyNotFoundException {
         validateKey(key);
-        if (!checkForBlobOrDownload(key)) {
-            checkForBlobUpdate(key);
+
+        Set<NimbusInfo> nimbusSet;
+        try {
+            nimbusSet = BlobStoreUtils.getNimbodesWithLatestSequenceNumberOfBlob(zkClient, key);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+        if (!checkForBlobOrDownload(key, nimbusSet)) {
+            checkForBlobUpdate(key, nimbusSet);
         }
         getStoredBlobMeta(key);
         try {
@@ -222,6 +228,7 @@ public class LocalFsBlobStore extends BlobStore {
             throw new RuntimeException(e);
         }
     }
+
 
     @Override
     public Iterator<String> listKeys() {
@@ -260,18 +267,24 @@ public class LocalFsBlobStore extends BlobStore {
 
     //This additional check and download is for nimbus high availability in case you have more than one nimbus
     public boolean checkForBlobOrDownload(String key) {
+        return checkForBlobOrDownload(key, null);
+    }
+
+    public boolean checkForBlobOrDownload(String key, Set<NimbusInfo> nimbusSet) {
         boolean checkBlobDownload = false;
         long start = System.currentTimeMillis();
         ReentrantLock lock = getLockForKey(key);
+        lock.lock();
         try {
-            lock.lock();
-            long getKeyStart = System.currentTimeMillis();
+            // quite slow, at least 10ms+
             List<String> keyList = BlobStoreUtils.getKeyListFromBlobStore(this);
-            LOG.info("list blob keys, size:{}, cost:{}", keyList.size(), System.currentTimeMillis() - getKeyStart);
 
             if (!keyList.contains(key)) {
                 if (zkClient.checkExists().forPath(BLOBSTORE_SUBTREE + key) != null) {
-                    Set<NimbusInfo> nimbusSet = BlobStoreUtils.getNimbodesWithLatestSequenceNumberOfBlob(zkClient, key);
+                    if (nimbusSet == null) {
+                        nimbusSet = BlobStoreUtils.getNimbodesWithLatestSequenceNumberOfBlob(zkClient, key);
+                    }
+
                     Set<NimbusInfo> filterNimbusSet = new HashSet<>();
                     for (NimbusInfo nimbusInfo : nimbusSet) {
                         if (!nimbusInfo.getHostPort().equals(this.nimbusInfo.getHostPort())) {
@@ -295,11 +308,15 @@ public class LocalFsBlobStore extends BlobStore {
     }
 
     public void checkForBlobUpdate(String key) {
+        checkForBlobUpdate(key, null);
+    }
+
+    public void checkForBlobUpdate(String key, Set<NimbusInfo> nimbusSet) {
         long start = System.currentTimeMillis();
         ReentrantLock lock = getLockForKey(key);
+        lock.lock();
         try {
-            lock.lock();
-            BlobStoreUtils.updateKeyForBlobStore(conf, this, zkClient, key, nimbusInfo);
+            BlobStoreUtils.updateKeyForBlobStore(conf, this, zkClient, key, nimbusInfo, nimbusSet);
         } finally {
             unlockForKey(key, lock);
         }
@@ -311,18 +328,38 @@ public class LocalFsBlobStore extends BlobStore {
     }
 
     private ReentrantLock getLockForKey(String key) {
-        ReentrantLock lock = new ReentrantLock();
-        ReentrantLock existing = topologyLock.putIfAbsent(key, lock);
-        ReentrantLock ret = (existing == null) ? lock : existing;
-        LOG.debug("get lock for key:{}, lock:{}", key, ret);
-        return ret;
+        ReentrantLock lock;
+        int waitNumber;
+        synchronized (topologyLock) {
+            lock = topologyLock.get(key);
+            if (lock == null) {
+                lock = new ReentrantLock();
+                topologyLock.put(key, lock);
+                LOG.debug("initialized a new lock for key: {}, lock: {}", key, lock);
+            }
+            AtomicInteger count = topologyLockCounters.get(key);
+            if (count == null) {
+                count = new AtomicInteger(0);
+                topologyLockCounters.put(key, count);
+            }
+            waitNumber = count.incrementAndGet();
+        }
+        LOG.debug("got lock for key: {}, lock: {}, wait: {}", key, lock, waitNumber);
+        return lock;
     }
 
     private void unlockForKey(String key, ReentrantLock lock) {
-        LOG.debug("unlock for key:{}, lock:{}", key, lock);
+        int waitNumber;
         lock.unlock();
+        //check if any one is waiting to use this lock, and remove it if not
         synchronized (topologyLock) {
-            topologyLock.remove(key);
+            AtomicInteger count = topologyLockCounters.get(key);
+            waitNumber = count.decrementAndGet();
+            if (waitNumber <= 0) {
+                topologyLock.remove(key);
+                topologyLockCounters.remove(key);
+            }
         }
+        LOG.debug("released lock for key:{}, lock:{}, wait: {}", key, lock, waitNumber);
     }
 }

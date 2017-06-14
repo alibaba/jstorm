@@ -62,16 +62,13 @@ public class CoordinatedBolt implements IRichBolt {
     private TimeCacheMap<Object, Object> commited;
 
     public CoordinatedBolt(IBasicBolt delegate) {
-
         this.delegate = delegate;
-
     }
 
     // use static variable to reduce zk connection
     private static ClusterState zkClient = null;
 
     public void mkCommitDir(Map conf) {
-
         try {
             zkClient = BatchCommon.getZkClient(conf);
 
@@ -98,7 +95,7 @@ public class CoordinatedBolt implements IRichBolt {
 
         if (delegate instanceof ICommitter) {
             isCommiter = true;
-            commited = new TimeCacheMap<Object, Object>(context.maxTopologyMessageTimeout());
+            commited = new TimeCacheMap<>(context.maxTopologyMessageTimeout());
             mkCommitDir(conf);
         }
 
@@ -107,9 +104,8 @@ public class CoordinatedBolt implements IRichBolt {
     }
 
     public void removeUseless(String path, int reserveSize) throws Exception {
-        List<String> childs = zkClient.get_children(path, false);
-        Collections.sort(childs, new Comparator<String>() {
-
+        List<String> children = zkClient.get_children(path, false);
+        Collections.sort(children, new Comparator<String>() {
             @Override
             public int compare(String o1, String o2) {
                 try {
@@ -124,8 +120,8 @@ public class CoordinatedBolt implements IRichBolt {
 
         });
 
-        for (int index = 0; index < childs.size() - reserveSize; index++) {
-            zkClient.delete_node(path + BatchDef.ZK_SEPERATOR + childs.get(index));
+        for (int index = 0; index < children.size() - reserveSize; index++) {
+            zkClient.delete_node(path + BatchDef.ZK_SEPERATOR + children.get(index));
         }
     }
 
@@ -135,7 +131,6 @@ public class CoordinatedBolt implements IRichBolt {
 
     public void updateToZk(Object id, byte[] commitResult) {
         try {
-
             removeUseless(zkCommitPath, BatchDef.ZK_COMMIT_RESERVER_NUM);
 
             String path = getCommitPath((BatchId) id);
@@ -147,17 +142,13 @@ public class CoordinatedBolt implements IRichBolt {
             LOG.info("Update " + path + " to zk");
         } catch (Exception e) {
             LOG.warn("Failed to update to zk,", e);
-
         }
-
     }
 
     public byte[] getCommittedData(Object id) {
         try {
             String path = getCommitPath((BatchId) id);
-            byte[] data = zkClient.get_data(path, false);
-
-            return data;
+            return zkClient.get_data(path, false);
         } catch (Exception e) {
             LOG.error("Failed to visit ZK,", e);
             return null;
@@ -175,7 +166,6 @@ public class CoordinatedBolt implements IRichBolt {
             }
             collector.fail(tuple);
         }
-
     }
 
     public void handlePrepareCommit(Tuple tuple) {
@@ -190,7 +180,6 @@ public class CoordinatedBolt implements IRichBolt {
             }
             collector.fail(tuple);
         }
-
     }
 
     public void handleCommit(Tuple tuple) {
@@ -211,7 +200,7 @@ public class CoordinatedBolt implements IRichBolt {
     public void handleRevert(Tuple tuple) {
         try {
             Object id = tuple.getValue(0);
-            byte[] commitResult = null;
+            byte[] commitResult;
 
             if (commited.containsKey(id)) {
                 commitResult = (byte[]) commited.get(id);
@@ -230,7 +219,6 @@ public class CoordinatedBolt implements IRichBolt {
     }
 
     public void handlePostCommit(Tuple tuple) {
-
         basicCollector.setContext(tuple);
         try {
             BatchId id = (BatchId) tuple.getValue(0);
@@ -243,7 +231,6 @@ public class CoordinatedBolt implements IRichBolt {
     }
 
     public void execute(Tuple tuple) {
-
         BatchStatus batchStatus = getBatchStatus(tuple);
 
         if (batchStatus == BatchStatus.COMPUTING) {

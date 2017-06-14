@@ -31,10 +31,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Network utilis
- * 
+ * Network utilities
+ *
  * @author yannian
- * 
  */
 public class NetWorkUtils {
     private static Logger LOG = LoggerFactory.getLogger(NetWorkUtils.class);
@@ -60,10 +59,10 @@ public class NetWorkUtils {
     }
 
     /**
-     * Check whether the port is available to binding
-     * 
-     * @param port
-     * @return -1 means not available, others means available
+     * Check whether the port is available to bind
+     *
+     * @param port port
+     * @return -1 means unavailable, otherwise available
      * @throws IOException
      */
     public static int tryPort(int port) throws IOException {
@@ -74,36 +73,36 @@ public class NetWorkUtils {
     }
 
     /**
-     * get one available port
-     * 
-     * @return -1 means failed, others means one availablePort
+     * get an available port
+     *
+     * @return -1 means failure, otherwise the available port
      */
+    @SuppressWarnings("unused")
     public static int getAvailablePort() {
         return availablePort(0);
     }
 
     /**
-     * Check whether the port is available to binding
-     * 
-     * @param prefered
-     * @return -1 means not available, others means available
+     * Check whether the port is available to bind
+     *
+     * @param preferred preferred port
+     * @return -1 means unavailable, otherwise available
      */
-    public static int availablePort(int prefered) {
+    public static int availablePort(int preferred) {
         int rtn = -1;
         try {
-            rtn = tryPort(prefered);
-        } catch (IOException e) {
-
+            rtn = tryPort(preferred);
+        } catch (IOException ignored) {
         }
         return rtn;
     }
 
     public static String host2Ip(String host) {
-        InetAddress address = null;
+        InetAddress address;
         try {
             address = InetAddress.getByName(host);
         } catch (UnknownHostException e) {
-            LOG.warn("NetWorkUtil can't transfer hostname(" + host + ") to ip, return hostname", e);
+            LOG.warn("NetWorkUtil can't convert hostname(" + host + ") to ip, return hostname", e);
             return host;
         }
         return address.getHostAddress();
@@ -111,10 +110,10 @@ public class NetWorkUtils {
 
     public static List<String> host2Ip(List<String> servers) {
         if (servers == null || servers.size() == 0) {
-            return new ArrayList<String>();
+            return new ArrayList<>();
         }
 
-        Set<String> ret = new HashSet<String>();
+        Set<String> ret = new HashSet<>();
         for (String server : servers) {
             if (StringUtils.isBlank(server)) {
                 continue;
@@ -124,7 +123,6 @@ public class NetWorkUtils {
             try {
                 ia = InetAddress.getByName(server);
             } catch (UnknownHostException e) {
-                // TODO Auto-generated catch block
                 LOG.info("Fail to get address of ", server);
                 continue;
             }
@@ -139,19 +137,18 @@ public class NetWorkUtils {
     }
 
     public static String ip2Host(String ip) {
-        InetAddress address = null;
+        InetAddress address;
         try {
             address = InetAddress.getByName(ip);
         } catch (UnknownHostException e) {
-            LOG.warn("NetWorkUtil can't transfer ip(" + ip + ") to hostname, return ip", e);
+            LOG.warn("NetWorkUtil can't convert ip(" + ip + ") to hostname, return ip", e);
             return ip;
         }
         return address.getHostName();
     }
 
     public static boolean equals(String host1, String host2) {
-
-        if (StringUtils.equalsIgnoreCase(host1, host2) == true) {
+        if (StringUtils.equalsIgnoreCase(host1, host2)) {
             return true;
         }
 
@@ -167,11 +164,10 @@ public class NetWorkUtils {
     }
 
     public static void main(String[] args) {
-        List<String> servers = new ArrayList<String>();
+        List<String> servers = new ArrayList<>();
         servers.add("localhost");
 
         System.out.println(host2Ip(servers));
-
     }
 
 }

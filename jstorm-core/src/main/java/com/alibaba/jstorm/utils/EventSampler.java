@@ -22,12 +22,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * 
  * statistics tuples: sampling event
- * 
- * 
+ *
  * @author yannian/Longda
- * 
  */
 public class EventSampler {
     private volatile int freq;
@@ -46,8 +43,6 @@ public class EventSampler {
 
     /**
      * select 1/freq
-     * 
-     * @return
      */
     public boolean countCheck() {
         i.incrementAndGet();
@@ -55,10 +50,7 @@ public class EventSampler {
             target = r.nextInt(freq);
             i.set(0);
         }
-        if (i.get() == target) {
-            return true;
-        }
-        return false;
+        return i.get() == target;
     }
 
     private AtomicInteger counter = new AtomicInteger(0);
@@ -71,11 +63,8 @@ public class EventSampler {
         Double pastSeconds = intervalCheck.checkAndGet();
         if (pastSeconds != null) {
             counter.set(0);
-
-            return Integer.valueOf((int) (send / pastSeconds));
-
+            return (int) (send / pastSeconds);
         }
-
         return null;
     }
 
@@ -85,11 +74,8 @@ public class EventSampler {
         Double pastSeconds = intervalCheck.checkAndGet();
         if (pastSeconds != null) {
             counter.set(0);
-
             return send;
-
         }
-
         return null;
     }
 
@@ -102,15 +88,12 @@ public class EventSampler {
             counter.set(0);
             sum.set(0);
 
-            Double avg = Double.valueOf(0);
+            Double avg = (double) 0;
             if (send != 0) {
                 avg = ((double) total) / send;
             }
-
-            return new Pair<Integer, Double>(send, avg);
-
+            return new Pair<>(send, avg);
         }
-
         return null;
     }
 }

@@ -41,10 +41,8 @@ import com.alibaba.jstorm.cluster.StormConfig;
 
 /**
  * storm utils
- * 
- * 
+ *
  * @author yannian/Longda/Xin.Zhou/Xin.Li
- * 
  */
 public class JStormServerUtils {
 
@@ -85,8 +83,8 @@ public class JStormServerUtils {
         blobStore.shutdown();
     }
 
-    public static void downloadCodeFromMaster(Map conf, String localRoot, String masterCodeDir, String topologyId, boolean isSupervisor) throws IOException,
-            TException {
+    public static void downloadCodeFromMaster(Map conf, String localRoot, String masterCodeDir,
+                                              String topologyId, boolean isSupervisor) throws IOException, TException {
         FileUtils.forceMkdir(new File(localRoot));
         FileUtils.forceMkdir(new File(StormConfig.stormlib_path(localRoot)));
 
@@ -120,23 +118,16 @@ public class JStormServerUtils {
     public static void createPid(String dir) throws Exception {
         File file = new File(dir);
 
-        if (file.exists() == false) {
+        if (!file.exists()) {
             file.mkdirs();
-        } else if (file.isDirectory() == false) {
+        } else if (!file.isDirectory()) {
             throw new RuntimeException("pid dir:" + dir + " isn't directory");
         }
 
         String[] existPids = file.list();
         if (existPids == null) {
-        	existPids = new String[]{};
+            existPids = new String[]{};
         }
-
-        // touch pid before
-        String pid = JStormUtils.process_pid();
-        String pidPath = dir + File.separator + pid;
-        PathUtils.touch(pidPath);
-        LOG.info("Successfully touch pid  " + pidPath);
-
         for (String existPid : existPids) {
             try {
                 JStormUtils.kill(Integer.valueOf(existPid));
@@ -146,6 +137,11 @@ public class JStormServerUtils {
             }
         }
 
+        // touch pid before
+        String pid = JStormUtils.process_pid();
+        String pidPath = dir + File.separator + pid;
+        PathUtils.touch(pidPath);
+        LOG.info("Successfully touch pid  " + pidPath);
     }
 
     public static void startTaobaoJvmMonitor() {
@@ -160,11 +156,7 @@ public class JStormServerUtils {
         }
 
         int pendingNum = JStormUtils.parseInt(pending);
-        if (pendingNum == 1) {
-            return true;
-        } else {
-            return false;
-        }
+        return pendingNum == 1;
     }
 
     public static String getName(String componentId, int taskId) {
@@ -199,4 +191,4 @@ public class JStormServerUtils {
             }
         }
     }
-};
+}

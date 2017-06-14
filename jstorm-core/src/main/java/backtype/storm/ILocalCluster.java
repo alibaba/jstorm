@@ -31,10 +31,11 @@ import backtype.storm.generated.Credentials;
 import java.util.Map;
 
 public interface ILocalCluster {
-    void submitTopology(String topologyName, Map conf, StormTopology topology) throws AlreadyAliveException, InvalidTopologyException;
+    void submitTopology(String topologyName, Map conf, StormTopology topology)
+            throws AlreadyAliveException, InvalidTopologyException;
 
-    void submitTopologyWithOpts(String topologyName, Map conf, StormTopology topology, SubmitOptions submitOpts) throws AlreadyAliveException,
-            InvalidTopologyException;
+    void submitTopologyWithOpts(String topologyName, Map conf, StormTopology topology, SubmitOptions submitOpts)
+            throws AlreadyAliveException, InvalidTopologyException;
 
     void uploadNewCredentials(String topologyName, Credentials creds);
 

@@ -22,12 +22,14 @@ import backtype.storm.task.TopologyContext;
 import java.util.Collection;
 import java.util.Map;
 
+@Deprecated
 public interface IMetricsConsumer {
-    public static class TaskInfo {
+    class TaskInfo {
         public TaskInfo() {
         }
 
-        public TaskInfo(String srcWorkerHost, int srcWorkerPort, String srcComponentId, int srcTaskId, long timestamp, int updateIntervalSecs) {
+        public TaskInfo(String srcWorkerHost, int srcWorkerPort, String srcComponentId,
+                        int srcTaskId, long timestamp, int updateIntervalSecs) {
             this.srcWorkerHost = srcWorkerHost;
             this.srcWorkerPort = srcWorkerPort;
             this.srcComponentId = srcComponentId;
@@ -44,7 +46,7 @@ public interface IMetricsConsumer {
         public int updateIntervalSecs;
     }
 
-    public static class DataPoint {
+    class DataPoint {
         public DataPoint() {
         }
 

@@ -93,14 +93,15 @@ public class RefreshActive extends RunnableCallback {
             // If initialization is on-going, check connection status first. 
             // If all connections were done, start to update topology status. Otherwise, just return.
             if (oldTopologyStatus == null) {
-                if (!workerData.getWorkeInitConnectionStatus().get()) {
+                if (!workerData.getWorkerInitConnectionStatus().get()) {
                     return;
                 }
             }
 
             if (oldTopologyStatus == null || !newTopologyStatus.equals(oldTopologyStatus)) {
                 LOG.info("Old TopologyStatus:" + oldTopologyStatus + ", new TopologyStatus:" + newTopologyStatus);
-                if (newTopologyStatus.equals(StatusType.active)) {
+                if (newTopologyStatus.equals(StatusType.active) || newTopologyStatus.equals(StatusType.upgrading) ||
+                        newTopologyStatus.equals(StatusType.rollback)) {
                     for (TaskShutdownDameon task : tasks) {
                         if (task.getTask().getTaskStatus().isInit()) {
                             task.getTask().getTaskStatus().setStatus(TaskStatus.RUN);

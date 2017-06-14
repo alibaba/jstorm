@@ -21,8 +21,7 @@ import java.util.List;
 
 /**
  * This interface will list emit values when tuple fails
- * 
- * if spout implement this interface, spout won't call ISpout.fail() when tuple fail
+ * if a spout implements this interface, spout won't call ISpout.fail() when a tuple fails
  * 
  * @author longda
  */

@@ -6,7 +6,7 @@ layout: plain_cn
 sub-nav-parent: Plugins_cn
 sub-nav-group: AdvancedUsage_cn
 sub-nav-id: Flux_cn
-#sub-nav-pos: 2
+# sub-nav-pos: 2
 sub-nav-title: Flux 插件
 ---
 

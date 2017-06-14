@@ -1,9 +1,23 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.alibaba.jstorm.utils;
 
 import backtype.storm.utils.ShellUtils;
-import backtype.storm.utils.Utils;
-import com.google.common.base.Predicate;
-import com.google.common.collect.Iterables;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,29 +40,33 @@ public class LinuxResource {
     private static final Pattern CPU_TIME_FORMAT = Pattern.compile("^cpu[ \t]+([0-9]+)[ \t]+([0-9]+)[ \t]+([0-9]+)");
 
     private static final String PROCFS_MEMINFO = "/proc/meminfo";
+    private static volatile String duHome = "./";
     public static final long JIFFY_LENGTH_IN_MILLIS;
+
     static {
         long jiffiesPerSecond = getJiffies();
         JIFFY_LENGTH_IN_MILLIS = jiffiesPerSecond != -1 ? Math.round(1000D / jiffiesPerSecond) : 100;
     }
 
-    public static final int CPU_SAMPLING_TIMES = 10;
-
-    private static long  lastCpuTime = -1;
-    private static long  lastIdieTime = -1;
+    private static long lastCpuTime = -1;
+    private static long lastIdieTime = -1;
     private static float lastcpuUsage = -1;
 
     private static final String PROCFS_NETSTAT = "/proc/net/dev";
 
-    public interface ResouceCallback {
+    public interface ResourceCallback {
         Object execute(List<String> lines) throws Exception;
     }
 
+    public static void setDuHome(String duHome) {
+        LinuxResource.duHome = duHome;
+    }
+
     static class ProcResourceParse {
-        private ResouceCallback callback;
+        private ResourceCallback callback;
         private String file;
 
-        public ProcResourceParse(String file, ResouceCallback callback) {
+        public ProcResourceParse(String file, ResourceCallback callback) {
             this.callback = callback;
             this.file = file;
         }
@@ -80,7 +98,8 @@ public class LinuxResource {
         }
         long jiffiesPerSecond = -1;
         try {
-            ShellUtils.ShellCommandExecutor shellExecutorClk = new ShellUtils.ShellCommandExecutor(new String[] { "getconf", "CLK_TCK" });
+            ShellUtils.ShellCommandExecutor shellExecutorClk =
+                    new ShellUtils.ShellCommandExecutor(new String[]{"getconf", "CLK_TCK"});
             shellExecutorClk.execute();
             jiffiesPerSecond = Long.parseLong(shellExecutorClk.getOutput().replace("\n", ""));
         } catch (Exception e) {
@@ -93,11 +112,11 @@ public class LinuxResource {
         if (!OSInfo.isLinux()) {
             return 0.0f;
         }
-        ProcResourceParse procResourceParse = new ProcResourceParse(PROCFS_STAT, new ResouceCallback() {
+        ProcResourceParse procResourceParse = new ProcResourceParse(PROCFS_STAT, new ResourceCallback() {
             @Override
             public Object execute(List<String> lines) throws Exception {
                 Pair<Long, Long> totalCpu2idle = null;
-                for (String line : lines){
+                for (String line : lines) {
                     long totalCpuTime = 0;
                     long idleCpuTime = 0;
                     int size = 0;
@@ -126,12 +145,12 @@ public class LinuxResource {
             }
         });
         Object result = procResourceParse.getResource();
-        if (result == null){
+        if (result == null) {
             LOG.warn("getTotalCpuUsage failed");
             return 0.0f;
         }
 
-        Pair<Long, Long> totalCpu2idle = (Pair<Long, Long>)result;
+        Pair<Long, Long> totalCpu2idle = (Pair<Long, Long>) result;
         if (lastCpuTime == -1 ||
                 lastCpuTime > totalCpu2idle.getFirst()) {
             lastCpuTime = totalCpu2idle.getFirst();
@@ -187,15 +206,16 @@ public class LinuxResource {
     }
 
     /**
-     * calcute the disk usage at current filesystem
-     * @return
+     * calculate the disk usage at current filesystem
+     *
+     * @return disk usage, from 0.0 ~ 1.0
      */
     public static Double getDiskUsage() {
         if (!OSInfo.isLinux() && !OSInfo.isMac()) {
             return 0.0;
         }
         try {
-            String output = SystemOperation.exec("df -h ./");
+            String output = SystemOperation.exec("df -h " + duHome);
             if (output != null) {
                 String[] lines = output.split("[\\r\\n]+");
                 if (lines.length >= 2) {
@@ -219,28 +239,26 @@ public class LinuxResource {
         if (!OSInfo.isLinux()) {
             return pair;
         }
-        ProcResourceParse procResourceParse = new ProcResourceParse(PROCFS_NETSTAT, new ResouceCallback() {
+        ProcResourceParse procResourceParse = new ProcResourceParse(PROCFS_NETSTAT, new ResourceCallback() {
             @Override
             public Object execute(List<String> lines) throws Exception {
                 Pair<Long, Long> pair = new Pair<>(0l, 0l);
                 int receiveIndex = -1;
                 int sendIndex = -1;
-                for (String line : lines){
+                for (String line : lines) {
                     String[] splitString = line.split("\\s+|\\||:");
                     List<String> strings = new ArrayList<>();
-                    for (String str : splitString){
-                        if (str.trim().length() == 0) {
-                            continue;
-                        }else {
+                    for (String str : splitString) {
+                        if (str.trim().length() > 0) {
                             strings.add(str);
                         }
                     }
-                    if (strings.size() > 0 && strings.get(0).equals("face")){
-                        for (int i = 0; i < strings.size(); i++){
-                            if(strings.get(i).equals("bytes")){
-                                if (receiveIndex == -1){
+                    if (strings.size() > 0 && strings.get(0).equals("face")) {
+                        for (int i = 0; i < strings.size(); i++) {
+                            if (strings.get(i).equals("bytes")) {
+                                if (receiveIndex == -1) {
                                     receiveIndex = i;
-                                }else {
+                                } else {
                                     sendIndex = i;
                                 }
                             }
@@ -249,25 +267,23 @@ public class LinuxResource {
                     }
                 }
 
-                if (receiveIndex != -1 && sendIndex != -1){
-                    for (String line : lines){
+                if (receiveIndex != -1 && sendIndex != -1) {
+                    for (String line : lines) {
                         String[] splitString = line.split("\\s+|\\||:");
                         List<String> strings = new ArrayList<>();
-                        for (String str : splitString){
-                            if (str.trim().length() == 0) {
-                                continue;
-                            }else {
+                        for (String str : splitString) {
+                            if (str.trim().length() > 0) {
                                 strings.add(str);
                             }
                         }
-                        if (strings.size() > 0 && strings.get(0).startsWith("eth")){
+                        if (strings.size() > 0 && strings.get(0).startsWith("eth")) {
                             long rec = JStormUtils.parseLong(strings.get(receiveIndex));
                             long send = JStormUtils.parseLong(strings.get(sendIndex));
                             pair.setFirst(pair.getFirst() + rec);
                             pair.setSecond(pair.getSecond() + send);
                         }
                     }
-                }else {
+                } else {
                     LOG.warn("receiveIndex {}, sendIndex {}", receiveIndex, sendIndex);
                 }
                 return pair;

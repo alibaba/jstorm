@@ -21,9 +21,8 @@ import com.alibaba.jstorm.callback.RunnableCallback;
 
 /**
  * The callback will be called, when task occur error It just call TaskReportErrorAndDie
- * 
+ *
  * @author yannian
- * 
  */
 public class TaskErrorRunable extends RunnableCallback {
     private TaskReportErrorAndDie report_error_and_die;

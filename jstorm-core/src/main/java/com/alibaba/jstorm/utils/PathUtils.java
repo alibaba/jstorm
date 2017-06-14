@@ -33,18 +33,15 @@ import org.slf4j.LoggerFactory;
 public class PathUtils {
     static Logger LOG = LoggerFactory.getLogger(PathUtils.class);
 
-    public static final String SEPERATOR = "/";
+    public static final String SEPARATOR = "/";
 
     /**
      * split path as list
-     *
-     * @param path
-     * @return
      */
     public static List<String> tokenize_path(String path) {
-        String[] toks = path.split(SEPERATOR);
-        java.util.ArrayList<String> rtn = new ArrayList<String>();
-        for (String str : toks) {
+        String[] tokens = path.split(SEPARATOR);
+        java.util.ArrayList<String> rtn = new ArrayList<>();
+        for (String str : tokens) {
             if (!str.isEmpty()) {
                 rtn.add(str);
             }
@@ -52,14 +49,14 @@ public class PathUtils {
         return rtn;
     }
 
-    public static String toks_to_path(List<String> toks) {
-        StringBuffer buff = new StringBuffer();
-        buff.append(SEPERATOR);
-        int size = toks.size();
+    public static String toks_to_path(List<String> tokens) {
+        StringBuilder buff = new StringBuilder();
+        buff.append(SEPARATOR);
+        int size = tokens.size();
         for (int i = 0; i < size; i++) {
-            buff.append(toks.get(i));
+            buff.append(tokens.get(i));
             if (i < (size - 1)) {
-                buff.append(SEPERATOR);
+                buff.append(SEPARATOR);
             }
 
         }
@@ -67,21 +64,20 @@ public class PathUtils {
     }
 
     public static String normalize_path(String path) {
-        String rtn = toks_to_path(tokenize_path(path));
-        return rtn;
+        return toks_to_path(tokenize_path(path));
     }
 
     public static String parent_path(String path) {
-        List<String> toks = tokenize_path(path);
-        int size = toks.size();
+        List<String> tokens = tokenize_path(path);
+        int size = tokens.size();
         if (size > 0) {
-            toks.remove(size - 1);
+            tokens.remove(size - 1);
         }
-        return toks_to_path(toks);
+        return toks_to_path(tokens);
     }
 
     public static String full_path(String parent, String name) {
-        return normalize_path(parent + SEPERATOR + name);
+        return normalize_path(parent + SEPARATOR + name);
     }
 
     public static boolean exists_file(String path) {
@@ -93,7 +89,6 @@ public class PathUtils {
         if (exists_file(path)) {
             FileUtils.forceDelete(new File(path));
         }
-
     }
 
     public static void local_mkdirs(String path) throws IOException {
@@ -103,8 +98,8 @@ public class PathUtils {
 
     public static void rmpath(String path) {
         LOG.debug("Removing path " + path);
-        boolean isdelete = (new File(path)).delete();
-        if (!isdelete) {
+        boolean succ = (new File(path)).delete();
+        if (!succ) {
             throw new RuntimeException("Failed to delete " + path);
         }
     }
@@ -118,11 +113,11 @@ public class PathUtils {
     }
 
     public static List<String> read_dir_contents(String dir) {
-        ArrayList<String> rtn = new ArrayList<String>();
+        ArrayList<String> rtn = new ArrayList<>();
         if (exists_file(dir)) {
             File[] list = (new File(dir)).listFiles();
             if (list == null) {
-            	return rtn;
+                return rtn;
             }
             for (File f : list) {
                 rtn.add(f.getName());

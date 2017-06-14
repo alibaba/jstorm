@@ -1994,6 +1994,7 @@ class SupervisorSummary:
    - version
    - buildTs
    - port
+   - errorMessage
   """
 
   thrift_spec = (
@@ -2006,9 +2007,10 @@ class SupervisorSummary:
     (6, TType.STRING, 'version', None, None, ), # 6
     (7, TType.STRING, 'buildTs', None, None, ), # 7
     (8, TType.I32, 'port', None, None, ), # 8
+    (9, TType.STRING, 'errorMessage', None, None, ), # 9
   )
 
-  def __init__(self, host=None, supervisorId=None, uptimeSecs=None, numWorkers=None, numUsedWorkers=None, version=None, buildTs=None, port=None,):
+  def __init__(self, host=None, supervisorId=None, uptimeSecs=None, numWorkers=None, numUsedWorkers=None, version=None, buildTs=None, port=None, errorMessage=None,):
     self.host = host
     self.supervisorId = supervisorId
     self.uptimeSecs = uptimeSecs
@@ -2017,6 +2019,7 @@ class SupervisorSummary:
     self.version = version
     self.buildTs = buildTs
     self.port = port
+    self.errorMessage = errorMessage
 
   def read(self, iprot):
     if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
@@ -2067,6 +2070,11 @@ class SupervisorSummary:
           self.port = iprot.readI32();
         else:
           iprot.skip(ftype)
+      elif fid == 9:
+        if ftype == TType.STRING:
+          self.errorMessage = iprot.readString().decode('utf-8')
+        else:
+          iprot.skip(ftype)
       else:
         iprot.skip(ftype)
       iprot.readFieldEnd()
@@ -2109,6 +2117,10 @@ class SupervisorSummary:
       oprot.writeFieldBegin('port', TType.I32, 8)
       oprot.writeI32(self.port)
       oprot.writeFieldEnd()
+    if self.errorMessage is not None:
+      oprot.writeFieldBegin('errorMessage', TType.STRING, 9)
+      oprot.writeString(self.errorMessage.encode('utf-8'))
+      oprot.writeFieldEnd()
     oprot.writeFieldStop()
     oprot.writeStructEnd()
 
@@ -2136,6 +2148,7 @@ class SupervisorSummary:
     value = (value * 31) ^ hash(self.version)
     value = (value * 31) ^ hash(self.buildTs)
     value = (value * 31) ^ hash(self.port)
+    value = (value * 31) ^ hash(self.errorMessage)
     return value
 
   def __repr__(self):
@@ -3728,6 +3741,7 @@ class TopologyMetric:
    - taskMetric
    - streamMetric
    - nettyMetric
+   - compStreamMetric
   """
 
   thrift_spec = (
@@ -3738,15 +3752,17 @@ class TopologyMetric:
     (4, TType.STRUCT, 'taskMetric', (MetricInfo, MetricInfo.thrift_spec), None, ), # 4
     (5, TType.STRUCT, 'streamMetric', (MetricInfo, MetricInfo.thrift_spec), None, ), # 5
     (6, TType.STRUCT, 'nettyMetric', (MetricInfo, MetricInfo.thrift_spec), None, ), # 6
+    (7, TType.STRUCT, 'compStreamMetric', (MetricInfo, MetricInfo.thrift_spec), None, ), # 7
   )
 
-  def __init__(self, topologyMetric=None, componentMetric=None, workerMetric=None, taskMetric=None, streamMetric=None, nettyMetric=None,):
+  def __init__(self, topologyMetric=None, componentMetric=None, workerMetric=None, taskMetric=None, streamMetric=None, nettyMetric=None, compStreamMetric=None,):
     self.topologyMetric = topologyMetric
     self.componentMetric = componentMetric
     self.workerMetric = workerMetric
     self.taskMetric = taskMetric
     self.streamMetric = streamMetric
     self.nettyMetric = nettyMetric
+    self.compStreamMetric = compStreamMetric
 
   def read(self, iprot):
     if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
@@ -3793,6 +3809,12 @@ class TopologyMetric:
           self.nettyMetric.read(iprot)
         else:
           iprot.skip(ftype)
+      elif fid == 7:
+        if ftype == TType.STRUCT:
+          self.compStreamMetric = MetricInfo()
+          self.compStreamMetric.read(iprot)
+        else:
+          iprot.skip(ftype)
       else:
         iprot.skip(ftype)
       iprot.readFieldEnd()
@@ -3827,6 +3849,10 @@ class TopologyMetric:
       oprot.writeFieldBegin('nettyMetric', TType.STRUCT, 6)
       self.nettyMetric.write(oprot)
       oprot.writeFieldEnd()
+    if self.compStreamMetric is not None:
+      oprot.writeFieldBegin('compStreamMetric', TType.STRUCT, 7)
+      self.compStreamMetric.write(oprot)
+      oprot.writeFieldEnd()
     oprot.writeFieldStop()
     oprot.writeStructEnd()
 
@@ -3854,6 +3880,7 @@ class TopologyMetric:
     value = (value * 31) ^ hash(self.taskMetric)
     value = (value * 31) ^ hash(self.streamMetric)
     value = (value * 31) ^ hash(self.nettyMetric)
+    value = (value * 31) ^ hash(self.compStreamMetric)
     return value
 
   def __repr__(self):

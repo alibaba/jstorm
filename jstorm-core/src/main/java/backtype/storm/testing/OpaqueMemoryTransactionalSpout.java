@@ -153,7 +153,7 @@ public class OpaqueMemoryTransactionalSpout implements IOpaquePartitionedTransac
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        List<String> toDeclare = new ArrayList<String>(_outFields.toList());
+        List<String> toDeclare = new ArrayList<>(_outFields.toList());
         toDeclare.add(0, TX_FIELD);
         declarer.declare(new Fields(toDeclare));
     }

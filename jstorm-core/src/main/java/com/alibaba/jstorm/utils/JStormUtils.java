@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
+ * <p>
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,11 +33,11 @@ import java.io.StringWriter;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
-import java.lang.reflect.Field;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -46,7 +46,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -54,6 +56,7 @@ import javax.management.ObjectName;
 
 import com.alibaba.jstorm.cluster.StormBase;
 import com.alibaba.jstorm.daemon.nimbus.StatusType;
+
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.ExecuteException;
@@ -65,6 +68,7 @@ import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TFieldIdEnum;
 import org.apache.thrift.TSerializer;
+import org.jboss.netty.channel.Channel;
 import org.json.simple.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,6 +85,7 @@ import backtype.storm.Config;
 import backtype.storm.generated.MetricInfo;
 import backtype.storm.generated.MetricSnapshot;
 import backtype.storm.generated.Nimbus.Iface;
+import backtype.storm.messaging.TaskMessage;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.utils.NimbusClientWrapper;
 import backtype.storm.utils.Utils;
@@ -108,8 +113,8 @@ public class JStormUtils {
     public static final String DEFAULT_BLOB_VERSION_SUFFIX = ".version";
     public static final String CURRENT_BLOB_SUFFIX_ID = "current";
     public static final String DEFAULT_CURRENT_BLOB_SUFFIX = "." + CURRENT_BLOB_SUFFIX_ID;
-    private static ThreadLocal<TSerializer> threadSer = new ThreadLocal<TSerializer>();
-    private static ThreadLocal<TDeserializer> threadDes = new ThreadLocal<TDeserializer>();
+    private static ThreadLocal<TSerializer> threadSer = new ThreadLocal<>();
+    private static ThreadLocal<TDeserializer> threadDes = new ThreadLocal<>();
 
     public static String getErrorInfo(String baseInfo, Exception e) {
         try {
@@ -137,7 +142,7 @@ public class JStormUtils {
      * filter the map
      */
     public static <K, V> Map<K, V> select_keys_pred(Set<K> filter, Map<K, V> all) {
-        Map<K, V> filterMap = new HashMap<K, V>();
+        Map<K, V> filterMap = new HashMap<>();
 
         for (Entry<K, V> entry : all.entrySet()) {
             if (!filter.contains(entry.getKey())) {
@@ -216,7 +221,7 @@ public class JStormUtils {
      * "{:a 1 :b 1 :c 2} -> {1 [:a :b] 2 :c}"
      */
     public static <K, V> HashMap<V, List<K>> reverse_map(Map<K, V> map) {
-        HashMap<V, List<K>> rtn = new HashMap<V, List<K>>();
+        HashMap<V, List<K>> rtn = new HashMap<>();
         if (map == null) {
             return rtn;
         }
@@ -255,7 +260,7 @@ public class JStormUtils {
      * @throws ExecuteException
      * @throws IOException
      */
-    public static void exec_command(String command) throws ExecuteException, IOException {
+    public static void exec_command(String command) throws IOException {
         launchProcess(command, new HashMap<String, String>(), false);
     }
 
@@ -342,9 +347,7 @@ public class JStormUtils {
 
     public static void kill(Integer pid) {
         process_killed(pid);
-
         sleepMs(2 * 1000);
-
         ensure_process_killed(pid);
     }
 
@@ -419,15 +422,13 @@ public class JStormUtils {
 
         String output = null;
         try {
-            String targetPid = JStormUtils.process_pid();
-            String command = String.format("jstat -gc %s", targetPid);
+            String pid = JStormUtils.process_pid();
+            String command = String.format("jstat -gc %s", pid);
 
             List<String> commands = new ArrayList<String>();
             commands.add("/bin/bash");
             commands.add("-c");
             commands.add(command);
-
-
             Process process = null;
 
             try {
@@ -440,14 +441,14 @@ public class JStormUtils {
                 sb.append("\n");
                 sb.append(errorOutput);
                 long start = System.currentTimeMillis();
-
                 while (isAlive(process)){
                     Utils.sleep(100);
                     if (System.currentTimeMillis() - start > timeOut){
                         process.destroy();
+                        LOG.warn(command + " is timeout. {} ", sb.toString());
                     }
                 }
-                Utils.sleep(100);
+                Utils.sleep(10);
                 int ret = process.exitValue();
                 if (ret != 0) {
                     LOG.warn(command + " is terminated abnormally. ret={}, str={}", ret, sb.toString());
@@ -455,8 +456,10 @@ public class JStormUtils {
 
             } catch (Throwable e) {
                 LOG.error("Failed to run " + command + ", " + e.getCause(), e);
+            }finally {
+                if (isAlive(process))
+                    process.destroy();
             }
-
 
             if (output != null) {
                 String[] lines = output.split("[\\r\\n]+");
@@ -466,19 +469,19 @@ public class JStormUtils {
                     List<String> filterHeads = new ArrayList<>();
                     List<String> filterValues = new ArrayList<>();
 
-                    for (String string : headStrArray){
+                    for (String string : headStrArray) {
                         if (string.trim().length() == 0) {
                             continue;
                         }
                         filterHeads.add(string);
                     }
-                    for (String string : valueStrArray){
+                    for (String string : valueStrArray) {
                         if (string.trim().length() == 0) {
                             continue;
                         }
                         filterValues.add(string);
                     }
-                    for (int i = 0; i < filterHeads.size(); i++){
+                    for (int i = 0; i < filterHeads.size(); i++) {
                         String info = filterHeads.get(i);
                         LOG.debug("jstat gc {} {}", filterHeads.get(i), filterValues.get(i));
                         if (info.trim().length() != 0 && info.equals("FGC")) {
@@ -547,6 +550,9 @@ public class JStormUtils {
                         } else if (unit.equalsIgnoreCase("m")) {
                             value = Double.parseDouble(info.substring(0, info.length() - 1));
                             value *= 1000000;
+                        } else if (unit.equalsIgnoreCase("t")) {
+                            value = Double.parseDouble(info.substring(0, info.length() - 1));
+                            value *= 1000000000000l;
                         } else {
                             value = Double.parseDouble(info);
                         }
@@ -563,7 +569,7 @@ public class JStormUtils {
                     m++;
                 }
             } catch (Exception e) {
-                LOG.warn("Failed to get memory usage .");
+                LOG.warn("Failed to get memory usage", e);
             }
         }
 
@@ -617,7 +623,7 @@ public class JStormUtils {
     /**
      * If it is backend, please set resultHandler, such as DefaultExecuteResultHandler
      * If it is frontend, ByteArrayOutputStream.toString will return the calling result
-     * <p/>
+     * <p>
      * This function will ignore whether the command is successfully executed or not
      *
      * @param command       command to be executed
@@ -705,7 +711,7 @@ public class JStormUtils {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    List<String> cmdWrapper = new ArrayList<String>();
+                    List<String> cmdWrapper = new ArrayList<>();
 
                     cmdWrapper.add("nohup");
                     cmdWrapper.addAll(cmdlist);
@@ -723,7 +729,6 @@ public class JStormUtils {
             try {
                 Process process = launchProcess(cmdlist, environment);
 
-
                 StringBuilder sb = new StringBuilder();
                 String output = JStormUtils.getOutput(process.getInputStream());
                 String errorOutput = JStormUtils.getOutput(process.getErrorStream());
@@ -735,6 +740,7 @@ public class JStormUtils {
                 if (ret != 0) {
                     LOG.warn(command + " is terminated abnormally. ret={}, str={}", ret, sb.toString());
                 }
+                LOG.debug("command {}, ret {}, str={} :", command, ret, sb.toString());
                 return sb.toString();
             } catch (Throwable e) {
                 LOG.error("Failed to run " + command + ", " + e.getCause(), e);
@@ -782,7 +788,7 @@ public class JStormUtils {
     }
 
     public static <V> HashMap<V, Integer> multi_set(List<V> list) {
-        HashMap<V, Integer> rtn = new HashMap<V, Integer>();
+        HashMap<V, Integer> rtn = new HashMap<>();
         for (V v : list) {
             int cnt = 1;
             if (rtn.containsKey(v)) {
@@ -798,8 +804,8 @@ public class JStormUtils {
      * this function is used to check whether bolt/spout has a duplicate id
      */
     public static List<String> getRepeat(List<String> list) {
-        List<String> rtn = new ArrayList<String>();
-        Set<String> idSet = new HashSet<String>();
+        List<String> rtn = new ArrayList<>();
+        Set<String> idSet = new HashSet<>();
 
         for (String id : list) {
             if (idSet.contains(id)) {
@@ -816,7 +822,7 @@ public class JStormUtils {
      * balance all T
      */
     public static <T> List<T> interleave_all(List<List<T>> splitup) {
-        ArrayList<T> rtn = new ArrayList<T>();
+        ArrayList<T> rtn = new ArrayList<>();
         int maxLength = 0;
         for (List<T> e : splitup) {
             int len = e.size();
@@ -884,7 +890,7 @@ public class JStormUtils {
     }
 
     public static <V> List<V> mk_list(V... args) {
-        ArrayList<V> rtn = new ArrayList<V>();
+        ArrayList<V> rtn = new ArrayList<>();
         for (V o : args) {
             rtn.add(o);
         }
@@ -892,7 +898,7 @@ public class JStormUtils {
     }
 
     public static <V> List<V> mk_list(java.util.Set<V> args) {
-        ArrayList<V> rtn = new ArrayList<V>();
+        ArrayList<V> rtn = new ArrayList<>();
         if (args != null) {
             for (V o : args) {
                 rtn.add(o);
@@ -902,7 +908,7 @@ public class JStormUtils {
     }
 
     public static <V> List<V> mk_list(Collection<V> args) {
-        ArrayList<V> rtn = new ArrayList<V>();
+        ArrayList<V> rtn = new ArrayList<>();
         if (args != null) {
             for (V o : args) {
                 rtn.add(o);
@@ -1123,7 +1129,7 @@ public class JStormUtils {
     }
 
     public static List<Object> distinctList(List<Object> input) {
-        List<Object> retList = new ArrayList<Object>();
+        List<Object> retList = new ArrayList<>();
 
         for (Object object : input) {
             if (!retList.contains(object)) {
@@ -1135,7 +1141,7 @@ public class JStormUtils {
     }
 
     public static <K, V> Map<K, V> mergeMapList(List<Map<K, V>> list) {
-        Map<K, V> ret = new HashMap<K, V>();
+        Map<K, V> ret = new HashMap<>();
 
         for (Map<K, V> listEntry : list) {
             if (listEntry == null) {
@@ -1382,7 +1388,10 @@ public class JStormUtils {
         return rtn;
     }
 
-    public static int getSupervisorPortNum(Map conf, int sysCpuNum, Long physicalMemSize, boolean reserved) {
+    /**
+     * calculate port number from cpu number and physical memory size
+     */
+    public static int getSupervisorPortNum(Map conf, int sysCpuNum, Long physicalMemSize) {
         double cpuWeight = ConfigExtension.getSupervisorSlotsPortCpuWeight(conf);
 
         int cpuPortNum = (int) (sysCpuNum / cpuWeight);
@@ -1406,22 +1415,19 @@ public class JStormUtils {
             memPortNum = (int) (physicalMemSize / (workerMemSize * memWeight));
 
             if (memPortNum < 1) {
-                LOG.info("Invalid worker.memory.size setting:" + workerMemSize);
-                memPortNum = reserved ? 1 : 4;
-            } else if (memPortNum < 4) {
                 LOG.info("System memory is too small for Jstorm");
-                memPortNum = reserved ? 1 : 4;
+                memPortNum = 1;     // minimal port number set to 1 if memory is not enough
             }
         }
 
         return Math.min(cpuPortNum, memPortNum);
     }
 
-    public static List<Integer> getSupervisorPortList(Map conf) {
-        List<Integer> portList = (List<Integer>) conf.get(Config.SUPERVISOR_SLOTS_PORTS);
+    public static Set<Integer> getDefaultSupervisorPortList(Map conf) {
+        List<Integer> slots = (List<Integer>) conf.get(Config.SUPERVISOR_SLOTS_PORTS);
 
-        if (portList != null && portList.size() > 0) {
-            return new ArrayList<>(portList);
+        if (slots != null && slots.size() > 0) {
+            return new HashSet<>(slots);
         }
 
         int sysCpuNum = 4;
@@ -1433,7 +1439,7 @@ public class JStormUtils {
 
         Long physicalMemSize = JStormUtils.getPhysicMemorySize();
 
-        if (physicalMemSize != null && physicalMemSize > 8589934592L) {
+        if (physicalMemSize != null && physicalMemSize > 8 * SIZE_1_G) {
             long reserveMemory = ConfigExtension.getStormMachineReserveMem(conf);
             if (physicalMemSize < reserveMemory) {
                 throw new RuntimeException("ReserveMemory is too large , PhysicalMemSize is:" + physicalMemSize);
@@ -1441,11 +1447,13 @@ public class JStormUtils {
             physicalMemSize -= reserveMemory;
         }
 
-        int portNum = getSupervisorPortNum(conf, sysCpuNum, physicalMemSize, false);
+        int portNum = getSupervisorPortNum(conf, sysCpuNum, physicalMemSize);
+        // the minimal default port number is 4 , even if the resource is not enough
+        portNum = Math.max(4, portNum);
 
         int portBase = ConfigExtension.getSupervisorSlotsPortsBase(conf);
 
-        portList = new ArrayList<>();
+        Set<Integer> portList = new HashSet<>();
         for (int i = 0; i < portNum; i++) {
             portList.add(portBase + i);
         }
@@ -1453,14 +1461,27 @@ public class JStormUtils {
         return portList;
     }
 
+    public static byte[] intToBytes(int x) {
+        ByteBuffer buffer = ByteBuffer.allocate(4);
+        buffer.putInt(x);
+        return buffer.array();
+    }
+
+    public static int bytesToInt(byte[] bytes) {
+        ByteBuffer buffer = ByteBuffer.allocate(4);
+        buffer.put(bytes);
+        buffer.flip();// need flip
+        return buffer.getInt();
+    }
+
     public static byte[] longToBytes(long x) {
-        ByteBuffer buffer = ByteBuffer.allocate(Long.SIZE);
+        ByteBuffer buffer = ByteBuffer.allocate(16);
         buffer.putLong(x);
         return buffer.array();
     }
 
     public static long bytesToLong(byte[] bytes) {
-        ByteBuffer buffer = ByteBuffer.allocate(Long.SIZE);
+        ByteBuffer buffer = ByteBuffer.allocate(16);
         buffer.put(bytes);
         buffer.flip();// need flip
         return buffer.getLong();
@@ -1491,7 +1512,7 @@ public class JStormUtils {
 
     public static Map<String, Object> thriftToMap(
             org.apache.thrift.TBase thriftObj) {
-        Map<String, Object> ret = new HashMap<String, Object>();
+        Map<String, Object> ret = new HashMap<>();
 
         int i = 1;
         TFieldIdEnum field = thriftObj.fieldForId(i);
@@ -1508,7 +1529,7 @@ public class JStormUtils {
     }
 
     public static List<Map<String, Object>> thriftToMap(List thriftObjs) {
-        List<Map<String, Object>> ret = new ArrayList<Map<String, Object>>();
+        List<Map<String, Object>> ret = new ArrayList<>();
 
         for (Object thriftObj : thriftObjs) {
             ret.add(thriftToMap((org.apache.thrift.TBase) thriftObj));
@@ -1584,7 +1605,7 @@ public class JStormUtils {
      * @param topologyName topology name
      * @param metricType,  please refer to MetaType, default to MetaType.TASK.getT()
      * @param window,      please refer to AsmWindow, default to AsmWindow.M1_WINDOW
-     * @return
+     * @return topology metrics
      */
     public static Map<String, Double> getMetrics(Map conf, String topologyName, MetaType metricType, Integer window) {
         NimbusClientWrapper nimbusClient = null;
@@ -1691,12 +1712,50 @@ public class JStormUtils {
         return sb.append(s.substring(0, i + 1)).toString();
     }
 
+    /**
+     * @param channel
+     * @param taskId
+     * @param flowControlType: 1-> start flow control; 0-> stop flow control
+     */
+    public static void sendFlowControlRequest(Channel channel, int taskId, int flowControlType) {
+        // send back backpressure flow control request to source client
+        ByteBuffer buffer = ByteBuffer.allocate(Integer.SIZE + 1);
+        buffer.put((byte) flowControlType);
+        buffer.putInt(taskId);
+        TaskMessage flowCtrlMsg = new TaskMessage(TaskMessage.BACK_PRESSURE_REQUEST, 0, buffer.array());
+        channel.write(flowCtrlMsg);
+        //LOG.info("Send flow ctrl resp to address({}) for task-{}", channel.getRemoteAddress().toString(), taskId);
+    }
+
     public static boolean isAlive(Process process) {
         try {
-            process.exitValue();
+            if (process != null)
+                process.exitValue();
             return false;
         } catch (IllegalThreadStateException e) {
             return true;
         }
+    }
+
+    public static int getScaleOutNum(int baseNum, int currentNum) {
+        int ret = baseNum;
+        if (currentNum > baseNum) {
+            int scaleOut = currentNum / baseNum + 1;
+            ret = baseNum * scaleOut;
+        }
+        return ret;
+    }
+
+    public static int getTaskIndex(int taskId, Collection<Integer> componentTasks) {
+        SortedSet<Integer> sortedTasks = new TreeSet<>(componentTasks);
+        int i = 0;
+        for (Integer id : sortedTasks) {
+            if (id == taskId) {
+                return i;
+            }
+            i++;
+        }
+
+        throw new RuntimeException("Can not find taskId-" + taskId + "in component=" + componentTasks);
     }
 }

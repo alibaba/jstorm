@@ -29,38 +29,42 @@ import backtype.storm.tuple.Tuple;
 import backtype.storm.utils.ShellProcess;
 import clojure.lang.RT;
 import com.google.common.util.concurrent.MoreExecutors;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-import java.io.Serializable;
-
 /**
- * A bolt that shells out to another process to process tuples. ShellBolt communicates with that process over stdio using a special protocol. An ~100 line
+ * A bolt that shells out to another process to process tuples. ShellBolt communicates with that process over stdio
+ * using a special protocol. An ~100 line
  * library is required to implement that protocol, and adapter libraries currently exist for Ruby and Python.
- * 
- * <p>
- * To run a ShellBolt on a cluster, the scripts that are shelled out to must be in the resources directory within the jar submitted to the master. During
- * development/testing on a local machine, that resources directory just needs to be on the classpath.
- * </p>
- * 
- * <p>
- * When creating topologies using the Java API, subclass this bolt and implement the IRichBolt interface to create components for the topology that use other
- * languages. For example:
- * </p>
- * 
+ *
+ * To run a ShellBolt on a cluster, the scripts that are shelled out to must be in the resources directory within
+ * the jar submitted to the master. During development/testing on a local machine, that resources directory just needs
+ * to be on the classpath.
+ *
+ * When creating topologies using the Java API, subclass this bolt and implement the IRichBolt interface to create
+ * components for the topology that use other languages. For example:
+ *
  * <pre>
  * public class MyBolt extends ShellBolt implements IRichBolt {
  *     public MyBolt() {
  *         super(&quot;python&quot;, &quot;mybolt.py&quot;);
  *     }
- * 
+ *
  *     public void declareOutputFields(OutputFieldsDeclarer declarer) {
  *         declarer.declare(new Fields(&quot;field1&quot;, &quot;field2&quot;));
  *     }
@@ -72,7 +76,7 @@ public class ShellBolt implements IBolt {
     public static Logger LOG = LoggerFactory.getLogger(ShellBolt.class);
     Process _subprocess;
     OutputCollector _collector;
-    Map<String, Tuple> _inputs = new ConcurrentHashMap<String, Tuple>();
+    Map<String, Tuple> _inputs = new ConcurrentHashMap<>();
 
     private String[] _command;
     private ShellProcess _process;
@@ -214,25 +218,25 @@ public class ShellBolt implements IBolt {
         ShellMsg.ShellLogLevel logLevel = shellMsg.getLogLevel();
 
         switch (logLevel) {
-        case TRACE:
-            LOG.trace(msg);
-            break;
-        case DEBUG:
-            LOG.debug(msg);
-            break;
-        case INFO:
-            LOG.info(msg);
-            break;
-        case WARN:
-            LOG.warn(msg);
-            break;
-        case ERROR:
-            LOG.error(msg);
-            _collector.reportError(new ReportedFailedException(msg));
-            break;
-        default:
-            LOG.info(msg);
-            break;
+            case TRACE:
+                LOG.trace(msg);
+                break;
+            case DEBUG:
+                LOG.debug(msg);
+                break;
+            case INFO:
+                LOG.info(msg);
+                break;
+            case WARN:
+                LOG.warn(msg);
+                break;
+            case ERROR:
+                LOG.error(msg);
+                _collector.reportError(new ReportedFailedException(msg));
+                break;
+            default:
+                LOG.info(msg);
+                break;
         }
     }
 
@@ -275,7 +279,8 @@ public class ShellBolt implements IBolt {
     private void die(Throwable exception) {
         String processInfo = _process.getProcessInfoString() + _process.getProcessTerminationInfoString();
         _exception = new RuntimeException(processInfo, exception);
-        String message = String.format("Halting process: ShellBolt died. Command: %s, ProcessInfo %s", Arrays.toString(_command), processInfo);
+        String message = String.format("Halting process: ShellBolt died. Command: %s, ProcessInfo %s",
+                Arrays.toString(_command), processInfo);
         LOG.error(message, exception);
         _collector.reportError(exception);
         if (_running || (exception instanceof Error)) { // don't exit if not running, unless it is an Error
@@ -295,15 +300,13 @@ public class ShellBolt implements IBolt {
             long currentTimeMillis = System.currentTimeMillis();
             long lastHeartbeat = getLastHeartbeat();
 
-            LOG.debug("BOLT - current time : {}, last heartbeat : {}, worker timeout (ms) : {}", currentTimeMillis, lastHeartbeat, workerTimeoutMills);
-
+            LOG.debug("BOLT - current time : {}, last heartbeat : {}, worker timeout (ms) : {}",
+                    currentTimeMillis, lastHeartbeat, workerTimeoutMills);
             if (currentTimeMillis - lastHeartbeat > workerTimeoutMills) {
                 bolt.die(new RuntimeException("subprocess heartbeat timeout"));
             }
-
             sendHeartbeatFlag.compareAndSet(false, true);
         }
-
     }
 
     private class BoltReaderRunnable implements Runnable {
@@ -311,7 +314,6 @@ public class ShellBolt implements IBolt {
             while (_running) {
                 try {
                     ShellMsg shellMsg = _process.readShellMsg();
-
                     String command = shellMsg.getCommand();
                     if (command == null) {
                         throw new IllegalArgumentException("Command not found in bolt message: " + shellMsg);
@@ -331,7 +333,7 @@ public class ShellBolt implements IBolt {
                     } else if (command.equals("metrics")) {
                         handleMetrics(shellMsg);
                     }
-                } catch (InterruptedException e) {
+                } catch (InterruptedException ignored) {
                 } catch (Throwable t) {
                     die(t);
                 }
@@ -359,7 +361,7 @@ public class ShellBolt implements IBolt {
                     } else if (write != null) {
                         throw new RuntimeException("Unknown class type to write: " + write.getClass().getName());
                     }
-                } catch (InterruptedException e) {
+                } catch (InterruptedException ignored) {
                 } catch (Throwable t) {
                     die(t);
                 }
@@ -371,16 +373,16 @@ public class ShellBolt implements IBolt {
             msg.setId(genId);
             msg.setTask(Constants.SYSTEM_TASK_ID);
             msg.setStream(HEARTBEAT_STREAM_ID);
-            msg.setTuple(new ArrayList<Object>());
+            msg.setTuple(new ArrayList<>());
             return msg;
         }
     }
-    
+
     public class ShellEmitCb implements ICollectorCallback {
-        
-        
+
+
         private ShellMsg shellMsg;
-        
+
         public ShellEmitCb(ShellMsg shellMsg) {
             this.shellMsg = shellMsg;
         }
@@ -391,11 +393,9 @@ public class ShellBolt implements IBolt {
                 try {
                     _pendingWrites.put(outTasks);
                 } catch (InterruptedException e) {
-                    // TODO Auto-generated catch block
                     LOG.warn("Skip write outTasks", e);
                 }
-            } 
+            }
         }
-        
     }
 }

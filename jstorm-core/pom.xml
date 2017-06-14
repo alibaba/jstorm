@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.alibaba.jstorm</groupId>
         <artifactId>jstorm-all</artifactId>
-        <version>2.2.1</version>
+        <version>2.4.0</version>
         <relativePath>..</relativePath>
     </parent>
     <!-- <parent>
@@ -14,7 +14,6 @@
         <version>1.0.2</version>
     </parent> -->
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.alibaba.jstorm</groupId>
     <artifactId>jstorm-core</artifactId>
 
     <packaging>jar</packaging>
@@ -38,14 +37,6 @@
                 </configuration>
             </plugin>
             <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>2.3.2</version>
-                <configuration>
-                    <source>1.7</source>
-                    <target>1.7</target>
-                </configuration>
-            </plugin>
-            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
                 <executions>
@@ -56,6 +47,13 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                  <source>1.7</source>
+                  <target>1.7</target>
+                </configuration>
             </plugin>
 
             <plugin>
@@ -105,8 +103,8 @@
                                     <shadedPattern>shade.storm.jline</shadedPattern>
                                 </relocation>
                                 <relocation>
-                                    <pattern>com.google.code.gson</pattern>
-                                    <shadedPattern>shade.storm.com.google.code.gson</shadedPattern>
+                                    <pattern>com.google.gson</pattern>
+                                    <shadedPattern>shade.storm.com.google.gson</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>com.codahale.metrics</pattern>
@@ -349,6 +347,13 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <!-- define slf4j-api.jar version 1.7.15 or later here to prevent this problem
+         http://www.slf4j.org/codes.html#log4j_version -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.21</version>
+        </dependency>
         <!--<dependency>
             <groupId>clj-time</groupId>
             <artifactId>clj-time</artifactId>
@@ -402,7 +407,7 @@
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty</artifactId>
-            <version>3.9.0.Final</version>
+            <version>3.9.9.Final</version>
         </dependency>
         <dependency>
             <groupId>org.jgrapht</groupId>
@@ -419,11 +424,17 @@
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>1.0.13</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>log4j-over-slf4j</artifactId>
-            <version>1.6.6</version>
+            <version>1.7.21</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.slf4j</groupId>

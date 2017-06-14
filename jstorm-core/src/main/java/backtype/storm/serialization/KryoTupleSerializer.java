@@ -19,11 +19,11 @@ package backtype.storm.serialization;
 
 import backtype.storm.Config;
 import backtype.storm.generated.StormTopology;
-import backtype.storm.task.GeneralTopologyContext;
 import backtype.storm.tuple.MessageId;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.TupleExt;
 
+import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.Pair;
 import com.esotericsoftware.kryo.io.Output;
@@ -38,12 +38,14 @@ public class KryoTupleSerializer implements ITupleSerializer {
     SerializationFactory.IdDictionary _ids;
     Output _kryoOut;
     int _ackerNum;
+    boolean _isTransactionTuple;
 
     public KryoTupleSerializer(final Map conf, final StormTopology topology) {
         _kryo = new KryoValuesSerializer(conf);
         _kryoOut = new Output(2000, 2000000000);
         _ackerNum = JStormUtils.parseInt(conf.get(Config.TOPOLOGY_ACKER_EXECUTORS), 0);
         _ids = new SerializationFactory.IdDictionary(topology);
+        _isTransactionTuple = JStormUtils.parseBoolean(conf.get(ConfigExtension.TRANSACTION_TOPOLOGY), false);
     }
 
     public byte[] serialize(Tuple tuple) {
@@ -51,13 +53,13 @@ public class KryoTupleSerializer implements ITupleSerializer {
         serializeTuple(_kryoOut, tuple);
         return _kryoOut.toBytes();
     }
+
     /**
-     * @@@ in the furture, it will skill serialize 'targetTask' through check some flag
      * @see backtype.storm.serialization.ITupleSerializer#serialize(int, backtype.storm.tuple.Tuple)
      */
     private void serializeTuple(Output output, Tuple tuple) {
         try {
-        	boolean isBatchTuple = false;
+            boolean isBatchTuple = false;
             if (tuple instanceof TupleExt) {
                 output.writeInt(((TupleExt) tuple).getTargetTaskId());
                 output.writeLong(((TupleExt) tuple).getCreationTimeStamp());
@@ -69,10 +71,14 @@ public class KryoTupleSerializer implements ITupleSerializer {
             output.writeInt(_ids.getStreamId(tuple.getSourceComponent(), tuple.getSourceStreamId()), true);
 
             if (isBatchTuple) {
-            	List<Object> values = tuple.getValues();
+                if (_isTransactionTuple) {
+                    output.writeLong(((TupleExt) tuple).getBatchId(), true);
+                }
+
+                List<Object> values = tuple.getValues();
                 int len = values.size();
                 output.writeInt(len, true);
-                if (_ackerNum > 0){
+                if (_ackerNum > 0) {
                     for (Object value : values) {
                         Pair<MessageId, List<Object>> pairValue = (Pair<MessageId, List<Object>>) value;
                         if (pairValue.getFirst() != null) {
@@ -105,8 +111,7 @@ public class KryoTupleSerializer implements ITupleSerializer {
     public static byte[] serialize(int targetTask) {
         ByteBuffer buff = ByteBuffer.allocate((Integer.SIZE / 8));
         buff.putInt(targetTask);
-        byte[] rtn = buff.array();
-        return rtn;
+        return buff.array();
     }
 
     // public long crc32(Tuple tuple) {

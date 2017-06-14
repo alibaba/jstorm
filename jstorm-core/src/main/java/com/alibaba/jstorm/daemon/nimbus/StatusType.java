@@ -38,7 +38,7 @@ public enum StatusType {
     // actions
     activate("activate"), inactivate("inactivate"), monitor("monitor"), startup("startup"), kill("kill"),
     remove("remove"), rebalance("rebalance"), do_rebalance("do-rebalance"), done_rebalance("done-rebalance"),
-    update_topology("update-topoloogy");
+    update_topology("update-topology"), upgrading("upgrading"), rollback("rollback");
 
     private String status;
 

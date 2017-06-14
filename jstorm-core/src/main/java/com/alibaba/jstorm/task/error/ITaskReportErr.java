@@ -19,14 +19,13 @@ package com.alibaba.jstorm.task.error;
 
 /**
  * task report error interface
- * 
+ *
  * @author yannian
- * 
  */
 public interface ITaskReportErr {
-    public void report(Throwable error);
+    void report(Throwable error);
 
-    public void report(String error);
+    void report(String error);
 
-    public void report(String error, String errorLevel, int errorCode, int duration);
+    void report(String error, String errorLevel, int errorCode, int duration);
 }

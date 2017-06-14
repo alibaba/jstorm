@@ -27,51 +27,47 @@ import org.slf4j.LoggerFactory;
 public class ProcessSimulator {
     private static Logger LOG = LoggerFactory.getLogger(ProcessSimulator.class);
 
-    protected static Object lock = new Object();
+    protected static final Object lock = new Object();
 
     /**
      * skip old function name: pid-counter
      */
-
-    protected static ConcurrentHashMap<String, WorkerShutdown> processMap = new ConcurrentHashMap<String, WorkerShutdown>();
+    protected static ConcurrentHashMap<String, WorkerShutdown> processMap = new ConcurrentHashMap<>();
 
     /**
      * Register process handler old function name: register-process
-     * 
-     * @param pid
-     * @param shutdownable
+     *
+     * @param pid          process id
+     * @param shutdownable worker shutdown handle
      */
     public static void registerProcess(String pid, WorkerShutdown shutdownable) {
         processMap.put(pid, shutdownable);
     }
 
     /**
-     * Get process handle old function name: process-handle
-     * 
-     * @param pid
-     * @return
+     * Get process handle
+     *
+     * @param pid process id
      */
     protected static WorkerShutdown getProcessHandle(String pid) {
         return processMap.get(pid);
     }
 
     /**
-     * Get all process handles old function name:all-processes
-     * 
-     * @return
+     * Get all process handles
      */
     protected static Collection<WorkerShutdown> GetAllProcessHandles() {
         return processMap.values();
     }
 
     /**
-     * Kill pid handle old function name: KillProcess
-     * 
-     * @param pid
+     * Kill a process
+     *
+     * @param pid process id
      */
     public static void killProcess(String pid) {
         synchronized (lock) {
-            LOG.info("Begin killing process " + pid);
+            LOG.info("Begin to kill process " + pid);
 
             WorkerShutdown shutdownHandle = getProcessHandle(pid);
 
@@ -81,7 +77,7 @@ public class ProcessSimulator {
 
             processMap.remove(pid);
 
-            LOG.info("Successfully killing process " + pid);
+            LOG.info("Successfully killed process " + pid);
         }
     }
 
@@ -94,6 +90,6 @@ public class ProcessSimulator {
             killProcess(pid);
         }
 
-        LOG.info("Successfully kill all processes");
+        LOG.info("Successfully killed all processes");
     }
 }

@@ -49,7 +49,7 @@ public class BatchBoltExecutor implements IRichBolt, FinishedCallback, TimeoutCa
         _conf = conf;
         _context = context;
         _collector = new BatchOutputCollectorImpl(collector);
-        _openTransactions = new HashMap<Object, IBatchBolt>();
+        _openTransactions = new HashMap<>();
     }
 
     @Override

@@ -167,6 +167,7 @@ struct SupervisorSummary {
   6: optional string version;
   7: optional string buildTs;
   8: optional i32 port;
+  9: optional string errorMessage;
 }
 
 struct NimbusStat {
@@ -273,6 +274,7 @@ struct TopologyMetric {
   4: required MetricInfo taskMetric;
   5: required MetricInfo streamMetric;
   6: required MetricInfo nettyMetric;
+  7: optional MetricInfo compStreamMetric;
 }
 
 struct TopologyInfo {
@@ -419,6 +421,7 @@ service Nimbus {
   TopologyInfo getTopologyInfo(1: string id) throws (1: NotAliveException e);
   TopologyInfo getTopologyInfoByName(1: string topologyName) throws (1: NotAliveException e);
   map<i32, string> getTopologyTasksToSupervisorIds(1: string topologyName) throws (1: NotAliveException e);
+  map<string, map<string,string>> getTopologyWorkersToSupervisorIds(1: string topologyName) throws (1: NotAliveException e);
 
   StormTopology getTopology(1: string id) throws (1: NotAliveException e);
   StormTopology getUserTopology(1: string id) throws (1: NotAliveException e);
@@ -451,6 +454,13 @@ service Nimbus {
 
   void setHostInBlackList(1: string host);
   void removeHostOutBlackList(1: string host);
+
+  void deleteMetricMeta(1: string topologyId, 2: i32 metaType, 3: list<string> idList);
+
+  // gray upgrade and rollback
+  void grayUpgrade(1: string topologyName, 2: string component, 3: list<string> workers, 4: i32 workerNum);
+  void rollbackTopology(1: string topologyName);
+  void completeUpgrade(1: string topologyName);
 }
 
 struct DRPCRequest {

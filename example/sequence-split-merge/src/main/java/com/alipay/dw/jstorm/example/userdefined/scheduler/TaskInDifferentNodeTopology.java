@@ -26,6 +26,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
+import backtype.storm.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -142,11 +143,12 @@ public class TaskInDifferentNodeTopology {
     
     public static class Validator implements Callback {
         
-        private Config conf;
+        private Config conf = new Config();
         private String topologyName;
         
         public Validator(Config conf) {
-            this.conf = conf;
+            this.conf.putAll(Utils.readStormConfig());
+            this.conf.putAll(conf);
         }
         
         public void verifyAssignment() {

@@ -17,8 +17,11 @@
  */
 package backtype.storm.tuple;
 
+import java.util.Iterator;
 import java.util.List;
 
+import com.alibaba.jstorm.utils.Pair;
+import com.google.common.collect.Lists;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
@@ -29,9 +32,9 @@ public class TupleImplExt extends TupleImpl implements TupleExt {
     protected int targetTaskId;
     protected long creationTimeStamp;
     protected boolean isBatchTuple = false;
+    protected long batchId;
 
     public TupleImplExt() {
-        
     }
 
     public TupleImplExt(GeneralTopologyContext context, List<Object> values, int taskId, String streamId) {
@@ -42,11 +45,12 @@ public class TupleImplExt extends TupleImpl implements TupleExt {
         super(context, values, taskId, streamId, id);
         creationTimeStamp = System.currentTimeMillis();
     }
-    
+
     public TupleImplExt(GeneralTopologyContext context, List<Object> values, MessageId id, TupleImplExt tuple) {
-    	super(context, values, tuple.getSourceTask(), tuple.getSourceStreamId(), id);
-    	this.targetTaskId = tuple.getTargetTaskId();
-    	this.creationTimeStamp = tuple.getCreationTimeStamp();
+        super(context, values, tuple.getSourceTask(), tuple.getSourceStreamId(), id);
+        this.targetTaskId = tuple.getTargetTaskId();
+        this.creationTimeStamp = tuple.getCreationTimeStamp();
+        this.batchId = tuple.getBatchId();
     }
 
     @Override
@@ -59,29 +63,68 @@ public class TupleImplExt extends TupleImpl implements TupleExt {
         this.targetTaskId = targetTaskId;
     }
 
-	@Override
-	public long getCreationTimeStamp() {
-		return creationTimeStamp;
-	}
+    @Override
+    public long getCreationTimeStamp() {
+        return creationTimeStamp;
+    }
 
-	@Override
-	public void setCreationTimeStamp(long timeStamp) {
-		this.creationTimeStamp = timeStamp;
-	}
+    @Override
+    public void setCreationTimeStamp(long timeStamp) {
+        this.creationTimeStamp = timeStamp;
+    }
 
-	@Override
-	public boolean isBatchTuple() {
-		return isBatchTuple;
-	}
+    @Override
+    public boolean isBatchTuple() {
+        return isBatchTuple;
+    }
 
-	@Override
-	public void setBatchTuple(boolean isBatchTuple) {
-		this.isBatchTuple = isBatchTuple;
-	}
+    @Override
+    public void setBatchTuple(boolean isBatchTuple) {
+        this.isBatchTuple = isBatchTuple;
+    }
 
-	@Override
+    public long getBatchId() {
+        return batchId;
+    }
+
+    public void setBatchId(long batchId) {
+        this.batchId = batchId;
+    }
+
+    public Iterator<List<Object>> valueIterator() {
+        if (isBatchTuple) {
+            return new TupleValueIterator(getValues().iterator());
+        } else {
+            return Lists.<List<Object>>newArrayList(getValues()).iterator();
+        }
+    }
+
+    @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this, ToStringStyle.SHORT_PREFIX_STYLE);
     }
 
+    private class TupleValueIterator implements Iterator<List<Object>> {
+        private Iterator<Object> rawIterator;
+
+        public TupleValueIterator(Iterator<Object> rawIterator) {
+            this.rawIterator = rawIterator;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return rawIterator.hasNext();
+        }
+
+        @Override
+        public List<Object> next() {
+            Pair<MessageId, List<Object>> value = (Pair<MessageId, List<Object>>) rawIterator.next();
+            return value.getSecond();
+        }
+
+        @Override
+        public void remove() {
+            rawIterator.remove();
+        }
+    }
 }

@@ -24,20 +24,20 @@ import com.alibaba.jstorm.daemon.nimbus.StatusType;
 public class DelayEventRunnable implements Runnable {
 
     private NimbusData data;
-    private String topologyid;
+    private String topologyId;
     private StatusType status;
     private Object[] args;
 
-    public DelayEventRunnable(NimbusData data, String topologyid, StatusType status, Object[] args) {
+    public DelayEventRunnable(NimbusData data, String topologyId, StatusType status, Object[] args) {
         this.data = data;
-        this.topologyid = topologyid;
+        this.topologyId = topologyId;
         this.status = status;
         this.args = args;
     }
 
     @Override
     public void run() {
-        NimbusUtils.transition(data, topologyid, false, status, args);
+        NimbusUtils.transition(data, topologyId, false, status, args);
     }
 
 }

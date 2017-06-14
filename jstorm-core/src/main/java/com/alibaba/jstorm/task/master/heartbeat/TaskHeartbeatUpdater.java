@@ -48,7 +48,7 @@ import backtype.storm.utils.NimbusClientWrapper;
 import backtype.storm.utils.Utils;
 
 /**
- * Update the task heartbeat information of topology to Nimbus
+ * Update the task heartbeat information of topology to nimbus
  *
  * @author Basti Liu
  */
@@ -70,7 +70,7 @@ public class TaskHeartbeatUpdater implements TMHandler {
 
     private TopologyContext context;
 
-    //TODO: topologyTasks will be changed when update topology!
+    //TODO: topologyTasks will be changed when updating topology!
     private ConcurrentHashMap<Integer, TaskStatus> boltsExecutorStatusMap; //exception of topology master task
     private ConcurrentHashMap<Integer, TaskStatus> spoutsExecutorStatusMap;
 
@@ -84,6 +84,7 @@ public class TaskHeartbeatUpdater implements TMHandler {
     public void process(Object event) throws Exception {
         synchronized (_lock) {
             if (event instanceof UpdateConfigEvent) {
+                //TODO assure update topology, but this tmHandler can't receive this message.
                 update(((UpdateConfigEvent) event).getConf());
                 return;
             }
@@ -138,8 +139,8 @@ public class TaskHeartbeatUpdater implements TMHandler {
                 taskHb.set_uptime(uptime);
             } else if (isSendSpoutTaskFinishStream) {
                 TopoMasterCtrlEvent finishInitEvent = new TopoMasterCtrlEvent(TopoMasterCtrlEvent.EventType.topologyFinishInit);
-                ((BoltCollector) (collector.getDelegate())).emitDirectCtrl(sourceTask, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null,
-                        new Values(finishInitEvent));
+                ((BoltCollector) (collector.getDelegate())).emitDirectCtrl(
+                        sourceTask, Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID, null, new Values(finishInitEvent));
                 LOG.info("all bolts' task finish init operation, so tm will notify the spout task-{}", sourceTask);
             }
 
@@ -179,7 +180,6 @@ public class TaskHeartbeatUpdater implements TMHandler {
             TopologyTaskHbInfo taskHbInfo = zkCluster.topology_heartbeat(topologyId);
             if (taskHbInfo != null) {
                 LOG.info("Found task heartbeat info left in zk for " + topologyId + ": " + taskHbInfo.toString());
-
                 if (taskHbInfo.get_taskHbs() != null) {
                     tmpTaskHbMap.putAll(taskHbInfo.get_taskHbs());
                 }
@@ -222,7 +222,7 @@ public class TaskHeartbeatUpdater implements TMHandler {
                 for (Integer task : boltTasks) {
                     boltsExecutorStatusMap.put(task, new TaskStatus());
                 }
-                //exception of topolgy master task
+                //exception of topology master task
                 boltsExecutorStatusMap.remove(taskId);
             }
             Map<String, SpoutSpec> spouts = sysTopology.get_spouts();
@@ -279,7 +279,7 @@ public class TaskHeartbeatUpdater implements TMHandler {
                     try {
                         long delta = System.currentTimeMillis() - start;
                         if (delta > timeoutMilliSeconds) {
-                            LOG.warn("Timeout when waiting others' tasks shutdown");
+                            LOG.warn("Timeout when waiting other tasks to shutdown");
                             break;
                         }
                         if (checkAllTasksShutdown()) {

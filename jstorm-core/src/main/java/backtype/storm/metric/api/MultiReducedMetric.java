@@ -17,12 +17,12 @@
  */
 package backtype.storm.metric.api;
 
-import backtype.storm.metric.api.IMetric;
 import java.util.HashMap;
 import java.util.Map;
 
+@Deprecated
 public class MultiReducedMetric implements IMetric {
-    Map<String, ReducedMetric> _value = new HashMap();
+    Map<String, ReducedMetric> _value = new HashMap<>();
     IReducer _reducer;
 
     public MultiReducedMetric(IReducer reducer) {

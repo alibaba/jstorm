@@ -20,6 +20,7 @@ package backtype.storm.metric.api.rpc;
 import backtype.storm.metric.api.IReducer;
 import backtype.storm.metric.api.ReducedMetric;
 
+@Deprecated
 public class ReducedShellMetric extends ReducedMetric implements IShellMetric {
 
     public ReducedShellMetric(IReducer reducer) {

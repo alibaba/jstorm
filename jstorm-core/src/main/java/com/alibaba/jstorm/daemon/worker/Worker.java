@@ -52,23 +52,20 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
- * worker entrance
- *
  * @author yannian/Longda
  */
 public class Worker {
-
-    private static Logger LOG = LoggerFactory.getLogger(Worker.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Worker.class);
 
     /**
-     * use workerData to deal with racing conditions
+     * workerData is used to deal with racing conditions
      */
     private WorkerData workerData;
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    public Worker(Map conf, IContext context, String topology_id, String supervisor_id,
-                  int port, String worker_id, String jar_path) throws Exception {
-        workerData = new WorkerData(conf, context, topology_id, supervisor_id, port, worker_id, jar_path);
+    public Worker(Map conf, IContext context, String topologyId, String supervisorId,
+                  int port, String workerId, String jarPath) throws Exception {
+        workerData = new WorkerData(conf, context, topologyId, supervisorId, port, workerId, jarPath);
     }
 
     /**
@@ -76,7 +73,7 @@ public class Worker {
      */
     public static Set<Integer> worker_output_tasks(WorkerData workerData) {
         ContextMaker context_maker = workerData.getContextMaker();
-        Set<Integer> taskIds = workerData.getTaskids();
+        Set<Integer> taskIds = workerData.getTaskIds();
         StormTopology topology = workerData.getSysTopology();
 
         Set<Integer> rtn = new HashSet<>();
@@ -110,7 +107,7 @@ public class Worker {
     private List<TaskShutdownDameon> createTasks() throws Exception {
         List<TaskShutdownDameon> shutdownTasks = new ArrayList<>();
 
-        Set<Integer> taskIds = workerData.getTaskids();
+        Set<Integer> taskIds = workerData.getTaskIds();
 
         Set<Thread> threads = new HashSet<>();
         List<Task> taskArrayList = new ArrayList<>();
@@ -152,7 +149,7 @@ public class Worker {
                 revCtrlGauge));
 
         IConnection recvConnection = context.bind(topologyId, workerData.getPort(), workerData.getDeserializeQueues(),
-                recvControlQueue, false, workerData.getTaskids());
+                recvControlQueue, false, workerData.getTaskIds());
         workerData.setRecvConnection(recvConnection);
 
         // create recvice control messages's thread
@@ -178,8 +175,8 @@ public class Worker {
 
         // refresh ZK active status
         RefreshActive refreshZkActive = new RefreshActive(workerData);
-        AsyncLoopThread refreshzk = new AsyncLoopThread(refreshZkActive, false, Thread.MIN_PRIORITY, true);
-        threads.add(refreshzk);
+        AsyncLoopThread refreshZk = new AsyncLoopThread(refreshZkActive, false, Thread.MIN_PRIORITY, true);
+        threads.add(refreshZk);
 
         //create send control message thread
         DrainerCtrlRunable drainerCtrlRunable;
@@ -197,7 +194,7 @@ public class Worker {
         metricReporter.init();
         workerData.setMetricsReporter(metricReporter);
 
-        // refresh hearbeat to Local dir
+        // refresh heartbeat to Local dir
         RunnableCallback heartbeatFn = new WorkerHeartbeatRunable(workerData);
         AsyncLoopThread hb = new AsyncLoopThread(heartbeatFn, false, null, Thread.NORM_PRIORITY, true);
         threads.add(hb);
@@ -206,7 +203,7 @@ public class Worker {
         List<TaskShutdownDameon> shutdownTasks = createTasks();
         workerData.setShutdownTasks(shutdownTasks);
 
-        //create worker serializes/deserializes
+        //create worker serializes/deserialize threads
         List<AsyncLoopThread> serializeThreads = workerData.setSerializeThreads();
         threads.addAll(serializeThreads);
         List<AsyncLoopThread> deserializeThreads = workerData.setDeserializeThreads();
@@ -219,28 +216,25 @@ public class Worker {
     /**
      * create worker instance and run it
      *
-     * @param conf          storm conf
-     * @param topology_id   topology id
-     * @param supervisor_id supervisor iid
-     * @param port          worker port
-     * @param worker_id     worker id
+     * @param conf         storm conf
+     * @param topologyId   topology id
+     * @param supervisorId supervisor iid
+     * @param port         worker port
+     * @param workerId     worker id
      * @return WorkerShutDown
      * @throws Exception
      */
     @SuppressWarnings("rawtypes")
-    public static WorkerShutdown mk_worker(Map conf, IContext context, String topology_id, String supervisor_id,
-                                           int port, String worker_id, String jar_path) throws Exception {
-
+    public static WorkerShutdown mk_worker(Map conf, IContext context, String topologyId, String supervisorId,
+                                           int port, String workerId, String jarPath) throws Exception {
         StringBuilder sb = new StringBuilder();
-        sb.append("topologyId:" + topology_id + ", ");
-        sb.append("port:" + port + ", ");
-        sb.append("workerId:" + worker_id + ", ");
-        sb.append("jarPath:" + jar_path + "\n");
+        sb.append("topologyId:").append(topologyId).append(", ");
+        sb.append("port:").append(port).append(", ");
+        sb.append("workerId:").append(workerId).append(", ");
+        sb.append("jarPath:").append(jarPath).append("\n");
 
         LOG.info("Begin to run worker:" + sb.toString());
-
-        Worker w = new Worker(conf, context, topology_id, supervisor_id, port, worker_id, jar_path);
-
+        Worker w = new Worker(conf, context, topologyId, supervisorId, port, workerId, jarPath);
         //   w.redirectOutput();
 
         return w.execute();
@@ -313,7 +307,6 @@ public class Worker {
         try {
             LOG.info("Begin to execute " + sb.toString());
             String output = JStormUtils.launchProcess(sb.toString(), new HashMap<String, String>(), false);
-
             BufferedReader reader = new BufferedReader(new StringReader(output));
 
             JStormUtils.sleepMs(1000);
@@ -419,32 +412,30 @@ public class Worker {
 
         sb = new StringBuilder();
         try {
-            String topology_id = args[0];
-            String supervisor_id = args[1];
-            String port_str = args[2];
-            String worker_id = args[3];
-            String jar_path = args[4];
+            String topologyId = args[0];
+            String supervisorId = args[1];
+            String portStr = args[2];
+            String workerId = args[3];
+            String jarPath = args[4];
 
-            killOldWorker(port_str);
+            killOldWorker(portStr);
 
             Map conf = Utils.readStormConfig();
             StormConfig.validate_distributed_mode(conf);
 
             JStormServerUtils.startTaobaoJvmMonitor();
 
-            sb.append("topologyId:" + topology_id + ", ")
-                    .append("port:" + port_str + ", ")
-                    .append("workerId:" + worker_id + ", ")
-                    .append("jar_path:" + jar_path + "\n");
+            sb.append("topologyId:").append(topologyId).append(", ").append("port:").append(portStr).append(", ")
+                    .append("workerId:").append(workerId).append(", ").append("jarPath:").append(jarPath).append("\n");
 
-            WorkerShutdown sd = mk_worker(conf, null, topology_id, supervisor_id, Integer.parseInt(port_str), worker_id, jar_path);
+            WorkerShutdown sd = mk_worker(conf, null, topologyId, supervisorId, Integer.parseInt(portStr), workerId, jarPath);
             sd.join();
 
             LOG.info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
             LOG.info("Successfully shutdown worker " + sb.toString());
             LOG.info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
         } catch (Throwable e) {
-            String errMsg = "Failed to create worker, " + sb.toString();
+            String errMsg = "Failed to create worker: " + sb.toString();
             LOG.error(errMsg, e);
             JStormUtils.halt_process(-1, errMsg);
         }

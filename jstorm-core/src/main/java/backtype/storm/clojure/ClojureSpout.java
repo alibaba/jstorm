@@ -49,14 +49,15 @@ public class ClojureSpout implements IRichSpout {
         _fields = fields;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public void open(final Map conf, final TopologyContext context, final SpoutOutputCollector collector) {
         IFn hof = Utils.loadClojureFn(_fnSpec.get(0), _fnSpec.get(1));
         try {
             IFn preparer = (IFn) hof.applyTo(RT.seq(_params));
             final Map<Keyword, Object> collectorMap =
-                    new PersistentArrayMap(new Object[] { Keyword.intern(Symbol.create("output-collector")), collector,
-                            Keyword.intern(Symbol.create("context")), context });
+                    new PersistentArrayMap(new Object[]{Keyword.intern(Symbol.create("output-collector")), collector,
+                            Keyword.intern(Symbol.create("context")), context});
             List<Object> args = new ArrayList<Object>() {
                 {
                     add(conf);
@@ -69,8 +70,7 @@ public class ClojureSpout implements IRichSpout {
             // this is kind of unnecessary for clojure
             try {
                 _spout.open(conf, context, collector);
-            } catch (AbstractMethodError ame) {
-
+            } catch (AbstractMethodError ignored) {
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -81,8 +81,7 @@ public class ClojureSpout implements IRichSpout {
     public void close() {
         try {
             _spout.close();
-        } catch (AbstractMethodError ame) {
-
+        } catch (AbstractMethodError ignored) {
         }
     }
 
@@ -90,8 +89,7 @@ public class ClojureSpout implements IRichSpout {
     public void nextTuple() {
         try {
             _spout.nextTuple();
-        } catch (AbstractMethodError ame) {
-
+        } catch (AbstractMethodError ignored) {
         }
 
     }
@@ -100,8 +98,7 @@ public class ClojureSpout implements IRichSpout {
     public void ack(Object msgId) {
         try {
             _spout.ack(msgId);
-        } catch (AbstractMethodError ame) {
-
+        } catch (AbstractMethodError ignored) {
         }
 
     }
@@ -110,8 +107,7 @@ public class ClojureSpout implements IRichSpout {
     public void fail(Object msgId) {
         try {
             _spout.fail(msgId);
-        } catch (AbstractMethodError ame) {
-
+        } catch (AbstractMethodError ignored) {
         }
 
     }
@@ -138,8 +134,7 @@ public class ClojureSpout implements IRichSpout {
     public void activate() {
         try {
             _spout.activate();
-        } catch (AbstractMethodError ame) {
-
+        } catch (AbstractMethodError ignored) {
         }
     }
 
@@ -147,8 +142,7 @@ public class ClojureSpout implements IRichSpout {
     public void deactivate() {
         try {
             _spout.deactivate();
-        } catch (AbstractMethodError ame) {
-
+        } catch (AbstractMethodError ignored) {
         }
     }
 }

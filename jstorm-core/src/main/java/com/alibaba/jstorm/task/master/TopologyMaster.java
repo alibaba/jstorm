@@ -45,6 +45,7 @@ import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.IDynamicComponent;
 import backtype.storm.tuple.Tuple;
+import backtype.storm.utils.Utils;
 
 /**
  * Topology master is responsible for the process of general topology
@@ -61,6 +62,7 @@ public class TopologyMaster implements IBolt, IDynamicComponent {
     public static final String METRICS_UPLOADER_NAME = "metrics_uploader";
     public static final String MERTRICS_META_BROADCAST = "metrics_meta_broadcast";
     public static final String UPDATE_CONFIG_NAME = "update_config";
+    public static final String USER_DEFINED_STREAM = "user_defined_stream";
 
     public static final String FIELD_METRIC_WORKER = "worker";
     public static final String FIELD_METRIC_METRICS = "metrics";
@@ -68,6 +70,7 @@ public class TopologyMaster implements IBolt, IDynamicComponent {
     public static final String FIELD_REGISTER_METRICS_RESP = "regMetricsResp";
     public static final String FILED_HEARBEAT_EVENT = "hbEvent";
     public static final String FILED_CTRL_EVENT = "ctrlEvent";
+    public static final String FILED_UDF_STREAM_EVENT = "udfStreamEvent";
 
     private static int THREAD_POOL_SIZE;
     private TopologyMasterContext tmContext;
@@ -100,7 +103,6 @@ public class TopologyMaster implements IBolt, IDynamicComponent {
         TMHandler hbHandler = new TaskHeartbeatUpdater();
         hbHandler.init(tmContext);
         handlers.put(Common.TOPOLOGY_MASTER_HB_STREAM_ID, hbHandler);
-        handlers.put(UPDATE_CONFIG_NAME, hbHandler);
 
         // update metric data
         TMHandler metricUpdater = new MetricsUpdater();
@@ -135,17 +137,25 @@ public class TopologyMaster implements IBolt, IDynamicComponent {
         TMEvent workerSetUpdateEvent = new TMEvent(workerSetUpdater, null);
         threadPools.scheduleAtFixedRate(workerSetUpdateEvent, 10, 10, TimeUnit.SECONDS);
 
+        TMHandler grayUpgradeHandler = new GrayUpgradeHandler();
+        grayUpgradeHandler.init(tmContext);
+        handlers.put("DUMMY", grayUpgradeHandler);
+        threadPools.scheduleAtFixedRate((Runnable) grayUpgradeHandler, 15, 15, TimeUnit.SECONDS);
+        
+        String udfStreamClass = ConfigExtension.getTMUdfStreamClass(tmContext.getConf());
+        if (udfStreamClass != null) {
+            TMHandler tmUdfHandler = (TMHandler) Utils.newInstance(udfStreamClass);
+            tmUdfHandler.init(tmContext);
+            handlers.put(USER_DEFINED_STREAM, tmUdfHandler);
+            LOG.info("Successfully load user defined stream handler: {}", udfStreamClass);
+        }
     }
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, final OutputCollector collector) {
-
         tmContext = new TopologyMasterContext(stormConf, context, collector);
-
         createThreadPools(stormConf);
-
         registerHandlers();
-
     }
 
     @Override
@@ -166,13 +176,10 @@ public class TopologyMaster implements IBolt, IDynamicComponent {
     public void cleanup() {
         for (Entry<String, TMHandler> entry : handlers.entrySet()) {
             TMHandler handler = entry.getValue();
-
             handler.cleanup();
         }
         handlers.clear();
-
         threadPools.shutdownNow();
-
         LOG.info("Successfully cleanup topology Master");
     }
 

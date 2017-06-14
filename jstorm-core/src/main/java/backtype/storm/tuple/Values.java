@@ -20,7 +20,7 @@ package backtype.storm.tuple;
 import java.util.ArrayList;
 
 /**
- * A convenience class for making tuple values using new Values("field1", 2, 3) syntax.
+ * A class that contains tuple values. use new Values("field1", 2, 3) syntax to add values.
  */
 public class Values extends ArrayList<Object> {
     public static final int OBJECT = 0;
@@ -30,7 +30,6 @@ public class Values extends ArrayList<Object> {
     public int type;
 
     public Values() {
-
     }
 
     public Values(Object... vals) {
@@ -42,7 +41,7 @@ public class Values extends ArrayList<Object> {
     }
 
     public Values(String... strs) {
-    	super(strs.length);
+        super(strs.length);
         for (String s : strs) {
             add(s);
         }
@@ -50,7 +49,7 @@ public class Values extends ArrayList<Object> {
     }
 
     public Values(Integer... ints) {
-    	super(ints.length);
+        super(ints.length);
         for (Integer i : ints) {
             add(i);
         }
@@ -59,12 +58,11 @@ public class Values extends ArrayList<Object> {
 
     @Override
     public boolean add(Object obj) {
-        Object val = obj;
         if (type == STRING && !(obj instanceof String)) {
             type = OBJECT;
         } else if (type == INTEGER && !(obj instanceof Integer)) {
             type = OBJECT;
         }
-        return super.add(val);
+        return super.add(obj);
     }
 }

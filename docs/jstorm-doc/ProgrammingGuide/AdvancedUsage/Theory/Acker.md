@@ -6,7 +6,7 @@ title: "Acker"
 sub-nav-parent: Theory
 sub-nav-group: AdvancedUsage
 sub-nav-id: Acker
-#sub-nav-pos: 1
+# sub-nav-pos: 1
 sub-nav-title: Acker mechanism
 ---
 

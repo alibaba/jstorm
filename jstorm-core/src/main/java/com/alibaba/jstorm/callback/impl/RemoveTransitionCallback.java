@@ -18,7 +18,6 @@
 package com.alibaba.jstorm.callback.impl;
 
 import com.alibaba.jstorm.blobstore.BlobStoreUtils;
-import com.alibaba.jstorm.blobstore.LocalFsBlobStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,48 +30,45 @@ import java.util.List;
 
 /**
  * Remove topology /ZK-DIR/topology data
- * 
+ *
  * remove this ZK node will trigger watch on this topology
- * 
+ *
  * And Monitor thread every 10 seconds will clean these disappear topology
- * 
  */
 public class RemoveTransitionCallback extends BaseCallback {
 
     private static Logger LOG = LoggerFactory.getLogger(RemoveTransitionCallback.class);
 
     protected NimbusData data;
-    protected String topologyid;
+    protected String topologyId;
 
-    public RemoveTransitionCallback(NimbusData data, String topologyid) {
+    public RemoveTransitionCallback(NimbusData data, String topologyId) {
         this.data = data;
-        this.topologyid = topologyid;
+        this.topologyId = topologyId;
     }
 
     @Override
     public <T> Object execute(T... args) {
-        LOG.info("Begin to remove topology: " + topologyid);
+        LOG.info("Begin to remove topology: " + topologyId);
         try {
 
-            StormBase stormBase = data.getStormClusterState().storm_base(topologyid, null);
+            StormBase stormBase = data.getStormClusterState().storm_base(topologyId, null);
             if (stormBase == null) {
-                LOG.info("Topology " + topologyid + " has been removed ");
+                LOG.info("Topology " + topologyId + " has been removed.");
                 return null;
             }
-            data.getStormClusterState().remove_storm(topologyid);
-            data.getTasksHeartbeat().remove(topologyid);
-            data.getTaskHeartbeatsCache().remove(topologyid);
-            NimbusUtils.removeTopologyTaskTimeout(data, topologyid);
+            data.getStormClusterState().remove_storm(topologyId);
+            data.getTasksHeartbeat().remove(topologyId);
+            data.getTaskHeartbeatsCache().remove(topologyId);
+            NimbusUtils.removeTopologyTaskTimeout(data, topologyId);
 
             // delete topology files in blobstore
-            List<String> deleteKeys = BlobStoreUtils.getKeyListFromId(data, topologyid);
+            List<String> deleteKeys = BlobStoreUtils.getKeyListFromId(data, topologyId);
             BlobStoreUtils.cleanup_keys(deleteKeys, data.getBlobStore(), data.getStormClusterState());
 
-            LOG.info("Successfully removed ZK items topology: " + topologyid);
-
+            LOG.info("Successfully removed ZK items of topology: " + topologyId);
         } catch (Exception e) {
-            // TODO Auto-generated catch block
-            LOG.warn("Failed to remove StormBase " + topologyid + " from ZK", e);
+            LOG.warn("Failed to remove StormBase " + topologyId + " from ZK", e);
         }
         return null;
     }

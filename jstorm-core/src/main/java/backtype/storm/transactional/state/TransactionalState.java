@@ -22,18 +22,16 @@ import backtype.storm.serialization.KryoValuesDeserializer;
 import backtype.storm.serialization.KryoValuesSerializer;
 import backtype.storm.utils.Utils;
 import backtype.storm.utils.ZookeeperAuthInfo;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.api.ProtectACLCreateModePathAndBytesable;
-import org.apache.curator.framework.api.PathAndBytesable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.api.PathAndBytesable;
+import org.apache.curator.framework.api.ProtectACLCreateModePathAndBytesable;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.data.ACL;
-import org.apache.zookeeper.data.Id;
 
 public class TransactionalState {
     CuratorFramework _curator;
@@ -49,6 +47,7 @@ public class TransactionalState {
         return new TransactionalState(conf, id, componentConf, "coordinator");
     }
 
+    @SuppressWarnings("unchecked")
     protected TransactionalState(Map conf, String id, Map componentConf, String subroot) {
         try {
             conf = new HashMap(conf);
@@ -58,18 +57,19 @@ public class TransactionalState {
             }
             String transactionalRoot = (String) conf.get(Config.TRANSACTIONAL_ZOOKEEPER_ROOT);
             String rootDir = transactionalRoot + "/" + id + "/" + subroot;
-            List<String> servers = (List<String>) getWithBackup(conf, Config.TRANSACTIONAL_ZOOKEEPER_SERVERS, Config.STORM_ZOOKEEPER_SERVERS);
+            List<String> servers = (List<String>) getWithBackup(
+                    conf, Config.TRANSACTIONAL_ZOOKEEPER_SERVERS, Config.STORM_ZOOKEEPER_SERVERS);
             Object port = getWithBackup(conf, Config.TRANSACTIONAL_ZOOKEEPER_PORT, Config.STORM_ZOOKEEPER_PORT);
             ZookeeperAuthInfo auth = new ZookeeperAuthInfo(conf);
             CuratorFramework initter = Utils.newCuratorStarted(conf, servers, port, auth);
             _zkAcls = Utils.getWorkerACL(conf);
             try {
                 TransactionalState.createNode(initter, transactionalRoot, null, null, null);
-            } catch (KeeperException.NodeExistsException e) {
+            } catch (KeeperException.NodeExistsException ignored) {
             }
             try {
                 TransactionalState.createNode(initter, rootDir, null, _zkAcls, null);
-            } catch (KeeperException.NodeExistsException e) {
+            } catch (KeeperException.NodeExistsException ignored) {
             }
             initter.close();
 
@@ -85,9 +85,9 @@ public class TransactionalState {
         return (data == null) ? builder.forPath(path) : builder.forPath(path, data);
     }
 
-    protected static void createNode(CuratorFramework curator, String path, byte[] data, List<ACL> acls, CreateMode mode) throws Exception {
+    protected static void createNode(CuratorFramework curator, String path,
+                                     byte[] data, List<ACL> acls, CreateMode mode) throws Exception {
         ProtectACLCreateModePathAndBytesable<String> builder = curator.create().creatingParentsIfNeeded();
-
         if (acls == null) {
             if (mode == null) {
                 TransactionalState.forPath(builder, path, data);
@@ -96,7 +96,6 @@ public class TransactionalState {
             }
             return;
         }
-
         TransactionalState.forPath(builder.withACL(acls), path, data);
     }
 
@@ -127,7 +126,7 @@ public class TransactionalState {
         path = "/" + path;
         try {
             if (_curator.checkExists().forPath(path) == null) {
-                return new ArrayList<String>();
+                return new ArrayList<>();
             } else {
                 return _curator.getChildren().forPath(path);
             }

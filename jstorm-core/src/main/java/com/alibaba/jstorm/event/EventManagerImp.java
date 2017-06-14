@@ -17,13 +17,11 @@
  */
 package com.alibaba.jstorm.event;
 
+import com.alibaba.jstorm.callback.RunnableCallback;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.alibaba.jstorm.callback.RunnableCallback;
 
 /**
  * Event Manager, drop one event from queue, then execute the event.
@@ -34,11 +32,11 @@ public class EventManagerImp extends RunnableCallback implements EventManager {
     private AtomicInteger added = new AtomicInteger();
     private AtomicInteger processed = new AtomicInteger();
 
-    private LinkedBlockingQueue<RunnableCallback> queue = new LinkedBlockingQueue<RunnableCallback>();
+    private LinkedBlockingQueue<RunnableCallback> queue = new LinkedBlockingQueue<>();
 
     private Exception e;
 
-    public void proccessinc() {
+    public void processInc() {
         processed.incrementAndGet();
     }
 
@@ -51,7 +49,6 @@ public class EventManagerImp extends RunnableCallback implements EventManager {
     @Override
     public boolean waiting() {
         return (processed.get() == added.get());
-
     }
 
     @Override
@@ -64,19 +61,13 @@ public class EventManagerImp extends RunnableCallback implements EventManager {
         try {
             RunnableCallback r = queue.take();
             if (r == null) {
-
                 return;
             }
-
             r.run();
-
             e = r.error();
-
-            proccessinc();
-
+            processInc();
         } catch (InterruptedException e) {
-            LOG.info("InterruptedException when processing event ");
+            LOG.info("Interrupted when processing event.");
         }
-
     }
 }

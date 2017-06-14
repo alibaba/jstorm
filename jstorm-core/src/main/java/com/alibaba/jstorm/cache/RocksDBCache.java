@@ -18,11 +18,14 @@
 package com.alibaba.jstorm.cache;
 
 import backtype.storm.utils.Utils;
+
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.PathUtils;
+
 import org.apache.commons.lang.StringUtils;
 import org.rocksdb.*;
+import org.rocksdb.util.SizeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +44,7 @@ public class RocksDBCache implements JStormCache {
 
     public static final String ROCKSDB_ROOT_DIR = "rocksdb.root.dir";
     public static final String ROCKSDB_RESET = "rocksdb.reset";
+
     protected RocksDB db;
     protected String rootDir;
 
@@ -84,9 +88,7 @@ public class RocksDBCache implements JStormCache {
 
         try {
             //List<ColumnFamilyHandle> columnFamilyHandleList = new ArrayList<ColumnFamilyHandle>();
-
             db = RocksDB.open(dbOptions, rootDir);
-
             LOG.info("Successfully init rocksDB of {}", rootDir);
         } finally {
             if (dbOptions != null) {
@@ -134,13 +136,13 @@ public class RocksDBCache implements JStormCache {
 
     @Override
     public void cleanup() {
-        LOG.info("Begin to close rocksDb of {}", rootDir);
+        LOG.info("Begin to close rocketDb of {}", rootDir);
 
         if (db != null) {
             db.close();
         }
 
-        LOG.info("Successfully closed rocksDb of {}", rootDir);
+        LOG.info("Successfully closed rocketDb of {}", rootDir);
     }
 
     @Override
@@ -151,7 +153,7 @@ public class RocksDBCache implements JStormCache {
                 try {
                     return deserialize(data);
                 } catch (Exception e) {
-                    LOG.error("Failed to deserialize obj of " + key);
+                    LOG.error("Failed to deserialize obj of " + key, e);
                     db.remove(key.getBytes());
                     return null;
                 }
@@ -229,7 +231,7 @@ public class RocksDBCache implements JStormCache {
         try {
             db.put(key.getBytes(), data);
         } catch (Exception e) {
-            LOG.error("Failed put into cache, " + key, e);
+            LOG.error("Failed to put key into cache, " + key, e);
         }
     }
 

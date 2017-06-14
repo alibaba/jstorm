@@ -17,67 +17,65 @@
  */
 package com.alibaba.jstorm.task.group;
 
-import java.util.*;
-
 import backtype.storm.tuple.Fields;
-
 import com.alibaba.jstorm.task.execute.MsgInfo;
 import com.alibaba.jstorm.utils.JStormUtils;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 /**
- * field grouping
+ * fields grouping
  *
  * @author yannian
- *
  */
 public class MkFieldsGrouper {
-    private Fields out_fields;
-    private Fields group_fields;
-    private List<Integer> groupFieldIndex;
-    private List<Integer> out_tasks;
+    protected Fields outFields;
+    protected Fields groupFields;
+    protected List<Integer> groupFieldIndex;
+    protected List<Integer> outTasks;
 
     public MkFieldsGrouper(Fields _out_fields, Fields _group_fields, List<Integer> _out_tasks) {
-
-        for (Iterator<String> it = _group_fields.iterator(); it.hasNext();) {
+        for (Iterator<String> it = _group_fields.iterator(); it.hasNext(); ) {
             String groupField = it.next();
-
             // if groupField isn't in _out_fields, it would throw Exception
             _out_fields.fieldIndex(groupField);
         }
 
-        this.out_fields = _out_fields;
-        this.group_fields = _group_fields;
-        this.groupFieldIndex = new ArrayList<Integer>();
-        for (String fieldStr : group_fields.toList()) {
-            groupFieldIndex.add(out_fields.fieldIndex(fieldStr));
+        this.outFields = _out_fields;
+        this.groupFields = _group_fields;
+        this.groupFieldIndex = new ArrayList<>();
+        for (String fieldStr : groupFields.toList()) {
+            groupFieldIndex.add(outFields.fieldIndex(fieldStr));
         }
-        this.out_tasks = _out_tasks;
+        this.outTasks = _out_tasks;
     }
 
     public List<Integer> grouper(List<Object> values) {
         int hashcode = getHashCode(values);
-        int group = Math.abs(hashcode % this.out_tasks.size());
-        return JStormUtils.mk_list(out_tasks.get(group));
+        int group = Math.abs(hashcode % this.outTasks.size());
+        return JStormUtils.mk_list(outTasks.get(group));
     }
 
-    public void batchGrouper(List<MsgInfo> batch, Map<Object, List<MsgInfo>> ret){
-    	for (MsgInfo msg : batch) {
-    		int hashcode = getHashCode(msg.values);
-            int target = out_tasks.get(Math.abs(hashcode % this.out_tasks.size()));
-    		List<MsgInfo> targetBatch = ret.get(target);
-    		if (targetBatch == null) {
-    			targetBatch = new ArrayList<MsgInfo>();
-    			ret.put(target, targetBatch);
-    		}
-    		targetBatch.add(msg);
-    	}
+    public void batchGrouper(List<MsgInfo> batch, Map<Object, List<MsgInfo>> ret) {
+        for (MsgInfo msg : batch) {
+            int hashcode = getHashCode(msg.values);
+            int target = outTasks.get(Math.abs(hashcode % this.outTasks.size()));
+            List<MsgInfo> targetBatch = ret.get(target);
+            if (targetBatch == null) {
+                targetBatch = new ArrayList<>();
+                ret.put(target, targetBatch);
+            }
+            targetBatch.add(msg);
+        }
     }
 
-    private int getHashCode(List<Object> tuple) {
+    protected int getHashCode(List<Object> tuple) {
         if (groupFieldIndex.size() == 1) {
             return tuple.get(groupFieldIndex.get(0)).hashCode();
         } else {
-            List<Object> groupFieldValues = new ArrayList<Object>(group_fields.size());
+            List<Object> groupFieldValues = new ArrayList<>(groupFields.size());
             for (Integer index : groupFieldIndex) {
                 groupFieldValues.add(tuple.get(index));
             }

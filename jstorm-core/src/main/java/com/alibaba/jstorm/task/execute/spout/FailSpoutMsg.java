@@ -17,51 +17,47 @@
  */
 package com.alibaba.jstorm.task.execute.spout;
 
+import backtype.storm.spout.ISpout;
+import com.alibaba.jstorm.client.spout.IFailValueSpout;
 import com.alibaba.jstorm.daemon.worker.JStormDebugger;
+import com.alibaba.jstorm.task.TaskBaseMetric;
+import com.alibaba.jstorm.task.comm.TupleInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import backtype.storm.spout.ISpout;
-
-import com.alibaba.jstorm.client.spout.IFailValueSpout;
-import com.alibaba.jstorm.task.TaskBaseMetric;
-import com.alibaba.jstorm.task.comm.TupleInfo;
-
 /**
- * Do the action after spout receive one failed tuple or sending tuple timeout
- * 
+ * Called after spout receives a failed tuple or times out when sending a tuple
+ *
  * @author yannian/Longda
- * 
  */
 public class FailSpoutMsg implements IAckMsg {
     private static Logger LOG = LoggerFactory.getLogger(FailSpoutMsg.class);
     private Object id;
     private ISpout spout;
     private TupleInfo tupleInfo;
-    private TaskBaseMetric task_stats;
+    private TaskBaseMetric taskStats;
 
-    public FailSpoutMsg(Object id, ISpout _spout, TupleInfo _tupleInfo, TaskBaseMetric _task_stats) {
+    public FailSpoutMsg(Object id, ISpout spout, TupleInfo tupleInfo, TaskBaseMetric taskStats) {
         this.id = id;
-        this.spout = _spout;
-        this.tupleInfo = _tupleInfo;
-        this.task_stats = _task_stats;
+        this.spout = spout;
+        this.tupleInfo = tupleInfo;
+        this.taskStats = taskStats;
     }
 
     public void run() {
-
-        Object msg_id = tupleInfo.getMessageId();
+        Object msgId = tupleInfo.getMessageId();
 
         if (spout instanceof IFailValueSpout) {
             IFailValueSpout enhanceSpout = (IFailValueSpout) spout;
-            enhanceSpout.fail(msg_id, tupleInfo.getValues());
+            enhanceSpout.fail(msgId, tupleInfo.getValues());
         } else {
-            spout.fail(msg_id);
+            spout.fail(msgId);
         }
 
-        task_stats.spout_failed_tuple(tupleInfo.getStream());
+        taskStats.spout_failed_tuple(tupleInfo.getStream());
 
         if (JStormDebugger.isDebug(id)) {
-            LOG.info("Failed message rootId: {}, messageId:{} : {}", id, msg_id, tupleInfo.getValues().toString());
+            LOG.info("Failed message rootId: {}, messageId:{} : {}", id, msgId, tupleInfo.getValues().toString());
         }
     }
 

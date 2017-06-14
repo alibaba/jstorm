@@ -17,13 +17,13 @@
  */
 package backtype.storm.metric.api;
 
-import backtype.storm.metric.api.IReducer;
-
+@Deprecated
 class MeanReducerState {
     public int count = 0;
     public double sum = 0.0;
 }
 
+@Deprecated
 public class MeanReducer implements IReducer<MeanReducerState> {
     public MeanReducerState init() {
         return new MeanReducerState();
@@ -46,7 +46,7 @@ public class MeanReducer implements IReducer<MeanReducerState> {
 
     public Object extractResult(MeanReducerState acc) {
         if (acc.count > 0) {
-            return new Double(acc.sum / (double) acc.count);
+            return acc.sum / (double) acc.count;
         } else {
             return null;
         }

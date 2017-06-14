@@ -6,7 +6,7 @@
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,6 +27,7 @@ import java.util.Map;
 
 public class NimbusInfo implements Serializable {
     private static final Logger LOG = LoggerFactory.getLogger(NimbusInfo.class);
+
     private static final String DELIM = ":";
 
     private String host;
@@ -41,10 +42,10 @@ public class NimbusInfo implements Serializable {
 
     public static NimbusInfo parse(String nimbusInfo) {
         String[] hostAndPort = nimbusInfo.split(DELIM);
-        if(hostAndPort != null && hostAndPort.length == 2) {
+        if (hostAndPort.length == 2) {
             return new NimbusInfo(hostAndPort[0], Integer.parseInt(hostAndPort[1]), false);
         } else {
-            throw new RuntimeException("nimbusInfo should have format of host:port, invalid string " + nimbusInfo);
+            throw new RuntimeException("nimbusInfo should be in the format of host:port, invalid string " + nimbusInfo);
         }
     }
 
@@ -61,7 +62,7 @@ public class NimbusInfo implements Serializable {
     }
 
     public String toHostPortString() {
-        return String.format("%s%s%s",host,DELIM,port);
+        return String.format("%s%s%s", host, DELIM, port);
     }
 
     public boolean isLeader() {
@@ -106,10 +107,6 @@ public class NimbusInfo implements Serializable {
 
     @Override
     public String toString() {
-        return "NimbusInfo{" +
-                "host='" + host + '\'' +
-                ", port=" + port +
-                ", isLeader=" + isLeader +
-                '}';
+        return "NimbusInfo{" + "host='" + host + '\'' + ", port=" + port + ", isLeader=" + isLeader + '}';
     }
 }

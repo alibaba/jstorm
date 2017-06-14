@@ -355,7 +355,7 @@ components:
 
 ### Contructor Arguments, References, Properties and Configuration Methods
 
-####Constructor Arguments
+#### Constructor Arguments
 Arguments to a class constructor can be configured by adding a `contructorArgs` element to a components.
 `constructorArgs` is a list of objects that will be passed to the class' constructor. The following example creates an
 object by calling the constructor that takes a single string as an argument:
@@ -368,7 +368,7 @@ object by calling the constructor that takes a single string as an argument:
       - true
 ```
 
-####References
+#### References
 Each component instance is identified by a unique id that allows it to be used/reused by other components. To
 reference an existing component, you specify the id of the component with the `ref` tag.
 
@@ -387,7 +387,7 @@ components:
 ```
 **N.B.:** References can only be used after (below) the object they point to has been declared.
 
-####Properties
+#### Properties
 In addition to calling constructors with different arguments, Flux also allows you to configure components using
 JavaBean-like setter methods and fields declared as `public`:
 
@@ -416,7 +416,7 @@ look for a public instance variable with the name `forceFromStart` and attempt t
 
 References may also be used as property values.
 
-####Configuration Methods
+#### Configuration Methods
 Conceptually, configuration methods are similar to Properties and Constructor Args -- they allow you to invoke an
 arbitrary method on an object after it is constructed. Configuration methods are useful for working with classes that
 don't expose JavaBean methods or have constructors that can fully configure the object. Common examples include classes

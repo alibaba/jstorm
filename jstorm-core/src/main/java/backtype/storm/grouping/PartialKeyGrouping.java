@@ -41,7 +41,6 @@ public class PartialKeyGrouping implements CustomStreamGrouping, Serializable {
     private Fields outFields = null;
 
     public PartialKeyGrouping() {
-        // Empty
     }
 
     public PartialKeyGrouping(Fields fields) {
@@ -59,17 +58,17 @@ public class PartialKeyGrouping implements CustomStreamGrouping, Serializable {
 
     @Override
     public List<Integer> chooseTasks(int taskId, List<Object> values) {
-        List<Integer> boltIds = new ArrayList<Integer>(1);
+        List<Integer> boltIds = new ArrayList<>(1);
         if (values.size() > 0) {
-            byte[] raw = null;
+            byte[] raw;
             if (fields != null) {
                 List<Object> selectedFields = outFields.select(fields, values);
                 ByteBuffer out = ByteBuffer.allocate(selectedFields.size() * 4);
-                for (Object o: selectedFields) {
+                for (Object o : selectedFields) {
                     if (o instanceof List) {
                         out.putInt(Arrays.deepHashCode(((List) o).toArray()));
                     } else if (o instanceof Object[]) {
-                        out.putInt(Arrays.deepHashCode((Object[])o));
+                        out.putInt(Arrays.deepHashCode((Object[]) o));
                     } else if (o instanceof byte[]) {
                         out.putInt(Arrays.hashCode((byte[]) o));
                     } else if (o instanceof short[]) {

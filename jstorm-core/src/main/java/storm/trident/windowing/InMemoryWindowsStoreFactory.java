@@ -27,7 +27,6 @@ import storm.trident.operation.TridentCollector;
  * storing tuples and triggers of the window. The same InMemoryWindowsStoreFactory instance is passed to {@link WindowsStateUpdater},
  * which removes successfully emitted triggers from the same {@code inMemoryWindowsStore} instance in
  * {@link WindowsStateUpdater#updateState(WindowsState, List, TridentCollector)}.
- *
  */
 public class InMemoryWindowsStoreFactory implements WindowsStoreFactory {
 
@@ -35,7 +34,7 @@ public class InMemoryWindowsStoreFactory implements WindowsStoreFactory {
 
     @Override
     public WindowsStore create() {
-        if(inMemoryWindowsStore == null) {
+        if (inMemoryWindowsStore == null) {
             inMemoryWindowsStore = new InMemoryWindowsStore();
         }
         return inMemoryWindowsStore;

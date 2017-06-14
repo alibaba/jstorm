@@ -27,9 +27,10 @@ import java.util.HashMap;
 import java.io.IOException;
 
 /**
- * A simple, durable, atomic K/V database. *Very inefficient*, should only be used for occasional reads/writes. Every read/write hits disk.
- * 
- * @@@ Right now, This class hasn't upgrade to storm's LocalState It is need define every type in thrift, it is too complicated to do
+ * A simple, durable, atomic K/V database. *Very inefficient*, should only be used for occasional reads/writes.
+ * Every read/write hits disk.
+ * Right now, This class hasn't upgrade to storm's LocalState
+ * It needs to define every type in thrift, which is too complicated.
  */
 public class LocalState {
     public static final Logger LOG = LoggerFactory.getLogger(LocalState.class);
@@ -57,7 +58,7 @@ public class LocalState {
     private Map<Object, Object> deserializeLatestVersion() throws IOException {
         String latestPath = _vs.mostRecentVersionPath();
         Long latestVersion = _vs.mostRecentVersion();
-        Map<Object, Object> result = new HashMap<Object, Object>();
+        Map<Object, Object> result = new HashMap<>();
         while (latestPath != null) {
             byte[] serialized = FileUtils.readFileToByteArray(new File(latestPath));
             if (serialized.length == 0) {

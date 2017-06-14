@@ -6,7 +6,7 @@ layout: plain_cn
 sub-nav-parent: DynamicAdjust_cn
 sub-nav-group: AdvancedUsage_cn
 sub-nav-id: Metrics_cn
-#sub-nav-pos: 1
+# sub-nav-pos: 1
 sub-nav-title: 动态调整Metrics
 ---
 

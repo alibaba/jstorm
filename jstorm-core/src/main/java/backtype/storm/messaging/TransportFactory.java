@@ -30,15 +30,14 @@ public class TransportFactory {
     public static final Logger LOG = LoggerFactory.getLogger(TransportFactory.class);
 
     public static IContext makeContext(Map storm_conf) {
-
         // get factory class name
-        String transport_plugin_klassName = (String) storm_conf.get(Config.STORM_MESSAGING_TRANSPORT);
-        LOG.info("JStorm peer transport plugin:" + transport_plugin_klassName);
+        String transportPluginKlassName = (String) storm_conf.get(Config.STORM_MESSAGING_TRANSPORT);
+        LOG.info("JStorm peer transport plugin:" + transportPluginKlassName);
 
-        IContext transport = null;
+        IContext transport;
         try {
             // create a factory class
-            Class klass = Class.forName(transport_plugin_klassName);
+            Class klass = Class.forName(transportPluginKlassName);
             // obtain a context object
             // Object obj = klass.newInstance();
             Constructor constructor = klass.getDeclaredConstructor();
@@ -60,7 +59,7 @@ public class TransportFactory {
             }
             LOG.info("TransportFactory makeContext done...");
         } catch (Exception e) {
-            throw new RuntimeException("Fail to construct messaging plugin from plugin " + transport_plugin_klassName, e);
+            throw new RuntimeException("Fail to construct messaging plugin from plugin " + transportPluginKlassName, e);
         }
         return transport;
     }
