@@ -20,7 +20,7 @@ package com.alibaba.jstorm.batch.util;
 public class BatchDef {
     public static final String COMPUTING_STREAM_ID = "batch/compute-stream";
 
-    public static final String PREPARE_STREAM_ID = "batch/parepare-stream";
+    public static final String PREPARE_STREAM_ID = "batch/prepare-stream";
 
     public static final String COMMIT_STREAM_ID = "batch/commit-stream";
 
