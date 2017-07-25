@@ -40,7 +40,7 @@ import backtype.storm.spout.SpoutOutputCollector;
 import backtype.storm.utils.Utils;
 
 /**
- * 
+ *
  * @author feilaoda
  *
  */
@@ -53,13 +53,13 @@ public class PartitionConsumer {
 
     private int partition;
     private KafkaConsumer consumer;
-   
+
 
     private PartitionCoordinator coordinator;
 
     private KafkaSpoutConfig config;
     private LinkedList<MessageAndOffset> emittingMessages = new LinkedList<MessageAndOffset>();
-    private SortedSet<Long> pendingOffsets = new TreeSet<Long>();
+    private SortedSet<Long> pendingOffsets = Collections.synchronizedSortedSet(new TreeSet());
     private SortedSet<Long> failedOffsets = new TreeSet<Long>();
     private long emittingOffset;
     private long lastCommittedOffset;
@@ -77,7 +77,6 @@ public class PartitionConsumer {
         try {
             Map<Object, Object> json = offsetState.readJSON(zkPath());
             if (json != null) {
-                // jsonTopologyId = (String)((Map<Object,Object>)json.get("topology"));
                 jsonOffset = (Long) json.get("offset");
             }
         } catch (Throwable e) {
@@ -140,19 +139,21 @@ public class PartitionConsumer {
         try {
             long start = System.currentTimeMillis();
             msgs = consumer.fetchMessages(partition, emittingOffset + 1);
-            
+
             if (msgs == null) {
                 LOG.error("fetch null message from offset {}", emittingOffset);
                 return;
             }
-            
+
             int count = 0;
-            for (MessageAndOffset msg : msgs) {
-                count += 1;
-                emittingMessages.add(msg);
-                emittingOffset = msg.offset();
-                pendingOffsets.add(emittingOffset);
-                LOG.debug("fillmessage fetched a message:{}, offset:{}", msg.message().toString(), msg.offset());
+            synchronized (pendingOffsets) {
+                for (MessageAndOffset msg : msgs) {
+                    count += 1;
+                    emittingMessages.add(msg);
+                    emittingOffset = msg.offset();
+                    pendingOffsets.add(emittingOffset);
+                    LOG.debug("fillmessage fetched a message:{}, offset:{}", msg.message().toString(), msg.offset());
+                }
             }
             long end = System.currentTimeMillis();
             LOG.info("fetch message from partition:"+partition+", offset:" + emittingOffset+", size:"+msgs.sizeInBytes()+", count:"+count +", time:"+(end-start));
@@ -165,10 +166,16 @@ public class PartitionConsumer {
     public void commitState() {
         try {
             long lastOffset = 0;
-            if (pendingOffsets.isEmpty() || pendingOffsets.size() <= 0) {
-                lastOffset = emittingOffset;
-            } else {
-                lastOffset = pendingOffsets.first();
+            synchronized (pendingOffsets) {
+                if (pendingOffsets.isEmpty() || pendingOffsets.size() <= 0) {
+                    lastOffset = emittingOffset;
+                } else {
+                    try {
+                        lastOffset = pendingOffsets.first();
+                    } catch (NoSuchElementException e) {
+                        lastOffset = emittingOffset;
+                    }
+                }
             }
             if (lastOffset != lastCommittedOffset) {
                 Map<Object, Object> data = new HashMap<Object, Object>();
@@ -188,7 +195,9 @@ public class PartitionConsumer {
 
     public void ack(long offset) {
         try {
-            pendingOffsets.remove(offset);
+            synchronized (pendingOffsets) {
+                pendingOffsets.remove(offset);
+            }
         } catch (Exception e) {
             LOG.error("offset ack error " + offset);
         }
