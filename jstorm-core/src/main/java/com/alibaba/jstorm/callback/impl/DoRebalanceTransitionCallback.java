@@ -228,9 +228,8 @@ public class DoRebalanceTransitionCallback extends BaseCallback {
     }
 
     private void removeTask(String topologyId, int taskId, StormClusterState clusterState) throws Exception {
-        Set<Integer> taskIds = new HashSet<>(taskId);
-        clusterState.remove_task(this.topologyId, taskIds);
-        Map<Integer, TkHbCacheTime> tkHbs = data.getTaskHeartbeatsCache(this.topologyId, false);
+        clusterState.remove_task(topologyId, Collections.singleton(taskId));
+        Map<Integer, TkHbCacheTime> tkHbs = data.getTaskHeartbeatsCache(topologyId, false);
         if (tkHbs != null) {
             tkHbs.remove(taskId);
         }
