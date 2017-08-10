@@ -168,7 +168,10 @@ public class WorkerScheduler {
             allUsedPorts = allUsedPorts + supervisorUsedPorts;
         }
         // per supervisor should be allocated ports in theory
-        int theoryAveragePorts = (allUsedPorts + assignedWorkers.size()) / supervisors.size() + 1;
+        int theoryAveragePorts = 0;
+        if (!supervisors.isEmpty()) {
+            theoryAveragePorts = (allUsedPorts + assignedWorkers.size()) / supervisors.size() + 1;
+        }
         // supervisor which use more than theoryAveragePorts ports will be
         // pushed overLoadSupervisors
         List<SupervisorInfo> overLoadSupervisors = new ArrayList<>();
