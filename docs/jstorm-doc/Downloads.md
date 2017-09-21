@@ -2,6 +2,8 @@
 title: Downloads
 ---
 
+<a href="https://render.alipay.com/p/s/taobaonpm_click/jstorm_banner_click"><img src="https://render.alipay.com/p/s/taobaonpm_click/jstorm_banner"></a>
+
 ### Current Stable Release
 
 [jstorm-2.2.1.zip](https://github.com/alibaba/jstorm/releases/download/2.2.1/jstorm-2.2.1.zip)
