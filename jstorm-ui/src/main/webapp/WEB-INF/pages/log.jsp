@@ -55,7 +55,7 @@
         </div>
     </form>
     <div class="form-group">
-        <a href="download?host=${host}&port=${logServerPort}&file=${logName}&dir=${dir}"
+        <a href="download?cluster=${clusterName}&host=${host}&port=${logServerPort}&file=${logName}&dir=${dir}"
            target="_blank" title="Max download size: 10MB" data-toggle="tooltip" data-placement="top">
             <button class="btn btn-primary btn-sm path">Download Log</button>
         </a>

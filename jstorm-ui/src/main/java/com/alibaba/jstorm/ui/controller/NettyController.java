@@ -56,6 +56,11 @@ public class NettyController {
                        @RequestParam(value = "page", required = false) String page,
                        @RequestParam(value = "win", required = false) String win,
                        ModelMap model) {
+        if (UIUtils.isValidSupervisorHost(clusterName, host)) {
+            UIUtils.addErrorAttribute(model, new RuntimeException("Not a valid host: " + host));
+            return "netty";
+        }
+
         clusterName = StringEscapeUtils.escapeHtml(clusterName);
         long start = System.currentTimeMillis();
         host = NetWorkUtils.host2Ip(host);

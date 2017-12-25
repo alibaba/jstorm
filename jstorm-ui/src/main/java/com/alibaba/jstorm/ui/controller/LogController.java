@@ -77,6 +77,11 @@ public class LogController {
                        @RequestParam(value = "tid", required = false) String topologyId,
                        @RequestParam(value = "pos", required = false) String pos,
                        ModelMap model) {
+        if (UIUtils.isValidSupervisorHost(clusterName, host)) {
+            UIUtils.addErrorAttribute(model, new RuntimeException("Not a valid host: " + host));
+            return "log";
+        }
+
         clusterName = StringEscapeUtils.escapeHtml(clusterName);
         topologyId = StringEscapeUtils.escapeHtml(topologyId);
         if (StringUtils.isBlank(dir)) {
@@ -115,6 +120,12 @@ public class LogController {
                          @RequestParam(value = "pos", required = false) String pos,
                          @RequestParam(value = "caseIgnore", required = false) String caseIgnore,
                          ModelMap model) {
+
+        if (UIUtils.isValidSupervisorHost(clusterName, host)) {
+            UIUtils.addErrorAttribute(model, new RuntimeException("Not a valid host: " + host));
+            return "logSearch";
+        }
+
         clusterName = StringEscapeUtils.escapeHtml(clusterName);
         topologyId = StringEscapeUtils.escapeHtml(topologyId);
         if (StringUtils.isBlank(dir)) {
@@ -273,11 +284,17 @@ public class LogController {
     }
 
     @RequestMapping(value = "/download", method = RequestMethod.GET)
-    public void download(@RequestParam(value = "host", required = true) String host,
+    public void download(@RequestParam(value = "cluster", required = true) String clusterName,
+                         @RequestParam(value = "host", required = true) String host,
                          @RequestParam(value = "port", required = false) String logServerPort,
                          @RequestParam(value = "dir", required = false) String dir,
                          @RequestParam(value = "file", required = false) final String filename,
                          HttpServletResponse response) {
+
+        if (UIUtils.isValidSupervisorHost(clusterName, host)) {
+            return;
+        }
+
         if (StringUtils.isBlank(dir)) {
             dir = ".";
         }

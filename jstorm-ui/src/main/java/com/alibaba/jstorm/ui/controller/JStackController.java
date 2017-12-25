@@ -42,6 +42,12 @@ public class JStackController {
                        @RequestParam(value = "port", required = true) String logServerPort,
                        @RequestParam(value = "wport", required = true) String workerPort,
                        ModelMap model) {
+
+        if (UIUtils.isValidSupervisorHost(clusterName, host)) {
+            UIUtils.addErrorAttribute(model, new RuntimeException("Not a valid host: " + host));
+            return "jstack";
+        }
+
         clusterName = StringEscapeUtils.escapeHtml(clusterName);
         int i_logServerPort = JStormUtils.parseInt(logServerPort);
         int i_workerPort = JStormUtils.parseInt(workerPort);
