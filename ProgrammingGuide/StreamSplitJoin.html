@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>JStorm Documentation : How to split one stream or join multiple stream</title>
+    <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon">
+    <link rel="icon" href="/img/favicon.png" type="image/x-icon">
+
+    <!-- Bootstrap -->
+    <link href="//cdn.bootcss.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/jstorm.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+    <link rel="stylesheet" href="/css/codetabs.css">
+    
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    
+    <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<!--
+
+
+
+
+-->
+    <!-- Top navbar. -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <!-- The logo. -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <div class="navbar-logo">
+            <a href="/"><img alt="jstorm" src="/img/jstorm-logo.png"></a>
+          </div>
+        </div><!-- /.navbar-header -->
+
+        <!-- The navigation links. -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            
+            <!-- Downloads -->
+            <li class="hidden-sm "><a href="/Downloads.html">Downloads</a></li>
+
+            <!-- Performance -->
+            <li class="hidden-sm "><a href="/Performance">Performance</a></li>
+
+            <!-- QuickStart -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">QuickStart <span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                
+                
+                <li class=""><a href="/QuickStart/BasicConception.html">Basic Conception</a></li>
+                
+                <li class=""><a href="/QuickStart/Example.html">Example</a></li>
+                
+                <li class=""><a href="/QuickStart/Deploy/index.html">Deploy</a></li>
+                
+                <li class=""><a href="/QuickStart/Upgrade/index.html">Upgrade</a></li>
+                
+                <li class=""><a href="/QuickStart/UpgradeFromStorm.html">Migrate from Apache Storm</a></li>
+                
+                <li class=""><a href="/QuickStart/Compile.html">Compile JStorm</a></li>
+                
+              </ul>
+            </li>
+
+            <!-- ProgrammingGuide -->
+            <li class="dropdown active">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">ProgrammingGuide <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/ProgrammingGuide/DebugLocalApp.html">Local Debug</a></li>
+                  
+                  <li class="active"><a href="/ProgrammingGuide/StreamSplitJoin.html">Split-Merge-Stream</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/Transaction.html">Transaction</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/Trident.html">Trident</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/AdvancedUsage/index.html">Advanced Usage</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- Maintenance -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Maintenance <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Maintenance/Configuration.html">Configuration</a></li>
+                  
+                  <li class=""><a href="/Maintenance/ConfigurationAutomacticSync.html">Automatically Sync Configuration</a></li>
+                  
+                  <li class=""><a href="/Maintenance/Isolation.html">Resource Isolation</a></li>
+                  
+                  <li class=""><a href="/Maintenance/JStormMetrics.html">JStorm Metrics</a></li>
+                  
+                  <li class=""><a href="/Maintenance/HealthCheck.html">Supervisor Health Check</a></li>
+                  
+                  <li class=""><a href="/Maintenance/JStorm-on-Yarn.html">JStorm-on-Yarn</a></li>
+                  
+                  <li class=""><a href="/Maintenance/ClusterHA.html">Cluster HA</a></li>
+                  
+                  <li class=""><a href="/Maintenance/SupervisorWorker.html">Supervisor-Generate-Workers</a></li>
+                  
+                  <li class=""><a href="/Maintenance/DynamicAdjustLog.html">Dynamic Adjust Log</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- FAQ -->
+            <li class="hidden-sm "><a href="/FAQ/">FAQ</a></li>
+
+            <!-- Community -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Community <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Community/Email.html">Email List</a></li>
+                  
+                  <li class=""><a href="/Community/Committers.html">Committer List</a></li>
+                  
+                  <li class=""><a href="/Community/Events-Meetups.html">Events and Meetups</a></li>
+                  
+                  <li class=""><a href="/Community/Issues.html">Track issues</a></li>
+                  
+                  <li class=""><a href="/Community/JStormUsers.html">JStorm User List</a></li>
+                  
+              </ul>
+            </li>
+
+
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Language <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class=""><a href="/index.html">English</a></li>
+                  <li class=""><a href="/index_cn.html">中文</a></li>
+
+              </ul>
+            </li>
+          </ul>          
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container -->
+    </nav>
+
+
+    
+
+    <!-- Main content. -->
+    <div class="container">
+      
+      <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<div class="row">
+
+  
+  
+  <div class="col-md-8 col-md-offset-2 text">
+    <h1>How to split one stream or join multiple stream</h1>
+	<ul id="markdown-toc">
+  <li><a href="#split" id="markdown-toc-split">Split</a>    <ul>
+      <li><a href="#send-the-same-tuple-to-different-bolts" id="markdown-toc-send-the-same-tuple-to-different-bolts">Send the same tuple to different bolts</a></li>
+      <li><a href="#different-bolt-different-tuple" id="markdown-toc-different-bolt-different-tuple">Different bolt, different tuple</a></li>
+    </ul>
+  </li>
+  <li><a href="#merge" id="markdown-toc-merge">Merge</a>    <ul>
+      <li><a href="#define-topology" id="markdown-toc-define-topology">Define topology:</a></li>
+      <li><a href="#sender" id="markdown-toc-sender">Sender:</a></li>
+      <li><a href="#receiver" id="markdown-toc-receiver">Receiver:</a></li>
+    </ul>
+  </li>
+</ul>
+
+<blockquote>
+  <h4 id="all-code-can-be-found-in-example-code"><strong>All code can be found in <a href="https://github.com/longdafeng/storm-examples">example code</a></strong></h4>
+</blockquote>
+
+<p>Data stream often needs to be split and merged as the figure shown below.</p>
+
+<p><img src="/img/advance/split_merge/topology.jpg" alt="topology" /></p>
+
+<h2 id="split">Split</h2>
+
+<p>Generally, there are two kinds of split operation.</p>
+<ul>
+  <li>Send the same tuple to different kinds bolts</li>
+  <li>Different kind of bolt, different tuple</li>
+</ul>
+
+<h3 id="send-the-same-tuple-to-different-bolts">Send the same tuple to different bolts</h3>
+<p>Like the one-to-one send-receive mode, there is only one sender(spout or bolt), but  two or more different bolt receiver. For this scenario, no much effort is required. We just need to define one more next level bolt to receive tuple.</p>
+
+<p>Following is the example code:</p>
+
+<p><strong>Define topology:</strong></p>
+
+<pre><code>SpoutDeclarer spout = builder.setSpout(SequenceTopologyDef.SEQUENCE_SPOUT_NAME,
+        new SequenceSpout(), spoutParal);
+
+builder.setBolt(SequenceTopologyDef.TRADE_BOLT_NAME, new PairCount(), 1).shuffleGrouping(
+        SequenceTopologyDef.SEQUENCE_SPOUT_NAME);
+                
+builder.setBolt(SequenceTopologyDef.CUSTOMER_BOLT_NAME, new PairCount(), 1).shuffleGrouping(
+        SequenceTopologyDef.SEQUENCE_SPOUT_NAME);
+</code></pre>
+
+<h3 id="different-bolt-different-tuple">Different bolt, different tuple</h3>
+
+<p>In JStorm, “stream” is used to define the data flow.</p>
+
+<p>For example, there are one sender and two receivers(Receiver-A and Receiver-B). Receiver-A is defined to receive tuples from Stream-A while Receiver-B is defined to receive tuples from Stream-B. For this scenario, when sender is trying to send tuple through Stream-A, only Receiver-A will receive the tuples, vice versa.</p>
+
+<p>Following is the example code:</p>
+
+<p><strong>Define topology:</strong></p>
+
+<pre><code>builder.setBolt(SequenceTopologyDef.SPLIT_BOLT_NAME, new SplitRecord(), 2).shuffleGrouping(
+        SequenceTopologyDef.SEQUENCE_SPOUT_NAME);
+
+builder.setBolt(SequenceTopologyDef.TRADE_BOLT_NAME, new PairCount(), 1).shuffleGrouping(
+        SequenceTopologyDef.SPLIT_BOLT_NAME,  // --- Sender Name
+        SequenceTopologyDef.TRADE_STREAM_ID); // --- The stream which bolt receives tuples from sender
+                
+builder.setBolt(SequenceTopologyDef.CUSTOMER_BOLT_NAME, new PairCount(), 1).shuffleGrouping(
+        SequenceTopologyDef.SPLIT_BOLT_NAME,     // --- Sender Name
+        SequenceTopologyDef.CUSTOMER_STREAM_ID); // --- The stream which bolt receives tuples from sender
+</code></pre>
+
+<p><strong>Send tuples:</strong></p>
+
+<pre><code>public void execute(Tuple tuple, BasicOutputCollector collector) {
+    tpsCounter.count();
+     
+    Long tupleId = tuple.getLong(0);
+    Object obj = tuple.getValue(1);
+     
+    if (obj instanceof TradeCustomer) {
+        TradeCustomer tradeCustomer = (TradeCustomer)obj;
+         
+        Pair trade = tradeCustomer.getTrade();
+        Pair customer = tradeCustomer.getCustomer();
+            
+        collector.emit(SequenceTopologyDef.TRADE_STREAM_ID, 
+                 new Values(tupleId, trade));
+            
+        collector.emit(SequenceTopologyDef.CUSTOMER_STREAM_ID, 
+                 new Values(tupleId, customer));
+    }else if (obj != null){
+         LOG.info("Unknow type " + obj.getClass().getName());
+    }else {
+         LOG.info("Nullpointer " );
+    }
+}
+</code></pre>
+
+<p><strong>Define the output streams:</strong></p>
+
+<pre><code>public void declareOutputFields(OutputFieldsDeclarer declarer) {
+    declarer.declareStream(SequenceTopologyDef.TRADE_STREAM_ID, new Fields("ID", "TRADE"));
+    declarer.declareStream(SequenceTopologyDef.CUSTOMER_STREAM_ID, new Fields("ID", "CUSTOMER"));
+}
+</code></pre>
+
+<p><strong>When receiving tuples, the checking of source source stream is required.</strong></p>
+
+<pre><code>if (input.getSourceStreamId().equals(SequenceTopologyDef.TRADE_STREAM_ID) ) {
+    customer = pair;
+    customerTuple = input;
+            
+    tradeTuple = tradeMap.get(tupleId);
+    if (tradeTuple == null) {
+        customerMap.put(tupleId, input);
+        return;
+    }
+            
+    trade = (Pair) tradeTuple.getValue(1);
+}
+</code></pre>
+
+<h2 id="merge">Merge</h2>
+
+<p>JStorm is able to make one bolt receive tuples from more than two stream types to do the merge operation by defining more than two source stream type.</p>
+
+<p>Following is an example. MergeRecord bolt receives tuples from SequenceTopologyDef.TRADE_BOLT_NAME and SequenceTopologyDef.CUSTOMER_BOLT_NAME at the same time.</p>
+
+<h3 id="define-topology">Define topology:</h3>
+
+<pre><code>builder.setBolt(SequenceTopologyDef.TRADE_BOLT_NAME, new PairCount(), 1).shuffleGrouping(
+        SequenceTopologyDef.SPLIT_BOLT_NAME, 
+        SequenceTopologyDef.TRADE_STREAM_ID);
+                
+builder.setBolt(SequenceTopologyDef.CUSTOMER_BOLT_NAME, new PairCount(), 1).shuffleGrouping(
+        SequenceTopologyDef.SPLIT_BOLT_NAME,
+        SequenceTopologyDef.CUSTOMER_STREAM_ID);
+                
+builder.setBolt(SequenceTopologyDef.MERGE_BOLT_NAME, new MergeRecord(), 1)
+        .shuffleGrouping(SequenceTopologyDef.TRADE_BOLT_NAME)      // --- Define two source stream
+        .shuffleGrouping(SequenceTopologyDef.CUSTOMER_BOLT_NAME);
+</code></pre>
+
+<h3 id="sender">Sender:</h3>
+<p>No changes are required for the sender.</p>
+
+<h3 id="receiver">Receiver:</h3>
+<p>For receiver, getSourceComponent() api can be used to distinguish which source component the tuple is sent from.</p>
+
+<pre><code>if (input.getSourceComponent().equals(SequenceTopologyDef.CUSTOMER_BOLT_NAME) ) {
+    customer = pair;
+    customerTuple = input;
+            
+    tradeTuple = tradeMap.get(tupleId);
+    if (tradeTuple == null) {
+        customerMap.put(tupleId, input);
+        return;
+    }
+            
+    trade = (Pair) tradeTuple.getValue(1);    
+} else if (input.getSourceComponent().equals(SequenceTopologyDef.TRADE_BOLT_NAME)) {
+    trade = pair;
+    tradeTuple = input;
+            
+    customerTuple = customerMap.get(tupleId);
+    if (customerTuple == null) {
+        tradeMap.put(tupleId, input);
+        return;
+    }
+            
+    customer = (Pair) customerTuple.getValue(1);
+} 
+</code></pre>
+
+  <div class="footer">
+      Google Groups: <a target="_blank" href="https://groups.google.com/forum/#!forum/jstorm-user">jstorm-user</a>, QQ Groups: 228374502
+      </p>
+      Caught a mistake or want to contribute to the documentation? 
+      <a href="https://github.com/alibaba/jstorm/edit/master/docs/jstorm-doc/ProgrammingGuide/StreamSplitJoin.md" target="_blank">
+        Edit this page on Github!
+      </a>
+  </div>
+  
+
+  
+</div>
+
+    </div><!-- /.container -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="//cdn.bootcss.com/jquery/1.11.2/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="//cdn.bootcss.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <script src="//cdn.bootcss.com/anchor-js/3.1.0/anchor.min.js"></script>
+    <script src="/js/jstorm.js"></script>
+
+    <!-- Google Analytics -->
+    <!-- script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-52545728-1', 'auto');
+      ga('send', 'pageview');
+    </script -->
+
+    <!-- Baidu Analytics -->
+    <script>
+      var _hmt = _hmt || [];
+      (function() {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?835985ad7943d8c24bc3c1f155b7d4a2";
+        var s = document.getElementsByTagName("script")[0]; 
+        s.parentNode.insertBefore(hm, s);
+      })();
+    </script>
+
+
+    <!-- Disqus -->
+    <!--
+     -->
+  </body>
+</html>

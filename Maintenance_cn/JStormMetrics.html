@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>JStorm Documentation : JStorm Metrics</title>
+    <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon">
+    <link rel="icon" href="/img/favicon.png" type="image/x-icon">
+
+    <!-- Bootstrap -->
+    <link href="//cdn.bootcss.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/jstorm.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+    <link rel="stylesheet" href="/css/codetabs.css">
+    
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    
+    <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<!--
+
+
+
+
+-->
+    <!-- Top navbar. -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <!-- The logo. -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <div class="navbar-logo">
+            <a href="/"><img alt="jstorm" src="/img/jstorm-logo.png"></a>
+          </div>
+        </div><!-- /.navbar-header -->
+
+        <!-- The navigation links. -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            
+            <!-- Downloads -->
+            <li class="hidden-sm "><a href="/Downloads.html">Downloads</a></li>
+
+            <!-- Performance -->
+            <li class="hidden-sm "><a href="/Performance">Performance</a></li>
+
+            <!-- QuickStart -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">QuickStart <span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                
+                
+                <li class=""><a href="/QuickStart/BasicConception.html">Basic Conception</a></li>
+                
+                <li class=""><a href="/QuickStart/Example.html">Example</a></li>
+                
+                <li class=""><a href="/QuickStart/Deploy/index.html">Deploy</a></li>
+                
+                <li class=""><a href="/QuickStart/Upgrade/index.html">Upgrade</a></li>
+                
+                <li class=""><a href="/QuickStart/UpgradeFromStorm.html">Migrate from Apache Storm</a></li>
+                
+                <li class=""><a href="/QuickStart/Compile.html">Compile JStorm</a></li>
+                
+              </ul>
+            </li>
+
+            <!-- ProgrammingGuide -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">ProgrammingGuide <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/ProgrammingGuide/DebugLocalApp.html">Local Debug</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/StreamSplitJoin.html">Split-Merge-Stream</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/Transaction.html">Transaction</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/Trident.html">Trident</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/AdvancedUsage/index.html">Advanced Usage</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- Maintenance -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Maintenance <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Maintenance/Configuration.html">Configuration</a></li>
+                  
+                  <li class=""><a href="/Maintenance/ConfigurationAutomacticSync.html">Automatically Sync Configuration</a></li>
+                  
+                  <li class=""><a href="/Maintenance/Isolation.html">Resource Isolation</a></li>
+                  
+                  <li class=""><a href="/Maintenance/JStormMetrics.html">JStorm Metrics</a></li>
+                  
+                  <li class=""><a href="/Maintenance/HealthCheck.html">Supervisor Health Check</a></li>
+                  
+                  <li class=""><a href="/Maintenance/JStorm-on-Yarn.html">JStorm-on-Yarn</a></li>
+                  
+                  <li class=""><a href="/Maintenance/ClusterHA.html">Cluster HA</a></li>
+                  
+                  <li class=""><a href="/Maintenance/SupervisorWorker.html">Supervisor-Generate-Workers</a></li>
+                  
+                  <li class=""><a href="/Maintenance/DynamicAdjustLog.html">Dynamic Adjust Log</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- FAQ -->
+            <li class="hidden-sm "><a href="/FAQ/">FAQ</a></li>
+
+            <!-- Community -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Community <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Community/Email.html">Email List</a></li>
+                  
+                  <li class=""><a href="/Community/Committers.html">Committer List</a></li>
+                  
+                  <li class=""><a href="/Community/Events-Meetups.html">Events and Meetups</a></li>
+                  
+                  <li class=""><a href="/Community/Issues.html">Track issues</a></li>
+                  
+                  <li class=""><a href="/Community/JStormUsers.html">JStorm User List</a></li>
+                  
+              </ul>
+            </li>
+
+
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Language <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class=""><a href="/index.html">English</a></li>
+                  <li class=""><a href="/index_cn.html">中文</a></li>
+
+              </ul>
+            </li>
+          </ul>          
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container -->
+    </nav>
+
+
+    
+
+    <!-- Main content. -->
+    <div class="container">
+      
+      <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<div class="row">
+
+  
+  
+  <div class="col-md-8 col-md-offset-2 text">
+    <h1>JStorm Metrics</h1>
+	<ul id="markdown-toc">
+  <li><a href="#jstorm-metrics与storm-metrics的比较" id="markdown-toc-jstorm-metrics与storm-metrics的比较">JStorm Metrics与Storm Metrics的比较</a></li>
+  <li><a href="#jstorm-metrics-设计" id="markdown-toc-jstorm-metrics-设计">JStorm Metrics 设计</a>    <ul>
+      <li><a href="#设计目标" id="markdown-toc-设计目标">设计目标</a></li>
+      <li><a href="#基础流程" id="markdown-toc-基础流程">基础流程</a></li>
+      <li><a href="#基础概念" id="markdown-toc-基础概念">基础概念</a>        <ul>
+          <li><a href="#metric类型" id="markdown-toc-metric类型">metric类型</a></li>
+          <li><a href="#meta类型" id="markdown-toc-meta类型">meta类型</a></li>
+          <li><a href="#metric-name" id="markdown-toc-metric-name">metric name</a></li>
+          <li><a href="#metric-id" id="markdown-toc-metric-id">metric id</a></li>
+        </ul>
+      </li>
+      <li><a href="#jstorm-metrics中的重要模块类" id="markdown-toc-jstorm-metrics中的重要模块类">JStorm metrics中的重要模块（类）</a>        <ul>
+          <li><a href="#jstormmetrics" id="markdown-toc-jstormmetrics">JStormMetrics</a></li>
+          <li><a href="#jstormmetricsreporter" id="markdown-toc-jstormmetricsreporter">JStormMetricsReporter</a></li>
+          <li><a href="#topologymaster" id="markdown-toc-topologymaster">TopologyMaster</a></li>
+          <li><a href="#clustermetricsrunnable" id="markdown-toc-clustermetricsrunnable">ClusterMetricsRunnable</a></li>
+          <li><a href="#jstormmetricscache" id="markdown-toc-jstormmetricscache">JStormMetricsCache</a></li>
+        </ul>
+      </li>
+      <li><a href="#其他" id="markdown-toc-其他">其他</a>        <ul>
+          <li><a href="#用户自定义metrics" id="markdown-toc-用户自定义metrics">用户自定义metrics</a></li>
+          <li><a href="#metrics数据的准确性" id="markdown-toc-metrics数据的准确性">metrics数据的准确性</a></li>
+          <li><a href="#topology历史和task事件" id="markdown-toc-topology历史和task事件">topology历史和task事件</a></li>
+          <li><a href="#构建metrics的监控系统" id="markdown-toc-构建metrics的监控系统">构建metrics的监控系统</a></li>
+        </ul>
+      </li>
+      <li><a href="#使用jstorm-metrics" id="markdown-toc-使用jstorm-metrics">使用JStorm metrics</a>        <ul>
+          <li><a href="#metric配置" id="markdown-toc-metric配置">Metric配置</a></li>
+        </ul>
+      </li>
+      <li><a href="#关于metric-uploader--metric-query-client" id="markdown-toc-关于metric-uploader--metric-query-client">关于Metric uploader &amp; metric query client</a></li>
+      <li><a href="#使用metricclient" id="markdown-toc-使用metricclient">使用MetricClient</a></li>
+      <li><a href="#todo" id="markdown-toc-todo">TODO</a></li>
+      <li><a href="#附录一-metrics含义" id="markdown-toc-附录一-metrics含义">附录一: Metrics含义</a>        <ul>
+          <li><a href="#topology-metrics" id="markdown-toc-topology-metrics">Topology Metrics</a></li>
+          <li><a href="#component-级别" id="markdown-toc-component-级别">Component 级别</a></li>
+          <li><a href="#task-级别" id="markdown-toc-task-级别">Task 级别</a></li>
+          <li><a href="#worker-级别" id="markdown-toc-worker-级别">Worker 级别</a></li>
+          <li><a href="#supervisor-级别" id="markdown-toc-supervisor-级别">supervisor 级别</a></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<h1 id="jstorm-metrics与storm-metrics的比较">JStorm Metrics与Storm Metrics的比较</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th>---</th>
+            <th>Storm/stats</th>
+            <th>Storm/built-in metrics</th>
+            <th>JStorm metrics</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>窗口</td>
+            <td>10m, 3h, 1d, all-time</td>
+            <td>1m</td>
+            <td>1m, 10m, 2h, 1d</td>
+        </tr>
+        <tr>
+            <td>采样率</td>
+            <td>5%, 所有metrics都会采样</td>
+            <td>同stats</td>
+            <td>10%, counter不采样（精确计算）, meters/histograms采样</td>
+        </tr>
+        <tr>
+            <td>metric数据流</td>
+            <td>executors/tasks发送至ZK</td>
+            <td>executor发送至metrics consumer 至外部系统</td>
+            <td>worker -&gt; topology master -&gt; nimbus -&gt; 外部系统</td>
+        </tr>
+        <tr>
+            <td>metrics数据</td>
+            <td>k-v键值对</td>
+            <td>stream/executor metrics, topology metrics在调用时计算</td>
+            <td>预聚合的 metrics of stream/task/component/topology/cluster/worker/netty/nimbus metrics</td>
+        </tr>
+        <tr>
+            <td>metrics值</td>
+            <td>采样计算的counter, meters/histogram平均值</td>
+            <td>同stats</td>
+            <td>counter精确值，meter值：m1/m5/m15/mean, histogram值：p50/p75/p90/p95/p98/p99/p999/min/max/mean</td>
+        </tr>
+        <tr>
+            <td>更新策略</td>
+            <td>按照时间分桶，如果窗口大的话更新间隔很长</td>
+            <td>每分钟</td>
+            <td>所有窗口每分钟windows</td>
+        </tr>
+        <tr>
+            <td>zk依赖</td>
+            <td>数据写入zk</td>
+            <td>N/A</td>
+            <td>N/A</td>
+        </tr>
+    </tbody>
+</table>
+
+<h1 id="jstorm-metrics-设计">JStorm Metrics 设计</h1>
+
+<h2 id="设计目标">设计目标</h2>
+
+<ol>
+  <li>能看到从流级别到集群级别的所有metrics，至少1分钟更新一次</li>
+  <li>能看到metrics的历史值(曲线)</li>
+  <li>支持常见metric类型以及更准确的metric统计</li>
+  <li>支持topology历史, 通过topology历史可以查看历史metrics</li>
+  <li>支持task轨迹: 当task挂的时候，可以看到task在集群中的整个迁移历史</li>
+  <li>支持插件形式替换metrics存储</li>
+  <li>支持用户自定义metrics</li>
+  <li>通过metrics简化问题排查</li>
+</ol>
+
+<h2 id="基础流程">基础流程</h2>
+
+<pre><code class="language-seq">worker-&gt;worker: 创建JStormMetricsReporter
+worker-&gt;worker: JStormMetrics.registerMetrics注册至本地registry
+worker-&gt;nimbus: JStormMetricsReporter.registerMetrics: 注册metrics meta
+nimbus-&gt;nimbus: 保存metrics meta至StormMetricsCache
+nimbus-&gt;external systems: 存储metrics meta至外部系统
+nimbus-&gt;worker: 返回注册的metric meta: map&amp;lt;metricId, metricName&amp;gt;
+
+worker-&gt;topology_master: JstormMetricsReporter向TopologyMaster发送metrics
+topology_master-&gt;topology_master: 计算、聚合metrics
+topology_master-&gt;nimbus: 发送metrics数据到nimbus
+nimbus-&gt;nimbus: 保存metrics数据至JStormMetricsCache
+nimbus-&gt;external systems: 发送metrics数据至外部MetricsUploader插件
+</code></pre>
+
+<h2 id="基础概念">基础概念</h2>
+
+<h3 id="metric类型">metric类型</h3>
+<p>目前支持的metric类型
+<code>counter/gauge/meter/histogram</code></p>
+
+<h3 id="meta类型">meta类型</h3>
+<p>即metrics的聚合类型，目前支持以下几种类型的metrics： 
+<code>stream/task/component/netty/worker/topology/cluster/nimbus</code></p>
+
+<p>通过topology/cluster metrics，我们就可以很容易地看出拓扑/集群整体的资源使用和水位情况(cpu，内存，网络，磁盘)。</p>
+
+<h3 id="metric-name">metric name</h3>
+<p>Metric names是一种结构化的，类似java package的名称，这与storm中的metrics完全不同。</p>
+
+<p>对于 stream/task/component/netty类型的metrics, 一个metric name由以下部分组成： 
+<code>metaType@metricType@topologyId@componentId@taskId@streamId@metricGroup@metricName</code></p>
+
+<p>当一个用户注册一个stream metric的时候，jstorm metrics框架就会自动注册task/component级别的metrics，并与stream metrics建立关联，以方便级联更新。</p>
+
+<p>比如，当用户注册了一个<code>emitted</code>的counter类型的stream级别的metric，具体的：stream: default, taskId: 1, component: spout1, 
+topologyId: SeqTest-1-1, 那么生成的metric name为：
+<code>3@1@SeqTest-1-1@spout1@1@default@sys@emitted</code>
+其中3是MetaType.STREAM的枚举值, 1是MetricType.COUNTER的枚举值。</p>
+
+<p>然后，当调用了<code>registerStreamMetric(...)</code>方法之后, 对应的task/component metrics就会自动被注册，全名分别为： 
+<code>3@1@SeqTest-1-1@spout1@1@@sys@emitted</code>
+<code>3@1@SeqTest-1-1@spout1@@@sys@emitted</code></p>
+
+<p>非常简单，对于task metrics，我们只是将stream id置空，而对于component metrics，我们只是将stream id和task id同时置空。</p>
+
+<p>对于topology级别的也是类型。因此，我们只提供了注册stream/task的方法，到component或者topology级别的聚合，内部自动实现。</p>
+
+<p>对于worker/topology/cluster/nimbus级别的metrics, metric name由以下部分组成：
+metaType@metricType@topologyId@host@port@metricGroup@metricName
+(特殊地，对于cluster/nimbus, topologyId写死为<code>__CLUSTER__</code>/<code>__NIMBUS__</code>).</p>
+
+<p>这种metric name的设计由于天然按key有序，可以很容易被一些类似于HBase的存储系统使用。</p>
+
+<h3 id="metric-id">metric id</h3>
+<p>当然metric name还是太长了，因此类似于opentsdb，我们拆分出了metric meta和metric data. 
+metric meta其实就是metric id到metric name的一个映射，而metric data则是metric id到具体metric值的映射。 
+目前JStorm使用GUID的低64位来作为metric id。</p>
+
+<p>metric meta的机制的确引入了一些额外的复杂性，不过它能够节省大量空间。</p>
+
+<h2 id="jstorm-metrics中的重要模块类">JStorm metrics中的重要模块（类）</h2>
+
+<h3 id="jstormmetrics">JStormMetrics</h3>
+<p>一个静态类，提供了<code>registerMetrics</code> 方法, 与codahale metrics类似, 所有的metrics都会存在于worker进程中的一个单例registry中。
+这个类也负责自动的向上聚合注册。</p>
+
+<h3 id="jstormmetricsreporter">JStormMetricsReporter</h3>
+<p>这个类负责向nimbus注册metrics以及将worker/supervisor/nimbus的metrics数据发送至nimbus master或topology master。</p>
+
+<p>需要注意的是，这个类可以存在于worker/supervisor以及nimbus。当它存在于worker的时候，它会向TM发送metrics，否则会直接向nimbus发送。</p>
+
+<h3 id="topologymaster">TopologyMaster</h3>
+<p>负责聚合、计算所有worker的metrics数据（具体在<code>TopologyMetricContext</code>类中实现），聚合之后，它会通过thrift接口向nimbus发送metrics数据。</p>
+
+<h3 id="clustermetricsrunnable">ClusterMetricsRunnable</h3>
+<p>这个类位于nimbus中，它负责两件事情：</p>
+<ol>
+  <li>生成metric id</li>
+  <li>向外部系统发送metrics数据</li>
+</ol>
+
+<h3 id="jstormmetricscache">JStormMetricsCache</h3>
+<p>为了提高效率，我们引入了rocksdb作为nimbus以及nimbus端metrics的缓存。
+实现上，所有来自topology master的metrics数据都会先被存储到rocksdb，然后等待被<code>MetricUploader</code>实现类处理。</p>
+
+<p>如果用户没有实现<code>MetricUploader</code>接口，则默认会使用<code>DefaultMetricsUploader</code>，这个接口会从metric cache中读取数据，然后直接删除，
+其他什么事情也不做。</p>
+
+<p>使用rocksdb的另外一个原因是，如果将所有metrics数据都存在nimbus内存中，nimbus会有较大的GC压力，甚至可能会OOM。</p>
+
+<h2 id="其他">其他</h2>
+
+<h3 id="用户自定义metrics">用户自定义metrics</h3>
+<p>我们提供了<code>MetricClient</code>来使用用户自定义metrics。
+类似于<code>JStormMetrics.registerMetrics...</code> 方法, 当用户调用了<code>metricClient.registerGauge/Counter/Histogram</code>之后，所有的事情都
+ 交由JStorm来处理，包括metrics的聚合、汇总和计算。</p>
+
+<h3 id="metrics数据的准确性">metrics数据的准确性</h3>
+<ol>
+  <li>
+    <p>为了提高histogram的准确性，我们并不是简单地把来自各个worker的histogram的分位数值取平均。实现上，我们不仅发送分位数值，还会发送采样的
+分位点。然后会在topology master中通过采样点做二次计算。需要注意的是，这个功能如果开启，会消耗较多内存，因此默认是被关闭的。你可以通过
+<code>topology.accurate.metric: true</code>来开启。</p>
+  </li>
+  <li>
+    <p>跟storm不同的是，JStorm中的counter不会被采样，因此诸如<code>emitted</code>, <code>acked</code>, <code>failed</code>是精确的。</p>
+  </li>
+  <li>
+    <p>所有时间相关的metrics值的单位都是微秒，而不是毫秒。因为像<code>nextTuple_time</code>这样的值，如果用毫秒是没有意义的，它们通常都可能是0。</p>
+  </li>
+</ol>
+
+<h3 id="topology历史和task事件">topology历史和task事件</h3>
+<p>topology/task事件会被发送至<code>MetricUploader</code>，因此用户可以通过这个接口将此类事件存储至外部系统中。</p>
+
+<h3 id="构建metrics的监控系统">构建metrics的监控系统</h3>
+<p>我们通过<code>MetricUploader</code>接口来实现写metrics来实现监控系统。有使用HBase和aliyun OTS的两种实现。</p>
+
+<h2 id="使用jstorm-metrics">使用JStorm metrics</h2>
+
+<h3 id="metric配置">Metric配置</h3>
+<p>以下为metric配置项以及对应的说明。</p>
+
+<h4 id="topologyenablemetrics">topology.enable.metrics</h4>
+<p>全局的metric开关，一般仅用于测试，生产中<strong>强烈不建议</strong>关掉。</p>
+
+<h4 id="topologymetricsamplerate">topology.metric.sample.rate</h4>
+<p>metric采样率，默认是0.1(10%)。注意这个值仅对histogram有效，因为counter和gauge无需采样。而meter使用了codahale meter内部的衰减机制，
+也没有使用采样率。</p>
+
+<h4 id="topologyenablemetricdebug">topology.enable.metric.debug</h4>
+<p>与配置项<code>topology.debug.metric.names</code>一起使用，如果为true，它将会在JStormMetricsReporter中打印包含指定name的数据。
+注意这里的name为短metric name。</p>
+
+<h4 id="topologydebugmetricnames">topology.debug.metric.names</h4>
+<p>调试的metric名称列表，通过逗号分隔，如’SendTps, RecvTps’</p>
+
+<h4 id="topologydisabledmetricnames">topology.disabled.metric.names</h4>
+<p>在<code>JStormMetricsReporter.updateMetricConfig</code>方法中使用，禁用的metric名称（默认全部都启用），逗号分隔，这个配置项的值会动态更新，只要
+storm.yaml值有更新。如果要动态禁用特定metrics，可以通过修改storm.yaml中这个配置项来实现。</p>
+
+<h4 id="topologyenabledmetricnames">topology.enabled.metric.names</h4>
+<p>在<code>JStormMetricsReporter.updateMetricConfig</code>方法中使用，启用的metric名称（默认全部都启用），逗号分隔，这个配置项的值会动态更新，只要
+storm.yaml值有更新。如果要动态启用特定metrics，可以通过修改storm.yaml中这个配置项来实现。</p>
+
+<h4 id="nimbusmetricuploaderclass">nimbus.metric.uploader.class</h4>
+<p>这个配置项仅对nimbus master生效，即实现了<code>MetricUploader</code>的插件类。</p>
+
+<h4 id="nimbusmetricqueryclientclass">nimbus.metric.query.client.class</h4>
+<p>这个配置项仅对nimbus master生效，实现了<code>MetricQueryClient</code>的插件类，这个类用于读取metric元数据及数据。</p>
+
+<h4 id="topologymaxworkernumfornettymetrics">topology.max.worker.num.for.netty.metrics</h4>
+<p>由于netty metrics是基于每个连接进行注册的，因此当拓扑非常大的时候，会导致netty metrics的量特别大，而这些数据都会发送至topology master
+以及nimbus，会给tm和nimbus都带来很大的压力。我们设置了一个硬编码的上限：当一个拓扑的worker数大于200的时候，netty metrics就会直接被禁用。
+不过用户仍然可以默认把netty metrics禁用掉，将它的值设置为1即可禁用。</p>
+
+<h2 id="关于metric-uploader--metric-query-client">关于Metric uploader &amp; metric query client</h2>
+<p>上面的配置项中已经说明了<code>nimbus.metric.uploader.class</code> 和 <code>nimbus.metric.query.client.class</code>的用途。
+在我们的实现经验上，使用一个高效、快速的metric uploader以及稳定可靠的外部存储都非常重要。如果想要基于JStorm metrics构建监控系统，
+我们推荐使用HBase来作为metrics的存储。</p>
+
+<p>metric uploader在实现时还需要考虑的一个问题是nimbus的GC。对于一个大规模的集群，nimbus中可能会有非常多的metrics对象，为了缓解nimbus的
+压力，我们目前的做法是先将metrics数据存到rocksdb中，然后在metric uploader中按需取出数据写入到外部存储中。</p>
+
+<p>因此这里有实现上的一点提示，假设你使用了一个线程池来往HBase写入数据。那么不推荐的是下面的做法：</p>
+
+<blockquote>
+  <ol>
+    <li>创建一个Runnable对象</li>
+    <li>到rocksdb中获取metrics数据，然后放入Runnable对象中</li>
+    <li>将这个Runnable放入线程池的队列中等待执行</li>
+  </ol>
+</blockquote>
+
+<p>这个实现的主要问题是，如果你的线程池写入不够快，会导致在内存中堆积太多的对象。推荐的做法如下：</p>
+
+<blockquote>
+  <ol>
+    <li>创建一个Runnable对象</li>
+    <li>获取metric数据的key/index，并放入Runnable对象中。注意此时并没有取真正的数据。</li>
+    <li>将这个Runnable放入线程池的队列中等待执行</li>
+  </ol>
+</blockquote>
+
+<p>因为metrics数据是真正在线程执行的时候才会被获取，因此可以极大缓解nimbus的GC压力。</p>
+
+<h2 id="使用metricclient">使用MetricClient</h2>
+<p>JStorm提供了<code>MetricClient</code>，因此用户可以很容易地使用自定义metrics。具体使用示例如下：</p>
+
+<ol>
+  <li>定义metric client对象</li>
+</ol>
+
+<pre><code>private MetricClient metricClient;
+</code></pre>
+
+<ol>
+  <li>在bolt.prepare或spout.open中，初始化该对象</li>
+</ol>
+
+<pre><code>metricClient = new MetricClient(context);
+
+Gauge&lt;Double&gt; gauge = new Gauge&lt;Double&gt;() {
+    private Random random = new Random();
+
+    @Override
+    public Double getValue() {
+        return random.nextDouble();
+    }
+
+};
+myGauge = metricClient.registerGauge("myGauge", gauge);
+myCounter = metricClient.registerCounter("myCounter");
+myMeter = metricClient.registerMeter("myMeter");
+myHistogram = metricClient.registerHistogram("myHistogram");
+</code></pre>
+
+<p>仅此而已！你可以在你的方法中调用<code>myCounter.update</code>或<code>myMeter.update</code>等方法，我们就会为你做剩下的事情！</p>
+
+<p>完整的API请参考<code>MetricClient</code>类</p>
+
+<h2 id="todo">TODO</h2>
+<ol>
+  <li>简化发往nimbus的metrics数据</li>
+</ol>
+
+<h2 id="附录一-metrics含义">附录一: Metrics含义</h2>
+
+<h3 id="topology-metrics">Topology Metrics</h3>
+
+<h4 id="memoryused">MemoryUsed</h4>
+<p>cluster/topology/worker使用到的物理内存</p>
+
+<h4 id="heapmemory">HeapMemory</h4>
+<p>cluster/topology/worker JVM使用到的堆内存</p>
+
+<h4 id="cpuusedratio">CpuUsedRatio</h4>
+<p>cluster/topology/worker cpu利用率，62.000 表示使用0.62个cpu，200.00表示使用2个cpu</p>
+
+<h4 id="nettyclisendspeed">NettyCliSendSpeed</h4>
+<p>cluster/topology/worker当前发送流量,单位字节/每秒</p>
+
+<h4 id="nettysrvrecvspeed">NettySrvRecvSpeed</h4>
+<p>cluster/topology/worker当前接收流量,单位字节/每秒</p>
+
+<h4 id="fullgc">FullGc</h4>
+<p>cluster/topology/worker当前1分钟 full gc 次数</p>
+
+<h4 id="recvtps">RecvTps</h4>
+<p>cluster/topology/component/task/stream 接收到的tuple的tps。</p>
+
+<h4 id="sendtps">SendTps</h4>
+<p>cluster/topology/component/task/stream 发送tuple的tps。</p>
+
+<h4 id="emitted">Emitted</h4>
+<p>cluster/topology/component/task/stream 当前1分钟发送的消息数，包括业务消息和acker消息。</p>
+
+<h4 id="acked">Acked</h4>
+<p>cluster/topology/component/task/stream 当前1分钟被ack的消息数。注意这个和Emitted的区别：
+如果打开了acker机制， emitted的消息里面含有acker消息， 经常emitted 消息数量是acker消息数量的2倍。</p>
+
+<h4 id="failed">Failed</h4>
+<p>cluster/topology/component/task/stream 当前1分钟 被ack失败的消息数（可能是没有完全处理，也可能是超时）。</p>
+
+<h3 id="component-级别">Component 级别</h3>
+
+<h4 id="emittime">EmitTime</h4>
+<p>component/task/stream, 这是spout/bolt将消息发布到disruptor队列中的时间，单位为微秒，
+JStorm从2.1.0开始所有时间相关的单位均为微秒。</p>
+
+<h4 id="deserializetime">DeserializeTime</h4>
+<p>component/task/stream, TaskReceiver中对一个tuple做反序列化的时间，单位为微秒。</p>
+
+<h4 id="serializetime">SerializeTime</h4>
+<p>component/task/stream, TaskTransfer中对一个tuple做序列化的时间，单位为微秒。</p>
+
+<h4 id="executortime">ExecutorTime</h4>
+<p>component/task/stream, 只在spout中存在，nextTuple所花费的时间，单位为微秒。</p>
+
+<h4 id="processlatency">ProcessLatency</h4>
+<p>component/task/stream, 这个是bolt execute消耗的时间，单位为微秒，
+具体来说，就是从processTuple时，tuple被放进pending map时会给一个时间，
+到调用ack的时候从pending map中取出来，用当前时间减去放入的时间，即为ProcessLatency。</p>
+
+<p>如果是spout，则为从消息最初从spout发出，一直到最后收到acker的ack消息的完整时间。
+在spout中，由于ProcessLatency意味着一个tuple走完了所有的bolt最后被ack，
+因此通常会比较大（一般会比TupleLifeCycle还要大）。</p>
+
+<h4 id="tuplelifecycle">TupleLifeCycle</h4>
+<p>component/task/stream, 这个是一个tuple或者一个batch从上一级component中被emit出来，单位为微秒，
+到当前component接收到这个tuple或者batch的时间，这段时间包括了上游序列化时间、网络发送和下游反序列化时间的总和</p>
+
+<h3 id="task-级别">Task 级别</h3>
+
+<h4 id="deserializequeue">DeserializeQueue</h4>
+<p>反序列化队列堆积情况。补充说明，一个task 有4个队列， 反序列化队列，执行队列，控制消息队列，序列化队列。</p>
+
+<h4 id="serializequeue">SerializeQueue</h4>
+<p>序列化队列堆积情况。补充说明，一个task 有4个队列， 反序列化队列，执行队列，控制消息队列，序列化队列。</p>
+
+<h4 id="executorqueue">ExecutorQueue</h4>
+<p>执行队列堆积情况。补充说明，一个task 有4个队列， 反序列化队列，执行队列，控制消息队列，序列化队列。</p>
+
+<h4 id="ctrlqueue">CtrlQueue</h4>
+<p>控制执行队列的堆积情况。补充说明，一个task 有4个队列， 反序列化队列，执行队列，控制消息队列，序列化队列。</p>
+
+<h4 id="pendingnum">PendingNum</h4>
+<p>只对spout有效，表示 spout 中已经发送了但还没有ack的tuple数量</p>
+
+<h4 id="batchinterval">BatchInterval</h4>
+<p>性能调优使用， 表示2次batch打满时，间隔微秒</p>
+
+<h3 id="worker-级别">Worker 级别</h3>
+
+<h4 id="gccount">GCCount</h4>
+<p>当前1分钟gc的次数</p>
+
+<h4 id="gctime">GCTime</h4>
+<p>当前1分钟gc所花费的时间之和，单位是微妙</p>
+
+<h4 id="nettyclisendbatchsize">NettyCliSendBatchSize</h4>
+<p>当前1分钟worker 发送netty包的平均大小(Bytes)</p>
+
+<h4 id="nettysrvtransmittime">NettySrvTransmitTime</h4>
+<p>当前1分钟，worker 解析netty包的耗时，单位微秒。</p>
+
+<h4 id="recvctrlqueue">RecvCtrlQueue</h4>
+<p>worker级别的总接受控制队列堆积情况</p>
+
+<h4 id="sendctrlqueue">SendCtrlQueue</h4>
+<p>worker级别的总发送控制队列堆积情况</p>
+
+<h3 id="supervisor-级别">supervisor 级别</h3>
+
+<h4 id="diskusage">DiskUsage</h4>
+<p>当前jstorm账户所在文件磁盘空间的利用率；</p>
+
+<h4 id="memoryusage">MemoryUsage</h4>
+<p>当前机器的内存利用率</p>
+
+<h4 id="cpuusedratio-1">CpuUsedRatio</h4>
+<p>当前机器的cpu利用率</p>
+
+<h4 id="nettyclisendspeednettysrvrecvspeed">NettyCliSendSpeed/NettySrvRecvSpeed</h4>
+<p>当前机器网卡每秒接收和发送字节数</p>
+
+  <div class="footer">
+      Google Groups: <a target="_blank" href="https://groups.google.com/forum/#!forum/jstorm-user">jstorm-user</a>, QQ Groups: 228374502
+      </p>
+      Caught a mistake or want to contribute to the documentation? 
+      <a href="https://github.com/alibaba/jstorm/edit/master/docs/jstorm-doc/Maintenance_cn/JStormMetrics.md" target="_blank">
+        Edit this page on Github!
+      </a>
+  </div>
+  
+
+  
+</div>
+
+    </div><!-- /.container -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="//cdn.bootcss.com/jquery/1.11.2/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="//cdn.bootcss.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <script src="//cdn.bootcss.com/anchor-js/3.1.0/anchor.min.js"></script>
+    <script src="/js/jstorm.js"></script>
+
+    <!-- Google Analytics -->
+    <!-- script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-52545728-1', 'auto');
+      ga('send', 'pageview');
+    </script -->
+
+    <!-- Baidu Analytics -->
+    <script>
+      var _hmt = _hmt || [];
+      (function() {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?835985ad7943d8c24bc3c1f155b7d4a2";
+        var s = document.getElementsByTagName("script")[0]; 
+        s.parentNode.insertBefore(hm, s);
+      })();
+    </script>
+
+
+    <!-- Disqus -->
+    <!--
+     -->
+  </body>
+</html>

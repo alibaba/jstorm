@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>JStorm 文档 : Example</title>
+    <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon">
+    <link rel="icon" href="/img/favicon.png" type="image/x-icon">
+
+    <!-- Bootstrap -->
+    <link href="//cdn.bootcss.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/jstorm.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+    <link rel="stylesheet" href="/css/codetabs.css">
+    
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    
+    <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<!--
+
+
+
+
+-->
+    <!-- Top navbar. -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <!-- The logo. -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <div class="navbar-logo">
+            <a href="/"><img alt="jstorm" src="/img/jstorm-logo.png"></a>
+          </div>
+        </div><!-- /.navbar-header -->
+
+        <!-- The navigation links. -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            <!-- Downloads -->
+            <li class="hidden-sm "><a href="/Downloads.html">Downloads</a></li>
+
+            <!-- Performance -->
+            <li class="hidden-sm "><a href="/Performance_cn">Performance</a></li>
+
+            <!-- QuickStart -->
+            <li class="dropdown active">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">QuickStart <span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                
+                
+                <li class=""><a href="/QuickStart_cn/BasicConception.html">5分钟基础概念(新手第一篇)</a></li>
+                
+                <li class="active"><a href="/QuickStart_cn/Example.html">入门Example</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Deploy/index.html">安装部署</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Upgrade/index.html">升级</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/UpgradeFromStorm.html">从Apache Storm升级到JStorm</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Compile.html">编译JStorm</a></li>
+                
+              </ul>
+            </li>
+
+            <!-- ProgrammingGuide -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">ProgrammingGuide <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/DebugLocalApp.html">本地调试</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/StreamSplitJoin.html">数据流分流合并</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/Transaction/index.html">事务</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/Trident/index.html">Trident</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/AdvancedUsage/index.html">Advanced Usage</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- Maintenance -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">运维 <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Maintenance_cn/Configuration.html">配置注解</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/ConfigurationAutomacticSync.html">自动同步配置文件</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/Isolation.html">资源隔离</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/JStormMetrics.html">JStorm Metrics</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/HealthCheck.html">Supervisor自检</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/JStorm-on-Yarn.html">JStorm-on-Yarn</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/ClusterHA.html">同城灾备&异地灾备</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/BlobStore.html">BlobStore</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/SupervisorWorker.html">生成worker列表算法</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/DynamicAdjustLog.html">动态调整日志</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- FAQ -->
+            <li class="hidden-sm "><a href="/FAQ_cn/">FAQ</a></li>
+
+
+
+            <!-- Community -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">社区 <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Community/Email.html">Email List</a></li>
+                  
+                  <li class=""><a href="/Community/Committers.html">Committer List</a></li>
+                  
+                  <li class=""><a href="/Community/Events-Meetups.html">Events and Meetups</a></li>
+                  
+                  <li class=""><a href="/Community/Issues.html">Track issues</a></li>
+                  
+                  <li class=""><a href="/Community/JStormUsers.html">JStorm User List</a></li>
+                  
+              </ul>
+            </li>
+
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Language <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class=""><a href="/index.html">English</a></li>
+                  <li class=""><a href="/index_cn.html">中文</a></li>
+
+              </ul>
+            </li>
+          </ul>          
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container -->
+    </nav>
+
+
+    
+
+    <!-- Main content. -->
+    <div class="container">
+      
+      <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<div class="row">
+
+  
+  
+  <div class="col-md-8 col-md-offset-2 text">
+    <h1>Example</h1>
+	<ul id="markdown-toc">
+  <li><a href="#最简单的jstorm例子分为4个步骤" id="markdown-toc-最简单的jstorm例子分为4个步骤">最简单的JStorm例子分为4个步骤：</a>    <ul>
+      <li><a href="#生成topology" id="markdown-toc-生成topology">生成Topology</a></li>
+      <li><a href="#实现spout接口" id="markdown-toc-实现spout接口">实现Spout接口</a></li>
+      <li><a href="#实现bolt接口" id="markdown-toc-实现bolt接口">实现Bolt接口</a></li>
+      <li><a href="#编译" id="markdown-toc-编译">编译</a></li>
+    </ul>
+  </li>
+  <li><a href="#提交jar" id="markdown-toc-提交jar">提交jar</a></li>
+</ul>
+
+<p>本文帮助读者快速实现一个JStorm例子， 初学者，可以试运行安装包下面Example, 获得更直接的感受。</p>
+
+<p><a href="https://github.com/alibaba/jstorm/tree/master/example">Example 源码</a></p>
+
+<h1 id="最简单的jstorm例子分为4个步骤">最简单的JStorm例子分为4个步骤：</h1>
+
+<h2 id="生成topology">生成Topology</h2>
+
+<pre><code class="language-java">Map conf = new HashMap();
+//topology所有自定义的配置均放入这个Map
+
+TopologyBuilder builder = new TopologyBuilder();
+//创建topology的生成器
+
+int spoutParal = get("spout.parallel", 1);
+//获取spout的并发设置
+
+SpoutDeclarer spout = builder.setSpout(SequenceTopologyDef.SEQUENCE_SPOUT_NAME,
+                new SequenceSpout(), spoutParal);
+//创建Spout， 其中new SequenceSpout() 为真正spout对象，SequenceTopologyDef.SEQUENCE_SPOUT_NAME 为spout的名字，注意名字中不要含有空格
+
+int boltParal = get("bolt.parallel", 1);
+//获取bolt的并发设置
+
+BoltDeclarer totalBolt = builder.setBolt(SequenceTopologyDef.TOTAL_BOLT_NAME, new TotalCount(),
+                boltParal).shuffleGrouping(SequenceTopologyDef.SEQUENCE_SPOUT_NAME);
+//创建bolt， SequenceTopologyDef.TOTAL_BOLT_NAME 为bolt名字，TotalCount 为bolt对象，boltParal为bolt并发数，
+//shuffleGrouping（SequenceTopologyDef.SEQUENCE_SPOUT_NAME）， 
+//表示接收SequenceTopologyDef.SEQUENCE_SPOUT_NAME的数据，并且以shuffle方式，
+//即每个spout随机轮询发送tuple到下一级bolt中
+
+int ackerParal = get("acker.parallel", 1);
+Config.setNumAckers(conf, ackerParal);
+//设置表示acker的并发数
+
+int workerNum = get("worker.num", 10);
+conf.put(Config.TOPOLOGY_WORKERS, workerNum);
+//表示整个topology将使用几个worker
+
+conf.put(Config.STORM_CLUSTER_MODE, "distributed");
+//设置topolog模式为分布式，这样topology就可以放到JStorm集群上运行
+
+StormSubmitter.submitTopology(streamName, conf,
+                builder.createTopology());
+//提交topology
+</code></pre>
+
+<h2 id="实现spout接口">实现Spout接口</h2>
+<p>IRichSpout 为最简单的Spout接口</p>
+
+<pre><code class="language-java"> IRichSpout{
+
+    @Override
+    public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
+    }
+
+    @Override
+    public void close() {
+    }
+
+    @Override
+    public void activate() {
+    }
+
+    @Override
+    public void deactivate() {
+    }
+
+    @Override
+    public void nextTuple() {
+    }
+
+    @Override
+    public void ack(Object msgId) {
+    }
+
+    @Override
+    public void fail(Object msgId) {
+    }
+
+    @Override
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+    }
+
+    @Override
+    public Map&lt;String, Object&gt; getComponentConfiguration() {
+        return null;
+    }
+
+</code></pre>
+
+<p>其中注意：</p>
+
+<ul>
+  <li>JStorm 默认是使用Kryo 进行序列化和反序列化， 要求所有spout或bolt或tuple，必须实现Serializable</li>
+  <li>spout可以有构造函数，但构造函数只执行一次，是在提交任务时，创建spout对象，因此在task分配到具体worker之前的初始化工作可以在此处完成，一旦完成，初始化的内容将携带到每一个task内（因为提交任务时将spout序列化到文件中去，在worker起来时再将spout从文件中反序列化出来）。</li>
+  <li>open是当task起来后执行的初始化动作</li>
+  <li>close是当task被shutdown后执行的动作</li>
+  <li>activate 是当task被激活时，触发的动作</li>
+  <li>deactivate 是task被deactive时，触发的动作</li>
+  <li>nextTuple 是spout实现核心， nextuple完成自己的逻辑，即每一次取消息后，用collector 将消息emit出去。</li>
+  <li>ack， 当spout收到一条ack消息时，触发的动作，详情可以参考 <a href="/advance_cn/ack_cn.html">ack机制</a></li>
+  <li>fail， 当spout收到一条fail消息时，触发的动作，详情可以参考 <a href="/advance_cn/ack_cn.html">ack机制</a></li>
+  <li>declareOutputFields， 定义spout发送数据，每个字段的含义</li>
+  <li>getComponentConfiguration 获取本spout的component 配置</li>
+</ul>
+
+<h2 id="实现bolt接口">实现Bolt接口</h2>
+
+<pre><code class="language-java">IRichBolt {
+
+    @Override
+    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
+    }
+
+    @Override
+    public void execute(Tuple input) {
+    }
+
+    @Override
+    public void cleanup() {
+    }
+
+    @Override
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+    }
+
+    @Override
+    public Map&lt;String, Object&gt; getComponentConfiguration() {
+        return null;
+    }
+
+}
+</code></pre>
+
+<p>其中注意：</p>
+
+<ul>
+  <li>JStorm 默认是使用Kryo 进行序列化和反序列化， 要求所有spout或bolt或tuple，必须实现Serializable</li>
+  <li>bolt可以有构造函数，但构造函数只执行一次，是在提交任务时，创建bolt对象，因此在task分配到具体worker之前的初始化工作可以在此处完成，一旦完成，初始化的内容将携带到每一个task内（因为提交任务时将bolt序列化到文件中去，在worker起来时再将bolt从文件中反序列化出来）。</li>
+  <li>prepare是当task起来后执行的初始化动作</li>
+  <li>cleanup是当task被shutdown后执行的动作</li>
+  <li>execute是bolt实现核心， 完成自己的逻辑，即接受每一次取消息后，处理完，有可能用collector 将产生的新消息emit出去。
+** 在executor中，当程序处理一条消息时，需要执行collector.ack， 详情可以参考 <a href="/advance_cn/ack_cn.html">ack机制</a>
+** 在executor中，当程序无法处理一条消息时或出错时，需要执行collector.fail ，详情可以参考 <a href="/advance_cn/ack_cn.html">ack机制</a></li>
+  <li>declareOutputFields， 定义bolt发送数据，每个字段的含义</li>
+  <li>getComponentConfiguration 获取本bolt的component 配置</li>
+</ul>
+
+<h2 id="编译">编译</h2>
+
+<p>在Maven中配置</p>
+
+<pre><code class="language-xml">  &lt;dependency&gt;
+    &lt;groupId&gt;com.alibaba.jstorm&lt;/groupId&gt;
+    &lt;artifactId&gt;jstorm-core&lt;/artifactId&gt;
+    &lt;version&gt;${jstorm.version}&lt;/version&gt;
+    &lt;scope&gt;provided&lt;/scope&gt;
+  &lt;/dependency&gt;
+</code></pre>
+
+<p>打包时，需要将所有依赖打入到一个包中</p>
+
+<pre><code>&lt;build&gt;
+        &lt;plugins&gt;
+
+            &lt;plugin&gt;
+				&lt;groupId&gt;org.apache.maven.plugins&lt;/groupId&gt;
+				&lt;artifactId&gt;maven-shade-plugin&lt;/artifactId&gt;
+				&lt;version&gt;1.7.1&lt;/version&gt;
+				&lt;executions&gt;
+					&lt;execution&gt;
+						&lt;phase&gt;package&lt;/phase&gt;
+						&lt;goals&gt;
+							&lt;goal&gt;shade&lt;/goal&gt;
+						&lt;/goals&gt;
+						&lt;configuration&gt;
+							&lt;transformers&gt;
+							&lt;!-- 
+								&lt;transformer
+									implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer"&gt;
+									&lt;resource&gt;META-INF/spring.handlers&lt;/resource&gt;
+								&lt;/transformer&gt;
+								&lt;transformer
+									implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer"&gt;
+									&lt;resource&gt;META-INF/spring.schemas&lt;/resource&gt;
+								&lt;/transformer&gt;
+								&lt;transformer
+									implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"&gt;
+									&lt;mainClass&gt;${这里请定义好你的启动拓扑的全类名,例如:com.alibaba.aloha.pandora.PandoraTopology}&lt;/mainClass&gt;
+								&lt;/transformer&gt;
+								 --&gt;
+							&lt;/transformers&gt;
+						&lt;/configuration&gt;
+					&lt;/execution&gt;
+				&lt;/executions&gt;
+			&lt;/plugin&gt;
+        &lt;/plugins&gt;
+    &lt;/build&gt;
+</code></pre>
+
+<h1 id="提交jar">提交jar</h1>
+
+<p>jstorm jar xxxxxx.jar com.alibaba.xxxx.xx parameter</p>
+
+<ul>
+  <li>xxxx.jar 为打包后的jar</li>
+  <li>com.alibaba.xxxx.xx 为入口类，即提交任务的类</li>
+  <li>parameter即为提交参数</li>
+</ul>
+
+
+  <div class="footer">
+      Google Groups: <a target="_blank" href="https://groups.google.com/forum/#!forum/jstorm-user">jstorm-user</a>, QQ Groups: 228374502
+      </p>
+ 
+      发现错误？想参与编辑？
+      <a href="https://github.com/alibaba/jstorm/edit/master/docs/jstorm-doc/QuickStart_cn/Example.md" target="_blank">
+        在 Github 上编辑此页！
+      </a>
+  </div>
+  </div>
+  
+
+  
+</div>
+
+    </div><!-- /.container -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="//cdn.bootcss.com/jquery/1.11.2/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="//cdn.bootcss.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <script src="//cdn.bootcss.com/anchor-js/3.1.0/anchor.min.js"></script>
+    <script src="/js/jstorm.js"></script>
+
+    <!-- Google Analytics -->
+    <!-- script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-52545728-1', 'auto');
+      ga('send', 'pageview');
+    </script -->
+
+    <!-- Baidu Analytics -->
+    <script>
+      var _hmt = _hmt || [];
+      (function() {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?835985ad7943d8c24bc3c1f155b7d4a2";
+        var s = document.getElementsByTagName("script")[0]; 
+        s.parentNode.insertBefore(hm, s);
+      })();
+    </script>
+
+
+    <!-- Disqus -->
+    <!--
+     -->
+  </body>
+</html>

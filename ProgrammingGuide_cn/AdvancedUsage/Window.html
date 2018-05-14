@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>JStorm 文档 : How to use Window Framework?</title>
+    <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon">
+    <link rel="icon" href="/img/favicon.png" type="image/x-icon">
+
+    <!-- Bootstrap -->
+    <link href="//cdn.bootcss.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/jstorm.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+    <link rel="stylesheet" href="/css/codetabs.css">
+    
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    
+    <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<!--
+
+
+
+
+-->
+    <!-- Top navbar. -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <!-- The logo. -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <div class="navbar-logo">
+            <a href="/"><img alt="jstorm" src="/img/jstorm-logo.png"></a>
+          </div>
+        </div><!-- /.navbar-header -->
+
+        <!-- The navigation links. -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            <!-- Downloads -->
+            <li class="hidden-sm "><a href="/Downloads.html">Downloads</a></li>
+
+            <!-- Performance -->
+            <li class="hidden-sm "><a href="/Performance_cn">Performance</a></li>
+
+            <!-- QuickStart -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">QuickStart <span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                
+                
+                <li class=""><a href="/QuickStart_cn/BasicConception.html">5分钟基础概念(新手第一篇)</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Example.html">入门Example</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Deploy/index.html">安装部署</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Upgrade/index.html">升级</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/UpgradeFromStorm.html">从Apache Storm升级到JStorm</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Compile.html">编译JStorm</a></li>
+                
+              </ul>
+            </li>
+
+            <!-- ProgrammingGuide -->
+            <li class="dropdown active">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">ProgrammingGuide <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/DebugLocalApp.html">本地调试</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/StreamSplitJoin.html">数据流分流合并</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/Transaction/index.html">事务</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/Trident/index.html">Trident</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/AdvancedUsage/index.html">Advanced Usage</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- Maintenance -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">运维 <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Maintenance_cn/Configuration.html">配置注解</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/ConfigurationAutomacticSync.html">自动同步配置文件</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/Isolation.html">资源隔离</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/JStormMetrics.html">JStorm Metrics</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/HealthCheck.html">Supervisor自检</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/JStorm-on-Yarn.html">JStorm-on-Yarn</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/ClusterHA.html">同城灾备&异地灾备</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/BlobStore.html">BlobStore</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/SupervisorWorker.html">生成worker列表算法</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/DynamicAdjustLog.html">动态调整日志</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- FAQ -->
+            <li class="hidden-sm "><a href="/FAQ_cn/">FAQ</a></li>
+
+
+
+            <!-- Community -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">社区 <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Community/Email.html">Email List</a></li>
+                  
+                  <li class=""><a href="/Community/Committers.html">Committer List</a></li>
+                  
+                  <li class=""><a href="/Community/Events-Meetups.html">Events and Meetups</a></li>
+                  
+                  <li class=""><a href="/Community/Issues.html">Track issues</a></li>
+                  
+                  <li class=""><a href="/Community/JStormUsers.html">JStorm User List</a></li>
+                  
+              </ul>
+            </li>
+
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Language <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class=""><a href="/index.html">English</a></li>
+                  <li class=""><a href="/index_cn.html">中文</a></li>
+
+              </ul>
+            </li>
+          </ul>          
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container -->
+    </nav>
+
+
+    
+
+    <!-- Main content. -->
+    <div class="container">
+      
+      <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<div class="row">
+
+
+  <!-- Sub Navigation -->
+  <div class="col-sm-3">
+    <ul id="sub-nav">
+      
+      
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/index.html" class="">Advanced Usage</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/API.html" class="">API介绍</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/API/Grouping.html" class="">Grouping 介绍</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/API/IBasicBolt.html" class="">IBasicBolt 介绍</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Theory.html" class="">Theory</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Theory/Acker.html" class="">Acker 原理</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Plugins.html" class="">Plugins</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Plugins/Flux.html" class="">Flux 插件</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Plugins/Hdfs.html" class="">HDFS 插件</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined.html" class="">User-Defined-API</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined/Alarm.html" class="">自定义报错</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined/Log.html" class="">自定义日志</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined/Metrics.html" class="">自定义监控</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined/Scheduler.html" class="">自定义调度</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/DynamicAdjust.html" class="">动态变更</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/DynamicAdjust/Configuration.html" class="">动态更新配置</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/DynamicAdjust/Metrics.html" class="">动态调整Metrics</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/DynamicAdjust/Parallel.html" class="">动态调整并发</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/SQL.html" class="">SQL-on-JStorm</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/SubmitTopology.html" class="">API 提交任务</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/BackPressure.html" class="">限流控制/反压</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Window.html" class="active">Window Framework</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/PerformanceTuning.html" class="">性能优化</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/BlobStore.html" class="">BlobStore</a>
+          
+        </li>
+      
+    </ul>
+  </div>
+  <!-- Main -->
+  <div class="col-sm-9">
+    <!-- Top anchor -->
+    <a href="#top"></a>
+
+    <div class="text">
+      <!-- Main heading -->
+      <h1>How to use Window Framework?</h1>
+
+      <!-- Content -->
+      <ul id="markdown-toc">
+  <li><a href="#概要" id="markdown-toc-概要">概要</a>    <ul>
+      <li><a href="#滚动窗口tumbling-window" id="markdown-toc-滚动窗口tumbling-window">滚动窗口（Tumbling Window）</a></li>
+      <li><a href="#滑动窗口sliding-window" id="markdown-toc-滑动窗口sliding-window">滑动窗口（Sliding Window）</a></li>
+    </ul>
+  </li>
+  <li><a href="#window-配置" id="markdown-toc-window-配置">Window 配置</a></li>
+  <li><a href="#tuple-timestamp" id="markdown-toc-tuple-timestamp">Tuple timestamp</a></li>
+  <li><a href="#watermarks" id="markdown-toc-watermarks">Watermarks</a></li>
+  <li><a href="#window-状态管理" id="markdown-toc-window-状态管理">Window 状态管理</a></li>
+</ul>
+
+<h2 id="概要">概要</h2>
+<p>在流式计算中我们经常需要以时间或者数据量将无界的数据划分成一份份有限的集合，然后以这个集合为维度进行操作。比如我们会计算过去1个小时交易额TOP 10的天猫卖家，这时我会按照交易事件发生的时间将交易事件划分成到某个事件集合当中去，每个集合的大小是1个小时，然后计算每一个集合的TOP10。在流式计算中，这类的集合通常我们称之为Window。有了Window概念后，我们可以很方便的做aggregations, joins, pattern matching……</p>
+
+<p>Apache Storm/Jstorm 目前定义了自己的一套Window逻辑，并对Window定义及操作进行了上层抽象。我们完全可以根据以下两个参数定义一个Window:</p>
+
+<pre><code>Window length： 可以用时间或者数量来定义窗口大小
+Sliding interval： 窗口滑动的间隔
+Storm/Jstorm： 支持滚动窗口和滑动窗口，这些窗口都可以基于time或者event count去定义。
+</code></pre>
+
+<h3 id="滚动窗口tumbling-window">滚动窗口（Tumbling Window）</h3>
+<p>每个Tuple只能属于其中一个滚动窗口，一个Tuple不能同时是两个或者两个以上窗口的元素。比如下面我们以消息到达的时间来划分成一个个滚动窗口，窗口大小是5秒:</p>
+
+<p>第一个窗口w1包含的是0~5th到达的数据，第二窗口w2包含的是5~10th秒到达的数据，第三个窗口包含的是10~15th秒到达的数据。每个窗口每隔5秒被计算，窗口和窗口直接没有重叠。</p>
+
+<h3 id="滑动窗口sliding-window">滑动窗口（Sliding Window）</h3>
+<p>tuples被划分到一个个滑动窗口，窗口滑动的间隔是sliding interval。每个窗口间会有重叠，重叠部分的tuple可以先后属于前后两个窗口。比如下面我们以事件处理时间划分滑动窗口，窗口大小是10秒，滑动间隔是5秒：</p>
+
+<p>第一个窗口w1包含的是0~10th到达的数据，第二窗口w2包含的是5~15th秒到达的数据。消息时间e3~e6都是窗口w1和w2的一部分。在15th秒时，窗口w2会被计算，这时候e1 e2的数据会会过期，会从队列中移除。</p>
+
+<h2 id="window-配置">Window 配置</h2>
+<p>Storm支持以时间、数量或者以两者混合的方式来定义窗口带下及窗口滑动间隔。</p>
+
+<p>Storm抽象了Window Bolt的接口 IWindowedBolt ：</p>
+
+<pre><code>public interface IWindowedBolt extends IComponent {
+void prepare(Map stormConf, TopologyContext context, OutputCollector collector);
+/**
+* Process tuples falling within the window and optionally emit 
+* new tuples based on the tuples in the input window.
+*/
+void execute(TupleWindow inputWindow);
+void cleanup();
+}
+</code></pre>
+
+<p>每当窗口滑动一次，execute方法就是被调用一次。保证节点处理的窗口一定是当前窗口，当前窗口包含的数据都是当前应该被计算的Tuples。Bolt compoent除了需要继承IWindowedBolt接口外，还需要继承BaseWindowedBolt，该class定义了创建窗口的api函数：</p>
+
+<pre><code>/* 
+ * Tuple count based sliding window that slides after slidingInterval number of tuples 
+ */
+withWindow(Count windowLength, Count slidingInterval)
+/* 
+ * Tuple count based window that slides with every incoming tuple 
+ */
+withWindow(Count windowLength)
+/* 
+ * Tuple count based sliding window that slides after slidingInterval time duration 
+ */
+withWindow(Count windowLength, Duration slidingInterval)
+/* 
+ * Time duration based sliding window that slides after slidingInterval time duration 
+ */
+withWindow(Duration windowLength, Duration slidingInterval)
+/* 
+ * Time duration based window that slides with every incoming tuple 
+ */
+withWindow(Duration windowLength)
+/* 
+ * Time duration based sliding window that slides after slidingInterval number of tuples 
+ */
+withWindow(Duration windowLength, Count slidingInterval)
+/* 
+ * Count based tumbling window that tumbles after the specified count of tuples 
+ */
+withTumblingWindow(BaseWindowedBolt.Count count)
+/* 
+ * Time duration based tumbling window that tumbles after the specified time duration 
+ */
+withTumblingWindow(BaseWindowedBolt.Duration duration)
+</code></pre>
+
+<p>用户自己创建的bolt只要继续上述窗口class后，其他api都不需要变动什么，只要将原先以一个tuple为单位的处理逻辑改成以一个窗口为单位的处理逻辑就可以了。</p>
+
+<pre><code>public class SlidingWindowBolt extends BaseWindowedBolt {
+   private OutputCollector collector;
+   @Override
+   public void prepare(Map stormConf, TopologyContext context, OutputCollector collector){
+       this.collector = collector;
+   }
+   @Override
+   public void execute(TupleWindow inputWindow) {
+     for(Tuple tuple: inputWindow.get()) {
+       // do the windowing computation
+       ...
+     }
+     collector.emit(new Values(computedValue));
+   }
+}
+</code></pre>
+
+<h2 id="tuple-timestamp">Tuple timestamp</h2>
+
+<p>在窗口执行过程中每个tuple对应一个时间戳，默认情况下Window中涉及的时间都是指当前消息处理时间，这时候每个tuple对应的时间戳是通过System.currentTime()生成的；但Storm/Jstorm 以支持以消息本身的时间（event time）来定义窗口、执行窗口操作，这时候每个tuple必须携带一个时间戳，且消息携带的时间戳必须以预设好的字段来标识。比如我们在创建topology时，通过api设置好这个字段：</p>
+
+<pre><code>/**
+* Specify the tuple field that represents the timestamp as a long value. If this field
+* is not present in the incoming tuple, an {@link IllegalArgumentException} will be thrown.
+*
+* @param fieldName the name of the field that contains the timestamp
+*/
+public BaseWindowedBolt withTimestampField(String fieldName)
+</code></pre>
+
+<p>比如我们设置进去的是“ts”。那么在core里头会通过调用</p>
+
+<pre><code>long ts = input.getLongByField("ts")
+</code></pre>
+
+<p>来获取消息本身的时间戳。</p>
+
+<h2 id="watermarks">Watermarks</h2>
+<p>当用户的处理节点是通过基于Event Time的时间窗口来处理数据时，它必须在确定所有属于该时间窗口的消息全部流入操作节点后才能开始数据处理。但是由于消息可能是乱序的，所以操作节点无法直接确认何时所有属于该时间窗口的消息全部流入此操作符。这时候storm以和flink一样，引入了WaterMark的概念。WaterMark本身也是一条消息，包含一个时间戳，Storm使用WaterMark标记所有小于该时间戳的消息都已流入，Storm会会根据已经流入该节点的消息定时生成一个包含该时间戳的WaterMark，插入到消息流中输出到Storm流处理系统中，Storm操作符按照时间窗口缓存所有流入的消息，当bolt节点处理到     WaterMark时，它对所有小于该WaterMark时间戳的时间窗口数据进行处理并发送到下一个处理节点。</p>
+
+<p>为了保证能够处理所有属于某个时间窗口的消息，bolt节点必须等到大于这个时间窗口的WaterMark之后才能开始对该时间窗口的消息进行处理，相对于基于消息处理时间的时间窗口，基于event time的窗口需要占用更多内存，且会直接影响消息处理的延迟时间。对此，一个可能的优化措施是，对于聚合类的操作，我们建议提前对部分消息进行聚合操作，当有属于该时间窗口的新消息流入时，基于之前的部分聚合结果继续计算，这样的话，只需缓存中间计算结果即可，无需缓存该时间窗口的所有消息。</p>
+
+<p>storm在确认收到了上游消息的前提下，会定时（默认是1s）产生一条WaterMark消息。这个定时器可以通过以下api配置：</p>
+
+<pre><code>/**
+* Specify the watermark event generation interval. Watermark events
+* are used to track the progress of time
+*
+* @param interval the interval at which watermark events are generated
+*/
+public BaseWindowedBolt withWatermarkInterval(Duration interval)
+</code></pre>
+
+<p>WaterMark中时间戳生成是根据bolt节点中已经上游各个流最新的tuple的最小时间戳减去lag。这里的lag我们可以理解为允许消息乱序的程度。比如我们的waterMark时间戳是 09:00:00, lag设置为10秒。如果一条消息过来，他的时间戳大于09:00:10，那么这说明乱序超过了容忍范围，这时候这条消息会被丢到。如果来的一条消息本身的时间戳时候09:00:05，说明这条消息不会被处理，但是会被缓存，等到下一条WaterMark生成之后，才会被处理。lag可以调用以下api进行配置：</p>
+
+<pre><code>/**
+* Specify the maximum time lag of the tuple timestamp in millis. The tuple timestamps
+* cannot be out of order by more than this amount.
+*
+* @param duration the max lag duration
+*/
+public BaseWindowedBolt withLag(Duration duration)
+</code></pre>
+
+<p>首先我们需要再次明确一点，一旦bolt节点接到一条WaterMark之后，他会将缓存在节点内部小于这个waterMark时间戳的窗口都进行处理。我们这里举一个例子来说明Storm/JStorm 是怎么利用WaterMark的概念来处理消息乱序的问题：</p>
+
+<p>定义一个Window： Window length = 20s（窗口大小）, sliding interval = 10s（滑动间隔）, watermark emit frequency = 1s（发送频率）, max lag = 5s（容忍的乱序程度, 当前的时间是 = 09:00:00</p>
+
+<p>Tuples e1(6:00:03), e2(6:00:05), e3(6:00:07), e4(6:00:18), e5(6:00:26), e6(6:00:36) 在 9:00:00 and 9:00:01期间被bolt节点接收到</p>
+
+<p>这时09:00:01会定时发送一条waterMark消息，该消息的时间戳为 watermark w1 = 6:00:31，这个时间戳计算是当前流最新的tuple时间戳-lag，即6:00:36-5=6:00:31.由于这时候bolt节点接收到了09:00:01发送的waterMark。这时候bolt节点会开始计算所有小于该时间戳的窗口，即3个窗口：</p>
+
+<pre><code>   w1  5:59:50 - 06:00:10 with tuples e1, e2, e3
+   w2  6:00:00 - 06:00:20 with tuples e1, e2, e3, e4
+   w3  6:00:10 - 06:00:30 with tuples e4, e5
+</code></pre>
+
+<p>e6不在这个waterMark处理，被暂时缓存起来，等待下一个waterMark接收时处理。接下来：</p>
+
+<p>Tuples e7(8:00:25), e8(8:00:26), e9(8:00:27), e10(8:00:39) 在 9:00:01 and 9:00:02 期间被bolt节点接收到</p>
+
+<p>这时09:00:02会定时发送一条waterMark消息，该消息的时间戳为 watermark w1 = 6:00:34.由于这时候bolt节点接收到了09:00:02发送的waterMark。这时候bolt节点会开始计算所有小于该时间戳的窗口，即3个窗口：</p>
+
+<pre><code>   w4 6:00:20 - 06:00:40 with tuples e5, e6 (from earlier batch)
+   w5 6:00:30 - 06:00:50 with tuple e6 (from earlier batch)。
+   w6 8:00:10 - 08:00:30 with tuples e7, e8, e9
+</code></pre>
+
+<p>e10 不在这个waterMark处理，被暂时缓存起来，等待下一个waterMark接收时处理。</p>
+
+<h2 id="window-状态管理">Window 状态管理</h2>
+
+<pre><code> 由于window处理节点的executor处理消息是以一个窗口为维度，如果其中窗口中的一条tuple处理失败，可能就会造成整个窗口数据replay。所以storm做了状态管理在，支持将处理window内每一个元素计算完，做状态备份。一旦窗口处理失败，可以从上一次成功处理的状态恢复。这一点如果大家感兴趣可以去了解下。Jstorm目前每个Topology有个TopologyMaster，可以复制整个拓扑的状态管理，所以   Jstorm目前做的状态管理机制比storm好太多了。而且这套状态管理可以很好的支持exactly once/at least once，性能也很赞。所以目前基于window的状态管理我们不推荐利用storm的这套机制。所以这里就不介绍了。后面我们Jstorm的状态管理也会支持对window api的支持。
+</code></pre>
+
+      
+      <div class="footer">
+      Google Groups: <a target="_blank" href="https://groups.google.com/forum/#!forum/jstorm-user">jstorm-user</a>, QQ Groups: 228374502
+      </p>
+ 
+      发现错误？想参与编辑？
+      <a href="https://github.com/alibaba/jstorm/edit/master/docs/jstorm-doc/ProgrammingGuide_cn/AdvancedUsage/Window.md" target="_blank">
+        在 Github 上编辑此页！
+      </a>
+  </div>
+    </div>
+  </div>
+
+  
+</div>
+
+    </div><!-- /.container -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="//cdn.bootcss.com/jquery/1.11.2/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="//cdn.bootcss.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <script src="//cdn.bootcss.com/anchor-js/3.1.0/anchor.min.js"></script>
+    <script src="/js/jstorm.js"></script>
+
+    <!-- Google Analytics -->
+    <!-- script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-52545728-1', 'auto');
+      ga('send', 'pageview');
+    </script -->
+
+    <!-- Baidu Analytics -->
+    <script>
+      var _hmt = _hmt || [];
+      (function() {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?835985ad7943d8c24bc3c1f155b7d4a2";
+        var s = document.getElementsByTagName("script")[0]; 
+        s.parentNode.insertBefore(hm, s);
+      })();
+    </script>
+
+
+    <!-- Disqus -->
+    <!--
+     -->
+  </body>
+</html>

@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>JStorm 文档 : Flux 插件, 通过配置产生拓扑</title>
+    <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon">
+    <link rel="icon" href="/img/favicon.png" type="image/x-icon">
+
+    <!-- Bootstrap -->
+    <link href="//cdn.bootcss.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/jstorm.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+    <link rel="stylesheet" href="/css/codetabs.css">
+    
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    
+    <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<!--
+
+
+
+
+-->
+    <!-- Top navbar. -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <!-- The logo. -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <div class="navbar-logo">
+            <a href="/"><img alt="jstorm" src="/img/jstorm-logo.png"></a>
+          </div>
+        </div><!-- /.navbar-header -->
+
+        <!-- The navigation links. -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            <!-- Downloads -->
+            <li class="hidden-sm "><a href="/Downloads.html">Downloads</a></li>
+
+            <!-- Performance -->
+            <li class="hidden-sm "><a href="/Performance_cn">Performance</a></li>
+
+            <!-- QuickStart -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">QuickStart <span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                
+                
+                <li class=""><a href="/QuickStart_cn/BasicConception.html">5分钟基础概念(新手第一篇)</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Example.html">入门Example</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Deploy/index.html">安装部署</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Upgrade/index.html">升级</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/UpgradeFromStorm.html">从Apache Storm升级到JStorm</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Compile.html">编译JStorm</a></li>
+                
+              </ul>
+            </li>
+
+            <!-- ProgrammingGuide -->
+            <li class="dropdown active">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">ProgrammingGuide <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/DebugLocalApp.html">本地调试</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/StreamSplitJoin.html">数据流分流合并</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/Transaction/index.html">事务</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/Trident/index.html">Trident</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/AdvancedUsage/index.html">Advanced Usage</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- Maintenance -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">运维 <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Maintenance_cn/Configuration.html">配置注解</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/ConfigurationAutomacticSync.html">自动同步配置文件</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/Isolation.html">资源隔离</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/JStormMetrics.html">JStorm Metrics</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/HealthCheck.html">Supervisor自检</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/JStorm-on-Yarn.html">JStorm-on-Yarn</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/ClusterHA.html">同城灾备&异地灾备</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/BlobStore.html">BlobStore</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/SupervisorWorker.html">生成worker列表算法</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/DynamicAdjustLog.html">动态调整日志</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- FAQ -->
+            <li class="hidden-sm "><a href="/FAQ_cn/">FAQ</a></li>
+
+
+
+            <!-- Community -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">社区 <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Community/Email.html">Email List</a></li>
+                  
+                  <li class=""><a href="/Community/Committers.html">Committer List</a></li>
+                  
+                  <li class=""><a href="/Community/Events-Meetups.html">Events and Meetups</a></li>
+                  
+                  <li class=""><a href="/Community/Issues.html">Track issues</a></li>
+                  
+                  <li class=""><a href="/Community/JStormUsers.html">JStorm User List</a></li>
+                  
+              </ul>
+            </li>
+
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Language <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class=""><a href="/index.html">English</a></li>
+                  <li class=""><a href="/index_cn.html">中文</a></li>
+
+              </ul>
+            </li>
+          </ul>          
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container -->
+    </nav>
+
+
+    
+
+    <!-- Main content. -->
+    <div class="container">
+      
+      <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<div class="row">
+
+
+  <!-- Sub Navigation -->
+  <div class="col-sm-3">
+    <ul id="sub-nav">
+      
+      
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/index.html" class="">Advanced Usage</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/API.html" class="">API介绍</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/API/Grouping.html" class="">Grouping 介绍</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/API/IBasicBolt.html" class="">IBasicBolt 介绍</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Theory.html" class="">Theory</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Theory/Acker.html" class="">Acker 原理</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Plugins.html" class="">Plugins</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Plugins/Flux.html" class="active">Flux 插件</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Plugins/Hdfs.html" class="">HDFS 插件</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined.html" class="">User-Defined-API</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined/Alarm.html" class="">自定义报错</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined/Log.html" class="">自定义日志</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined/Metrics.html" class="">自定义监控</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined/Scheduler.html" class="">自定义调度</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/DynamicAdjust.html" class="">动态变更</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/DynamicAdjust/Configuration.html" class="">动态更新配置</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/DynamicAdjust/Metrics.html" class="">动态调整Metrics</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/DynamicAdjust/Parallel.html" class="">动态调整并发</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/SQL.html" class="">SQL-on-JStorm</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/SubmitTopology.html" class="">API 提交任务</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/BackPressure.html" class="">限流控制/反压</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Window.html" class="">Window Framework</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/PerformanceTuning.html" class="">性能优化</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/BlobStore.html" class="">BlobStore</a>
+          
+        </li>
+      
+    </ul>
+  </div>
+  <!-- Main -->
+  <div class="col-sm-9">
+    <!-- Top anchor -->
+    <a href="#top"></a>
+
+    <div class="text">
+      <!-- Main heading -->
+      <h1>Flux 插件, 通过配置产生拓扑</h1>
+
+      <!-- Content -->
+      <ul id="markdown-toc">
+  <li><a href="#flux" id="markdown-toc-flux">flux</a>    <ul>
+      <li><a href="#定义" id="markdown-toc-定义">定义</a></li>
+      <li><a href="#flux生成背景" id="markdown-toc-flux生成背景">flux生成背景</a></li>
+      <li><a href="#关于" id="markdown-toc-关于">关于</a></li>
+      <li><a href="#flux特点" id="markdown-toc-flux特点">Flux特点</a></li>
+      <li><a href="#用法" id="markdown-toc-用法">用法</a>        <ul>
+          <li><a href="#编译flux" id="markdown-toc-编译flux">编译Flux</a></li>
+          <li><a href="#发布和提交flux-topology" id="markdown-toc-发布和提交flux-topology">发布和提交Flux topology</a></li>
+          <li><a href="#命令行选项" id="markdown-toc-命令行选项">命令行选项</a></li>
+          <li><a href="#具体实例" id="markdown-toc-具体实例">具体实例</a></li>
+        </ul>
+      </li>
+      <li><a href="#yaml-配置" id="markdown-toc-yaml-配置">YAML 配置</a></li>
+      <li><a href="#yaml属性替换" id="markdown-toc-yaml属性替换">yaml属性替换</a>        <ul>
+          <li><a href="#环境变量的替换" id="markdown-toc-环境变量的替换">环境变量的替换</a></li>
+        </ul>
+      </li>
+      <li><a href="#实例对象" id="markdown-toc-实例对象">实例对象</a>        <ul>
+          <li><a href="#构造函数-引用-属性和方法" id="markdown-toc-构造函数-引用-属性和方法">构造函数, 引用, 属性和方法</a></li>
+          <li><a href="#支持java类型-enum" id="markdown-toc-支持java类型-enum">支持java类型 <code>enum</code></a></li>
+        </ul>
+      </li>
+      <li><a href="#topology-config" id="markdown-toc-topology-config">Topology Config</a></li>
+    </ul>
+  </li>
+  <li><a href="#flux兼容之前已经创建好的拓扑" id="markdown-toc-flux兼容之前已经创建好的拓扑">Flux兼容之前已经创建好的拓扑</a></li>
+  <li><a href="#yaml-dsl创建拓扑" id="markdown-toc-yaml-dsl创建拓扑">YAML DSL创建拓扑</a>    <ul>
+      <li><a href="#spouts-and-bolts-配置" id="markdown-toc-spouts-and-bolts-配置">Spouts and Bolts 配置</a></li>
+      <li><a href="#数据流及grouping方式的配置" id="markdown-toc-数据流及grouping方式的配置">数据流及Grouping方式的配置</a>        <ul>
+          <li><a href="#自定义-groupings" id="markdown-toc-自定义-groupings">自定义 Groupings</a></li>
+        </ul>
+      </li>
+      <li><a href="#多个yaml文件" id="markdown-toc-多个yaml文件">多个.yaml文件</a></li>
+      <li><a href="#basic-word-count-例子" id="markdown-toc-basic-word-count-例子">Basic Word Count 例子</a></li>
+      <li><a href="#micro-batching-trident-api-support" id="markdown-toc-micro-batching-trident-api-support">Micro-Batching (Trident) API Support</a></li>
+    </ul>
+  </li>
+</ul>
+
+<h1 id="flux">flux</h1>
+<p>flux是帮助用户更方便创建及部署Apache Storm流式计算拓扑的编程框架。</p>
+
+<h2 id="定义">定义</h2>
+<p><strong>flux</strong> |fləks| 发音</p>
+
+<ol>
+  <li>流动</li>
+  <li>不断变化</li>
+  <li>物理上称流动率</li>
+  <li>助熔剂</li>
+</ol>
+
+<h2 id="flux生成背景">flux生成背景</h2>
+<p>当拓扑里头的配置是hard-coded，其实很糟糕。一旦我们需要改变拓扑里头的相应配置，我们就必须重新编译和打包。</p>
+
+<h2 id="关于">关于</h2>
+<p>Flux是帮助创建和部署storm拓扑的编程框架及通用组件。</p>
+
+<p>你之前创建拓扑的时候老是会写这样一段代码?:</p>
+
+<pre><code class="language-java">
+public static void main(String[] args) throws Exception {
+    // logic to determine if we're running locally or not...
+    // create necessary config options...
+    boolean runLocal = shouldRunLocal();
+    if(runLocal){
+        LocalCluster cluster = new LocalCluster();
+        cluster.submitTopology(name, conf, topology);
+    } else {
+        StormSubmitter.submitTopology(name, conf, topology);
+    }
+}
+</code></pre>
+
+<p>你有没有想过用以下一条语句就能代替上面，直接创建及提交一个任务呢？</p>
+
+<pre><code class="language-bash">storm jar mytopology.jar com.alibaba.jstorm.flux.Flux --local config.yaml
+</code></pre>
+
+<p>或者:</p>
+
+<pre><code class="language-bash">storm jar mytopology.jar com.alibaba.jstorm.flux.Flux --remote config.yaml
+</code></pre>
+
+<p>另外一个痛点就是我们需要在代码里头自己去实现拓扑图构造，即每个spout/bolt的输入和输出.一旦节点有任何变化的时候，我们就得重新编译、打包再提交。
+所以Flux的存在，就是为了避免上述重复性工作，使得你完全可以依靠外部文件来定义拓扑图及配置你的拓扑。</p>
+
+<h2 id="flux特点">Flux特点</h2>
+
+<ul>
+  <li>更加简单的创建和部署拓扑，使得你的拓扑代码里头尽量不要嵌入配置信息；</li>
+  <li>兼容在此之前你已经创建好的拓扑代码；</li>
+  <li>支持用灵活的.yaml文件来定义storm的api函数(Spouts/Bolts)；</li>
+  <li>.yaml文件也支持对大部分storm组件，storm-kafka, storm-hdfs, storm-hbase等等（jstorm后期会逐渐支持）；</li>
+  <li>支持多语言；</li>
+  <li>支持在日常/预发/线上环境自动切换(类似于 Maven <code>${variable.name}</code> 替换)；</li>
+</ul>
+
+<h2 id="用法">用法</h2>
+
+<p>为了使用Flux， 你需要在你的拓扑pom文件依赖它，一起打包；然后通过.yaml配置文件来定义的拓扑。（具体.yaml配置参数下面会介绍）</p>
+
+<h3 id="编译flux">编译Flux</h3>
+<p>如果你想要编译源码并且跑下单测的话，你需要在本机安装：</p>
+
+<ul>
+  <li>Python 2.6.x or later</li>
+  <li>Node.js 0.10.x or later</li>
+</ul>
+
+<h4 id="编译源码并且需要跑单测">编译源码，并且需要跑单测:</h4>
+
+<pre><code>mvn clean install
+</code></pre>
+
+<h4 id="编译源码但是避免跑单测">编译源码，但是避免跑单测:</h4>
+<pre><code>mvn clean install -DskipTests=true
+</code></pre>
+
+<p>备注： 如果你想在分布式环境下使用Flux来创建拓扑的话，你仍然需要在集群里头安装python。</p>
+
+<h4 id="编译源码且需要跑集成测试">编译源码，且需要跑集成测试:</h4>
+
+<pre><code>mvn clean install -DskipIntegration=false
+</code></pre>
+
+<h4 id="pom文件依赖flux">pom文件依赖flux</h4>
+
+<pre><code>&lt;dependency&gt;
+    &lt;groupId&gt;com.alibaba.jstorm&lt;/groupId&gt;
+    &lt;artifactId&gt;flux-core&lt;/artifactId&gt;
+    &lt;version&gt;${jstorm.version}&lt;/version&gt;
+&lt;/dependency&gt;
+</code></pre>
+
+<h4 id="创建一个依赖flux的拓扑的pom文件示例">创建一个依赖flux的拓扑的pom文件示例</h4>
+<p>你可以用maven shade或者maven assembly插件来打包，我们这里就以maven shade举例说明：</p>
+
+<pre><code>&lt;!-- include Flux and user dependencies in the shaded jar --&gt;
+&lt;dependencies&gt;
+    &lt;!-- Flux include --&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;com.alibaba.jstorm&lt;/groupId&gt;
+        &lt;artifactId&gt;flux-core&lt;/artifactId&gt;
+        &lt;version&gt;${jstorm.version}&lt;/version&gt;
+    &lt;/dependency&gt;
+
+    &lt;!-- add user dependencies here... --&gt;
+
+&lt;/dependencies&gt;
+&lt;!-- create a fat jar that includes all dependencies --&gt;
+&lt;build&gt;
+    &lt;plugins&gt;
+        &lt;plugin&gt;
+            &lt;groupId&gt;org.apache.maven.plugins&lt;/groupId&gt;
+            &lt;artifactId&gt;maven-shade-plugin&lt;/artifactId&gt;
+            &lt;version&gt;1.4&lt;/version&gt;
+            &lt;configuration&gt;
+                &lt;createDependencyReducedPom&gt;true&lt;/createDependencyReducedPom&gt;
+            &lt;/configuration&gt;
+            &lt;executions&gt;
+                &lt;execution&gt;
+                    &lt;phase&gt;package&lt;/phase&gt;
+                    &lt;goals&gt;
+                        &lt;goal&gt;shade&lt;/goal&gt;
+                    &lt;/goals&gt;
+                    &lt;configuration&gt;
+                        &lt;transformers&gt;
+                            &lt;transformer
+                                    implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/&gt;
+                            &lt;transformer
+                                    implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"&gt;
+                                &lt;mainClass&gt;com.alibaba.jstorm.flux.Flux&lt;/mainClass&gt;
+                            &lt;/transformer&gt;
+                        &lt;/transformers&gt;
+                    &lt;/configuration&gt;
+                &lt;/execution&gt;
+            &lt;/executions&gt;
+        &lt;/plugin&gt;
+    &lt;/plugins&gt;
+&lt;/build&gt;
+</code></pre>
+
+<h3 id="发布和提交flux-topology">发布和提交Flux topology</h3>
+
+<p>一旦你用flux完成了topology打包，你就可以利用配置文件来跑各种拓扑啦。比如你的jar名称为<code>myTopology-0.1.0-SNAPSHOT.jar</code>， 你可以利用以下
+命令跑本地模式，当然你也可以跑分布式模式。</p>
+
+<pre><code class="language-bash">storm jar myTopology-0.1.0-SNAPSHOT.jar com.alibaba.jstorm.flux.Flux --local my_config.yaml
+
+</code></pre>
+
+<h3 id="命令行选项">命令行选项</h3>
+
+<pre><code>usage: storm jar &lt;my_topology_uber_jar.jar&gt; com.alibaba.jstorm.flux.Flux
+             [options] &lt;topology-config.yaml&gt;
+ -d,--dry-run                 Do not run or deploy the topology. Just
+                              build, validate, and print information about
+                              the topology. 
+ -e,--env-filter              Perform environment variable substitution.
+                              Replace keys identified with `${ENV-[NAME]}`
+                              will be replaced with the corresponding
+                              `NAME` environment value
+ -f,--filter &lt;file&gt;           Perform property substitution. Use the
+                              specified file as a source of properties,
+                              and replace keys identified with {$[property
+                              name]} with the value defined in the
+                              properties file.
+ -i,--inactive                Deploy the topology, but do not activate it.
+ -l,--local                   Run the topology in local mode.
+ -n,--no-splash               Suppress the printing of the splash screen.
+ -q,--no-detail               Suppress the printing of topology details.
+ -r,--remote                  Deploy the topology to a remote cluster.
+ -R,--resource                Treat the supplied path as a classpath
+                              resource instead of a file.
+ -s,--sleep &lt;ms&gt;              When running locally, the amount of time to
+                              sleep (in ms.) before killing the topology
+                              and shutting down the local cluster.
+ -z,--zookeeper &lt;host:port&gt;   When running in local mode, use the
+                              ZooKeeper at the specified &lt;host&gt;:&lt;port&gt;
+                              instead of the in-process ZooKeeper.
+                              (requires Storm 0.9.3 or later) （jstorm暂时不支持）
+</code></pre>
+
+<p><strong>NOTE:</strong> Flux的命令行选项是不和jstorm自身支持的命令行选项冲突的.</p>
+
+<h3 id="具体实例">具体实例</h3>
+
+<pre><code>███████╗██╗     ██╗   ██╗██╗  ██╗
+██╔════╝██║     ██║   ██║╚██╗██╔╝
+█████╗  ██║     ██║   ██║ ╚███╔╝
+██╔══╝  ██║     ██║   ██║ ██╔██╗
+██║     ███████╗╚██████╔╝██╔╝ ██╗
+╚═╝     ╚══════╝ ╚═════╝ ╚═╝  ╚═╝
++-         Apache Storm        -+
++-  data FLow User eXperience  -+
+Version: 0.3.0
+Parsing file: /Users/hsimpson/Projects/donut_domination/storm/shell_test.yaml
+---------- TOPOLOGY DETAILS ----------
+Name: shell-topology
+--------------- SPOUTS ---------------
+sentence-spout[1](com.alibaba.jstorm.flux.spouts.GenericShellSpout)
+---------------- BOLTS ---------------
+splitsentence[1](com.alibaba.jstorm.flux.bolts.GenericShellBolt)
+log[1](com.alibaba.jstorm.flux.wrappers.bolts.LogInfoBolt)
+count[1](com.alibaba.jstorm.testing.TestWordCounter)
+--------------- STREAMS ---------------
+sentence-spout --SHUFFLE--&gt; splitsentence
+splitsentence --FIELDS--&gt; count
+count --SHUFFLE--&gt; log
+--------------------------------------
+Submitting topology: 'shell-topology' to remote cluster...
+</code></pre>
+
+<h2 id="yaml-配置">YAML 配置</h2>
+<p>Flux 拓扑是通过yaml文件描述和定义的，yaml的文件描述应该依次遵循以下规则：</p>
+
+<ol>
+  <li>拓扑名字；</li>
+  <li>定义一些java 对象，可能会在后续定义拓扑过程中被引用，是可选项；</li>
+  <li><strong>二选一</strong> (用DSL描述的拓扑):
+    <ul>
+      <li>一些spouts, 每个spout有唯一的ID；</li>
+      <li>一些bolts， 每个bolt有唯一的ID;</li>
+      <li>一些streams， 这些streams表示在spouts/botls之间的数据流；</li>
+    </ul>
+  </li>
+  <li><strong>或者</strong> (能生成类似 <code>com.alibaba.jstorm.generated.StormTopology</code> 拓扑的jvm class:
+    <ul>
+      <li>由 <code>topologySource</code> 定义.)</li>
+    </ul>
+  </li>
+</ol>
+
+<p>这里是一个用yaml DSL描述的简单的wordcount topology例子：</p>
+
+<pre><code>name: "yaml-topology"
+config:
+  topology.workers: 1
+
+# spout definitions
+spouts:
+  - id: "spout-1"
+    className: "com.alibaba.jstorm.testing.TestWordSpout"
+    parallelism: 1
+
+# bolt definitions
+bolts:
+  - id: "bolt-1"
+    className: "com.alibaba.jstorm.testing.TestWordCounter"
+    parallelism: 1
+  - id: "bolt-2"
+    className: "com.alibaba.jstorm.flux.wrappers.bolts.LogInfoBolt"
+    parallelism: 1
+
+#stream definitions
+streams:
+  - name: "spout-1 --&gt; bolt-1" # name isn't used (placeholder for logging, UI, etc.)
+    from: "spout-1"
+    to: "bolt-1"
+    grouping:
+      type: FIELDS
+      args: ["word"]
+
+  - name: "bolt-1 --&gt; bolt2"
+    from: "bolt-1"
+    to: "bolt-2"
+    grouping:
+      type: SHUFFLE
+</code></pre>
+
+<h2 id="yaml属性替换">yaml属性替换</h2>
+
+<p>开发人员经常希望能轻松切换一些的配置，如对主机名、端口和并行参数等配置更改，在部署拓扑时对开发环境/线上环境进行自动切换……这都可以通过使用单独
+的YAML配置完成。</p>
+
+<p>Flux允许你把需要经常变更的参数写到 <code>.properties</code>文件里头，使得<code>.yaml</code> 文件的内容在被解析之前会被<code>.properties</code>文件内容替换。使用这个功能
+你只要在命令行选项<code>--filter</code>后面加上指定<code>.properties</code>文件。就像这样一样：</p>
+
+<pre><code class="language-bash">storm jar myTopology-0.1.0-SNAPSHOT.jar com.alibaba.jstorm.flux.Flux --local my_config.yaml --filter dev.properties
+</code></pre>
+<p>其中<code>dev.properties</code> 文件内容如下:</p>
+
+<pre><code class="language-properties">kafka.zookeeper.hosts: localhost:2181
+</code></pre>
+
+<p>你可以根据在<code>.yaml</code> 文件中通过 <code>${}</code> 指定的key值，在<code>.properties</code>文件中找到对应的value，并完成替换:</p>
+
+<pre><code class="language-yaml">  - id: "zkHosts"
+    className: "com.alibaba.jstorm.kafka.ZkHosts"
+    constructorArgs:
+      - "${kafka.zookeeper.hosts}"
+</code></pre>
+
+<p>在上面的例子中, Flux 用 <code>localhost:2181</code> 替换了.yaml文件 <code>${kafka.zookeeper.hosts}</code> 的值.</p>
+
+<h3 id="环境变量的替换">环境变量的替换</h3>
+<p>Flux 也支持对环境变量的更改及替换. 比如系统拥有环境变量 <code>ZK_HOSTS</code> , 如果你想用同样的方式更改该变量的值得话，那么你需要在.yaml按照如下的
+语法引用该变量：</p>
+<pre><code>${ENV-ZK_HOSTS}
+</code></pre>
+
+<h2 id="实例对象">实例对象</h2>
+<p>我们可以用配置文件的方式生成一些对象，这些对象可能会被spouts/bolts应用。利用配置来生成实例对象的方式类似于Spring beans。
+每个实例对象配置主要包括了唯一性ID以及className。我们想创建<code>com.alibaba.jstorm.kafka.StringScheme</code> 实例，同时该class有无参数构造
+函数的话，那么我们可以在.yaml文件这么定义：</p>
+<pre><code class="language-yaml">components:
+  - id: "stringScheme"
+    className: "com.alibaba.jstorm.kafka.StringScheme"
+</code></pre>
+
+<h3 id="构造函数-引用-属性和方法">构造函数, 引用, 属性和方法</h3>
+
+<h4 id="构造函数">构造函数</h4>
+<p>构造函数的形参可以通过<code>contructorArgs</code>来指定，<code>contructorArgs</code>是一个list，将会被传递到构造函数用来创建对象。比如下面的创建一个zkHosts
+对象：</p>
+
+<pre><code class="language-yaml">  - id: "zkHosts"
+    className: "com.alibaba.jstorm.kafka.ZkHosts"
+    constructorArgs:
+      - "localhost:2181"
+      - true
+</code></pre>
+
+<h4 id="引用">引用</h4>
+<p>每一个实例对象生成都必须指定一个唯一性ID，这样的话我们就可以在其他实例对象的创建或者调用过程中，利用该ID达到对其对应的实例引用。但是注意的是
+要在对象B中引用A对象的话，那么应该在定义创建B对象的配置文件中，用<code>ref</code> 来标识对象A所对应ID。
+下面的这个例子，就是一个实例对象率先被创建，其ID是<code>"stringScheme"</code> ，过后另外一个对象的构造函数要用到StringScheme作为形参，那么它就需要
+在<code>contructorArgs</code>中用<code>ref</code> 来标识<code>"stringScheme"</code>。</p>
+
+<pre><code class="language-yaml">components:
+  - id: "stringScheme"
+    className: "com.alibaba.jstorm.kafka.StringScheme"
+
+  - id: "stringMultiScheme"
+    className: "com.alibaba.jstorm.spout.SchemeAsMultiScheme"
+    constructorArgs:
+      - ref: "stringScheme" # component with id "stringScheme" must be declared above.
+</code></pre>
+<p><strong>N.B.:</strong> References can only be used after (below) the object they point to has been declared.</p>
+
+<h4 id="属性">属性</h4>
+<p>除了调用构造函数来初始化对象的一些属性以外， Flux还支持用户可以通过配置文件来设置对象属性的值，前提是这些属性都有一个set方法，及该方法都是
+<code>public</code>：</p>
+
+<pre><code class="language-yaml">  - id: "spoutConfig"
+    className: "com.alibaba.jstorm.kafka.SpoutConfig"
+    constructorArgs:
+      # brokerHosts
+      - ref: "zkHosts"
+      # topic
+      - "myKafkaTopic"
+      # zkRoot
+      - "/kafkaSpout"
+      # id
+      - "myId"
+    properties:
+      - name: "forceFromStart"
+        value: true
+      - name: "scheme"
+        ref: "stringMultiScheme"
+</code></pre>
+
+<p>在外面的例子中，首先构造了一个spoutConfig实例，然后Flux会先去该实例查找方法<code>setForceFromStart(boolean b)</code>，如果找到就会把true设置进去；
+如果没有找到，Flux就继续在public属性集中查找<code>forceFromStart</code>属性，找到的话会将true赋予它。
+In the example above, the <code>properties</code> declaration will cause Flux to look for a public method in the <code>SpoutConfig</code> with
+the signature <code>setForceFromStart(boolean b)</code> and attempt to invoke it. If a setter method is not found, Flux will then
+look for a public instance variable with the name <code>forceFromStart</code> and attempt to set its value.</p>
+
+<p>References may also be used as property values.
+备注： 引用的方式也支持在yaml属性替换中使用</p>
+
+<h4 id="配置方法调用">配置方法调用</h4>
+<p>在配置文件中配置对象的一些方法后，就自动会在实例化对象后，马上去调用这些方法。比如你不想通过构造函数的方式或者直接赋值的方式来设置某些属性的话，
+可以自定义一些方法来设置这些属性，这样做可以避免暴露一些属性的名称。</p>
+
+<p>以下就是一个例子用.yaml创建一系列bolts，并在创建完bolt后会主动调用指定的几个方法：</p>
+
+<pre><code class="language-yaml">bolts:
+  - id: "bolt-1"
+    className: "com.alibaba.jstorm.flux.test.TestBolt"
+    parallelism: 1
+    configMethods:
+      - name: "withFoo"
+        args:
+          - "foo"
+      - name: "withNone"
+      # no args needed, so no "args" line
+      - name: "withBar"
+        args:
+          - "bar"
+      - name: "withFooBar"
+        args:
+          - "foo"
+          - "bar"
+</code></pre>
+
+<p>TestBolt 这些方法声明如下:</p>
+
+<pre><code class="language-java">    public void withFoo(String foo);
+    public void withNone(); // method with zero arguments
+    public void withBar(String bar);
+    public void withFooBar(String foo, String bar);
+</code></pre>
+<p>这些方法的形参配置和也支持引用方式的。</p>
+
+<h3 id="支持java类型-enum">支持java类型 <code>enum</code></h3>
+
+<p>比如, <a href="">Storm’s HDFS module</a> 包括了 <code>enum</code>定义:</p>
+
+<pre><code class="language-java">public static enum Units {
+    KB, MB, GB, TB
+}
+</code></pre>
+
+<p>在 <code>com.alibaba.jstorm.hdfs.bolt.rotation.FileSizeRotationPolicy</code> 中有这样的构造函数:</p>
+
+<pre><code class="language-java">public FileSizeRotationPolicy(float count, Units units)
+
+</code></pre>
+<p>那么你可以像下面一样配置，来创建FileSizeRotationPolicy对象</p>
+
+<pre><code class="language-yaml">  - id: "rotationPolicy"
+    className: "com.alibaba.jstorm.hdfs.bolt.rotation.FileSizeRotationPolicy"
+    constructorArgs:
+      - 5.0
+      - MB
+</code></pre>
+
+<p>上面的配置和我们直接通过java代码创建对象的过程是一样的</p>
+
+<pre><code class="language-java">// rotate files when they reach 5MB
+FileRotationPolicy rotationPolicy = new FileSizeRotationPolicy(5.0f, Units.MB);
+</code></pre>
+
+<h2 id="topology-config">Topology Config</h2>
+<p><code>config</code> 是一个<code>com.alibaba.jstorm.Config</code> 对象，类似于Map。当我们提交拓扑的时候，这个config会被传递给
+<code>com.alibaba.jstorm.StormSubmitter</code> 用来提交拓扑。我们可以在配置文件中，这么定义来创建config对象的。</p>
+
+<pre><code class="language-yaml">config:
+  topology.workers: 4
+  topology.max.spout.pending: 1000
+  topology.message.timeout.secs: 30
+</code></pre>
+
+<h1 id="flux兼容之前已经创建好的拓扑">Flux兼容之前已经创建好的拓扑</h1>
+<p>如果你在使用Flux之前，就已经写完了拓扑，那么你仍然还是可以使用Flux来部署/运行的。这种情况下，你仍然可以使用Flux的一些功能，如调用构造函数
+及public方法来创建对象，利用引用传递和利用配置文件来创建Topology Config。</p>
+
+<p>最简单的使用方法就是在你的topology类中定义<code>getTopology()</code>的方法</p>
+
+<pre><code class="language-java">public StormTopology getTopology(Map&lt;String, Object&gt; config)
+</code></pre>
+<p>或者:</p>
+
+<pre><code class="language-java">public StormTopology getTopology(Config config)
+</code></pre>
+
+<p>那么你就可以利用Flux通过配置文件来更新你拓扑的一些配置，就想这样一样:</p>
+
+<pre><code class="language-yaml">name: "existing-topology"
+topologySource:
+  className: "com.alibaba.jstorm.flux.test.SimpleTopology"
+</code></pre>
+<p>当然你可以可以在topology 类中定义其他名称的方法(而不是<code>getTopology</code>)，那么你的配置文件就得这么写：</p>
+
+<pre><code class="language-yaml">name: "existing-topology"
+topologySource:
+  className: "com.alibaba.jstorm.flux.test.SimpleTopology"
+  methodName: "getTopologyWithDifferentMethodName"
+</code></pre>
+
+<p><strong>备注:</strong> 你自定义个那个方法的形参必须是<code>java.util.Map&lt;String, Object&gt;</code> 或者<code>com.alibaba.jstorm.Config</code>, 
+返回值是 <code>com.alibaba.jstorm.generated.StormTopology</code>对象。</p>
+
+<h1 id="yaml-dsl创建拓扑">YAML DSL创建拓扑</h1>
+
+<h2 id="spouts-and-bolts-配置">Spouts and Bolts 配置</h2>
+
+<p>其实Spouts和Bolts的创建是类似于之前提到的实例对象的创建方式，只不过增加了<code>parallelism</code>属性</p>
+
+<p>Shell spout example:</p>
+
+<pre><code class="language-yaml">spouts:
+  - id: "sentence-spout"
+    className: "com.alibaba.jstorm.flux.spouts.GenericShellSpout"
+    # shell spout constructor takes 2 arguments: String[], String[]
+    constructorArgs:
+      # command line
+      - ["node", "randomsentence.js"]
+      # output fields
+      - ["word"]
+    parallelism: 1
+</code></pre>
+
+<p>Kafka spout example:</p>
+
+<pre><code class="language-yaml">components:
+  - id: "stringScheme"
+    className: "com.alibaba.jstorm.kafka.StringScheme"
+
+  - id: "stringMultiScheme"
+    className: "com.alibaba.jstorm.spout.SchemeAsMultiScheme"
+    constructorArgs:
+      - ref: "stringScheme"
+
+  - id: "zkHosts"
+    className: "com.alibaba.jstorm.kafka.ZkHosts"
+    constructorArgs:
+      - "localhost:2181"
+
+# Alternative kafka config
+#  - id: "kafkaConfig"
+#    className: "com.alibaba.jstorm.kafka.KafkaConfig"
+#    constructorArgs:
+#      # brokerHosts
+#      - ref: "zkHosts"
+#      # topic
+#      - "myKafkaTopic"
+#      # clientId (optional)
+#      - "myKafkaClientId"
+
+  - id: "spoutConfig"
+    className: "com.alibaba.jstorm.kafka.SpoutConfig"
+    constructorArgs:
+      # brokerHosts
+      - ref: "zkHosts"
+      # topic
+      - "myKafkaTopic"
+      # zkRoot
+      - "/kafkaSpout"
+      # id
+      - "myId"
+    properties:
+      - name: "forceFromStart"
+        value: true
+      - name: "scheme"
+        ref: "stringMultiScheme"
+
+config:
+  topology.workers: 1
+
+# spout definitions
+spouts:
+  - id: "kafka-spout"
+    className: "com.alibaba.jstorm.kafka.KafkaSpout"
+    constructorArgs:
+      - ref: "spoutConfig"
+
+</code></pre>
+
+<p>Bolt Examples:</p>
+
+<pre><code class="language-yaml"># bolt definitions
+bolts:
+  - id: "splitsentence"
+    className: "com.alibaba.jstorm.flux.bolts.GenericShellBolt"
+    constructorArgs:
+      # command line
+      - ["python", "splitsentence.py"]
+      # output fields
+      - ["word"]
+    parallelism: 1
+    # ...
+
+  - id: "log"
+    className: "com.alibaba.jstorm.flux.wrappers.bolts.LogInfoBolt"
+    parallelism: 1
+    # ...
+
+  - id: "count"
+    className: "com.alibaba.jstorm.testing.TestWordCounter"
+    parallelism: 1
+    # ...
+</code></pre>
+
+<h2 id="数据流及grouping方式的配置">数据流及Grouping方式的配置</h2>
+
+<p>在Flux中数据流表示在拓扑中Spouts/bolts消息传递关系，数据流的定义应该包括以下这些属性：</p>
+
+<p><strong><code>name</code>:</strong> A name for the connection (optional, currently unused)</p>
+
+<p><strong><code>from</code>:</strong> The <code>id</code> of a Spout or Bolt that is the source (publisher)</p>
+
+<p><strong><code>to</code>:</strong> The <code>id</code> of a Spout or Bolt that is the destination (subscriber)</p>
+
+<p><strong><code>grouping</code>:</strong> The stream grouping definition for the Stream</p>
+
+<p>A Grouping definition has the following properties:</p>
+
+<p><strong><code>type</code>:</strong> The type of grouping. One of <code>ALL</code>,<code>CUSTOM</code>,<code>DIRECT</code>,<code>SHUFFLE</code>,<code>LOCAL_OR_SHUFFLE</code>,<code>FIELDS</code>,<code>GLOBAL</code>,
+ or <code>NONE</code>，<code>LOCAL_FIRST</code>, <code>PARTIAL_KEY</code>.</p>
+
+<p><strong><code>streamId</code>:</strong> The Storm stream ID (Optional. If unspecified will use the default stream)</p>
+
+<p><strong><code>args</code>:</strong> For the <code>FIELDS</code> grouping, a list of field names.</p>
+
+<p><strong><code>customClass</code></strong> For the <code>CUSTOM</code> grouping, a definition of custom grouping class instance</p>
+
+<p>The <code>streams</code> definition example below sets up a topology with the following wiring:</p>
+
+<pre><code>    kafka-spout --&gt; splitsentence --&gt; count --&gt; log
+</code></pre>
+
+<pre><code class="language-yaml"># stream 定义
+# stream 定义了在 spouts 和 bolts直接的连接关系.
+# 支持自定义Grouping方式
+
+streams:
+  - name: "kafka --&gt; split" # name isn't used (placeholder for logging, UI, etc.)
+    from: "kafka-spout"
+    to: "splitsentence"
+    grouping:
+      type: SHUFFLE
+
+  - name: "split --&gt; count"
+    from: "splitsentence"
+    to: "count"
+    grouping:
+      type: FIELDS
+      args: ["word"]
+
+  - name: "count --&gt; log"
+    from: "count"
+    to: "log"
+    grouping:
+      type: SHUFFLE
+</code></pre>
+
+<h3 id="自定义-groupings">自定义 Groupings</h3>
+
+<p>自定义Groupings 方式，实际上就是创建一个Grouping实例对象，所以它有支持在配置文件中配置构造函数调用、引用、属性赋值等操作。</p>
+
+<p>下面给出了一个创建<code>com.alibaba.jstorm.testing.NGrouping</code>自定义Grouping方式的实例：</p>
+
+<pre><code class="language-yaml">  - name: "bolt-1 --&gt; bolt2"
+    from: "bolt-1"
+    to: "bolt-2"
+    grouping:
+      type: CUSTOM
+      customClass:
+        className: "com.alibaba.jstorm.testing.NGrouping"
+        constructorArgs:
+          - 1
+</code></pre>
+
+<h2 id="多个yaml文件">多个.yaml文件</h2>
+
+<p>Flux也支持你在主.yaml配置includes其他.yaml文件。这样的话其他.yaml文件的内容会被读取，一起加载到主.yaml文件内容中。</p>
+
+<pre><code class="language-yaml">includes:
+  - resource: false
+    file: "src/test/resources/configs/shell_test.yaml"
+    override: false
+</code></pre>
+
+<p>如果 <code>resource</code> 属性设置为<code>true</code>,那么include的yaml文件就在你jar的resource里头，否则的话你就得配置绝对路径。</p>
+
+<p>如果其他.yaml文件内容有和主yaml内容有冲突的话，这时候你配置 <code>override</code> 的属性是false的话，那么冲突的内容就不会添加到主.yaml文件中，
+如果<code>override</code> 的属性是true的话，那么主.yaml文件中冲突的内容就会被覆盖。</p>
+
+<p><strong>注意.:</strong> Includes 不支持递归. Includes 来自 included 文件会被忽略.</p>
+
+<h2 id="basic-word-count-例子">Basic Word Count 例子</h2>
+
+<p>This example uses a spout implemented in JavaScript, a bolt implemented in Python, and a bolt implemented in Java</p>
+
+<p>Topology YAML config:</p>
+
+<pre><code class="language-yaml">---
+name: "shell-topology"
+config:
+  topology.workers: 1
+
+# spout definitions
+spouts:
+  - id: "sentence-spout"
+    className: "com.alibaba.jstorm.flux.spouts.GenericShellSpout"
+    # shell spout constructor takes 2 arguments: String[], String[]
+    constructorArgs:
+      # command line
+      - ["node", "randomsentence.js"]
+      # output fields
+      - ["word"]
+    parallelism: 1
+
+# bolt definitions
+bolts:
+  - id: "splitsentence"
+    className: "com.alibaba.jstorm.flux.bolts.GenericShellBolt"
+    constructorArgs:
+      # command line
+      - ["python", "splitsentence.py"]
+      # output fields
+      - ["word"]
+    parallelism: 1
+
+  - id: "log"
+    className: "com.alibaba.jstorm.flux.wrappers.bolts.LogInfoBolt"
+    parallelism: 1
+
+  - id: "count"
+    className: "com.alibaba.jstorm.testing.TestWordCounter"
+    parallelism: 1
+
+#stream definitions
+# stream definitions define connections between spouts and bolts.
+# note that such connections can be cyclical
+# custom stream groupings are also supported
+
+streams:
+  - name: "spout --&gt; split" # name isn't used (placeholder for logging, UI, etc.)
+    from: "sentence-spout"
+    to: "splitsentence"
+    grouping:
+      type: SHUFFLE
+
+  - name: "split --&gt; count"
+    from: "splitsentence"
+    to: "count"
+    grouping:
+      type: FIELDS
+      args: ["word"]
+
+  - name: "count --&gt; log"
+    from: "count"
+    to: "log"
+    grouping:
+      type: SHUFFLE
+</code></pre>
+
+<h2 id="micro-batching-trident-api-support">Micro-Batching (Trident) API Support</h2>
+
+<p>现在Flux YAML DSL 只是支持Core Storm API， 还不支持Trident API.如果你非要在Trident 拓扑中使用Flux的话，那么你只能在写好的拓扑中
+定义get 拓扑的方法，就想之前“Flux兼容之前已经创建好的拓扑”介绍的那样去做。</p>
+
+<pre><code class="language-yaml">name: "my-trident-topology"
+
+config:
+  topology.workers: 1
+
+topologySource:
+  className: "com.alibaba.jstorm.flux.test.TridentTopologySource"
+  # Flux will look for "getTopology", this will override that.
+  methodName: "getTopologyWithDifferentMethodName"
+</code></pre>
+
+<p>具体的例子请参考 http://gitlab.alibaba-inc.com/aloha/aloha/tree/branch_2_1_2/external/jstorm-flux/flux-examples</p>
+
+      
+      <div class="footer">
+      Google Groups: <a target="_blank" href="https://groups.google.com/forum/#!forum/jstorm-user">jstorm-user</a>, QQ Groups: 228374502
+      </p>
+ 
+      发现错误？想参与编辑？
+      <a href="https://github.com/alibaba/jstorm/edit/master/docs/jstorm-doc/ProgrammingGuide_cn/AdvancedUsage/Plugins/Flux.md" target="_blank">
+        在 Github 上编辑此页！
+      </a>
+  </div>
+    </div>
+  </div>
+
+  
+</div>
+
+    </div><!-- /.container -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="//cdn.bootcss.com/jquery/1.11.2/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="//cdn.bootcss.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <script src="//cdn.bootcss.com/anchor-js/3.1.0/anchor.min.js"></script>
+    <script src="/js/jstorm.js"></script>
+
+    <!-- Google Analytics -->
+    <!-- script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-52545728-1', 'auto');
+      ga('send', 'pageview');
+    </script -->
+
+    <!-- Baidu Analytics -->
+    <script>
+      var _hmt = _hmt || [];
+      (function() {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?835985ad7943d8c24bc3c1f155b7d4a2";
+        var s = document.getElementsByTagName("script")[0]; 
+        s.parentNode.insertBefore(hm, s);
+      })();
+    </script>
+
+
+    <!-- Disqus -->
+    <!--
+     -->
+  </body>
+</html>

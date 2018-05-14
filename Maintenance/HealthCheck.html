@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>JStorm Documentation : How to enable supervisor health check?</title>
+    <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon">
+    <link rel="icon" href="/img/favicon.png" type="image/x-icon">
+
+    <!-- Bootstrap -->
+    <link href="//cdn.bootcss.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/jstorm.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+    <link rel="stylesheet" href="/css/codetabs.css">
+    
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    
+    <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<!--
+
+
+
+
+-->
+    <!-- Top navbar. -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <!-- The logo. -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <div class="navbar-logo">
+            <a href="/"><img alt="jstorm" src="/img/jstorm-logo.png"></a>
+          </div>
+        </div><!-- /.navbar-header -->
+
+        <!-- The navigation links. -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            
+            <!-- Downloads -->
+            <li class="hidden-sm "><a href="/Downloads.html">Downloads</a></li>
+
+            <!-- Performance -->
+            <li class="hidden-sm "><a href="/Performance">Performance</a></li>
+
+            <!-- QuickStart -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">QuickStart <span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                
+                
+                <li class=""><a href="/QuickStart/BasicConception.html">Basic Conception</a></li>
+                
+                <li class=""><a href="/QuickStart/Example.html">Example</a></li>
+                
+                <li class=""><a href="/QuickStart/Deploy/index.html">Deploy</a></li>
+                
+                <li class=""><a href="/QuickStart/Upgrade/index.html">Upgrade</a></li>
+                
+                <li class=""><a href="/QuickStart/UpgradeFromStorm.html">Migrate from Apache Storm</a></li>
+                
+                <li class=""><a href="/QuickStart/Compile.html">Compile JStorm</a></li>
+                
+              </ul>
+            </li>
+
+            <!-- ProgrammingGuide -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">ProgrammingGuide <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/ProgrammingGuide/DebugLocalApp.html">Local Debug</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/StreamSplitJoin.html">Split-Merge-Stream</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/Transaction.html">Transaction</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/Trident.html">Trident</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/AdvancedUsage/index.html">Advanced Usage</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- Maintenance -->
+            <li class="dropdown active">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Maintenance <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Maintenance/Configuration.html">Configuration</a></li>
+                  
+                  <li class=""><a href="/Maintenance/ConfigurationAutomacticSync.html">Automatically Sync Configuration</a></li>
+                  
+                  <li class=""><a href="/Maintenance/Isolation.html">Resource Isolation</a></li>
+                  
+                  <li class=""><a href="/Maintenance/JStormMetrics.html">JStorm Metrics</a></li>
+                  
+                  <li class="active"><a href="/Maintenance/HealthCheck.html">Supervisor Health Check</a></li>
+                  
+                  <li class=""><a href="/Maintenance/JStorm-on-Yarn.html">JStorm-on-Yarn</a></li>
+                  
+                  <li class=""><a href="/Maintenance/ClusterHA.html">Cluster HA</a></li>
+                  
+                  <li class=""><a href="/Maintenance/SupervisorWorker.html">Supervisor-Generate-Workers</a></li>
+                  
+                  <li class=""><a href="/Maintenance/DynamicAdjustLog.html">Dynamic Adjust Log</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- FAQ -->
+            <li class="hidden-sm "><a href="/FAQ/">FAQ</a></li>
+
+            <!-- Community -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Community <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Community/Email.html">Email List</a></li>
+                  
+                  <li class=""><a href="/Community/Committers.html">Committer List</a></li>
+                  
+                  <li class=""><a href="/Community/Events-Meetups.html">Events and Meetups</a></li>
+                  
+                  <li class=""><a href="/Community/Issues.html">Track issues</a></li>
+                  
+                  <li class=""><a href="/Community/JStormUsers.html">JStorm User List</a></li>
+                  
+              </ul>
+            </li>
+
+
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Language <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class=""><a href="/index.html">English</a></li>
+                  <li class=""><a href="/index_cn.html">中文</a></li>
+
+              </ul>
+            </li>
+          </ul>          
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container -->
+    </nav>
+
+
+    
+
+    <!-- Main content. -->
+    <div class="container">
+      
+      <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<div class="row">
+
+  
+  
+  <div class="col-md-8 col-md-offset-2 text">
+    <h1>How to enable supervisor health check?</h1>
+	<ul id="markdown-toc">
+  <li><a href="#overview" id="markdown-toc-overview">Overview</a></li>
+  <li><a href="#configure" id="markdown-toc-configure">Configure</a>    <ul>
+      <li><a href="#little-requirements-to-the-script" id="markdown-toc-little-requirements-to-the-script">Little requirements to the script</a></li>
+      <li><a href="#-other-configuration-parameters-" id="markdown-toc--other-configuration-parameters-">** Other configuration parameters **</a></li>
+    </ul>
+  </li>
+</ul>
+
+<h1 id="overview">Overview</h1>
+
+<p>Jstorm supports cluster health checks by running a detection script periodically to get the machine health status, and then adjust the cluster dynamically.In other words, jstorm can let the supervisor trigger the execution by itself according to the health status of the machine, rationally adjust their status. Currently the supervisor machine health status is classified as four cases: panic error warn and info.</p>
+
+<pre><code>   panic status: In this status, we will kill all the workers on the machine firstly, then let the supervisor suicide. That makes the machine is removed from the cluster;
+   error status: In this status, we will kill all the workers on the machine and the number of available ports is set to 0. That makes the machine is no longer participating in the cluster scheduling;
+   warn status: In this status, the number of available ports is set to 0. That makes the machine is no longer participating in the cluster scheduling;
+   info status : healthy status, do nothing with it.
+</code></pre>
+
+<p>Note: This document is temporarily for the version 2.x</p>
+
+<h1 id="configure">Configure</h1>
+
+<p>The health checks to the machine is done through some detection scripts. You can implement the scripts according to your own requirements. We set each health status corresponds to a directory for script execution, the directory is configurable.</p>
+
+<pre><code>   panic script execution directory: absolute path, script directory configure parameter is storm.machine.resource.panic.check.dir
+   error script execution directory: absolute path, script directory configure parameter is storm.machine.resource.error.check.dir
+   warn script execution directory: absolute path, script directory configure parameter is storm.machine.resource.warning.check.dir 
+</code></pre>
+
+<p>The number of health check scripts under each directory is unlimited. The health status will be captured by supervisor immediately if any script detects something abnormal on a machine. For example, if a panic script detects the abnormality on the machine, the supervisor capture the panic status of the machine. Similarly, if a warn script detects the abnormality on the machine, the supervisor capture the warn status of the machine.</p>
+
+<h2 id="little-requirements-to-the-script">Little requirements to the script</h2>
+
+<p>Since it have been restricted inside jstorm, supervisor determines whether the machine is abnormal base on the output of the script is executed. If the script output is “check do not passed”, it is regarded as that the execution of the script detected the abnormality on the machine. In other cases, it will be regarded as that the status of the machine is healthy. For example, a script checking cpu under the warn directory:</p>
+
+<pre><code>
+#!/usr/bin/env bash
+MAX_cpu=70
+top_command=`which top`
+cpuInfo=`$top_command -b -n 1 | grep "Cpu(s)" | awk '{print $2+$3}'`
+Cpu=${cpuInfo/.*}
+if [ $Cpu -gt $MAX_cpu ];then
+        echo "check don't passed"
+fi
+
+</code></pre>
+
+<p>If the occupation of the cpu is more than 70%, it outputs “check do not passed”. Then it is regarded as that the machine is in warn status. Any other output or time out occurred during the execution will be regarded as the supervisor is in info status.</p>
+
+<h2 id="-other-configuration-parameters-">** Other configuration parameters **</h2>
+
+<pre><code>  supervisor.enable.check: health check enable, off by default. It is the enable of supervisor level;
+  supervisor.frequency.check.secs: the execution frequency of the health check, 60s by default;
+  storm.health.check.timeout.ms: time out of the the execution, 5s by default;
+</code></pre>
+
+
+  <div class="footer">
+      Google Groups: <a target="_blank" href="https://groups.google.com/forum/#!forum/jstorm-user">jstorm-user</a>, QQ Groups: 228374502
+      </p>
+      Caught a mistake or want to contribute to the documentation? 
+      <a href="https://github.com/alibaba/jstorm/edit/master/docs/jstorm-doc/Maintenance/HealthCheck.md" target="_blank">
+        Edit this page on Github!
+      </a>
+  </div>
+  
+
+  
+</div>
+
+    </div><!-- /.container -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="//cdn.bootcss.com/jquery/1.11.2/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="//cdn.bootcss.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <script src="//cdn.bootcss.com/anchor-js/3.1.0/anchor.min.js"></script>
+    <script src="/js/jstorm.js"></script>
+
+    <!-- Google Analytics -->
+    <!-- script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-52545728-1', 'auto');
+      ga('send', 'pageview');
+    </script -->
+
+    <!-- Baidu Analytics -->
+    <script>
+      var _hmt = _hmt || [];
+      (function() {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?835985ad7943d8c24bc3c1f155b7d4a2";
+        var s = document.getElementsByTagName("script")[0]; 
+        s.parentNode.insertBefore(hm, s);
+      })();
+    </script>
+
+
+    <!-- Disqus -->
+    <!--
+     -->
+  </body>
+</html>

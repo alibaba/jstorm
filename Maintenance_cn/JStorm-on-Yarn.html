@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>JStorm 文档 : How to create/remove/enlarge/reduce one JStorm logic cluster on yarn?</title>
+    <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon">
+    <link rel="icon" href="/img/favicon.png" type="image/x-icon">
+
+    <!-- Bootstrap -->
+    <link href="//cdn.bootcss.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/jstorm.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+    <link rel="stylesheet" href="/css/codetabs.css">
+    
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    
+    <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<!--
+
+
+
+
+-->
+    <!-- Top navbar. -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <!-- The logo. -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <div class="navbar-logo">
+            <a href="/"><img alt="jstorm" src="/img/jstorm-logo.png"></a>
+          </div>
+        </div><!-- /.navbar-header -->
+
+        <!-- The navigation links. -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            <!-- Downloads -->
+            <li class="hidden-sm "><a href="/Downloads.html">Downloads</a></li>
+
+            <!-- Performance -->
+            <li class="hidden-sm "><a href="/Performance_cn">Performance</a></li>
+
+            <!-- QuickStart -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">QuickStart <span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                
+                
+                <li class=""><a href="/QuickStart_cn/BasicConception.html">5分钟基础概念(新手第一篇)</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Example.html">入门Example</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Deploy/index.html">安装部署</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Upgrade/index.html">升级</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/UpgradeFromStorm.html">从Apache Storm升级到JStorm</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Compile.html">编译JStorm</a></li>
+                
+              </ul>
+            </li>
+
+            <!-- ProgrammingGuide -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">ProgrammingGuide <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/DebugLocalApp.html">本地调试</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/StreamSplitJoin.html">数据流分流合并</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/Transaction/index.html">事务</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/Trident/index.html">Trident</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/AdvancedUsage/index.html">Advanced Usage</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- Maintenance -->
+            <li class="dropdown active">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">运维 <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Maintenance_cn/Configuration.html">配置注解</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/ConfigurationAutomacticSync.html">自动同步配置文件</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/Isolation.html">资源隔离</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/JStormMetrics.html">JStorm Metrics</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/HealthCheck.html">Supervisor自检</a></li>
+                  
+                  <li class="active"><a href="/Maintenance_cn/JStorm-on-Yarn.html">JStorm-on-Yarn</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/ClusterHA.html">同城灾备&异地灾备</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/BlobStore.html">BlobStore</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/SupervisorWorker.html">生成worker列表算法</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/DynamicAdjustLog.html">动态调整日志</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- FAQ -->
+            <li class="hidden-sm "><a href="/FAQ_cn/">FAQ</a></li>
+
+
+
+            <!-- Community -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">社区 <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Community/Email.html">Email List</a></li>
+                  
+                  <li class=""><a href="/Community/Committers.html">Committer List</a></li>
+                  
+                  <li class=""><a href="/Community/Events-Meetups.html">Events and Meetups</a></li>
+                  
+                  <li class=""><a href="/Community/Issues.html">Track issues</a></li>
+                  
+                  <li class=""><a href="/Community/JStormUsers.html">JStorm User List</a></li>
+                  
+              </ul>
+            </li>
+
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Language <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class=""><a href="/index.html">English</a></li>
+                  <li class=""><a href="/index_cn.html">中文</a></li>
+
+              </ul>
+            </li>
+          </ul>          
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container -->
+    </nav>
+
+
+    
+
+    <!-- Main content. -->
+    <div class="container">
+      
+      <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<div class="row">
+
+  
+  
+  <div class="col-md-8 col-md-offset-2 text">
+    <h1>How to create/remove/enlarge/reduce one JStorm logic cluster on yarn?</h1>
+	<ul id="markdown-toc">
+  <li><a href="#功能点" id="markdown-toc-功能点">功能点</a>    <ul>
+      <li><a href="#创建集群" id="markdown-toc-创建集群">创建集群</a></li>
+      <li><a href="#销毁集群" id="markdown-toc-销毁集群">销毁集群</a></li>
+      <li><a href="#升级集群binary" id="markdown-toc-升级集群binary">升级集群binary</a></li>
+      <li><a href="#升级集群配置" id="markdown-toc-升级集群配置">升级集群配置</a></li>
+      <li><a href="#下载集群的binary和配置文件" id="markdown-toc-下载集群的binary和配置文件">下载集群的binary和配置文件</a></li>
+      <li><a href="#重启容器内进程" id="markdown-toc-重启容器内进程">重启容器内进程</a></li>
+      <li><a href="#查看集群的状态" id="markdown-toc-查看集群的状态">查看集群的状态</a></li>
+      <li><a href="#对集群进行伸缩容" id="markdown-toc-对集群进行伸缩容">对集群进行伸缩容</a>        <ul>
+          <li><a href="#随机分配容器" id="markdown-toc-随机分配容器">随机分配容器</a></li>
+          <li><a href="#指定机架" id="markdown-toc-指定机架">指定机架</a></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li><a href="#jstorm-on-yarn流程" id="markdown-toc-jstorm-on-yarn流程">JStorm-on-Yarn流程</a>    <ul>
+      <li><a href="#创建am" id="markdown-toc-创建am">创建AM</a></li>
+      <li><a href="#创建nimbus和supervisor" id="markdown-toc-创建nimbus和supervisor">创建nimbus和supervisor</a></li>
+    </ul>
+  </li>
+  <li><a href="#运维和配置说明" id="markdown-toc-运维和配置说明">运维和配置说明</a>    <ul>
+      <li><a href="#jstorm配置" id="markdown-toc-jstorm配置">jstorm配置</a></li>
+      <li><a href="#yarn" id="markdown-toc-yarn">Yarn</a>        <ul>
+          <li><a href="#准备工作" id="markdown-toc-准备工作">准备工作</a></li>
+          <li><a href="#配置修改" id="markdown-toc-配置修改">配置修改</a></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<h1 id="功能点">功能点</h1>
+<p>目前支持脚本调用的方式调用thrift接口，实现集群管理。</p>
+
+<h2 id="创建集群">创建集群</h2>
+<ul>
+  <li>创建一个集群， 限制这个集群的资源数（cpu核和内存）</li>
+  <li>每个集群，可以支持不同的jstorm版本和jdk版本</li>
+  <li>一台机器上可以运行多个逻辑集群的container</li>
+  <li>启动方式:执行submitJstormOnYarn命令提交集群</li>
+</ul>
+
+<h2 id="销毁集群">销毁集群</h2>
+<ul>
+  <li>执行jstormyarn killJstormOnYarn，结束一个集群的进程
+    <h2 id="升级集群binary">升级集群binary</h2>
+  </li>
+  <li>更新deploy目录下的jstorm部署文件</li>
+  <li>执行upgradeCluster命令</li>
+</ul>
+
+<h2 id="升级集群配置">升级集群配置</h2>
+<ul>
+  <li>更新deploy/jstorm/conf下的storm.yaml</li>
+  <li>执行upgradeCluster命令</li>
+</ul>
+
+<h2 id="下载集群的binary和配置文件">下载集群的binary和配置文件</h2>
+<ul>
+  <li>配置项jstorm.yarn.instance.deploy.dir是当前binary文件在hadoop上的存放路径</li>
+</ul>
+
+<h2 id="重启容器内进程">重启容器内进程</h2>
+<ul>
+  <li>执行upgradeCluster命令</li>
+</ul>
+
+<h2 id="查看集群的状态">查看集群的状态</h2>
+<ul>
+  <li>执行info命令</li>
+</ul>
+
+<h2 id="对集群进行伸缩容">对集群进行伸缩容</h2>
+<h3 id="随机分配容器">随机分配容器</h3>
+<ul>
+  <li>执行addSupervisors和removeSupervisors命令</li>
+</ul>
+
+<h3 id="指定机架">指定机架</h3>
+<ul>
+  <li>执行addSpecSupervisors和removeSpecSupervisors命令</li>
+</ul>
+
+<h1 id="jstorm-on-yarn流程">JStorm-on-Yarn流程</h1>
+<p>jstorm-on-yarn采取批发模式，对应于spark-on-yarn的零售模式，也就是说每次往spark集群提交一个application时，都会生成一个AM，而jstorm-on-yarn的AM是常驻的。</p>
+
+<p>批发模式比零售模式提高了50%的资源利用率，例如我们发现，在实际场景中，可能零售模式(spark-on-yarn)最多只能使用60-70%的物理资源，但批发模式能够达到90%，这个差距是相当大的；并且灵活的容器粒度给业务方的支持会好很多，比如会有这样的情况，应用1在A时段使用内存较多，B时段使用CPU较多。应用2在A时段使用网络IO较多，B时段使用内存较多，那么若按照零售模式分配资源，总资源量相当于应用在每个资源维度的峰值集合。而批发模式可以满足多个应用需要share一些资源(CPU，内存，网络IO)的情况，能够减少非常多的资源浪费；零售模式下容器的crash次数很多，这是由于在默认的GC模式下，大部分应用可能比较少触发老年区GC，这样内存的消耗会随着时间推移慢慢逼近上限，RM会直接释放容器，杀死进程，AM不得不重新选择一个新的容器来执行，这样不仅会增加调度时间，还需要额外的状态管理,但在批发模式中，由于优化了GC策略以及从根本上更好的粒度支持，是完全能够避免这类情况发生的。</p>
+
+<p>因此目前jstorm-on-yarn的工作方式是，每个集群有一个总控的AM，它负责以下工作：</p>
+
+<ul>
+  <li>创建Nimbus（并在nimbus挂掉的时候自动重启）</li>
+  <li>接收请求创建Supervisor</li>
+  <li>集群的动态扩容、缩容</li>
+</ul>
+
+<p>而提交、杀死等对topology的操作，则跟standalone的JStorm集群一样，直接跟container中的nimbus和supervisor交互，并不跟AM交互。</p>
+
+<h2 id="创建am">创建AM</h2>
+<p>从start-JstormYarn.sh开始，它会调用JStormOnYarn类来创建AM，本质上是JStorm的yarn client。
+这个类比较简单，主要就是设置nimbus容器的一些参数，如内存，CPU core，jar，libjar，shellscript（实际值为start_jstorm.sh，用于启动nimbus和supervisor）等。
+然后把jar、shellscript这些上传到HDFS中。最后调用<code>yarnClient.submitApplication(appContext)</code>创建AM。</p>
+
+<h2 id="创建nimbus和supervisor">创建nimbus和supervisor</h2>
+<p>这一步是通过thrift接口来实现的，具体实现为：client端JstormAM.py（thrift自动生成），server端自动生成的RPC接口为JstormAM，而真正的处理
+逻辑为JstormAMHandler类（跟jstorm中的thrift是一样的）。这个handler在上面创建AM的时候就会初始化好thrift server，监听client的请求了。</p>
+
+<p>来看几个比较重要的方法：addSupervisors和startNimbus
+这两个方法其实实现差不多，本质上就是指定container的数量、CPU核数。具体起supervisor、nimbus还是在JStormMaster中做的。它会根据container的
+priority属性来决定是起supervisor还是nimbus。</p>
+
+<p>需要注意的是，jstorm-on-yarn创建supervisor，并不是只申请supervisor本身的内存，而是会指定一大块的内存（比如20或40G），这个container会
+容纳该supervisor下的所有worker。当容器有问题挂掉时，所有的worker也会被杀死，这比standalone下的集群更为严格一些。</p>
+
+<h1 id="运维和配置说明">运维和配置说明</h1>
+
+<h2 id="jstorm配置">jstorm配置</h2>
+<p>为了运维方便，请在所有的YARN集群的storm.yaml中添加以下配置：</p>
+
+<pre><code> jstorm.on.yarn: true
+ supervisor.childopts:  -Djstorm-on-yarn=true
+ jstorm.log.dir: /home/yarn/jstorm_logs/&lt;cluster_name&gt;
+</code></pre>
+<p>以上配置会覆盖默认的日志路径，将所有的日志都重定向到/home/yarn下面，防止container挂掉之后出现日志找不到的情况。如果同一台机器上起了多个supervisor的container，会在supervisor日志后面加上<code>supervisor.deamon.logview.port</code>的值（YARN会为每个container动态生成端口及端口区间）以区分，防止串日志。如两个supervisor的http端口分别为9000和9001，则会生成supervisor-9000.log和supervisor-9001.log。koala会根据<code>jstorm.on.yarn</code>配置为日志加上指定的端口后缀。</p>
+
+<p>若需要触发nimbus自动重启，还需要添加如下配置</p>
+<pre><code>blobstore.dir: /yourhdfsdir
+blobstore.hdfs.hostname: yourhdfshost
+blobstore.hdfs.port: yourhdfsport
+</code></pre>
+
+<h2 id="yarn">Yarn</h2>
+<h3 id="准备工作">准备工作</h3>
+<p>系统要求centos6u或7u，安装hadoop2.6.3后
+启动HDFS、yarn、zookeeper，具体过程可参照官方文档(若已存在zk服务，也可以向外部连接)</p>
+<h3 id="配置修改">配置修改</h3>
+<p>首先需要配置cgroup,隔离CPU资源。在yarn-site.xml中加入下列配置项，注意把用户组替换成实际的执行用户</p>
+<pre><code>  &lt;property&gt;
+      &lt;name&gt;yarn.nodemanager.linux-container-executor.cgroups.hierarchy&lt;/name&gt;
+      &lt;value&gt;/hadoop-yarn&lt;/value&gt;
+    &lt;/property&gt;
+    
+    &lt;property&gt;
+      &lt;name&gt;yarn.nodemanager.linux-container-executor.cgroups.mount&lt;/name&gt;
+      &lt;value&gt;true&lt;/value&gt;
+    &lt;/property&gt;
+    
+    &lt;property&gt;
+      &lt;name&gt;yarn.nodemanager.linux-container-executor.cgroups.mount-path&lt;/name&gt;
+      &lt;value&gt;/sys/fs/cgroup&lt;/value&gt;
+    &lt;/property&gt;
+    
+    &lt;property&gt;
+      &lt;name&gt;yarn.nodemanager.linux-container-executor.group&lt;/name&gt;
+      &lt;value&gt;hadoop&lt;/value&gt;
+    &lt;/property&gt;
+    
+    &lt;property&gt;
+      &lt;name&gt;yarn.nodemanager.linux-container-executor.nonsecure-mode.local-user&lt;/name&gt;
+      &lt;value&gt;yarn&lt;/value&gt;
+    &lt;/property&gt;
+</code></pre>
+
+<p>配置yarn注册服务，其中hadoop.registry.zk.quorum项要替换成实际的zk：</p>
+<pre><code> &lt;property&gt;
+      &lt;name&gt;hadoop.registry.jaas.context&lt;/name&gt;
+      &lt;value&gt;Client&lt;/value&gt;
+    &lt;/property&gt;
+    
+    &lt;property&gt;
+      &lt;name&gt;hadoop.registry.kerberos.realm&lt;/name&gt;
+      &lt;value&gt;&lt;/value&gt;
+    &lt;/property&gt;
+    
+    &lt;property&gt;
+      &lt;name&gt;hadoop.registry.rm.enabled&lt;/name&gt;
+      &lt;value&gt;true&lt;/value&gt;
+    &lt;/property&gt;
+    
+    &lt;property&gt;
+      &lt;name&gt;hadoop.registry.secure&lt;/name&gt;
+      &lt;value&gt;false&lt;/value&gt;
+    &lt;/property&gt;
+    
+    &lt;property&gt;
+      &lt;name&gt;hadoop.registry.system.acls&lt;/name&gt;
+      &lt;value&gt;hadoop.registry.system.acls&lt;/value&gt;
+    &lt;/property&gt;
+    
+    &lt;property&gt;
+      &lt;name&gt;hadoop.registry.zk.connection.timeout.ms&lt;/name&gt;
+      &lt;value&gt;15000&lt;/value&gt;
+    &lt;/property&gt;
+    
+    &lt;property&gt;
+      &lt;name&gt;hadoop.registry.zk.quorum&lt;/name&gt;
+      &lt;value&gt;zkserver1:2181,zkserver2:2181,zkserver3:2181&lt;/value&gt;
+    &lt;/property&gt;
+    
+    &lt;property&gt;
+      &lt;name&gt;hadoop.registry.zk.retry.ceiling.ms&lt;/name&gt;
+      &lt;value&gt;60000&lt;/value&gt;
+    &lt;/property&gt;
+    
+    &lt;property&gt;
+      &lt;name&gt;hadoop.registry.zk.retry.interval.ms&lt;/name&gt;
+      &lt;value&gt;1000&lt;/value&gt;
+    &lt;/property&gt;
+    
+    &lt;property&gt;
+      &lt;name&gt;hadoop.registry.zk.retry.times&lt;/name&gt;
+      &lt;value&gt;5&lt;/value&gt;
+    &lt;/property&gt;
+    
+    &lt;property&gt;
+      &lt;name&gt;hadoop.registry.zk.root&lt;/name&gt;
+      &lt;value&gt;/registry&lt;/value&gt;
+    &lt;/property&gt;
+    
+</code></pre>
+<p>配置完毕后，重启yarn的ResourceManager和NodeManager，使用JstormOnYarn的命令提交应用，可以通过RM的WebUI查看应用日志和资源占用情况。</p>
+
+  <div class="footer">
+      Google Groups: <a target="_blank" href="https://groups.google.com/forum/#!forum/jstorm-user">jstorm-user</a>, QQ Groups: 228374502
+      </p>
+ 
+      发现错误？想参与编辑？
+      <a href="https://github.com/alibaba/jstorm/edit/master/docs/jstorm-doc/Maintenance_cn/JStorm-on-Yarn.md" target="_blank">
+        在 Github 上编辑此页！
+      </a>
+  </div>
+  </div>
+  
+
+  
+</div>
+
+    </div><!-- /.container -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="//cdn.bootcss.com/jquery/1.11.2/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="//cdn.bootcss.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <script src="//cdn.bootcss.com/anchor-js/3.1.0/anchor.min.js"></script>
+    <script src="/js/jstorm.js"></script>
+
+    <!-- Google Analytics -->
+    <!-- script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-52545728-1', 'auto');
+      ga('send', 'pageview');
+    </script -->
+
+    <!-- Baidu Analytics -->
+    <script>
+      var _hmt = _hmt || [];
+      (function() {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?835985ad7943d8c24bc3c1f155b7d4a2";
+        var s = document.getElementsByTagName("script")[0]; 
+        s.parentNode.insertBefore(hm, s);
+      })();
+    </script>
+
+
+    <!-- Disqus -->
+    <!--
+     -->
+  </body>
+</html>

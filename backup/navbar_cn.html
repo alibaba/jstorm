@@ -1,0 +1,101 @@
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<!--
+{% capture quickstart %}{{site.baseurl}}/quickstart{% endcapture %}
+{% capture setup %}{{site.baseurl}}/setup{% endcapture %}
+{% capture apis %}{{site.baseurl}}/apis{% endcapture %}
+{% capture libs %}{{site.baseurl}}/libs{% endcapture %}
+{% capture internals %}{{site.baseurl}}/internals{% endcapture %}-->
+    <!-- Top navbar. -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <!-- The logo. -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <div class="navbar-logo">
+            <a href="{{ site.baseurl}}/index_cn.html"><img alt="jstorm" src="{{ site.baseurl }}/img/jstorm-logo.png"></a>
+          </div>
+        </div><!-- /.navbar-header -->
+
+        <!-- The navigation links. -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+			<!-- Performance -->
+            <li class="hidden-sm {% if page.url == '/index_cn.html' %}active{% endif %}"><a href="{{ site.baseurl}}/index_cn.html">性能测试</a></li>
+
+			<!-- Features -->
+            <li class="hidden-sm {% if page.url == '/features_cn/' %}active{% endif %}"><a href="{{ site.baseurl}}/features_cn/">  特性  </a></li>
+
+            <!-- Quickstart -->
+            <li class="dropdown{% if page.url contains '/quickstart_cn/' %} active{% endif %}">
+              <a href="{{ quickstart }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">快速开始<span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                {% assign quickstart_group = (site.pages | where: "top-nav-group" , "快速开始" | sort: "top-nav-pos") %}
+                {% for quickstart_page in quickstart_group %}
+                <li class="{% if page.url contains quickstart_page.url %}active{% endif %}"><a href="{{ site.baseurl }}{{ quickstart_page.url }}">{% if quickstart_page.top-nav-title %}{{ quickstart_page.top-nav-title }}{% else %}{{ quickstart_page.title }}{% endif %}</a></li>
+                {% endfor %}
+              </ul>
+            </li>
+
+            <!-- Downloads -->
+            <li class="hidden-sm {% if page.url == '/downloads_cn/' %}active{% endif %}"><a href="{{ site.baseurl}}/downloads_cn/">  下载  </a></li>
+
+            <!-- Advance -->
+            <li class="dropdown{% if page.url contains '/advance_cn/' %} active{% endif %}">
+              <a href="{{ advance }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">  进阶  <span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                {% assign advance_group = (site.pages | where: "top-nav-group" , "进阶" | sort: "top-nav-pos") %}
+                {% for advance_group_page in advance_group %}
+                <li class="{% if page.url contains advance_group_page.url %}active{% endif %}"><a href="{{ site.baseurl }}{{ advance_group_page.url }}">{% if advance_group_page.top-nav-title %}{{ advance_group_page.top-nav-title }}{% else %}{{ advance_group_page.title }}{% endif %}</a></li>
+                {% endfor %}
+              </ul>
+            </li>
+
+            <!-- API -->
+            <li class="dropdown{% if page.url contains '/api_cn/' %} active{% endif %}">
+              <a href="{{ api }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">API介绍<span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  {% assign api_group = (site.pages | where: "top-nav-group" , "api_cn" | sort: "top-nav-pos") %}
+                  {% for api_page in api_group %}
+                  <li class="{% if page.url contains api_page.url %}active{% endif %}"><a href="{{ site.baseurl }}{{ api_page.url }}">{% if api_page.top-nav-title %}{{ api_page.top-nav-title }}{% else %}{{ api_page.title }}{% endif %}</a></li>
+                  {% endfor %}
+              </ul>
+            </li>
+
+            <!-- FAQ -->
+            <li class="hidden-sm {% if page.url == '/FAQ_cn/' %}active{% endif %}"><a href="{{ site.baseurl}}/FAQ_cn/">FAQ</a></li>
+
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+              <a href="{{ language }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"> 语言 <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class="{% if page.url contains libs_page.url %}active{% endif %}"><a href="{{ site.baseurl }}/">English</a></li>
+                  <li class="{% if page.url contains libs_page.url %}active{% endif %}"><a href="{{ site.baseurl }}/index_cn.html">中文</a></li>
+              </ul>
+            </li>
+            <li class="hidden-sm {% if page.url contains '/about/' %} active{% endif %}"><a href="{{ site.baseurl}}/index_cn.html">关于</a></li>
+          </ul>          
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container -->
+    </nav>

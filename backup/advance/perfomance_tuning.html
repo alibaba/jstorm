@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>JStorm Documentation : Performance Tuning</title>
+    <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon">
+    <link rel="icon" href="/img/favicon.png" type="image/x-icon">
+
+    <!-- Bootstrap -->
+    <link href="//cdn.bootcss.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/jstorm.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+    <link rel="stylesheet" href="/css/codetabs.css">
+    
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    
+    <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<!--
+
+
+
+
+-->
+    <!-- Top navbar. -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <!-- The logo. -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <div class="navbar-logo">
+            <a href="/"><img alt="jstorm" src="/img/jstorm-logo.png"></a>
+          </div>
+        </div><!-- /.navbar-header -->
+
+        <!-- The navigation links. -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            
+            <!-- Downloads -->
+            <li class="hidden-sm "><a href="/Downloads.html">Downloads</a></li>
+
+            <!-- Performance -->
+            <li class="hidden-sm "><a href="/Performance">Performance</a></li>
+
+            <!-- QuickStart -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">QuickStart <span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                
+                
+                <li class=""><a href="/QuickStart/BasicConception.html">Basic Conception</a></li>
+                
+                <li class=""><a href="/QuickStart/Example.html">Example</a></li>
+                
+                <li class=""><a href="/QuickStart/Deploy/index.html">Deploy</a></li>
+                
+                <li class=""><a href="/QuickStart/Upgrade/index.html">Upgrade</a></li>
+                
+                <li class=""><a href="/QuickStart/UpgradeFromStorm.html">Migrate from Apache Storm</a></li>
+                
+                <li class=""><a href="/QuickStart/Compile.html">Compile JStorm</a></li>
+                
+              </ul>
+            </li>
+
+            <!-- ProgrammingGuide -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">ProgrammingGuide <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/ProgrammingGuide/DebugLocalApp.html">Local Debug</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/StreamSplitJoin.html">Split-Merge-Stream</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/Transaction.html">Transaction</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/Trident.html">Trident</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/AdvancedUsage/index.html">Advanced Usage</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- Maintenance -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Maintenance <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Maintenance/Configuration.html">Configuration</a></li>
+                  
+                  <li class=""><a href="/Maintenance/ConfigurationAutomacticSync.html">Automatically Sync Configuration</a></li>
+                  
+                  <li class=""><a href="/Maintenance/Isolation.html">Resource Isolation</a></li>
+                  
+                  <li class=""><a href="/Maintenance/JStormMetrics.html">JStorm Metrics</a></li>
+                  
+                  <li class=""><a href="/Maintenance/HealthCheck.html">Supervisor Health Check</a></li>
+                  
+                  <li class=""><a href="/Maintenance/JStorm-on-Yarn.html">JStorm-on-Yarn</a></li>
+                  
+                  <li class=""><a href="/Maintenance/ClusterHA.html">Cluster HA</a></li>
+                  
+                  <li class=""><a href="/Maintenance/SupervisorWorker.html">Supervisor-Generate-Workers</a></li>
+                  
+                  <li class=""><a href="/Maintenance/DynamicAdjustLog.html">Dynamic Adjust Log</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- FAQ -->
+            <li class="hidden-sm "><a href="/FAQ/">FAQ</a></li>
+
+            <!-- Community -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Community <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Community/Email.html">Email List</a></li>
+                  
+                  <li class=""><a href="/Community/Committers.html">Committer List</a></li>
+                  
+                  <li class=""><a href="/Community/Events-Meetups.html">Events and Meetups</a></li>
+                  
+                  <li class=""><a href="/Community/Issues.html">Track issues</a></li>
+                  
+                  <li class=""><a href="/Community/JStormUsers.html">JStorm User List</a></li>
+                  
+              </ul>
+            </li>
+
+
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Language <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class=""><a href="/index.html">English</a></li>
+                  <li class=""><a href="/index_cn.html">中文</a></li>
+
+              </ul>
+            </li>
+          </ul>          
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container -->
+    </nav>
+
+
+    
+
+    <!-- Main content. -->
+    <div class="container">
+      
+      <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<div class="row">
+
+
+  <!-- Sub Navigation -->
+  <div class="col-sm-3">
+    <ul id="sub-nav">
+      
+      
+      
+        
+        
+        
+        <li><a href="/backup/advance/architecture.html" class="">JStorm Architecture</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/backup/advance/difference.html" class="">Programming difference from Storm</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/backup/advance/ack.html" class="">Ack Framework</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/backup/advance/resource_grouping.html" class="">Resource Grouping</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/backup/advance/split_merge.html" class="">Stream Split & Merge</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/backup/advance/transaction.html" class="">Transaction</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/backup/advance/trident.html" class="">Trident</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/backup/advance/programming.html" class="">Programming Experience</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/backup/advance/operation.html" class="">Operation Experience</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/backup/advance/perfomance_tuning.html" class="active">Performance Tuning</a>
+          
+        </li>
+      
+    </ul>
+  </div>
+  <!-- Main -->
+  <div class="col-sm-9">
+    <!-- Top anchor -->
+    <a href="#top"></a>
+
+    <div class="text">
+      <!-- Main heading -->
+      <h1>Performance Tuning</h1>
+
+      <!-- Content -->
+      <p>Before reading this page, please read <a href="/advance/operation">Operation Experience</a> and <a href="/advance/programming">Programming Experience</a></p>
+
+<h1 id="first-decision">First decision</h1>
+<p>Before design a application, user must know the use scenario of ackerless/acker/trident frameworker. From performance side, the performance sequence is as following: ackerless &gt; acker &gt; trident.  Normally performance isn’t the key point, developer must do tradeoff from performance/stability/scalability.</p>
+
+<h1 id="find-out-which-components-throughput-is-least">Find out which component’s throughput is least</h1>
+<p>All tuples of topology in JStorm is being past in one message pipeline, the whole topology’s throughput will be decided by the lowest component’s throughput, so find out the bottleneck of topology is a key point.
+Here list one example to find out which component’s throughput is least in JStorm 0.9.6.1.</p>
+
+<p>SpoutA -&gt; BoltA -&gt; acker</p>
+
+<p>SpoutA’s max throughpout is (parallelism * (1000/”NextTuple: Time(ms)”))</p>
+
+<p>BoltA’s max throughpout is (parallel * (1000/max(“Deserialize: Time(ms)”, “Execute: Time(ms)”, “Serialize: Time(ms)”)))</p>
+
+<p>Acker’s max throughpout is (parallel * (1000/max(“Deserialize: Time(ms)”, “Execute: Time(ms)”, “Serialize: Time(ms)”)))</p>
+
+<p>In this method, we can find out which component’s throughpout is the bottleneck of topology, so the simplest improving throughpout’s method is enlarge the bottleneck component’s parallelism.</p>
+
+<p>Another easy solution to find out bottleneck component is finding out whose queues are full, if most of one component’s queues are full, please enlarge the component’s parallelism.</p>
+
+<h1 id="hotpoint-task">Hotpoint task</h1>
+<p>When using fieldGrouping, please take care of hotpoint task which receive more data than other tasks belonging to the same component, this will lower down the whole topology’s throughput greatly. Please make task load as equal as possible.</p>
+
+<h1 id="hotpoint-worker">Hotpoint worker</h1>
+<p>For some heavy component, please make sure every worker’s loader is almost equal, so the parallelism of the component had better be multiple of the worker number.</p>
+
+<h1 id="hotpointbad-supervisor">Hotpoint/Bad Supervisor</h1>
+<p>Please pay attention to this problem When whole cluster’s load is heavy. Here are several solution to resolve this problem:</p>
+
+<ol>
+  <li>let the worker number is multiple of the supervisor number and reduce hotpoint  worker</li>
+  <li>Do connection check after install one cluster, You can use the installation package’s example to do this check.</li>
+  <li>Check supervisor’s page, check whether there are some workers whose one of CPU usage/”Batch Trans Time over network(ms)”/”Netty Client Batch Size” is pretty high</li>
+</ol>
+
+<h1 id="hotpoint-spout">Hotpoint spout</h1>
+<p>Normally spout consumer Kafka/RockeMq/TimeTunel/Redis, the data source’s partition number had better be the multiple of spout’s number.</p>
+
+<h1 id="worker-number">Worker number</h1>
+<p>It had better run 2 ~ 8 tasks in one worker, the more data to be handled in one task, the smaller the number. Running multiple tasks in one worker will save much CPU, more data will be past in one process, no network cost, no serialize/deserialize operation. But the number bigger than 12 isn’t be suggested, due to thread switch maybe cost much CPU.</p>
+
+<h1 id="some-jstorm-setting-for-performance">Some JStorm setting for performance</h1>
+
+<pre><code>topology.max.spout.pending: null                 #this will effect spout emit tuple number in one time, the bigger it is, the more tuple it will emit, the easier occur failure
+topology.message.timeout.secs: 30                 #the tuple's timeout seconds
+topology.executor.receive.buffer.size: 256        #the task's receiving queue size
+topology.executor.send.buffer.size: 256           #the task's sending queue size
+topology.transfer.buffer.size: 1024               # the worker's sending/receive queue size, shared by all tasks
+kryo.enable: true                                 # if this is true, it will reduce deserialize time, but the value of emit tuple should register into kryo factory.
+
+## network settings
+#storm.messaging.transport: "com.alibaba.jstorm.message.zeroMq.MQContext"
+storm.messaging.transport: "com.alibaba.jstorm.message.netty.NettyContext"
+storm.messaging.netty.sync.mode: false            ## send message with sync or async mode
+storm.messaging.netty.transfer.async.batch: true  # If async and batch is used in netty transfer, netty will batch message
+# If async and batch is used in netty transfer, netty will batch message
+storm.messaging.netty.transfer.async.batch: true
+# If storm.messaging.netty.transfer.async.batch is enable, the batch size.
+storm.messaging.netty.transfer.batch.size: 262144
+# every "storm.messaging.netty.flush.check.interval.ms" ms, netty will flush the batch.
+storm.messaging.netty.flush.check.interval.ms: 10
+
+</code></pre>
+  
+      <div class="footer">
+      Google Groups: <a target="_blank" href="https://groups.google.com/forum/#!forum/jstorm-user">jstorm-user</a>, QQ Groups: 228374502
+      </p>
+      Caught a mistake or want to contribute to the documentation? 
+      <a href="https://github.com/alibaba/jstorm/edit/master/docs/jstorm-doc/backup/advance/perfomance_tuning.md" target="_blank">
+        Edit this page on Github!
+      </a>
+  </div>    
+    </div>
+  </div>
+
+  
+</div>
+
+    </div><!-- /.container -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="//cdn.bootcss.com/jquery/1.11.2/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="//cdn.bootcss.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <script src="//cdn.bootcss.com/anchor-js/3.1.0/anchor.min.js"></script>
+    <script src="/js/jstorm.js"></script>
+
+    <!-- Google Analytics -->
+    <!-- script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-52545728-1', 'auto');
+      ga('send', 'pageview');
+    </script -->
+
+    <!-- Baidu Analytics -->
+    <script>
+      var _hmt = _hmt || [];
+      (function() {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?835985ad7943d8c24bc3c1f155b7d4a2";
+        var s = document.getElementsByTagName("script")[0]; 
+        s.parentNode.insertBefore(hm, s);
+      })();
+    </script>
+
+
+    <!-- Disqus -->
+    <!--
+     -->
+  </body>
+</html>

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>JStorm Documentation : How to create/remove/enlarge/reduce one JStorm logic cluster on yarn?</title>
+    <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon">
+    <link rel="icon" href="/img/favicon.png" type="image/x-icon">
+
+    <!-- Bootstrap -->
+    <link href="//cdn.bootcss.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/jstorm.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+    <link rel="stylesheet" href="/css/codetabs.css">
+    
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    
+    <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<!--
+
+
+
+
+-->
+    <!-- Top navbar. -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <!-- The logo. -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <div class="navbar-logo">
+            <a href="/"><img alt="jstorm" src="/img/jstorm-logo.png"></a>
+          </div>
+        </div><!-- /.navbar-header -->
+
+        <!-- The navigation links. -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            
+            <!-- Downloads -->
+            <li class="hidden-sm "><a href="/Downloads.html">Downloads</a></li>
+
+            <!-- Performance -->
+            <li class="hidden-sm "><a href="/Performance">Performance</a></li>
+
+            <!-- QuickStart -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">QuickStart <span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                
+                
+                <li class=""><a href="/QuickStart/BasicConception.html">Basic Conception</a></li>
+                
+                <li class=""><a href="/QuickStart/Example.html">Example</a></li>
+                
+                <li class=""><a href="/QuickStart/Deploy/index.html">Deploy</a></li>
+                
+                <li class=""><a href="/QuickStart/Upgrade/index.html">Upgrade</a></li>
+                
+                <li class=""><a href="/QuickStart/UpgradeFromStorm.html">Migrate from Apache Storm</a></li>
+                
+                <li class=""><a href="/QuickStart/Compile.html">Compile JStorm</a></li>
+                
+              </ul>
+            </li>
+
+            <!-- ProgrammingGuide -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">ProgrammingGuide <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/ProgrammingGuide/DebugLocalApp.html">Local Debug</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/StreamSplitJoin.html">Split-Merge-Stream</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/Transaction.html">Transaction</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/Trident.html">Trident</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/AdvancedUsage/index.html">Advanced Usage</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- Maintenance -->
+            <li class="dropdown active">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Maintenance <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Maintenance/Configuration.html">Configuration</a></li>
+                  
+                  <li class=""><a href="/Maintenance/ConfigurationAutomacticSync.html">Automatically Sync Configuration</a></li>
+                  
+                  <li class=""><a href="/Maintenance/Isolation.html">Resource Isolation</a></li>
+                  
+                  <li class=""><a href="/Maintenance/JStormMetrics.html">JStorm Metrics</a></li>
+                  
+                  <li class=""><a href="/Maintenance/HealthCheck.html">Supervisor Health Check</a></li>
+                  
+                  <li class="active"><a href="/Maintenance/JStorm-on-Yarn.html">JStorm-on-Yarn</a></li>
+                  
+                  <li class=""><a href="/Maintenance/ClusterHA.html">Cluster HA</a></li>
+                  
+                  <li class=""><a href="/Maintenance/SupervisorWorker.html">Supervisor-Generate-Workers</a></li>
+                  
+                  <li class=""><a href="/Maintenance/DynamicAdjustLog.html">Dynamic Adjust Log</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- FAQ -->
+            <li class="hidden-sm "><a href="/FAQ/">FAQ</a></li>
+
+            <!-- Community -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Community <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Community/Email.html">Email List</a></li>
+                  
+                  <li class=""><a href="/Community/Committers.html">Committer List</a></li>
+                  
+                  <li class=""><a href="/Community/Events-Meetups.html">Events and Meetups</a></li>
+                  
+                  <li class=""><a href="/Community/Issues.html">Track issues</a></li>
+                  
+                  <li class=""><a href="/Community/JStormUsers.html">JStorm User List</a></li>
+                  
+              </ul>
+            </li>
+
+
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Language <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class=""><a href="/index.html">English</a></li>
+                  <li class=""><a href="/index_cn.html">中文</a></li>
+
+              </ul>
+            </li>
+          </ul>          
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container -->
+    </nav>
+
+
+    
+
+    <!-- Main content. -->
+    <div class="container">
+      
+      <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<div class="row">
+
+  
+  
+  <div class="col-md-8 col-md-offset-2 text">
+    <h1>How to create/remove/enlarge/reduce one JStorm logic cluster on yarn?</h1>
+	<ul id="markdown-toc">
+  <li><a href="#function-points" id="markdown-toc-function-points">function points</a>    <ul>
+      <li><a href="#create-a-cluster" id="markdown-toc-create-a-cluster">Create a cluster</a></li>
+      <li><a href="#destroy-a-cluster" id="markdown-toc-destroy-a-cluster">Destroy a cluster</a></li>
+      <li><a href="#upgrading-a-cluster-binary" id="markdown-toc-upgrading-a-cluster-binary">Upgrading a cluster binary</a></li>
+      <li><a href="#upgrading-a-cluster-configuration" id="markdown-toc-upgrading-a-cluster-configuration">Upgrading a cluster configuration</a></li>
+      <li><a href="#download-binary-and-configuration-file-of-a-cluster" id="markdown-toc-download-binary-and-configuration-file-of-a-cluster">Download binary and configuration file of a cluster</a></li>
+      <li><a href="#restart-cluster" id="markdown-toc-restart-cluster">Restart Cluster</a></li>
+      <li><a href="#view-cluster-status" id="markdown-toc-view-cluster-status">View cluster status</a></li>
+      <li><a href="#expand-and-reduce-the-capacity-of-cluster" id="markdown-toc-expand-and-reduce-the-capacity-of-cluster">Expand and reduce the capacity of cluster</a></li>
+      <li><a href="#expand-and-reduce-the-capacity-of-cluster-with-rack-assignment" id="markdown-toc-expand-and-reduce-the-capacity-of-cluster-with-rack-assignment">Expand and reduce the capacity of cluster with rack assignment</a></li>
+    </ul>
+  </li>
+  <li><a href="#jstorm-on-yarn-process" id="markdown-toc-jstorm-on-yarn-process">JStorm-on-Yarn Process</a>    <ul>
+      <li><a href="#create-am" id="markdown-toc-create-am">Create AM</a></li>
+      <li><a href="#creating-nimbus-and-supervisor" id="markdown-toc-creating-nimbus-and-supervisor">Creating nimbus and supervisor</a></li>
+    </ul>
+  </li>
+  <li><a href="#maintenance-and-configuration-instructions" id="markdown-toc-maintenance-and-configuration-instructions">Maintenance and configuration instructions</a>    <ul>
+      <li><a href="#jstorm-configuration" id="markdown-toc-jstorm-configuration">Jstorm Configuration</a></li>
+      <li><a href="#yarn-configuration" id="markdown-toc-yarn-configuration">Yarn Configuration</a></li>
+    </ul>
+  </li>
+  <li><a href="#yarn-introductory-series-articles" id="markdown-toc-yarn-introductory-series-articles">Yarn introductory series articles</a></li>
+</ul>
+
+<h1 id="function-points">function points</h1>
+<p>Currently support cluster management through script invokes the thrift interface.
+The invoke path is bin/JstormYarn</p>
+
+<h2 id="create-a-cluster">Create a cluster</h2>
+<ul>
+  <li>Create a cluster, limit the number of cluster resources (cpu core and memory)</li>
+  <li>Each cluster can support different versions of jstorm and jdk</li>
+  <li>Multiple logical cluster container can run on one machine</li>
+  <li>Start: Executive submitJstormOnYarn command to submit a cluster, then start nimbus and supervisor with the startNimbus and addSupervisors command</li>
+</ul>
+
+<h2 id="destroy-a-cluster">Destroy a cluster</h2>
+<ul>
+  <li>execute killJstormOnYarn, kill the process</li>
+</ul>
+
+<h2 id="upgrading-a-cluster-binary">Upgrading a cluster binary</h2>
+<ul>
+  <li>Update jstorm deployment files under deploy directory</li>
+  <li>Execute upgradeCluster command</li>
+</ul>
+
+<h2 id="upgrading-a-cluster-configuration">Upgrading a cluster configuration</h2>
+<ul>
+  <li>Update storm.yaml under deploy/jstorm/conf</li>
+  <li>Execute upgradeCluster command</li>
+</ul>
+
+<h2 id="download-binary-and-configuration-file-of-a-cluster">Download binary and configuration file of a cluster</h2>
+<ul>
+  <li>The configuration item jstorm.yarn.instance.deploy.dir is the storage path of current binary files on hadoop</li>
+</ul>
+
+<h2 id="restart-cluster">Restart Cluster</h2>
+<ul>
+  <li>Execute upgradeCluster command</li>
+</ul>
+
+<h2 id="view-cluster-status">View cluster status</h2>
+<ul>
+  <li>Execute info command</li>
+</ul>
+
+<h2 id="expand-and-reduce-the-capacity-of-cluster">Expand and reduce the capacity of cluster</h2>
+<ul>
+  <li>Execute Command addSupervisors and removeSupervisors</li>
+</ul>
+
+<h2 id="expand-and-reduce-the-capacity-of-cluster-with-rack-assignment">Expand and reduce the capacity of cluster with rack assignment</h2>
+<ul>
+  <li>Execute Command addSpecSupervisors and removeSpecSupervisors</li>
+</ul>
+
+<h1 id="jstorm-on-yarn-process">JStorm-on-Yarn Process</h1>
+<p>jstorm-on-yarn use wholesale mode Unlike spark-on-yarn use resale mode. means an AM is generated each time when submitting an application to cluster. The AM of jstorm-on-yarn is permanent, that is, for a JStorm cluster, it will be only one AM.</p>
+
+<p>wholesale mode raise 50% utilization, for example, in production environment we found resale mode (spark-on-yarn) can only use 60-70% physical resource. but wholesale can reach nearly 90%. that’s a  wide gap；Flexible resource grading support requirement better in many cases，eg：application 1 use more memory resource in period A,  use more cpu cores in period B, application 2 use more network IO in period A,use more memory resource in period B, then, if use resale mode , total resource needs equals every resource ‘s peak value  of application 1 plus every resource’s peak value of  application 2. and wholesale mode can share resource between multi-application in whole lifecycle,reduce resource waste；And if use resale mode , container often crash. because default GC strategy most application can’t trigger oldgen GC, when heap memory run out, NM kill this container and AM will start another contaier in difference place. that need schedule overhead and state management.  use wholesale mode this situation can be completely avoided</p>
+
+<p>So currently jstorm-on-yarn works as that there is an AM as total control. It is responsible for the following tasks:</p>
+<ul>
+  <li>Create Nimbus (and automatically restart nimbus when it hung)</li>
+  <li>Receives requests and create Supervisor</li>
+  <li>Cluster capacity expand and reduce dynamically</li>
+</ul>
+
+<p>Submitting, killing and other operations on the topology, interact with nimbus and supervisor in the container directly as with the standalone cluster of JStorm, do not interact with AM.</p>
+
+<h2 id="create-am">Create AM</h2>
+<p>From start-JstormYarn.sh start, it will call JStormOnYarn class to create AM, essentially the yarn client of JStorm.
+This class is quite simple, it mainly set some parameters of nimbus container, such as memory, CPU core, jar, libjar, shellscript (actual value is start_jstorm.sh, for starting nimbus and supervisor).
+Then uploaded the jar and shellscript to the HDFS. Finally call <code>yarnClient.submitApplication (appContext)</code> to create the AM.</p>
+
+<h2 id="creating-nimbus-and-supervisor">Creating nimbus and supervisor</h2>
+<p>This step is achieved through thrift interface, embodied as: client end JstormAM.py (automatically generated by thrift), server-side automatically generated RPC interface is JstormAM, while the real processing logic is in JstormAMHandler class (the same as the thrift in jstorm). The handler initializes thrift server and monitor client’s requests when it creates AM.</p>
+
+<p>Look at a few important methods: addSupervisors and startNimbus
+In fact, these two methods have similar implements. In essence, it specified the number of container, CPU core count. Launching the supervisor or nimbus is done in JStormMaster. It determine to launch the supervisor or nimbus base on the container’s priority property.</p>
+
+<p>Note that, when jstorm-on-yarn creates a supervisor, not only apply the memory for supervisor itself, but will specify a chunk of memory (such as 20 or 40G), the container will hold all the worker under the supervisor. When the container is hung due to some question , all the workers will be killed, which is more stringent than in the standalone cluster.</p>
+
+<h1 id="maintenance-and-configuration-instructions">Maintenance and configuration instructions</h1>
+
+<h2 id="jstorm-configuration">Jstorm Configuration</h2>
+
+<p>In order to facilitate the maintenance, please add the following configuration at all storm.yaml in YARN cluster:</p>
+
+<pre><code> jstorm.on.yarn: true
+ supervisor.childopts:  -Djstorm-on-yarn=true
+ jstorm.log.dir: /home/yarn/jstorm_logs/&lt;cluster_name&gt;
+</code></pre>
+
+<p>if you need enable nimbus auto restart, pleas add the following configuration</p>
+
+<pre><code>blobstore.dir: /yourhdfsdir
+blobstore.hdfs.hostname: yourhdfshost
+blobstore.hdfs.port: yourhdfsport
+</code></pre>
+
+<p>The above configuration will override the default log path, all the logs are redirected to the /home/yarn below, preventing from missing the log after the container hangs. If more than one container of supervisor is launch on the same machine, it will add value <code>supervisor.deamon.logview.port</code> at the end of supervisor log (YARN dynamically generated port and port range for each container) to distinguish logs and prevent the logs from affecting each other. For example if two supervisor http ports are 9000 and 9001 respectively, then supervisor-9000.log and supervisor-9001.log are generated. koala will add the specified port suffix for the log according to the <code>jstorm.on.yarn</code> configuration.</p>
+
+<h2 id="yarn-configuration">Yarn Configuration</h2>
+
+<p>TO BE ADDED</p>
+
+<h1 id="yarn-introductory-series-articles">Yarn introductory series articles</h1>
+
+<p>See: http: //zh.hortonworks.com/get-started/yarn/</p>
+
+  <div class="footer">
+      Google Groups: <a target="_blank" href="https://groups.google.com/forum/#!forum/jstorm-user">jstorm-user</a>, QQ Groups: 228374502
+      </p>
+      Caught a mistake or want to contribute to the documentation? 
+      <a href="https://github.com/alibaba/jstorm/edit/master/docs/jstorm-doc/Maintenance/JStorm-on-Yarn.md" target="_blank">
+        Edit this page on Github!
+      </a>
+  </div>
+  
+
+  
+</div>
+
+    </div><!-- /.container -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="//cdn.bootcss.com/jquery/1.11.2/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="//cdn.bootcss.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <script src="//cdn.bootcss.com/anchor-js/3.1.0/anchor.min.js"></script>
+    <script src="/js/jstorm.js"></script>
+
+    <!-- Google Analytics -->
+    <!-- script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-52545728-1', 'auto');
+      ga('send', 'pageview');
+    </script -->
+
+    <!-- Baidu Analytics -->
+    <script>
+      var _hmt = _hmt || [];
+      (function() {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?835985ad7943d8c24bc3c1f155b7d4a2";
+        var s = document.getElementsByTagName("script")[0]; 
+        s.parentNode.insertBefore(hm, s);
+      })();
+    </script>
+
+
+    <!-- Disqus -->
+    <!--
+     -->
+  </body>
+</html>

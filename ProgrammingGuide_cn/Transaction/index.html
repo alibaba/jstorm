@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>JStorm 文档 : How to do exactly-once or transaction</title>
+    <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon">
+    <link rel="icon" href="/img/favicon.png" type="image/x-icon">
+
+    <!-- Bootstrap -->
+    <link href="//cdn.bootcss.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/jstorm.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+    <link rel="stylesheet" href="/css/codetabs.css">
+    
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    
+    <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<!--
+
+
+
+
+-->
+    <!-- Top navbar. -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <!-- The logo. -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <div class="navbar-logo">
+            <a href="/"><img alt="jstorm" src="/img/jstorm-logo.png"></a>
+          </div>
+        </div><!-- /.navbar-header -->
+
+        <!-- The navigation links. -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            <!-- Downloads -->
+            <li class="hidden-sm "><a href="/Downloads.html">Downloads</a></li>
+
+            <!-- Performance -->
+            <li class="hidden-sm "><a href="/Performance_cn">Performance</a></li>
+
+            <!-- QuickStart -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">QuickStart <span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                
+                
+                <li class=""><a href="/QuickStart_cn/BasicConception.html">5分钟基础概念(新手第一篇)</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Example.html">入门Example</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Deploy/index.html">安装部署</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Upgrade/index.html">升级</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/UpgradeFromStorm.html">从Apache Storm升级到JStorm</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Compile.html">编译JStorm</a></li>
+                
+              </ul>
+            </li>
+
+            <!-- ProgrammingGuide -->
+            <li class="dropdown active">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">ProgrammingGuide <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/DebugLocalApp.html">本地调试</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/StreamSplitJoin.html">数据流分流合并</a></li>
+                  
+                  <li class="active"><a href="/ProgrammingGuide_cn/Transaction/index.html">事务</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/Trident/index.html">Trident</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/AdvancedUsage/index.html">Advanced Usage</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- Maintenance -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">运维 <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Maintenance_cn/Configuration.html">配置注解</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/ConfigurationAutomacticSync.html">自动同步配置文件</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/Isolation.html">资源隔离</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/JStormMetrics.html">JStorm Metrics</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/HealthCheck.html">Supervisor自检</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/JStorm-on-Yarn.html">JStorm-on-Yarn</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/ClusterHA.html">同城灾备&异地灾备</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/BlobStore.html">BlobStore</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/SupervisorWorker.html">生成worker列表算法</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/DynamicAdjustLog.html">动态调整日志</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- FAQ -->
+            <li class="hidden-sm "><a href="/FAQ_cn/">FAQ</a></li>
+
+
+
+            <!-- Community -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">社区 <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Community/Email.html">Email List</a></li>
+                  
+                  <li class=""><a href="/Community/Committers.html">Committer List</a></li>
+                  
+                  <li class=""><a href="/Community/Events-Meetups.html">Events and Meetups</a></li>
+                  
+                  <li class=""><a href="/Community/Issues.html">Track issues</a></li>
+                  
+                  <li class=""><a href="/Community/JStormUsers.html">JStorm User List</a></li>
+                  
+              </ul>
+            </li>
+
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Language <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class=""><a href="/index.html">English</a></li>
+                  <li class=""><a href="/index_cn.html">中文</a></li>
+
+              </ul>
+            </li>
+          </ul>          
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container -->
+    </nav>
+
+
+    
+
+    <!-- Main content. -->
+    <div class="container">
+      
+      <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<div class="row">
+
+
+  <!-- Sub Navigation -->
+  <div class="col-sm-3">
+    <ul id="sub-nav">
+      
+      
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/Transaction/index.html" class="active">新事务(性能好)</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/Transaction/OldTransaction.html" class="">老事务(性能差)</a>
+          
+        </li>
+      
+    </ul>
+  </div>
+  <!-- Main -->
+  <div class="col-sm-9">
+    <!-- Top anchor -->
+    <a href="#top"></a>
+
+    <div class="text">
+      <!-- Main heading -->
+      <h1>How to do exactly-once or transaction</h1>
+
+      <!-- Content -->
+      <ul id="markdown-toc">
+  <li><a href="#概述" id="markdown-toc-概述">概述</a></li>
+  <li><a href="#基本原理" id="markdown-toc-基本原理"><strong>基本原理:</strong></a>    <ul>
+      <li><a href="#基本介绍" id="markdown-toc-基本介绍"><strong>基本介绍</strong></a></li>
+      <li><a href="#接口介绍" id="markdown-toc-接口介绍"><strong>接口介绍</strong></a></li>
+      <li><a href="#架构优势" id="markdown-toc-架构优势"><strong>架构优势</strong></a></li>
+      <li><a href="#相关配置" id="markdown-toc-相关配置"><strong>相关配置</strong></a></li>
+      <li><a href="#测试结果" id="markdown-toc-测试结果"><strong>测试结果</strong></a></li>
+    </ul>
+  </li>
+</ul>
+
+<h1 id="概述">概述</h1>
+
+<p>在原有的Storm设计中，Trident支持了只处理一次，Acker支持至少处理一次场景。但是Trident和Acker在这两种消息保证机制中，都面临着同样的性能问题， 如果用户需要exactly-once 保证， 性能会急剧下降。</p>
+
+<p>同时由于Trident和Acker机制的API完全不同，用户很难用一套代码去支持两个场景。</p>
+
+<p>针对这两个问题，我们对开始考虑做一套新的框架来支持者两个消息保证机制。</p>
+
+<h1 id="基本原理"><strong>基本原理:</strong></h1>
+<p>设计参考了Flink的只处理一次方案，barrier和stream  align(流对齐)的设计，去做batch的划分和如何保证每个节点只会处理当前批次的消息。具体可以参考Flink的官方文档。
+<u>https://ci.apache.org/projects/flink/flink-docs-release-1.0/internals/stream_checkpointing.html</u>
+对于barrier和流对齐，本文不详细展开，主要介绍JStorm的实现和相关接口的使用。</p>
+
+<h2 id="基本介绍"><strong>基本介绍</strong></h2>
+
+<ul>
+  <li><strong>状态维护:</strong>   JStorm把topology任务的节点分为了四类节点，数据源spout，状态无关节点non-stateful  bolt，状态节点stateful  bolt，结束节点end  bolt。</li>
+  <li>
+    <ul>
+      <li>数据源节点和状态节点只维护自己节点的状态提交顺序，在处理完每个batch后，会马上处理下一个batch的消息。</li>
+    </ul>
+  </li>
+  <li>
+    <ul>
+      <li>Topology  master负责每个batch的全局状态维护，既是否所有节点都完成了当前batch的处理。如果完成，topology  master开始做全局snapshot状态的持久化存储。</li>
+    </ul>
+  </li>
+  <li><strong>如何回滚:</strong></li>
+  <li>
+    <ul>
+      <li>Barrier和stream  align让每个节点在做checkpoint时，保证batch的顺序性和一致性，而topology  master维护了全局状态。如果失败topology  master会通知所有状态节点  <strong>回滚到最后一次全局成功的checkpoint</strong>，然后数据源开始从最后一次全局成功的位置开始重新拉取消息。</li>
+    </ul>
+  </li>
+  <li>
+    <ul>
+      <li>JStorm里回滚以数据源的种类为最小单位。比如说我们现在有两个spout  component，TT  spout和metaq  spout。如果metaq  spout的下游节点挂了，我们只会回滚，metaq  spout这个流的数据。</li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="接口介绍"><strong>接口介绍</strong></h2>
+
+<p><strong>Spout:  ITransactionSpoutExecutor</strong></p>
+
+<p><strong>Bolt:  ITransactionBoltExecutor,  ITransactionStatefulBoltExecutor</strong></p>
+
+<p>应用的消息处理接口和JStorm的基础API一致，如果用户从原有的JStorm任务迁移过来，消息的处理逻辑不用改变。只需要在spout和状态bolt节点实现以下状态处理相关的接口。</p>
+
+<pre><code class="language-java">        /**
+          *  Init state from user checkpoint
+          *  @param userState user checkpoint state 
+          */
+        public  void  initState(Object  userState);
+
+        /**
+          *  Called when current batch is finished
+          *  @return user state to be committed
+          */
+        public Object finishBatch();
+
+        /**
+          *  Commit a batch  
+          *  @param The user state data
+          *  @return snapshot state which is used to retrieve the persistent user state
+          */
+        public Object commit(BatchGroupId id, Object state);
+
+        /**
+          *  Rollback from last success checkpoint state  
+          *  @param user state for rollback
+          */
+        public void rollBack(Object userState);
+
+        /**
+          *  Called when the whole topology finishes committing
+          */
+        public void ackCommit(BatchGroupId id);
+</code></pre>
+
+<ul>
+  <li>initState和rollback:  是在任务起来和回滚时，用于让当前节点回到最后一次成功batch的checkpoint。</li>
+  <li>finishBatch:  是用于通知用户，当前batch接收完毕。返回值为当前batch对应的业务checkpoint。</li>
+  <li>commit:  在用户返回对应的checkpoint后，我们会在一个异步线程里调用commit接口，对这个checkpoint进行提交操作，以不阻塞task  execute处理线程。如果checkpoint不大，可以直接在这个接口中返回checkpoint，JStorm最终会在topology  master里统一做持久化。如果checkpoint比较大。用户可以在这个接口中，把对应的checkpoint缓存一份到相应外部存储里，然后返回对应的key。在回滚时，JStorm会把该key值返回给用户，用于找回对应的checkpoint。</li>
+  <li>ackCommit:  当topology任务在所有节点成功后，该接口会被回调。如果之前有checkpoint的缓存，用户在这个接口里可以去完成一些清理工作。比如batch-10完成了，那我们可以删除batch-9和之前的所有checkpoint缓存。</li>
+</ul>
+
+<p>参考例子: sequence-split-merge模块中TransactionTestTopology.java类。</p>
+
+<h2 id="架构优势"><strong>架构优势</strong></h2>
+<p>相对于Trident和Acker机制。这套架构的最大优势在于:
+        1.  每个节点只关心自己节点的提交状态。不用等待所有节点都成功后，再开始下一个batch的提交和计算。
+        2.  不需要再依赖acker节点，减少额外系统计算和带宽消耗。原有的acker模型下，每条用户消息都会产生一条对应的系统消息到acker，同时有额外的计算消耗，并且acker消息会消耗大量的网络带宽。</p>
+
+<h2 id="相关配置"><strong>相关配置</strong></h2>
+<pre><code>    # true:  只处理一次;  false:  至少处理一次
+    transaction.exactly.once.mode:  true
+</code></pre>
+
+<h2 id="测试结果"><strong>测试结果</strong></h2>
+
+<p>下图是最多处理一次(关闭所有的消息保证机制)，新的至少处理一次框架和原有的Acker机制的性能对比结果。新的至少处理一次方案性能为原有Acker方案的4~7倍</p>
+
+<p><img src="/img/programguide/transaction-perf.png" alt="img" /></p>
+      
+      <div class="footer">
+      Google Groups: <a target="_blank" href="https://groups.google.com/forum/#!forum/jstorm-user">jstorm-user</a>, QQ Groups: 228374502
+      </p>
+ 
+      发现错误？想参与编辑？
+      <a href="https://github.com/alibaba/jstorm/edit/master/docs/jstorm-doc/ProgrammingGuide_cn/Transaction/index.md" target="_blank">
+        在 Github 上编辑此页！
+      </a>
+  </div>
+    </div>
+  </div>
+
+  
+</div>
+
+    </div><!-- /.container -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="//cdn.bootcss.com/jquery/1.11.2/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="//cdn.bootcss.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <script src="//cdn.bootcss.com/anchor-js/3.1.0/anchor.min.js"></script>
+    <script src="/js/jstorm.js"></script>
+
+    <!-- Google Analytics -->
+    <!-- script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-52545728-1', 'auto');
+      ga('send', 'pageview');
+    </script -->
+
+    <!-- Baidu Analytics -->
+    <script>
+      var _hmt = _hmt || [];
+      (function() {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?835985ad7943d8c24bc3c1f155b7d4a2";
+        var s = document.getElementsByTagName("script")[0]; 
+        s.parentNode.insertBefore(hm, s);
+      })();
+    </script>
+
+
+    <!-- Disqus -->
+    <!--
+     -->
+  </body>
+</html>

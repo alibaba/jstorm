@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+<title>JStorm Blog Feed</title>
+<description>JStorm Blog</description>
+<link>http://jstorm.io/blog</link>
+<atom:link href="http://jstorm.io/blog/feed.xml" rel="self" type="application/rss+xml" />
+
+<item>
+<title>Jstorm 2.2.1 Released</title>
+<description>
+&lt;p&gt;Please refer to &lt;a href=&quot;https://github.com/alibaba/jstorm/blob/master/history.md&quot;&gt;
+    https://github.com/alibaba/jstorm/blob/master/history.md”&lt;/a&gt; for release notes&lt;/p&gt;
+
+&lt;p&gt;or &lt;a href=&quot;https://github.com/alibaba/jstorm/blob/master/history_cn.md&quot;&gt;
+https://github.com/alibaba/jstorm/blob/master/history_cn.md&lt;/a&gt;for Chinese release notes.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;IMPORTANT&lt;/strong&gt;: please refer to &lt;a href=&quot;http://jstorm.io/QuickStart/Upgrade/UpgradeToJStorm221.html&quot;&gt;
+http://jstorm.io/QuickStart/Upgrade/UpgradeToJStorm221.html&lt;/a&gt; for upgrade guide.&lt;/p&gt;
+
+</description>
+<pubDate>Tue, 03 Jan 2017 00:00:00 +0800</pubDate>
+<link>http://jstorm.io/2017/01/03/JStorm-2.2.1-Released.html</link>
+<guid isPermaLink="true">/2017/01/03/JStorm-2.2.1-Released.html</guid>
+</item>
+
+<item>
+<title>Seattle Large Scale Stream Processing</title>
+<description>
+&lt;h1 id=&quot;topic&quot;&gt;Topic&lt;/h1&gt;
+
+&lt;p&gt;Being the largest online marketplace in China. Taobao serves over 400 million active users every month. During the first eight minutes of the 11.11 Global Shopping festival of 2015, the GMV reached more than $1 billion. Stream processing has been playing a crucial role in Taobao’s infrastructure in a variety of business scenarios. In this talk, I will share how Taobao uses stream processing techniques to support a wide range of business applications, such as fraud detection, online transaction processing, mobile internet, mobile payment, and risk control for online transactions. We will also discuss the key architecture that made it possible for Taobao to process hundreds of billions of events in real time every day. In particular, we will present JStorm, an open sourced stream processing platform that empowers most of Taobao’s realtime stream data systems.&lt;/p&gt;
+
+&lt;h1 id=&quot;speaker-introduction&quot;&gt;Speaker Introduction&lt;/h1&gt;
+
+&lt;p&gt;Zhongyan Feng, Sr. Staff Engineer, Alibaba Group
+Zhongyan Feng is the creator of JStorm, an open-source stream-processing framework. For many years, he has specialized in distributed computing with a focus on real-time computing and streaming. Prior to working for Alibaba’s Taobao Marketplace, he worked at EMC and VIA Technologies.&lt;/p&gt;
+
+</description>
+<pubDate>Sat, 06 Aug 2016 00:00:00 +0800</pubDate>
+<link>http://jstorm.io/2016/08/06/Seattle-Large-Scale-Stream-Processing.html</link>
+<guid isPermaLink="true">/2016/08/06/Seattle-Large-Scale-Stream-Processing.html</guid>
+</item>
+
+<item>
+<title>Qcon Beijing Jstorm Turbo</title>
+<description>
+&lt;ul&gt;
+  &lt;li&gt;2016-4-21  QCON 2016 Beijing, &lt;a href=&quot;http://2016.qconbeijing.com/presentation/2852&quot;&gt;阿里巴巴实时计算平台 JStorm Turbo&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;
+    &lt;ul&gt;
+      &lt;li&gt;&lt;a href=&quot;http://2016.qconbeijing.com/presentation/2852&quot;&gt;PPT&lt;/a&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;ul&gt;
+      &lt;li&gt;&lt;a href=&quot;https://v.qq.com/iframe/preview.html?vid=j0311u986gc&amp;amp;width=500&amp;amp;height=375&amp;amp;auto=0&quot;&gt;Vedio&lt;/a&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+<pubDate>Thu, 21 Apr 2016 00:00:00 +0800</pubDate>
+<link>http://jstorm.io/2016/04/21/Qcon-Beijing-JStorm-Turbo.html</link>
+<guid isPermaLink="true">/2016/04/21/Qcon-Beijing-JStorm-Turbo.html</guid>
+</item>
+
+<item>
+<title>China Hadoop Submit Beijing Jstorm Turbo</title>
+<description>
+&lt;ul&gt;
+  &lt;li&gt;2016-3-18 CHINA HADOOP SUMMIT 2016  Beijing, &lt;a href=&quot;http://chinahadoop.com/archives/1320&quot;&gt;阿里巴巴实时计算平台JStorm Turbo&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;
+    &lt;ul&gt;
+      &lt;li&gt;&lt;a href=&quot;http://event.chinahadoop.com/download.php?r_id=1&amp;amp;t=ppt&amp;amp;f=19-pm-81-fengzongyan.pdf&quot;&gt;PPT&lt;/a&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;ul&gt;
+      &lt;li&gt;&lt;a href=&quot;http://event.chinahadoop.com/download.php?r_id=1&amp;amp;t=audio&amp;amp;f=19-pm-81-fengzongyan.mp3&quot;&gt;Audio&lt;/a&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+<pubDate>Fri, 18 Mar 2016 00:00:00 +0800</pubDate>
+<link>http://jstorm.io/2016/03/18/China-Hadoop-Submit-Beijing-JStorm-Turbo.html</link>
+<guid isPermaLink="true">/2016/03/18/China-Hadoop-Submit-Beijing-JStorm-Turbo.html</guid>
+</item>
+
+</channel>
+</rss>

@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>JStorm 文档 : Basic Conception</title>
+    <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon">
+    <link rel="icon" href="/img/favicon.png" type="image/x-icon">
+
+    <!-- Bootstrap -->
+    <link href="//cdn.bootcss.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/jstorm.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+    <link rel="stylesheet" href="/css/codetabs.css">
+    
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    
+    <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<!--
+
+
+
+
+-->
+    <!-- Top navbar. -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <!-- The logo. -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <div class="navbar-logo">
+            <a href="/"><img alt="jstorm" src="/img/jstorm-logo.png"></a>
+          </div>
+        </div><!-- /.navbar-header -->
+
+        <!-- The navigation links. -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            <!-- Downloads -->
+            <li class="hidden-sm "><a href="/Downloads.html">Downloads</a></li>
+
+            <!-- Performance -->
+            <li class="hidden-sm "><a href="/Performance_cn">Performance</a></li>
+
+            <!-- QuickStart -->
+            <li class="dropdown active">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">QuickStart <span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                
+                
+                <li class="active"><a href="/QuickStart_cn/BasicConception.html">5分钟基础概念(新手第一篇)</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Example.html">入门Example</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Deploy/index.html">安装部署</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Upgrade/index.html">升级</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/UpgradeFromStorm.html">从Apache Storm升级到JStorm</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Compile.html">编译JStorm</a></li>
+                
+              </ul>
+            </li>
+
+            <!-- ProgrammingGuide -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">ProgrammingGuide <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/DebugLocalApp.html">本地调试</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/StreamSplitJoin.html">数据流分流合并</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/Transaction/index.html">事务</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/Trident/index.html">Trident</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/AdvancedUsage/index.html">Advanced Usage</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- Maintenance -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">运维 <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Maintenance_cn/Configuration.html">配置注解</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/ConfigurationAutomacticSync.html">自动同步配置文件</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/Isolation.html">资源隔离</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/JStormMetrics.html">JStorm Metrics</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/HealthCheck.html">Supervisor自检</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/JStorm-on-Yarn.html">JStorm-on-Yarn</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/ClusterHA.html">同城灾备&异地灾备</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/BlobStore.html">BlobStore</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/SupervisorWorker.html">生成worker列表算法</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/DynamicAdjustLog.html">动态调整日志</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- FAQ -->
+            <li class="hidden-sm "><a href="/FAQ_cn/">FAQ</a></li>
+
+
+
+            <!-- Community -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">社区 <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Community/Email.html">Email List</a></li>
+                  
+                  <li class=""><a href="/Community/Committers.html">Committer List</a></li>
+                  
+                  <li class=""><a href="/Community/Events-Meetups.html">Events and Meetups</a></li>
+                  
+                  <li class=""><a href="/Community/Issues.html">Track issues</a></li>
+                  
+                  <li class=""><a href="/Community/JStormUsers.html">JStorm User List</a></li>
+                  
+              </ul>
+            </li>
+
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Language <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class=""><a href="/index.html">English</a></li>
+                  <li class=""><a href="/index_cn.html">中文</a></li>
+
+              </ul>
+            </li>
+          </ul>          
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container -->
+    </nav>
+
+
+    
+
+    <!-- Main content. -->
+    <div class="container">
+      
+      <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<div class="row">
+
+  
+  
+  <div class="col-md-8 col-md-offset-2 text">
+    <h1>Basic Conception</h1>
+	<ul id="markdown-toc">
+  <li><a href="#jstorm-是一个分布式实时计算引擎" id="markdown-toc-jstorm-是一个分布式实时计算引擎">JStorm 是一个分布式实时计算引擎。</a></li>
+  <li><a href="#优点" id="markdown-toc-优点">优点</a></li>
+  <li><a href="#应用场景" id="markdown-toc-应用场景">应用场景</a></li>
+  <li><a href="#基本概念" id="markdown-toc-基本概念">基本概念</a>    <ul>
+      <li><a href="#jstorm组件" id="markdown-toc-jstorm组件">JStorm组件</a>        <ul>
+          <li><a href="#spout" id="markdown-toc-spout">spout</a></li>
+          <li><a href="#bolt" id="markdown-toc-bolt">bolt</a></li>
+        </ul>
+      </li>
+      <li><a href="#组件的接口" id="markdown-toc-组件的接口">组件的接口</a></li>
+      <li><a href="#调度和执行" id="markdown-toc-调度和执行">调度和执行</a>        <ul>
+          <li><a href="#总worker数" id="markdown-toc-总worker数">总worker数</a></li>
+          <li><a href="#每个component的并行度" id="markdown-toc-每个component的并行度">每个component的并行度</a></li>
+          <li><a href="#每个component之间的关系" id="markdown-toc-每个component之间的关系">每个component之间的关系</a></li>
+        </ul>
+      </li>
+      <li><a href="#消息的通信" id="markdown-toc-消息的通信">消息的通信</a></li>
+      <li><a href="#实时计算结果输出" id="markdown-toc-实时计算结果输出">实时计算结果输出</a></li>
+    </ul>
+  </li>
+</ul>
+
+<p>本文主要讲一下JStorm的基本概念，让你在5分钟内对JStorm有一个大体的了解</p>
+
+<h1 id="jstorm-是一个分布式实时计算引擎">JStorm 是一个分布式实时计算引擎。</h1>
+
+<p>JStorm 是一个类似Hadoop MapReduce的系统， 用户按照指定的接口实现一个任务，然后将这个任务递交给JStorm系统，JStorm将这个任务跑起来，并且按7 * 24小时运行起来，一旦中间一个Worker 发生意外故障， 调度器立即分配一个新的Worker替换这个失效的Worker。</p>
+
+<p>因此，从应用的角度，JStorm应用是一种遵守某种编程规范的分布式应用。从系统角度， JStorm是一套类似MapReduce的调度系统。 从数据的角度，JStorm是一套基于流水线的消息处理机制。</p>
+
+<p>实时计算现在是大数据领域中最火爆的一个方向，因为人们对数据的要求越来越高，实时性要求也越来越快，传统的Hadoop MapReduce，逐渐满足不了需求，因此在这个领域需求不断。</p>
+
+<p><strong>Storm组件和Hadoop组件对比</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>JStorm</th>
+      <th>Hadoop</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>角色</td>
+      <td>Nimbus</td>
+      <td>JobTracker</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>Supervisor</td>
+      <td>TaskTracker</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>Worker</td>
+      <td>Child</td>
+    </tr>
+    <tr>
+      <td>应用名称</td>
+      <td>Topology</td>
+      <td>Job</td>
+    </tr>
+    <tr>
+      <td>编程接口</td>
+      <td>Spout/Bolt</td>
+      <td>Mapper/Reducer</td>
+    </tr>
+  </tbody>
+</table>
+
+<h1 id="优点">优点</h1>
+<p>在Storm和JStorm出现以前，市面上出现很多实时计算引擎，但自Storm和JStorm出现后，基本上可以说一统江湖：
+究其优点:</p>
+
+<ul>
+  <li>开发非常迅速：接口简单，容易上手，只要遵守Topology、Spout和Bolt的编程规范即可开发出一个扩展性极好的应用，底层RPC、Worker之间冗余，数据分流之类的动作完全不用考虑</li>
+  <li>扩展性极好：当一级处理单元速度，直接配置一下并发数，即可线性扩展性能</li>
+  <li>健壮强：当Worker失效或机器出现故障时， 自动分配新的Worker替换失效Worker</li>
+  <li>数据准确性：可以采用Ack机制，保证数据不丢失。 如果对精度有更多一步要求，采用事务机制，保证数据准确。</li>
+  <li>实时性高： JStorm 的设计偏向单行记录，因此，在时延较同类产品更低</li>
+</ul>
+
+<h1 id="应用场景">应用场景</h1>
+
+<p>JStorm处理数据的方式是基于消息的流水线处理， 因此特别<strong>适合无状态计算</strong>，也就是计算单元的依赖的数据全部在接受的消息中可以找到， 并且最好一个数据流不依赖另外一个数据流。</p>
+
+<p>因此，常常用于:</p>
+
+<ul>
+  <li>日志分析，从日志中分析出特定的数据，并将分析的结果存入外部存储器如数据库。目前，主流日志分析技术就使用JStorm或Storm</li>
+  <li>管道系统， 将一个数据从一个系统传输到另外一个系统， 比如将数据库同步到Hadoop</li>
+  <li>消息转化器， 将接受到的消息按照某种格式进行转化，存储到另外一个系统如消息中间件</li>
+  <li>统计分析器， 从日志或消息中，提炼出某个字段，然后做count或sum计算，最后将统计值存入外部存储器。中间处理过程可能更复杂。</li>
+  <li>实时推荐系统， 将推荐算法运行在jstorm中，达到秒级的推荐效果</li>
+</ul>
+
+<h1 id="基本概念">基本概念</h1>
+
+<p>首先，JStorm有点类似于Hadoop的MR（Map-Reduce），但是区别在于，hadoop的MR，提交到hadoop的MR job，执行完就结束了，进程就退出了，而一个JStorm任务（JStorm中称为topology），是7*24小时永远在运行的，除非用户主动kill。</p>
+
+<h2 id="jstorm组件">JStorm组件</h2>
+
+<p>接下来是一张比较经典的Storm的大致的结构图（跟JStorm一样）：</p>
+
+<p align="center">
+<img src="http://storm.apache.org/images/storm-flow.png" width="600px" text-align:center="" />
+</p>
+
+<p>图中的水龙头（好吧，有点俗）就被称作spout，闪电被称作bolt。</p>
+
+<p>在JStorm的topology中，有两种组件：<code>spout</code>和<code>bolt</code>。</p>
+
+<h3 id="spout">spout</h3>
+
+<p>spout代表输入的数据源，这个数据源可以是任意的，比如说kafka，DB，HBase，甚至是HDFS等，JStorm从这个数据源中不断地读取数据，然后发送到下游的bolt中进行处理。</p>
+
+<h3 id="bolt">bolt</h3>
+
+<p>bolt代表处理逻辑，bolt收到消息之后，对消息做处理（即执行用户的业务逻辑），处理完以后，既可以将处理后的消息继续发送到下游的bolt，这样会形成一个处理流水线（pipeline，不过更精确的应该是个有向图）；也可以直接结束。</p>
+
+<p>通常一个流水线的最后一个bolt，会做一些数据的存储工作，比如将实时计算出来的数据写入DB、HBase等，以供前台业务进行查询和展现。</p>
+
+<h2 id="组件的接口">组件的接口</h2>
+
+<p>JStorm框架对spout组件定义了一个接口：<code>nextTuple</code>，顾名思义，就是获取下一条消息。执行时，可以理解成JStorm框架会不停地调这个接口，以从数据源拉取数据并往bolt发送数据。</p>
+
+<p>同时，bolt组件定义了一个接口：<code>execute</code>，这个接口就是用户用来处理业务逻辑的地方。</p>
+
+<p>每一个topology，既可以有多个spout，代表同时从多个数据源接收消息，也可以多个bolt，来执行不同的业务逻辑。</p>
+
+<h2 id="调度和执行">调度和执行</h2>
+
+<p>接下来就是topology的调度和执行原理，对一个topology，JStorm最终会调度成一个或多个worker，每个worker即为一个真正的操作系统执行进程，分布到一个集群的一台或者多台机器上并行执行。</p>
+
+<p>而每个worker中，又可以有多个task，分别代表一个执行线程。每个task就是上面提到的组件(component)的实现，要么是spout要么是bolt。</p>
+
+<p>用户在提交一个topology的时候，会指定以下的一些执行参数：</p>
+
+<h3 id="总worker数">总worker数</h3>
+
+<p>即总的进程数。举例来说，我提交一个topology，指定worker数为3，那么最后可能会有3个进程在执行。之所以是<code>可能</code>，是因为根据配置，JStorm有可能会添加内部的组件，如<code>__acker</code>或者<code>__topology_master</code>（这两个组件都是特殊的bolt），这样会导致最终执行的进程数大于用户指定的进程数。我们默认是如果用户设置的worker数小于10个，那么__topology_master 只是作为一个task存在，不独占worker；如果用户设置的worker数量大于等于10个，那么__topology_master作为一个task将独占一个worker</p>
+
+<h3 id="每个component的并行度">每个component的并行度</h3>
+
+<p>上面提到每个topology都可以包含多个spout和bolt，而每个spout和bolt都可以单独指定一个并行度(parallelism)，代表同时有多少个线程(task)来执行这个spout或bolt。</p>
+
+<p>JStorm中，每一个执行线程都有一个task id，它从1开始递增，每一个component中的task id是连续的。</p>
+
+<p>还是上面这个topology，它包含一个spout和一个bolt，spout的并行度为5，bolt并行度为10。那么我们最终会有15个线程来执行：5个spout执行线程，10个bolt执行线程。</p>
+
+<p>这时spout的task id可能是1～5，bolt的task id可能是6～15，之所以是<code>可能</code>，是因为JStorm在调度的时候，并不保证task id一定是从spout开始，然后到bolt的。但是同一个component中的task id一定是连续的。</p>
+
+<h3 id="每个component之间的关系">每个component之间的关系</h3>
+
+<p>即用户需要去指定一个特定的spout发出的数据应该由哪些bolt来处理，或者说一个中间的bolt，它发出的数据应该被下游哪些bolt处理。</p>
+
+<p>还是以上面的topology为例，它们会分布在3个进程中。JStorm使用了一种均匀的调度算法，因此在执行的时候，你会看到，每个进程分别都各有5个线程在执行。当然，由于spout是5个线程，不能均匀地分配到3个进程中，会出现一个进程只有1个spout线程的情况；同样地，也会出现一个进程中有4个bolt线程的情况。</p>
+
+<p>在一个topology的运行过程中，如果一个进程（worker）挂掉了，JStorm检测到之后，会不断尝试重启这个进程，这就是7*24小时不间断执行的概念。</p>
+
+<h2 id="消息的通信">消息的通信</h2>
+
+<p>上面提到，spout的消息会发送给特定的bolt，bolt也可以发送给其他的bolt，那这之间是如何通信的呢？</p>
+
+<p>首先，从spout发送消息的时候，JStorm会计算出消息要发送的目标task id列表，然后看目标task id是在本进程中，还是其他进程中，如果是本进程中，那么就可以直接走进程内部通信（如直接将这个消息放入本进程中目标task的执行队列中）；如果是跨进程，那么JStorm会使用netty来将消息发送到目标task中。</p>
+
+<h2 id="实时计算结果输出">实时计算结果输出</h2>
+<p>JStorm是7*24小时运行的，外部系统如果需要查询某个特定时间点的处理结果，并不会直接请求JStorm（当然，DRPC可以支持这种需求，但是性能并不是太好）。一般来说，在JStorm的spout或bolt中，都会有一个定时往外部存储写计算结果的逻辑，这样数据可以按照业务需求被实时或者近实时地存储起来，然后直接查询外部存储中的计算结果即可。</p>
+
+
+  <div class="footer">
+      Google Groups: <a target="_blank" href="https://groups.google.com/forum/#!forum/jstorm-user">jstorm-user</a>, QQ Groups: 228374502
+      </p>
+ 
+      发现错误？想参与编辑？
+      <a href="https://github.com/alibaba/jstorm/edit/master/docs/jstorm-doc/QuickStart_cn/BasicConception.md" target="_blank">
+        在 Github 上编辑此页！
+      </a>
+  </div>
+  </div>
+  
+
+  
+</div>
+
+    </div><!-- /.container -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="//cdn.bootcss.com/jquery/1.11.2/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="//cdn.bootcss.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <script src="//cdn.bootcss.com/anchor-js/3.1.0/anchor.min.js"></script>
+    <script src="/js/jstorm.js"></script>
+
+    <!-- Google Analytics -->
+    <!-- script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-52545728-1', 'auto');
+      ga('send', 'pageview');
+    </script -->
+
+    <!-- Baidu Analytics -->
+    <script>
+      var _hmt = _hmt || [];
+      (function() {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?835985ad7943d8c24bc3c1f155b7d4a2";
+        var s = document.getElementsByTagName("script")[0]; 
+        s.parentNode.insertBefore(hm, s);
+      })();
+    </script>
+
+
+    <!-- Disqus -->
+    <!--
+     -->
+  </body>
+</html>

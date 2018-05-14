@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>JStorm Documentation : JStorm Metrics</title>
+    <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon">
+    <link rel="icon" href="/img/favicon.png" type="image/x-icon">
+
+    <!-- Bootstrap -->
+    <link href="//cdn.bootcss.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/jstorm.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+    <link rel="stylesheet" href="/css/codetabs.css">
+    
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    
+    <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<!--
+
+
+
+
+-->
+    <!-- Top navbar. -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <!-- The logo. -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <div class="navbar-logo">
+            <a href="/"><img alt="jstorm" src="/img/jstorm-logo.png"></a>
+          </div>
+        </div><!-- /.navbar-header -->
+
+        <!-- The navigation links. -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            
+            <!-- Downloads -->
+            <li class="hidden-sm "><a href="/Downloads.html">Downloads</a></li>
+
+            <!-- Performance -->
+            <li class="hidden-sm "><a href="/Performance">Performance</a></li>
+
+            <!-- QuickStart -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">QuickStart <span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                
+                
+                <li class=""><a href="/QuickStart/BasicConception.html">Basic Conception</a></li>
+                
+                <li class=""><a href="/QuickStart/Example.html">Example</a></li>
+                
+                <li class=""><a href="/QuickStart/Deploy/index.html">Deploy</a></li>
+                
+                <li class=""><a href="/QuickStart/Upgrade/index.html">Upgrade</a></li>
+                
+                <li class=""><a href="/QuickStart/UpgradeFromStorm.html">Migrate from Apache Storm</a></li>
+                
+                <li class=""><a href="/QuickStart/Compile.html">Compile JStorm</a></li>
+                
+              </ul>
+            </li>
+
+            <!-- ProgrammingGuide -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">ProgrammingGuide <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/ProgrammingGuide/DebugLocalApp.html">Local Debug</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/StreamSplitJoin.html">Split-Merge-Stream</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/Transaction.html">Transaction</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/Trident.html">Trident</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/AdvancedUsage/index.html">Advanced Usage</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- Maintenance -->
+            <li class="dropdown active">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Maintenance <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Maintenance/Configuration.html">Configuration</a></li>
+                  
+                  <li class=""><a href="/Maintenance/ConfigurationAutomacticSync.html">Automatically Sync Configuration</a></li>
+                  
+                  <li class=""><a href="/Maintenance/Isolation.html">Resource Isolation</a></li>
+                  
+                  <li class="active"><a href="/Maintenance/JStormMetrics.html">JStorm Metrics</a></li>
+                  
+                  <li class=""><a href="/Maintenance/HealthCheck.html">Supervisor Health Check</a></li>
+                  
+                  <li class=""><a href="/Maintenance/JStorm-on-Yarn.html">JStorm-on-Yarn</a></li>
+                  
+                  <li class=""><a href="/Maintenance/ClusterHA.html">Cluster HA</a></li>
+                  
+                  <li class=""><a href="/Maintenance/SupervisorWorker.html">Supervisor-Generate-Workers</a></li>
+                  
+                  <li class=""><a href="/Maintenance/DynamicAdjustLog.html">Dynamic Adjust Log</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- FAQ -->
+            <li class="hidden-sm "><a href="/FAQ/">FAQ</a></li>
+
+            <!-- Community -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Community <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Community/Email.html">Email List</a></li>
+                  
+                  <li class=""><a href="/Community/Committers.html">Committer List</a></li>
+                  
+                  <li class=""><a href="/Community/Events-Meetups.html">Events and Meetups</a></li>
+                  
+                  <li class=""><a href="/Community/Issues.html">Track issues</a></li>
+                  
+                  <li class=""><a href="/Community/JStormUsers.html">JStorm User List</a></li>
+                  
+              </ul>
+            </li>
+
+
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Language <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class=""><a href="/index.html">English</a></li>
+                  <li class=""><a href="/index_cn.html">中文</a></li>
+
+              </ul>
+            </li>
+          </ul>          
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container -->
+    </nav>
+
+
+    
+
+    <!-- Main content. -->
+    <div class="container">
+      
+      <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<div class="row">
+
+  
+  
+  <div class="col-md-8 col-md-offset-2 text">
+    <h1>JStorm Metrics</h1>
+	<ul id="markdown-toc">
+  <li><a href="#an-overall-comparison-between-jstorm--storm--metrics" id="markdown-toc-an-overall-comparison-between-jstorm--storm--metrics">An Overall Comparison between JStorm &amp; Storm  metrics</a></li>
+  <li><a href="#jstorm-metrics-design" id="markdown-toc-jstorm-metrics-design">JStorm Metrics Design</a>    <ul>
+      <li><a href="#our-goal" id="markdown-toc-our-goal">our goal</a></li>
+      <li><a href="#basic-work-flow" id="markdown-toc-basic-work-flow">Basic work flow</a></li>
+      <li><a href="#concepts" id="markdown-toc-concepts">Concepts</a>        <ul>
+          <li><a href="#metric-types" id="markdown-toc-metric-types">metric types</a></li>
+          <li><a href="#metrics-aka-metatype-in-jstorm-metrics" id="markdown-toc-metrics-aka-metatype-in-jstorm-metrics">metrics (aka. metaType in JStorm metrics)</a></li>
+          <li><a href="#metric-names" id="markdown-toc-metric-names">metric names</a></li>
+          <li><a href="#metric-id" id="markdown-toc-metric-id">metric id</a></li>
+        </ul>
+      </li>
+      <li><a href="#important-modules-of-jstorm-metrics" id="markdown-toc-important-modules-of-jstorm-metrics">Important modules of JStorm metrics</a>        <ul>
+          <li><a href="#jstormmetrics" id="markdown-toc-jstormmetrics">JStormMetrics</a></li>
+          <li><a href="#jstormmetricsreporter" id="markdown-toc-jstormmetricsreporter">JStormMetricsReporter</a></li>
+          <li><a href="#topologymaster" id="markdown-toc-topologymaster">TopologyMaster</a></li>
+          <li><a href="#clustermetricsrunnable" id="markdown-toc-clustermetricsrunnable">ClusterMetricsRunnable</a></li>
+          <li><a href="#jstormmetricscache" id="markdown-toc-jstormmetricscache">JStormMetricsCache</a></li>
+        </ul>
+      </li>
+      <li><a href="#miscellaneous" id="markdown-toc-miscellaneous">Miscellaneous</a>        <ul>
+          <li><a href="#user-defined-metrics" id="markdown-toc-user-defined-metrics">user-defined metrics</a></li>
+          <li><a href="#accuracy-of-metrics-data" id="markdown-toc-accuracy-of-metrics-data">accuracy of metrics data</a></li>
+          <li><a href="#topology-history--task-events" id="markdown-toc-topology-history--task-events">topology history &amp; task events</a></li>
+          <li><a href="#building-metric-monitor-systems" id="markdown-toc-building-metric-monitor-systems">building metric monitor systems</a></li>
+        </ul>
+      </li>
+      <li><a href="#jstorm-metrics-usage" id="markdown-toc-jstorm-metrics-usage">JStorm metrics usage</a>        <ul>
+          <li><a href="#metric-config" id="markdown-toc-metric-config">Metric config</a></li>
+        </ul>
+      </li>
+      <li><a href="#metric-uploader--metric-query-client" id="markdown-toc-metric-uploader--metric-query-client">Metric uploader &amp; metric query client</a></li>
+      <li><a href="#using-metricclient" id="markdown-toc-using-metricclient">Using MetricClient</a></li>
+      <li><a href="#todo" id="markdown-toc-todo">TODO</a></li>
+      <li><a href="#appendix-i-explanation-of-jstorm-built-in-metrics" id="markdown-toc-appendix-i-explanation-of-jstorm-built-in-metrics">Appendix I: Explanation of JStorm Built-in Metrics</a>        <ul>
+          <li><a href="#topology-metrics" id="markdown-toc-topology-metrics">Topology Metrics</a></li>
+          <li><a href="#component-metrics" id="markdown-toc-component-metrics">Component Metrics</a></li>
+          <li><a href="#task-metrics" id="markdown-toc-task-metrics">Task Metrics</a></li>
+          <li><a href="#worker-metrics" id="markdown-toc-worker-metrics">Worker Metrics</a></li>
+          <li><a href="#supervisor-metrics" id="markdown-toc-supervisor-metrics">Supervisor Metrics</a></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<h1 id="an-overall-comparison-between-jstorm--storm--metrics">An Overall Comparison between JStorm &amp; Storm  metrics</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th> --- </th>
+            <th>Storm/stats</th>
+            <th>Storm/built-in metrics</th>
+            <th>JStorm metrics</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>windows</td>
+            <td>10m, 3h, 1d, all-time</td>
+            <td>1m</td>
+            <td>1m, 10m, 2h, 1d</td>
+        </tr>
+        <tr>
+            <td>sampling</td>
+            <td>5%, all metrics sampled</td>
+            <td>same as stats</td>
+            <td>10%, counters not sampled, meters/histograms sampled</td>
+        </tr>
+        <tr>
+            <td>metric-stream</td>
+            <td>executors/tasks -&gt; ZK</td>
+            <td>executor -&gt; metrics consumer -&gt; external systems</td>
+            <td>worker -&gt; topology master -&gt; nimbus -&gt; external systems</td>
+        </tr>
+        <tr>
+            <td>metrics</td>
+            <td>key-ed metrics</td>
+            <td>stream/executor metrics, topology metrics are computed upon calling</td>
+            <td>pre-computed metrics of stream/task/component/topology/cluster/worker/netty/nimbus metrics</td>
+        </tr>
+        <tr>
+            <td>metrics data</td>
+            <td>sampled counters, mean value for meters/histograms</td>
+            <td>same as stats</td>
+            <td>counters not sampled, m1/m5/m15/mean for meters, p50/p75/p90/p95/p98/p99/p999/min/max/mean for 
+            histograms</td>
+        </tr>
+        <tr>
+            <td>update stragety</td>
+            <td>every time bucket (very long for 3h/1d windows)</td>
+            <td>every minute</td>
+            <td>every minute for all windows</td>
+        </tr>
+        <tr>
+            <td>zk dependency</td>
+            <td>write metrics to zk</td>
+            <td>N/A</td>
+            <td>N/A</td>
+        </tr>
+    </tbody>
+</table>
+
+<h1 id="jstorm-metrics-design">JStorm Metrics Design</h1>
+
+<h2 id="our-goal">our goal</h2>
+
+<p>by re-designing the metrics system, we want to:</p>
+<ol>
+  <li>see all metrics from stream up to cluster level, updated at least every minute.</li>
+  <li>see all-time metrics data from multiple windows, not just a static point (of latest metric values).</li>
+  <li>support common metric types and more accurate metrics data.</li>
+  <li>support topology history, through which we can see metrics data of dead topologies.</li>
+  <li>support task track: we want to know where each task is allocated after a topology starts, i.e., from what time the task is (dead and) re-assigned from host1:port1 to host2:port2, and so forth.</li>
+  <li>easy to add plugins to store metrics to external storage, which makes implementing a monitor system upon JStorm to be quite easy.</li>
+  <li>full support of user-defined metrics.</li>
+  <li>simplify trouble-shooting through metrics.</li>
+</ol>
+
+<h2 id="basic-work-flow">Basic work flow</h2>
+
+<pre><code class="language-seq">worker-&gt;worker: create JStormMetricsReporter
+worker-&gt;worker: JStormMetrics.registerMetrics to local metrics registry
+worker-&gt;nimbus: JStormMetricsReporter.registerMetrics: register metrics meta
+nimbus-&gt;nimbus: save metrics meta to JStormMetricsCache
+nimbus-&gt;external systems: store metrics meta to external systems
+nimbus-&gt;worker: return registered meta: map&amp;lt;metricId, metricName&amp;gt;
+
+worker-&gt;topology_master: JstormMetricsReporter send metrics data to TopologyMaster
+topology_master-&gt;topology_master: aggregate/compute metrics
+topology_master-&gt;nimbus: send metrics data to nimbus
+nimbus-&gt;nimbus: save metrics data to JStormMetricsCache
+nimbus-&gt;external systems: send metrics data if external MetricsUploader exists
+</code></pre>
+
+<h2 id="concepts">Concepts</h2>
+
+<h3 id="metric-types">metric types</h3>
+<p>we currently support following metric types:
+<code>counter/gauge/meter/histogram/timer</code></p>
+
+<p>(I’m considering of removing timer because histogram is enough in most scenarios)</p>
+
+<h3 id="metrics-aka-metatype-in-jstorm-metrics">metrics (aka. metaType in JStorm metrics)</h3>
+<p>We currently support following metrics: 
+<code>stream/task/component/netty/worker/topology/cluster/nimbus</code></p>
+
+<p>For topology/cluster metrics, we can easily summarize/monitor the overall resource usage (mem, cpu, disk, etc.) of a topology/cluster.</p>
+
+<h3 id="metric-names">metric names</h3>
+<p>Metric names are structured, full-qualified names (like java package names), which is totally different from Storm.</p>
+
+<p>For stream/task/component/netty metrics, a metric name is composed with: 
+<code>metaType@metricType@topologyId@componentId@taskId@streamId@metricGroup@metricName</code></p>
+
+<p>When a user registers a stream metric, our metrics system will automatically register task/component metrics accordingly and links these metrics.</p>
+
+<p>e.g., when a user registers an <code>emitted</code> counter metric for stream: default, taskId: 1, component: spout1, topologyId: SeqTest-1-1, the generated stream metric name will be:
+<code>3@1@SeqTest-1-1@spout1@1@default@sys@emitted</code>
+where 3 is the enum value of MetaType.STREAM, and 1 is the enum value of MetricType.COUNTER.</p>
+
+<p>Also, after calling <code>registerStreamMetric(...)</code>, the corresponding task/component metrics are automatically registered with names:
+<code>3@1@SeqTest-1-1@spout1@1@@sys@emitted</code>
+<code>3@1@SeqTest-1-1@spout1@@@sys@emitted</code></p>
+
+<p>Simple enough, we just set stream id to be empty for task metric name, and set stream id &amp; task id to be empty for component metric name.</p>
+
+<p>Things are similar if a user want to register a topology metric or cluster metric, and we provide interfaces to let user register stream/task metrics only, we do automatic registration internally.</p>
+
+<p>For worker/topology/cluster/nimbus metrics, a metric name is composed with:
+metaType@metricType@topologyId@host@port@metricGroup@metricName
+(for cluster/nimbus, the topologyId is set to <code>__CLUSTER__</code>/<code>__NIMBUS__</code>).</p>
+
+<p>This metric name scheme can easily be employed by external systems like HBase to store metrics data.</p>
+
+<h3 id="metric-id">metric id</h3>
+<p>Because FQN metric names are too long to store in external systems, we separate it into metric meta &amp; metric data. Metric meta consists of a map of metric id and metric names, while metric data consists of metric id and actual metric values. Currently we use a random long of GUID least 64 bits as metric id.</p>
+
+<p>metric id mechanism does employ complexity, but it saves space, and it’s not mandatory.</p>
+
+<h2 id="important-modules-of-jstorm-metrics">Important modules of JStorm metrics</h2>
+
+<h3 id="jstormmetrics">JStormMetrics</h3>
+<p>A static class which offers <code>registerMetrics</code> methods, like codahale metrics, all metrics are kept in the memory metric registry, which reside in the worker process.
+This class is responsible for automatic metrics registration.</p>
+
+<h3 id="jstormmetricsreporter">JStormMetricsReporter</h3>
+<p>It’s a worker-level instance which is responsible for registering metrics to nimbus and sending metrics data to topology master/nimbus.</p>
+
+<p>Note that this instance can exist not only in topology workers, it can also exist in supervisor/nimbus, which enables a supervisor/nimbus to report its metrics.</p>
+
+<h3 id="topologymaster">TopologyMaster</h3>
+<p>responsible for aggregating/computing metrics data of all workers within a topology (it’s actually done in <code>TopologyMetricContext</code> class), after that, it sends the metrics data to nimbus via thrift calls, once a minute, based on the window config.</p>
+
+<h3 id="clustermetricsrunnable">ClusterMetricsRunnable</h3>
+<p>This class resides in nimbus server. It’s responsible for two things:</p>
+<ol>
+  <li>generate metric ids.</li>
+  <li>upload metrics meta/data to external systems.</li>
+</ol>
+
+<h3 id="jstormmetricscache">JStormMetricsCache</h3>
+<p>We employ rocksdb as the storage engine for nimbus cache &amp; metrics cache to improve efficiency.</p>
+
+<p>Internally, all metrics data sent from workers will be stored in rocksdb, waiting for <code>MetricUploader</code> to handle. If no user-defined <code>MetricUploader</code> is used, <code>DefaultMetricsUploader</code> will be used, which simply does nothing but delete expired metrics data, otherwise metrics data may be sent to external systems.</p>
+
+<p>Another reason to use rocksdb is that, if we keep all metrics data in nimbus memory, nimbus may suffer from severe GC stress.</p>
+
+<h2 id="miscellaneous">Miscellaneous</h2>
+
+<h3 id="user-defined-metrics">user-defined metrics</h3>
+<p>we provide a <code>MetricClient</code>, which enables user-defined metrics.
+Like <code>JStormMetrics.registerMetrics...</code> methods, once user calls <code>metricClient.registerGauge/Counter/Histogram</code>, he can leave everything else to the metrics system. Component even topology metrics are automatically registered &amp; summarized &amp; computed.</p>
+
+<h3 id="accuracy-of-metrics-data">accuracy of metrics data</h3>
+<ol>
+  <li>
+    <p>In order to ensure the accuracy of histograms, we don’t average percentile values sent from all workers, instead, we not only send histogram percentile values, but also send sampled data points, and do phase2 computation with the data points in topology master.</p>
+  </li>
+  <li>
+    <p>counters are not sampled, so metrics like <code>emitted</code>, <code>acked</code>, <code>failed</code> are exactly accurate.</p>
+  </li>
+  <li>
+    <p>all time-related metrics are measured in µs instead of ms to improve accuracy. Metrics like <code>nextTuple_time</code> in ms makes no sense  since they are usually 0ms.</p>
+  </li>
+</ol>
+
+<h3 id="topology-history--task-events">topology history &amp; task events</h3>
+<p>topology/task event hooks are added to enable such events can be sent to external systems via <code>MetricUploader</code> interface.</p>
+
+<h3 id="building-metric-monitor-systems">building metric monitor systems</h3>
+<p>We’ve built a monitor system upon the <code>MetricUploader</code> interface.
+Also we provide a MySQL MetricsUploader plugin, and plan to provide a HBase plugin.</p>
+
+<h2 id="jstorm-metrics-usage">JStorm metrics usage</h2>
+
+<h3 id="metric-config">Metric config</h3>
+<p>Following are the metric config options and corresponding explanation.</p>
+
+<h4 id="topologyenablemetrics">topology.enable.metrics</h4>
+<p>global metric switch, only for test purpose, DO NOT set the value to false in production.</p>
+
+<h4 id="topologymetricsamplerate">topology.metric.sample.rate</h4>
+<p>metric sample rate, default to 0.1(10%), note this is valid for histograms only since counters/gauges are not sampled,
+and meters also have it’s internal decaying mechanism, we don’t sample them either.</p>
+
+<h4 id="topologyenablemetricdebug">topology.enable.metric.debug</h4>
+<p>used with option <code>topology.debug.metric.names</code> option. If set, will print metrics in JStormMetricsReporter before uploading.</p>
+
+<h4 id="topologydebugmetricnames">topology.debug.metric.names</h4>
+<p>debug metric names, separate by ‘,’. e.g., ‘SendTps, RecvTps’</p>
+
+<h4 id="topologyenabledmetricnames">topology.enabled.metric.names</h4>
+<p>used in <code>updateTopology</code> method, the value is a string separated by ‘,’, the metrics will be enabled on the fly.</p>
+
+<h4 id="topologydisabledmetricnames">topology.disabled.metric.names</h4>
+<p>used in <code>updateTopology</code> method, the value is a string separated by ‘,’, the metrics will be disabled on the fly.</p>
+
+<h4 id="nimbusmetricuploaderclass">nimbus.metric.uploader.class</h4>
+<p>used for nimbus nodes, the upload plugin class for metrics which must implement <code>MetricUploader</code> interface.</p>
+
+<h4 id="nimbusmetricqueryclientclass">nimbus.metric.query.client.class</h4>
+<p>used for nimbus nodes, the metric query client class for metrics which must implement <code>MetricQueryClient</code> interface.
+it’s mainly used to sync metric meta between nimbus nodes.</p>
+
+<h4 id="topologymaxworkernumfornettymetrics">topology.max.worker.num.for.netty.metrics</h4>
+<p>because netty metrics are registered per netty connection, for a large topology, there will be numerous netty metrics (thus
+numerous metric data), for this reason, we have a hard limit for netty metrics: if worker num of a topology exceeds 200,
+netty metrics will be completely disabled. Besides, users might want to change the value to a smaller one, by using this
+config, you can set a value, say 5, when the worker num exceeds 5, netty metrics will be disabled. To completely disable
+netty metrics, set this value to 1 in storm.yaml.</p>
+
+<h2 id="metric-uploader--metric-query-client">Metric uploader &amp; metric query client</h2>
+<p>As above config has shown, we have 2 options for metric uploading: <code>nimbus.metric.uploader.class</code> and <code>nimbus.metric.query.client.class</code>.
+Metric uploader class is responsible for uploading all metrics to external storage. It’s important to have an efficiency
+and fast metric uploader as well as a solid external storage to store the metric data/meta.
+Our primary recommendation would be using HBase, which supports quite large TPS in very low latency.</p>
+
+<p>Another concern that metric uploader should be well handled is nimbus GC. For a large cluster, there might be quite a bulk
+of metric objects within the nimbus, to ease the GC overhead of nimbus, our current strategy is to store the metrics in 
+rocks db in nimbus first, and let metric uploader class get the metrics when necessary. So a tip for writing a GC-friendly
+metric uploader is that, retrieve metrics only when necessary. e.g., you can set up a thread pool within the metric uploader,
+let’s say, of 10 threads, each of which is writing metrics to HBase. You may also have a queue for the thread pool, our 
+recommendation comes that, DO NOT get metrics before the thread actually runs, which means, DO NOT do the following:</p>
+
+<blockquote>
+  <ol>
+    <li>create a runnable.</li>
+    <li>get metric data and put it in the runnable.</li>
+    <li>put the runnable to queue and wait for execution.</li>
+  </ol>
+</blockquote>
+
+<p>Instead, do the following:</p>
+
+<blockquote>
+  <ol>
+    <li>create a runnable.</li>
+    <li>get metric data key/index and put it in the runnable (no actual metric data should be retrieved).</li>
+    <li>put the runnable to queue and wait for execution.</li>
+  </ol>
+</blockquote>
+
+<p>Because the metric data is retrieved in a lazy-load fashion, it will greatly ease the GC overhead of nimbus nodes.</p>
+
+<h2 id="using-metricclient">Using MetricClient</h2>
+<p>A great feature of JStorm metrics is that we provide a <code>MetricClient</code>, so users can define custom metrics easily while
+enjoying the full features of JStorm metrics.</p>
+
+<p>It’s quite easy to define a custom metric:</p>
+
+<ol>
+  <li>define metric client instance.</li>
+</ol>
+
+<pre><code class="language-java">private MetricClient metricClient;
+</code></pre>
+
+<ol>
+  <li>in your prepare method of your bolt (or open in spout):</li>
+</ol>
+
+<pre><code class="language-java">metricClient = new MetricClient(context);
+
+Gauge&lt;Double&gt; gauge = new Gauge&lt;Double&gt;() {
+    private Random random = new Random();
+
+    @Override
+    public Double getValue() {
+        return random.nextDouble();
+    }
+
+};
+myGauge = metricClient.registerGauge("myGauge", gauge);
+myCounter = metricClient.registerCounter("myCounter");
+myMeter = metricClient.registerMeter("myMeter");
+myHistogram = metricClient.registerHistogram("myHistogram");
+</code></pre>
+
+<p>And it’s basically done! you can now call <code>myCounter.update</code> or <code>myMeter.update</code> methods in your code, we’ll calculate
+&amp; report &amp; upload the metrics for you!</p>
+
+<p>For full API, please refer to <code>MetricClient</code> class.</p>
+
+<h2 id="todo">TODO</h2>
+<ol>
+  <li>simplify metrics data sent to topology master/nimbus</li>
+</ol>
+
+<h2 id="appendix-i-explanation-of-jstorm-built-in-metrics">Appendix I: Explanation of JStorm Built-in Metrics</h2>
+
+<h3 id="topology-metrics">Topology Metrics</h3>
+
+<h4 id="memoryused">MemoryUsed</h4>
+<p>physical memory used by cluster/topology/worker</p>
+
+<h4 id="heapmemory">HeapMemory</h4>
+<p>JVM heap memory used by cluster/topology/worker</p>
+
+<h4 id="cpuusedratio">CpuUsedRatio</h4>
+<p>CPU usage of cluster/topology/worker cpu, e.g., 62.000 means 0.62 cpu core is used, 
+200.00 means 2 cpu cores are used</p>
+
+<h4 id="nettyclisendspeed">NettyCliSendSpeed</h4>
+<p>Output network flow of cluster/topology/worker, in Bytes/sec</p>
+
+<h4 id="nettysrvrecvspeed">NettySrvRecvSpeed</h4>
+<p>Input network flow of cluster/topology/worker, in Bytes/sec</p>
+
+<h4 id="fullgc">FullGc</h4>
+<p>FGC num of past min of cluster/topology/worker</p>
+
+<h4 id="recvtps">RecvTps</h4>
+<p>Receive tps (of tuples) of cluster/topology/component/task/stream</p>
+
+<h4 id="sendtps">SendTps</h4>
+<p>Send tps (of tuples) cluster/topology/component/task/stream</p>
+
+<h4 id="emitted">Emitted</h4>
+<p>Emitted msgs of cluster/topology/component/task/stream in the past min,
+note that it includes <strong>both business msgs and acker msgs</strong></p>
+
+<h4 id="acked">Acked</h4>
+<p>Acked msgs of cluster/topology/component/task/stream in the past min,
+the difference with <code>Emitted</code> is that, if acker mechanism is enabled,
+because <code>Emitted</code> includes acker msgs, usually the value of <code>Emitted</code> is
+about double the value of <code>Acked</code></p>
+
+<h4 id="failed">Failed</h4>
+<p>Failed msgs of cluster/topology/component/task/stream in the past min,
+note that “fail” can mean active ack fail in user code or process failure
+like ack timeout, exception, etc.</p>
+
+<h3 id="component-metrics">Component Metrics</h3>
+
+<h4 id="emittime">EmitTime</h4>
+<p>The time spent when spout/bolt publishes msgs to disruptor queue, in <strong>micro seconds</strong>,
+note that <strong>time is measured in µs system-wide in JStorm 2.x</strong>.</p>
+
+<h4 id="deserializetime">DeserializeTime</h4>
+<p>Deserialize time of a tuple in component/task/stream, in µs.</p>
+
+<h4 id="serializetime">SerializeTime</h4>
+<p>Serialize time of a tuple in component/task/stream, in µs.</p>
+
+<h4 id="executortime">ExecutorTime</h4>
+<p>Time spent in <code>Spout#nextTuple</code> method in component/task/stream, in µs, 
+note that this metric exists only in spouts.</p>
+
+<h4 id="tuplelifecycle">TupleLifeCycle</h4>
+<p>The time gap in component/task/stream of a tuple/batch emitted from its upstream
+ component till current component receives this tuple/batch in µs, which includes
+ upstream serialize time, network time and deserialize time of current component.</p>
+
+<h4 id="processlatency">ProcessLatency</h4>
+<p>Roughly speaking, it’s the time spent in <code>Bolt#execute</code> method in component/task/stream
+, in µs.</p>
+
+<p>Specifically, when calling <code>processTuple</code> internally, a tuple will be put into a pending map,
+this is when the start time is specified; 
+when the tuple is being acked, the end time is specified, thus the process latency is 
+subtracted using the end time and start time.</p>
+
+<p>If it’s in a spout, then it’s the time gap of sending the tuple from spout, until the 
+time it’s acked in acker. Since this process goes through all bolts, it’s usually quite large,
+even larger than <code>TupleLifeCycle</code>.</p>
+
+<h3 id="task-metrics">Task Metrics</h3>
+
+<h4 id="deserializequeue">DeserializeQueue</h4>
+<p>Deserialize queue usage.
+Note that a task includes 4 queues: deserialize queue, execute queue, control msg queue,
+serialize queue.</p>
+
+<h4 id="serializequeue">SerializeQueue</h4>
+<p>Serialize queue usage.</p>
+
+<h4 id="executorqueue">ExecutorQueue</h4>
+<p>Execute queue usage.</p>
+
+<h4 id="ctrlqueue">CtrlQueue</h4>
+<p>Control queue usage.</p>
+
+<h4 id="pendingnum">PendingNum</h4>
+<p>The num of tuples that have been sent to downstream components but not yet acked.
+Note that this metric exists in spout only.</p>
+
+<h4 id="batchinterval">BatchInterval</h4>
+<p>The time gap between 2 full internal batches, for performance tuning.</p>
+
+<h3 id="worker-metrics">Worker Metrics</h3>
+
+<h4 id="gccount">GCCount</h4>
+<p>The GC num in the past min, internally this value is retrieved through JMX.</p>
+
+<h4 id="gctime">GCTime</h4>
+<p>The GC time spent in the past min in µs, internally this value is retrieved through JMX.</p>
+
+<h4 id="nettyclisendbatchsize">NettyCliSendBatchSize</h4>
+<p>The average netty batch size sent in worker in the past min, in Bytes.</p>
+
+<h4 id="nettysrvtransmittime">NettySrvTransmitTime</h4>
+<p>Average network time of incoming batches/tuples in worker in the past min, in µs.</p>
+
+<h4 id="recvctrlqueue">RecvCtrlQueue</h4>
+<p>The worker-level incoming control queue usage, from which control msgs are dispatched to task control queues</p>
+
+<h4 id="sendctrlqueue">SendCtrlQueue</h4>
+<p>The worker-level outgoing control queue usage.</p>
+
+<h3 id="supervisor-metrics">Supervisor Metrics</h3>
+
+<h4 id="diskusage">DiskUsage</h4>
+<p>Home disk usage of current user.</p>
+
+<h4 id="memoryusage">MemoryUsage</h4>
+<p>Physical memory usage of current machine.</p>
+
+<h4 id="cpuusedratio-1">CpuUsedRatio</h4>
+<p>CPU usage of current machine.</p>
+
+<h4 id="nettyclisendspeednettysrvrecvspeed">NettyCliSendSpeed/NettySrvRecvSpeed</h4>
+<p>Input/output bytes of NIC in Bytes.</p>
+
+  <div class="footer">
+      Google Groups: <a target="_blank" href="https://groups.google.com/forum/#!forum/jstorm-user">jstorm-user</a>, QQ Groups: 228374502
+      </p>
+      Caught a mistake or want to contribute to the documentation? 
+      <a href="https://github.com/alibaba/jstorm/edit/master/docs/jstorm-doc/Maintenance/JStormMetrics.md" target="_blank">
+        Edit this page on Github!
+      </a>
+  </div>
+  
+
+  
+</div>
+
+    </div><!-- /.container -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="//cdn.bootcss.com/jquery/1.11.2/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="//cdn.bootcss.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <script src="//cdn.bootcss.com/anchor-js/3.1.0/anchor.min.js"></script>
+    <script src="/js/jstorm.js"></script>
+
+    <!-- Google Analytics -->
+    <!-- script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-52545728-1', 'auto');
+      ga('send', 'pageview');
+    </script -->
+
+    <!-- Baidu Analytics -->
+    <script>
+      var _hmt = _hmt || [];
+      (function() {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?835985ad7943d8c24bc3c1f155b7d4a2";
+        var s = document.getElementsByTagName("script")[0]; 
+        s.parentNode.insertBefore(hm, s);
+      })();
+    </script>
+
+
+    <!-- Disqus -->
+    <!--
+     -->
+  </body>
+</html>

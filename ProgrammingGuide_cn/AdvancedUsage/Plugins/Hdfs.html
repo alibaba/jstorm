@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>JStorm 文档 : HDFS 插件</title>
+    <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon">
+    <link rel="icon" href="/img/favicon.png" type="image/x-icon">
+
+    <!-- Bootstrap -->
+    <link href="//cdn.bootcss.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/jstorm.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+    <link rel="stylesheet" href="/css/codetabs.css">
+    
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    
+    <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<!--
+
+
+
+
+-->
+    <!-- Top navbar. -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <!-- The logo. -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <div class="navbar-logo">
+            <a href="/"><img alt="jstorm" src="/img/jstorm-logo.png"></a>
+          </div>
+        </div><!-- /.navbar-header -->
+
+        <!-- The navigation links. -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            <!-- Downloads -->
+            <li class="hidden-sm "><a href="/Downloads.html">Downloads</a></li>
+
+            <!-- Performance -->
+            <li class="hidden-sm "><a href="/Performance_cn">Performance</a></li>
+
+            <!-- QuickStart -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">QuickStart <span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                
+                
+                <li class=""><a href="/QuickStart_cn/BasicConception.html">5分钟基础概念(新手第一篇)</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Example.html">入门Example</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Deploy/index.html">安装部署</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Upgrade/index.html">升级</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/UpgradeFromStorm.html">从Apache Storm升级到JStorm</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Compile.html">编译JStorm</a></li>
+                
+              </ul>
+            </li>
+
+            <!-- ProgrammingGuide -->
+            <li class="dropdown active">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">ProgrammingGuide <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/DebugLocalApp.html">本地调试</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/StreamSplitJoin.html">数据流分流合并</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/Transaction/index.html">事务</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/Trident/index.html">Trident</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/AdvancedUsage/index.html">Advanced Usage</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- Maintenance -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">运维 <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Maintenance_cn/Configuration.html">配置注解</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/ConfigurationAutomacticSync.html">自动同步配置文件</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/Isolation.html">资源隔离</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/JStormMetrics.html">JStorm Metrics</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/HealthCheck.html">Supervisor自检</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/JStorm-on-Yarn.html">JStorm-on-Yarn</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/ClusterHA.html">同城灾备&异地灾备</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/BlobStore.html">BlobStore</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/SupervisorWorker.html">生成worker列表算法</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/DynamicAdjustLog.html">动态调整日志</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- FAQ -->
+            <li class="hidden-sm "><a href="/FAQ_cn/">FAQ</a></li>
+
+
+
+            <!-- Community -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">社区 <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Community/Email.html">Email List</a></li>
+                  
+                  <li class=""><a href="/Community/Committers.html">Committer List</a></li>
+                  
+                  <li class=""><a href="/Community/Events-Meetups.html">Events and Meetups</a></li>
+                  
+                  <li class=""><a href="/Community/Issues.html">Track issues</a></li>
+                  
+                  <li class=""><a href="/Community/JStormUsers.html">JStorm User List</a></li>
+                  
+              </ul>
+            </li>
+
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Language <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class=""><a href="/index.html">English</a></li>
+                  <li class=""><a href="/index_cn.html">中文</a></li>
+
+              </ul>
+            </li>
+          </ul>          
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container -->
+    </nav>
+
+
+    
+
+    <!-- Main content. -->
+    <div class="container">
+      
+      <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<div class="row">
+
+
+  <!-- Sub Navigation -->
+  <div class="col-sm-3">
+    <ul id="sub-nav">
+      
+      
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/index.html" class="">Advanced Usage</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/API.html" class="">API介绍</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/API/Grouping.html" class="">Grouping 介绍</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/API/IBasicBolt.html" class="">IBasicBolt 介绍</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Theory.html" class="">Theory</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Theory/Acker.html" class="">Acker 原理</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Plugins.html" class="">Plugins</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Plugins/Flux.html" class="">Flux 插件</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Plugins/Hdfs.html" class="active">HDFS 插件</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined.html" class="">User-Defined-API</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined/Alarm.html" class="">自定义报错</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined/Log.html" class="">自定义日志</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined/Metrics.html" class="">自定义监控</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined/Scheduler.html" class="">自定义调度</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/DynamicAdjust.html" class="">动态变更</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/DynamicAdjust/Configuration.html" class="">动态更新配置</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/DynamicAdjust/Metrics.html" class="">动态调整Metrics</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/DynamicAdjust/Parallel.html" class="">动态调整并发</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/SQL.html" class="">SQL-on-JStorm</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/SubmitTopology.html" class="">API 提交任务</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/BackPressure.html" class="">限流控制/反压</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Window.html" class="">Window Framework</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/PerformanceTuning.html" class="">性能优化</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/BlobStore.html" class="">BlobStore</a>
+          
+        </li>
+      
+    </ul>
+  </div>
+  <!-- Main -->
+  <div class="col-sm-9">
+    <!-- Top anchor -->
+    <a href="#top"></a>
+
+    <div class="text">
+      <!-- Main heading -->
+      <h1>HDFS 插件</h1>
+
+      <!-- Content -->
+      <ul id="markdown-toc">
+  <li><a href="#storm-hdfs" id="markdown-toc-storm-hdfs">Storm HDFS</a></li>
+  <li><a href="#hdfs-bolt" id="markdown-toc-hdfs-bolt">HDFS Bolt</a>    <ul>
+      <li><a href="#用法" id="markdown-toc-用法">用法</a>        <ul>
+          <li><a href="#packaging-a-topology" id="markdown-toc-packaging-a-topology">Packaging a Topology</a></li>
+          <li><a href="#指定hadoop版本" id="markdown-toc-指定hadoop版本">指定Hadoop版本</a></li>
+        </ul>
+      </li>
+      <li><a href="#自定义-hdfs-bolt" id="markdown-toc-自定义-hdfs-bolt">自定义 HDFS Bolt</a>        <ul>
+          <li><a href="#tuple转换成byte-" id="markdown-toc-tuple转换成byte-">Tuple转换成byte []</a></li>
+          <li><a href="#文件命名" id="markdown-toc-文件命名">文件命名</a></li>
+          <li><a href="#同步策略" id="markdown-toc-同步策略">同步策略</a></li>
+          <li><a href="#文件回滚策略" id="markdown-toc-文件回滚策略">文件回滚策略</a></li>
+          <li><a href="#文件回滚动作" id="markdown-toc-文件回滚动作">文件回滚动作</a></li>
+        </ul>
+      </li>
+      <li><a href="#hdfs-bolt-支持-hdfs-sequence-文件" id="markdown-toc-hdfs-bolt-支持-hdfs-sequence-文件">HDFS Bolt 支持 HDFS Sequence 文件</a></li>
+      <li><a href="#hdfs-bolt-支持-avro-文件" id="markdown-toc-hdfs-bolt-支持-avro-文件">HDFS Bolt 支持 Avro 文件</a></li>
+      <li><a href="#hdfs-bolt-也支持trident-api" id="markdown-toc-hdfs-bolt-也支持trident-api">HDFS Bolt 也支持Trident API</a>        <ul>
+          <li><a href="#note" id="markdown-toc-note">Note</a></li>
+          <li><a href="#using-hdfs-delegation-tokens" id="markdown-toc-using-hdfs-delegation-tokens">Using HDFS delegation tokens</a></li>
+          <li><a href="#using-keytabs-on-all-worker-hosts" id="markdown-toc-using-keytabs-on-all-worker-hosts">Using keytabs on all worker hosts</a></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li><a href="#hdfs-spout待译" id="markdown-toc-hdfs-spout待译">HDFS Spout（待译）</a>    <ul>
+      <li><a href="#usage" id="markdown-toc-usage">Usage</a></li>
+      <li><a href="#configuration-settings" id="markdown-toc-configuration-settings">Configuration Settings</a></li>
+    </ul>
+  </li>
+</ul>
+
+<h1 id="storm-hdfs">Storm HDFS</h1>
+
+<p>Storm HDFS 组件</p>
+
+<ul>
+  <li>HDFS Bolt</li>
+  <li>HDFS Spout</li>
+</ul>
+
+<hr />
+
+<h1 id="hdfs-bolt">HDFS Bolt</h1>
+
+<h2 id="用法">用法</h2>
+<p>以下例子是将分隔符(“|”)写到路径hdfs://localhost:54310/foo的HDFS系统里去。每发送了1000条这样的消息后，会做一次HDFS文件系统同步，这样
+文件会对所有的HDFS客户端可见。如果存储的文件大小到达5MB时，文件会自动回滚。</p>
+
+<pre><code class="language-java">// use "|" instead of "," for field delimiter
+RecordFormat format = new DelimitedRecordFormat()
+        .withFieldDelimiter("|");
+
+// sync the filesystem after every 1k tuples
+SyncPolicy syncPolicy = new CountSyncPolicy(1000);
+
+// rotate files when they reach 5MB
+FileRotationPolicy rotationPolicy = new FileSizeRotationPolicy(5.0f, Units.MB);
+
+FileNameFormat fileNameFormat = new DefaultFileNameFormat()
+        .withPath("/foo/");
+
+HdfsBolt bolt = new HdfsBolt()
+        .withFsUrl("hdfs://localhost:54310")
+        .withFileNameFormat(fileNameFormat)
+        .withRecordFormat(format)
+        .withRotationPolicy(rotationPolicy)
+        .withSyncPolicy(syncPolicy);
+</code></pre>
+
+<h3 id="packaging-a-topology">Packaging a Topology</h3>
+<p>建议你用<a href="">maven-shade-plugin</a>插件来打包Topology.因为shade插件打包时可以合并多个JAR manifest文件，这些文件对hadloop client至关重要。
+一般如果出现这样的错误：</p>
+
+<pre><code>java.lang.RuntimeException: Error preparing HdfsBolt: No FileSystem for scheme: hdfs
+</code></pre>
+
+<p>说明可能是你打包方式不正确，检查下你的pom文件是不是这样的。</p>
+
+<pre><code class="language-xml">&lt;plugin&gt;
+    &lt;groupId&gt;org.apache.maven.plugins&lt;/groupId&gt;
+    &lt;artifactId&gt;maven-shade-plugin&lt;/artifactId&gt;
+    &lt;version&gt;1.4&lt;/version&gt;
+    &lt;configuration&gt;
+        &lt;createDependencyReducedPom&gt;true&lt;/createDependencyReducedPom&gt;
+    &lt;/configuration&gt;
+    &lt;executions&gt;
+        &lt;execution&gt;
+            &lt;phase&gt;package&lt;/phase&gt;
+            &lt;goals&gt;
+                &lt;goal&gt;shade&lt;/goal&gt;
+            &lt;/goals&gt;
+            &lt;configuration&gt;
+                &lt;transformers&gt;
+                    &lt;transformer
+                            implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/&gt;
+                    &lt;transformer
+                            implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"&gt;
+                        &lt;mainClass&gt;&lt;/mainClass&gt;
+                    &lt;/transformer&gt;
+                &lt;/transformers&gt;
+            &lt;/configuration&gt;
+        &lt;/execution&gt;
+    &lt;/executions&gt;
+&lt;/plugin&gt;
+
+</code></pre>
+
+<h3 id="指定hadoop版本">指定Hadoop版本</h3>
+<p>默认使用以下Hadoop配置</p>
+
+<pre><code class="language-xml">&lt;dependency&gt;
+    &lt;groupId&gt;org.apache.hadoop&lt;/groupId&gt;
+    &lt;artifactId&gt;hadoop-client&lt;/artifactId&gt;
+    &lt;version&gt;2.6.1&lt;/version&gt;
+    &lt;exclusions&gt;
+        &lt;exclusion&gt;
+            &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+            &lt;artifactId&gt;slf4j-log4j12&lt;/artifactId&gt;
+        &lt;/exclusion&gt;
+    &lt;/exclusions&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;org.apache.hadoop&lt;/groupId&gt;
+    &lt;artifactId&gt;hadoop-hdfs&lt;/artifactId&gt;
+    &lt;version&gt;2.6.1&lt;/version&gt;
+    &lt;exclusions&gt;
+        &lt;exclusion&gt;
+            &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+            &lt;artifactId&gt;slf4j-log4j12&lt;/artifactId&gt;
+        &lt;/exclusion&gt;
+    &lt;/exclusions&gt;
+&lt;/dependency&gt;
+</code></pre>
+<p>如果你打算依赖其他版本的Hadoop，你记得在storm-hdfs里头把冲突的架包排除。当Hadoop client客户端版本冲突时一般会有这样的错误：</p>
+
+<pre><code>com.google.protobuf.InvalidProtocolBufferException: Protocol message contained an invalid tag (zero)
+</code></pre>
+
+<h2 id="自定义-hdfs-bolt">自定义 HDFS Bolt</h2>
+
+<h3 id="tuple转换成byte-">Tuple转换成byte []</h3>
+<p>我们提供了Record Format转换的接口，以便将Tuple转换成 byte [],以便能导入HDFS.
+<code>org.apache.storm.hdfs.format.RecordFormat</code></p>
+
+<pre><code class="language-java">public interface RecordFormat extends Serializable {
+    byte[] format(Tuple tuple);
+}
+</code></pre>
+<p>此外我们自己实现了将Tuple转换CSV和tab-delimited流的接口，具体请参见<code>org.apache.storm.hdfs.format.DelimitedRecordFormat</code>。</p>
+
+<h3 id="文件命名">文件命名</h3>
+<p>我们提供了文件命名的接口<code>org.apache.storm.hdfs.format.FileNameFormat</code></p>
+
+<pre><code class="language-java">public interface FileNameFormat extends Serializable {
+    void prepare(Map conf, TopologyContext topologyContext);
+    String getName(long rotation, long timeStamp);
+    String getPath();
+}
+</code></pre>
+
+<p>默认的文件命名的实现请参考<code>org.apache.storm.hdfs.format.DefaultFileNameFormat</code>  :</p>
+
+<pre><code> {prefix}{componentId}-{taskId}-{rotationNum}-{timestamp}{extension}
+</code></pre>
+
+<p>比如:</p>
+
+<pre><code> MyBolt-5-7-1390579837830.txt
+</code></pre>
+
+<p>默认, prefix 是空的， extenstion 是 “.txt”.</p>
+
+<h3 id="同步策略">同步策略</h3>
+
+<p>我们提供了同步策略的接口，同步策略可以让你可以控制缓冲数据刷新到底层文件系统的时机，同步后的数据将对所有客户端可见。
+<code>org.apache.storm.hdfs.sync.SyncPolicy</code></p>
+
+<pre><code class="language-java">public interface SyncPolicy extends Serializable {
+    boolean mark(Tuple tuple, long offset);
+    void reset();
+}
+</code></pre>
+<p>每发送一条消息，<code>HdfsBolt</code> 将调用 <code>mark()</code>方法. 如果返回值是 <code>true</code> 会触发 <code>HdfsBolt</code> 同步操作，之后再会调用 <code>reset()</code> 方法.</p>
+
+<p><code>org.apache.storm.hdfs.sync.CountSyncPolicy</code> 会在发送指定数量的消息后，触发同步操作。</p>
+
+<h3 id="文件回滚策略">文件回滚策略</h3>
+<p>类似于同步策略，我们提供了文件回滚策略接口，允许你可以控制文件回滚时机。
+<code>org.apache.storm.hdfs.rotation.FileRotation</code>:</p>
+
+<pre><code class="language-java">public interface FileRotationPolicy extends Serializable {
+    boolean mark(Tuple tuple, long offset);
+    void reset();
+}
+</code></pre>
+
+<p>提供的<code>org.apache.storm.hdfs.rotation.FileSizeRotationPolicy</code> 实现，可以让你指定文件上限，一旦文件达到指定的大小之后，就会触发回滚操作。</p>
+
+<pre><code class="language-java">FileRotationPolicy rotationPolicy = new FileSizeRotationPolicy(5.0f, Units.MB);
+</code></pre>
+
+<h3 id="文件回滚动作">文件回滚动作</h3>
+<p>你可以在HDFS bolt 和 Trident State注册任何回滚动作<code>RotationAction</code>s，一旦文件被触发了回滚，我们就会回调所有的回滚操作。比如，你可以将被
+触发回滚的文件进行移动或者重命名</p>
+
+<pre><code class="language-java">public interface RotationAction extends Serializable {
+    void execute(FileSystem fileSystem, Path filePath) throws IOException;
+}
+</code></pre>
+
+<p>Storm-HDFS 提供了默认的回滚操作，就是对文件进行移动而已，具体参考如下：</p>
+
+<pre><code class="language-java">public class MoveFileAction implements RotationAction {
+    private static final Logger LOG = LoggerFactory.getLogger(MoveFileAction.class);
+
+    private String destination;
+
+    public MoveFileAction withDestination(String destDir){
+        destination = destDir;
+        return this;
+    }
+
+    @Override
+    public void execute(FileSystem fileSystem, Path filePath) throws IOException {
+        Path destPath = new Path(destination, filePath.getName());
+        LOG.info("Moving file {} to {}", filePath, destPath);
+        boolean success = fileSystem.rename(filePath, destPath);
+        return;
+    }
+}
+</code></pre>
+
+<p>如果你用的是 Trident 和 sequence files 的话，你可以这么做：</p>
+
+<pre><code class="language-java">        HdfsState.Options seqOpts = new HdfsState.SequenceFileOptions()
+                .withFileNameFormat(fileNameFormat)
+                .withSequenceFormat(new DefaultSequenceFormat("key", "data"))
+                .withRotationPolicy(rotationPolicy)
+                .withFsUrl("hdfs://localhost:54310")
+                .addRotationAction(new MoveFileAction().withDestination("/dest2/"));
+</code></pre>
+
+<h2 id="hdfs-bolt-支持-hdfs-sequence-文件">HDFS Bolt 支持 HDFS Sequence 文件</h2>
+
+<p><code>org.apache.storm.hdfs.bolt.SequenceFileBolt</code> 支持你写 storm data 到  HDFS sequence 文件:</p>
+
+<pre><code class="language-java">        // sync the filesystem after every 1k tuples
+        SyncPolicy syncPolicy = new CountSyncPolicy(1000);
+
+        // rotate files when they reach 5MB
+        FileRotationPolicy rotationPolicy = new FileSizeRotationPolicy(5.0f, Units.MB);
+
+        FileNameFormat fileNameFormat = new DefaultFileNameFormat()
+                .withExtension(".seq")
+                .withPath("/data/");
+
+        // create sequence format instance.
+        DefaultSequenceFormat format = new DefaultSequenceFormat("timestamp", "sentence");
+
+        SequenceFileBolt bolt = new SequenceFileBolt()
+                .withFsUrl("hdfs://localhost:54310")
+                .withFileNameFormat(fileNameFormat)
+                .withSequenceFormat(format)
+                .withRotationPolicy(rotationPolicy)
+                .withSyncPolicy(syncPolicy)
+                .withCompressionType(SequenceFile.CompressionType.RECORD)
+                .withCompressionCodec("deflate");
+</code></pre>
+
+<p><code>SequenceFileBolt</code> 要求你实现 <code>org.apache.storm.hdfs.bolt.format.SequenceFormat</code>， 以便可以将Tuples映射成K/V 数据：</p>
+
+<pre><code class="language-java">public interface SequenceFormat extends Serializable {
+    Class keyClass();
+    Class valueClass();
+
+    Writable key(Tuple tuple);
+    Writable value(Tuple tuple);
+}
+</code></pre>
+
+<h2 id="hdfs-bolt-支持-avro-文件">HDFS Bolt 支持 Avro 文件</h2>
+
+<p><code>org.apache.storm.hdfs.bolt.AvroGenericRecordBolt</code> 支持你直接 Avro 对象写到 HDFS :</p>
+
+<pre><code class="language-java">        // sync the filesystem after every 1k tuples
+        SyncPolicy syncPolicy = new CountSyncPolicy(1000);
+
+        // rotate files when they reach 5MB
+        FileRotationPolicy rotationPolicy = new FileSizeRotationPolicy(5.0f, Units.MB);
+
+        FileNameFormat fileNameFormat = new DefaultFileNameFormat()
+                .withExtension(".avro")
+                .withPath("/data/");
+
+        // create sequence format instance.
+        DefaultSequenceFormat format = new DefaultSequenceFormat("timestamp", "sentence");
+
+        AvroGenericRecordBolt bolt = new AvroGenericRecordBolt()
+                .withFsUrl("hdfs://localhost:54310")
+                .withFileNameFormat(fileNameFormat)
+                .withRotationPolicy(rotationPolicy)
+                .withSyncPolicy(syncPolicy);
+</code></pre>
+
+<p>avro bolt 基于传递过来的schema来写文件的，如果你传递过来是两种形式的schema，那么他读生成两个独立的文件。每个文件的回滚策略都是可自定义的。
+如果传递过来的schema特别多的话，我们建议你配置一下最大同时可打开的文件句柄数量，以防止文件的打开/关闭/创建操作次数过多。
+为了使用这个bolt，你需要Kryo serializers， 就想这样：</p>
+
+<p><code>AvroGenericRecordBolt.addAvroKryoSerializations(conf);</code></p>
+
+<h2 id="hdfs-bolt-也支持trident-api">HDFS Bolt 也支持Trident API</h2>
+<p>storm-hdfs also includes a Trident <code>state</code> implementation for writing data to HDFS, with an API that closely mirrors
+that of the bolts.</p>
+
+<pre><code class="language-java">         Fields hdfsFields = new Fields("field1", "field2");
+
+         FileNameFormat fileNameFormat = new DefaultFileNameFormat()
+                 .withPath("/trident")
+                 .withPrefix("trident")
+                 .withExtension(".txt");
+
+         RecordFormat recordFormat = new DelimitedRecordFormat()
+                 .withFields(hdfsFields);
+
+         FileRotationPolicy rotationPolicy = new FileSizeRotationPolicy(5.0f, FileSizeRotationPolicy.Units.MB);
+
+        HdfsState.Options options = new HdfsState.HdfsFileOptions()
+                .withFileNameFormat(fileNameFormat)
+                .withRecordFormat(recordFormat)
+                .withRotationPolicy(rotationPolicy)
+                .withFsUrl("hdfs://localhost:54310");
+
+         StateFactory factory = new HdfsStateFactory().withOptions(options);
+
+         TridentState state = stream
+                 .partitionPersist(factory, hdfsFields, new HdfsUpdater(), new Fields());
+</code></pre>
+
+<p>To use the sequence file <code>State</code> implementation, use the <code>HdfsState.SequenceFileOptions</code>:</p>
+
+<pre><code class="language-java">        HdfsState.Options seqOpts = new HdfsState.SequenceFileOptions()
+                .withFileNameFormat(fileNameFormat)
+                .withSequenceFormat(new DefaultSequenceFormat("key", "data"))
+                .withRotationPolicy(rotationPolicy)
+                .withFsUrl("hdfs://localhost:54310")
+                .addRotationAction(new MoveFileAction().toDestination("/dest2/"));
+</code></pre>
+
+<h3 id="note">Note</h3>
+<p>Whenever a batch is replayed by storm (due to failures), the trident state implementation automatically removes 
+duplicates from the current data file by copying the data up to the last transaction to another file. Since this 
+operation involves a lot of data copy, ensure that the data files are rotated at reasonable sizes with <code>FileSizeRotationPolicy</code> 
+and at reasonable intervals with <code>TimedRotationPolicy</code> so that the recovery can complete within topology.message.timeout.secs.</p>
+
+<p>Also note with <code>TimedRotationPolicy</code> the files are never rotated in the middle of a batch even if the timer ticks, 
+but only when a batch completes so that complete batches can be efficiently recovered in case of failures.</p>
+
+<p>##Working with Secure HDFS（待译）</p>
+
+<p>If your topology is going to interact with secure HDFS, your bolts/states needs to be authenticated by NameNode. We 
+currently have 2 options to support this:</p>
+
+<h3 id="using-hdfs-delegation-tokens">Using HDFS delegation tokens</h3>
+<p>Your administrator can configure nimbus to automatically get delegation tokens on behalf of the topology submitter user.
+The nimbus need to start with following configurations:</p>
+
+<p>nimbus.autocredential.plugins.classes : [“org.apache.storm.hdfs.common.security.AutoHDFS”] 
+nimbus.credential.renewers.classes : [“org.apache.storm.hdfs.common.security.AutoHDFS”] 
+hdfs.keytab.file: “/path/to/keytab/on/nimbus” (This is the keytab of hdfs super user that can impersonate other users.)
+hdfs.kerberos.principal: “superuser@EXAMPLE.com” 
+nimbus.credential.renewers.freq.secs : 82800 (23 hours, hdfs tokens needs to be renewed every 24 hours so this value should be
+less then 24 hours.)
+topology.hdfs.uri:”hdfs://host:port” (This is an optional config, by default we will use value of “fs.defaultFS” property
+specified in hadoop’s core-site.xml)</p>
+
+<p>Your topology configuration should have:
+topology.auto-credentials :[“org.apache.storm.hdfs.common.security.AutoHDFS”]</p>
+
+<p>If nimbus did not have the above configuration you need to add it and then restart it. Ensure the hadoop configuration 
+files(core-site.xml and hdfs-site.xml) and the storm-hdfs jar with all the dependencies is present in nimbus’s classpath. 
+Nimbus will use the keytab and principal specified in the config to authenticate with Namenode. From then on for every
+topology submission, nimbus will impersonate the topology submitter user and acquire delegation tokens on behalf of the
+topology submitter user. If topology was started with topology.auto-credentials set to AutoHDFS, nimbus will push the
+delegation tokens to all the workers for your topology and the hdfs bolt/state will authenticate with namenode using 
+these tokens.</p>
+
+<p>As nimbus is impersonating topology submitter user, you need to ensure the user specified in hdfs.kerberos.principal 
+has permissions to acquire tokens on behalf of other users. To achieve this you need to follow configuration directions 
+listed on this link
+http://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/Superusers.html</p>
+
+<p>You can read about setting up secure HDFS here: http://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/SecureMode.html.</p>
+
+<h3 id="using-keytabs-on-all-worker-hosts">Using keytabs on all worker hosts</h3>
+<p>If you have distributed the keytab files for hdfs user on all potential worker hosts then you can use this method. You should specify a 
+hdfs config key using the method HdfsBolt/State.withconfigKey(“somekey”) and the value map of this key should have following 2 properties:</p>
+
+<p>hdfs.keytab.file: “/path/to/keytab/”
+hdfs.kerberos.principal: “user@EXAMPLE.com”</p>
+
+<p>On worker hosts the bolt/trident-state code will use the keytab file with principal provided in the config to authenticate with 
+Namenode. This method is little dangerous as you need to ensure all workers have the keytab file at the same location and you need
+to remember this as you bring up new hosts in the cluster.</p>
+
+<hr />
+
+<h1 id="hdfs-spout待译">HDFS Spout（待译）</h1>
+
+<p>Hdfs spout is intended to allow feeding data into Storm from a HDFS directory. 
+It will actively monitor the directory to consume any new files that appear in the directory.
+HDFS spout does not support Trident currently.</p>
+
+<p><strong>Impt</strong>: Hdfs spout assumes that the files being made visible to it in the monitored directory 
+are NOT actively being written to. Only after a file is completely written should it be made
+visible to the spout. This can be achieved by either writing the files out to another directory 
+and once completely written, move it to the monitored directory. Alternatively the file
+can be created with a ‘.ignore’ suffix in the monitored directory and after data is completely 
+written, rename it without the suffix. File names with a ‘.ignore’ suffix are ignored
+by the spout.</p>
+
+<p>When the spout is actively consuming a file, it renames the file with a ‘.inprogress’ suffix.
+After consuming all the contents in the file, the file will be moved to a configurable <em>done</em> 
+directory and the ‘.inprogress’ suffix will be dropped.</p>
+
+<p><strong>Concurrency</strong> If multiple spout instances are used in the topology, each instance will consume
+a different file. Synchronization among spout instances is done using lock files created in a 
+(by default) ‘.lock’ subdirectory under the monitored directory. A file with the same name
+as the file being consumed (without the in progress suffix) is created in the lock directory.
+Once the file is completely consumed, the corresponding lock file is deleted.</p>
+
+<p><strong>Recovery from failure</strong>
+Periodically, the spout also records progress information wrt to how much of the file has been
+consumed in the lock file. In case of an crash of the spout instance (or force kill of topology) 
+another spout can take over the file and resume from the location recorded in the lock file.</p>
+
+<p>Certain error conditions (such spout crashing) can leave behind lock files without deleting them. 
+Such a stale lock file also indicates that the corresponding input file has also not been completely 
+processed. When detected, ownership of such stale lock files will be transferred to another spout. <br />
+The configuration ‘hdfsspout.lock.timeout.sec’ is used to specify the duration of inactivity after 
+which lock files should be considered stale. For lock file ownership transfer to succeed, the HDFS
+lease on the file (from prev lock owner) should have expired. Spouts scan for stale lock files
+before selecting the next file for consumption.</p>
+
+<p><strong>Lock on <em>.lock</em> Directory</strong>
+Hdfs spout instances create a <em>DIRLOCK</em> file in the .lock directory to co-ordinate certain accesses to 
+the .lock dir itself. A spout will try to create it when it needs access to the .lock directory and
+then delete it when done.  In error conditions such as a topology crash, force kill or untimely death 
+of a spout, this file may not get deleted. Future running instances of the spout will eventually recover
+this once the DIRLOCK file becomes stale due to inactivity for hdfsspout.lock.timeout.sec seconds.</p>
+
+<h2 id="usage">Usage</h2>
+
+<p>The following example creates an HDFS spout that reads text files from HDFS path hdfs://localhost:54310/source.</p>
+
+<pre><code class="language-java">// Instantiate spout
+HdfsSpout textReaderSpout = new HdfsSpout().withOutputFields(TextFileReader.defaultFields);
+// HdfsSpout seqFileReaderSpout = new HdfsSpout().withOutputFields(SequenceFileReader.defaultFields);
+
+// textReaderSpout.withConfigKey("custom.keyname"); // Optional. Not required normally unless you need to change the keyname use to provide hds settings. This keyname defaults to 'hdfs.config' 
+
+// Configure it
+Config conf = new Config();
+conf.put(Configs.SOURCE_DIR, "hdfs://localhost:54310/source");
+conf.put(Configs.ARCHIVE_DIR, "hdfs://localhost:54310/done");
+conf.put(Configs.BAD_DIR, "hdfs://localhost:54310/badfiles");
+conf.put(Configs.READER_TYPE, "text"); // or 'seq' for sequence files
+
+// Create &amp; configure topology
+TopologyBuilder builder = new TopologyBuilder();
+builder.setSpout("hdfsspout", textReaderSpout, SPOUT_NUM);
+
+// Setup bolts and other topology configuration
+     ..snip..
+
+// Submit topology with config
+StormSubmitter.submitTopologyWithProgressBar("topologyName", conf, builder.createTopology());
+</code></pre>
+
+<p>See sample HdfsSpoutTopolgy in storm-starter.</p>
+
+<h2 id="configuration-settings">Configuration Settings</h2>
+<p>Class HdfsSpout provided following methods for configuration:</p>
+
+<p><code>HdfsSpout withOutputFields(String... fields)</code> : This sets the names for the output fields. 
+The number of fields depends upon the reader being used. For convenience, built-in reader types 
+expose a static member called <code>defaultFields</code> that can be used for this.</p>
+
+<p><code>HdfsSpout withConfigKey(String configKey)</code>
+Optional setting. It allows overriding the default key name (‘hdfs.config’) with new name for 
+specifying HDFS configs. Typically used to specify kerberos keytab and principal.</p>
+
+<p><strong>E.g:</strong></p>
+<pre><code class="language-java">    HashMap map = new HashMap();
+    map.put("hdfs.keytab.file", "/path/to/keytab");
+    map.put("hdfs.kerberos.principal","user@EXAMPLE.com");
+    conf.set("hdfs.config", map)
+</code></pre>
+
+<p>Only settings mentioned in <strong>bold</strong> are required.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Setting</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>hdfsspout.reader.type</strong></td>
+      <td> </td>
+      <td>Indicates the reader for the file format. Set to ‘seq’ for reading sequence files or ‘text’ for text files. Set to a fully qualified class name if using a custom type (that implements interface org.apache.storm.hdfs.spout.FileReader)</td>
+    </tr>
+    <tr>
+      <td><strong>hdfsspout.hdfs</strong></td>
+      <td> </td>
+      <td>HDFS URI. Example:  hdfs://namenodehost:8020</td>
+    </tr>
+    <tr>
+      <td><strong>hdfsspout.source.dir</strong></td>
+      <td> </td>
+      <td>HDFS location from where to read.  E.g. /data/inputfiles</td>
+    </tr>
+    <tr>
+      <td><strong>hdfsspout.archive.dir</strong></td>
+      <td> </td>
+      <td>After a file is processed completely it will be moved to this directory. E.g. /data/done</td>
+    </tr>
+    <tr>
+      <td><strong>hdfsspout.badfiles.dir</strong></td>
+      <td> </td>
+      <td>if there is an error parsing a file’s contents, the file is moved to this location.  E.g. /data/badfiles</td>
+    </tr>
+    <tr>
+      <td>hdfsspout.lock.dir</td>
+      <td>‘.lock’ subdirectory under hdfsspout.source.dir</td>
+      <td>Dir in which lock files will be created. Concurrent HDFS spout instances synchronize using <em>lock</em> files. Before processing a file the spout instance creates a lock file in this directory with same name as input file and deletes this lock file after processing the file. Spouts also periodically makes a note of their progress (wrt reading the input file) in the lock file so that another spout instance can resume progress on the same file if the spout dies for any reason.</td>
+    </tr>
+    <tr>
+      <td>hdfsspout.ignore.suffix</td>
+      <td>.ignore</td>
+      <td>File names with this suffix in the in the hdfsspout.source.dir location will not be processed</td>
+    </tr>
+    <tr>
+      <td>hdfsspout.commit.count</td>
+      <td>20000</td>
+      <td>Record progress in the lock file after these many records are processed. If set to 0, this criterion will not be used.</td>
+    </tr>
+    <tr>
+      <td>hdfsspout.commit.sec</td>
+      <td>10</td>
+      <td>Record progress in the lock file after these many seconds have elapsed. Must be greater than 0</td>
+    </tr>
+    <tr>
+      <td>hdfsspout.max.outstanding</td>
+      <td>10000</td>
+      <td>Limits the number of unACKed tuples by pausing tuple generation (if ACKers are used in the topology)</td>
+    </tr>
+    <tr>
+      <td>hdfsspout.lock.timeout.sec</td>
+      <td>5 minutes</td>
+      <td>Duration of inactivity after which a lock file is considered to be abandoned and ready for another spout to take ownership</td>
+    </tr>
+    <tr>
+      <td>hdfsspout.clocks.insync</td>
+      <td>true</td>
+      <td>Indicates whether clocks on the storm machines are in sync (using services like NTP). Used for detecting stale locks.</td>
+    </tr>
+    <tr>
+      <td>hdfs.config (unless changed)</td>
+      <td> </td>
+      <td>Set it to a Map of Key/value pairs indicating the HDFS settigns to be used. For example, keytab and principle could be set using this. See section <strong>Using keytabs on all worker hosts</strong> under HDFS bolt below.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+      
+      <div class="footer">
+      Google Groups: <a target="_blank" href="https://groups.google.com/forum/#!forum/jstorm-user">jstorm-user</a>, QQ Groups: 228374502
+      </p>
+ 
+      发现错误？想参与编辑？
+      <a href="https://github.com/alibaba/jstorm/edit/master/docs/jstorm-doc/ProgrammingGuide_cn/AdvancedUsage/Plugins/Hdfs.md" target="_blank">
+        在 Github 上编辑此页！
+      </a>
+  </div>
+    </div>
+  </div>
+
+  
+</div>
+
+    </div><!-- /.container -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="//cdn.bootcss.com/jquery/1.11.2/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="//cdn.bootcss.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <script src="//cdn.bootcss.com/anchor-js/3.1.0/anchor.min.js"></script>
+    <script src="/js/jstorm.js"></script>
+
+    <!-- Google Analytics -->
+    <!-- script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-52545728-1', 'auto');
+      ga('send', 'pageview');
+    </script -->
+
+    <!-- Baidu Analytics -->
+    <script>
+      var _hmt = _hmt || [];
+      (function() {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?835985ad7943d8c24bc3c1f155b7d4a2";
+        var s = document.getElementsByTagName("script")[0]; 
+        s.parentNode.insertBefore(hm, s);
+      })();
+    </script>
+
+
+    <!-- Disqus -->
+    <!--
+     -->
+  </body>
+</html>

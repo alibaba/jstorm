@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>JStorm Documentation : User Defined Log, Switch log4j/logback, Use user's log configuration</title>
+    <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon">
+    <link rel="icon" href="/img/favicon.png" type="image/x-icon">
+
+    <!-- Bootstrap -->
+    <link href="//cdn.bootcss.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/jstorm.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+    <link rel="stylesheet" href="/css/codetabs.css">
+    
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    
+    <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<!--
+
+
+
+
+-->
+    <!-- Top navbar. -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <!-- The logo. -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <div class="navbar-logo">
+            <a href="/"><img alt="jstorm" src="/img/jstorm-logo.png"></a>
+          </div>
+        </div><!-- /.navbar-header -->
+
+        <!-- The navigation links. -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            
+            <!-- Downloads -->
+            <li class="hidden-sm "><a href="/Downloads.html">Downloads</a></li>
+
+            <!-- Performance -->
+            <li class="hidden-sm "><a href="/Performance">Performance</a></li>
+
+            <!-- QuickStart -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">QuickStart <span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                
+                
+                <li class=""><a href="/QuickStart/BasicConception.html">Basic Conception</a></li>
+                
+                <li class=""><a href="/QuickStart/Example.html">Example</a></li>
+                
+                <li class=""><a href="/QuickStart/Deploy/index.html">Deploy</a></li>
+                
+                <li class=""><a href="/QuickStart/Upgrade/index.html">Upgrade</a></li>
+                
+                <li class=""><a href="/QuickStart/UpgradeFromStorm.html">Migrate from Apache Storm</a></li>
+                
+                <li class=""><a href="/QuickStart/Compile.html">Compile JStorm</a></li>
+                
+              </ul>
+            </li>
+
+            <!-- ProgrammingGuide -->
+            <li class="dropdown active">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">ProgrammingGuide <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/ProgrammingGuide/DebugLocalApp.html">Local Debug</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/StreamSplitJoin.html">Split-Merge-Stream</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/Transaction.html">Transaction</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/Trident.html">Trident</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/AdvancedUsage/index.html">Advanced Usage</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- Maintenance -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Maintenance <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Maintenance/Configuration.html">Configuration</a></li>
+                  
+                  <li class=""><a href="/Maintenance/ConfigurationAutomacticSync.html">Automatically Sync Configuration</a></li>
+                  
+                  <li class=""><a href="/Maintenance/Isolation.html">Resource Isolation</a></li>
+                  
+                  <li class=""><a href="/Maintenance/JStormMetrics.html">JStorm Metrics</a></li>
+                  
+                  <li class=""><a href="/Maintenance/HealthCheck.html">Supervisor Health Check</a></li>
+                  
+                  <li class=""><a href="/Maintenance/JStorm-on-Yarn.html">JStorm-on-Yarn</a></li>
+                  
+                  <li class=""><a href="/Maintenance/ClusterHA.html">Cluster HA</a></li>
+                  
+                  <li class=""><a href="/Maintenance/SupervisorWorker.html">Supervisor-Generate-Workers</a></li>
+                  
+                  <li class=""><a href="/Maintenance/DynamicAdjustLog.html">Dynamic Adjust Log</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- FAQ -->
+            <li class="hidden-sm "><a href="/FAQ/">FAQ</a></li>
+
+            <!-- Community -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Community <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Community/Email.html">Email List</a></li>
+                  
+                  <li class=""><a href="/Community/Committers.html">Committer List</a></li>
+                  
+                  <li class=""><a href="/Community/Events-Meetups.html">Events and Meetups</a></li>
+                  
+                  <li class=""><a href="/Community/Issues.html">Track issues</a></li>
+                  
+                  <li class=""><a href="/Community/JStormUsers.html">JStorm User List</a></li>
+                  
+              </ul>
+            </li>
+
+
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Language <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class=""><a href="/index.html">English</a></li>
+                  <li class=""><a href="/index_cn.html">中文</a></li>
+
+              </ul>
+            </li>
+          </ul>          
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container -->
+    </nav>
+
+
+    
+
+    <!-- Main content. -->
+    <div class="container">
+      
+      <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<div class="row">
+
+
+  <!-- Sub Navigation -->
+  <div class="col-sm-3">
+    <ul id="sub-nav">
+      
+      
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide/AdvancedUsage/index.html" class="">Advanced Usage</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide/AdvancedUsage/API.html" class="">API Introduce</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide/AdvancedUsage/API/Grouping.html" class="">Grouping Introduce</a></li>
+            
+              <li><a href="/ProgrammingGuide/AdvancedUsage/API/IBasicBolt.html" class="">IBasicBolt Introduce</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide/AdvancedUsage/Theory.html" class="">Theory</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide/AdvancedUsage/Theory/Acker.html" class="">Acker mechanism</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide/AdvancedUsage/Plugins.html" class="">Plugins</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide/AdvancedUsage/Plugins/Flux.html" class="">Flux Plugin</a></li>
+            
+              <li><a href="/ProgrammingGuide/AdvancedUsage/Plugins/Hdfs.html" class="">HDFS Plugin</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide/AdvancedUsage/UserDefined.html" class="">User-Defined-API</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide/AdvancedUsage/UserDefined/Alarm.html" class="">User-Defined-Alarm</a></li>
+            
+              <li><a href="/ProgrammingGuide/AdvancedUsage/UserDefined/Log.html" class="active">User-Defined-Log</a></li>
+            
+              <li><a href="/ProgrammingGuide/AdvancedUsage/UserDefined/Metrics.html" class="">User-Defined-Metrics</a></li>
+            
+              <li><a href="/ProgrammingGuide/AdvancedUsage/UserDefined/Scheduler.html" class="">User-Defined-Scheduler</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide/AdvancedUsage/DynamicAdjust.html" class="">Dynamic-Adjust</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide/AdvancedUsage/DynamicAdjust/Configuration.html" class="">Dynamic-Adjust-Configuration</a></li>
+            
+              <li><a href="/ProgrammingGuide/AdvancedUsage/DynamicAdjust/Metrics.html" class="">Dynamic-Adjust-Metrics</a></li>
+            
+              <li><a href="/ProgrammingGuide/AdvancedUsage/DynamicAdjust/Parallel.html" class="">Dynamic-Adjust-Parallel</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide/AdvancedUsage/SQL.html" class="">SQL-on-JStorm</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide/AdvancedUsage/SubmitTopology.html" class="">SubmitTopology</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide/AdvancedUsage/BackPressure.html" class="">BackPressure</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide/AdvancedUsage/Window.html" class="">Window Framework</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide/AdvancedUsage/PerformanceTuning.html" class="">Performance Tuning</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide/AdvancedUsage/BlobStore.html" class="">BlobStore</a>
+          
+        </li>
+      
+    </ul>
+  </div>
+  <!-- Main -->
+  <div class="col-sm-9">
+    <!-- Top anchor -->
+    <a href="#top"></a>
+
+    <div class="text">
+      <!-- Main heading -->
+      <h1>User Defined Log, Switch log4j/logback, Use user's log configuration</h1>
+
+      <!-- Content -->
+      <ul id="markdown-toc">
+  <li><a href="#highly-recommend-using-log4j" id="markdown-toc-highly-recommend-using-log4j">Highly recommend using Log4j</a></li>
+  <li><a href="#user-defined-log4j-configuration-file" id="markdown-toc-user-defined-log4j-configuration-file">User defined Log4j configuration file</a></li>
+  <li><a href="#using-logback" id="markdown-toc-using-logback">Using logback</a>    <ul>
+      <li><a href="#using-logback-without-log4j" id="markdown-toc-using-logback-without-log4j">Using logback without log4j</a></li>
+      <li><a href="#using-log4j-and-logback-at-the-same-time" id="markdown-toc-using-log4j-and-logback-at-the-same-time">Using Log4j and Logback at the same time</a></li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="highly-recommend-using-log4j">Highly recommend using Log4j</h2>
+<p>In release of JStorm 0.9.0, the log system was upgraded to logback from log4j. However the upgrade triggered the compatibility problem and the application has to change the code to avoid that, so in JStorm 0.9.1 it fall back to log4j. Although logback’s performance is better than log4j, logback will bring lots of compatibility issues.</p>
+
+<h2 id="user-defined-log4j-configuration-file">User defined Log4j configuration file</h2>
+<p>We found that in the early version of JStorm, lots of applications hack the log system and use various kinds of log configurations, which eventually caused many problems, so after JStorm 0.9.2 we force log4j to use JStorm’s log4j configuration file to avoid the problems. However, user are still not able to customize the log system to satisfy the particular requirements.
+In JStorm 0.9.6.3, we introduced the feature of user defined log.</p>
+
+<p>Using configuration</p>
+<pre><code>user.defined.log4j.conf: xxxxxxxxxxxxxxxxxxxxx
+</code></pre>
+<p>or</p>
+<pre><code>ConfigExtension.setUserDefinedLog4jConf((Map conf, String fileName))
+</code></pre>
+
+<p>For example:</p>
+<pre><code>user.defined.log4j.conf: user.log4j.properties
+</code></pre>
+<p>The configuration file user.log4j.properties must be on the java classpath.</p>
+
+<p>Example 2:</p>
+<pre><code>user.defined.log4j.conf: "File:/home/admin/jstorm/conf/user.log4j.properties"
+</code></pre>
+<p>The configuration file is an absolute file path so each machine should have the same file at the same location.</p>
+
+<h2 id="using-logback">Using logback</h2>
+<p>Some application will output different processes’s log into one log file, here user have to use logback because log4j does not support that.</p>
+
+<h3 id="using-logback-without-log4j">Using logback without log4j</h3>
+<p>Generally there are only two frequently used log framework in Java’s world, log4j and slf4j. For log implementation, we usually have log4j and logback.</p>
+<pre><code>log4j -- &gt; log4j
+slf4j --&gt; logback
+</code></pre>
+<p>If application’s log4j code need to be logged by logback, then log4j-over-slf4j adapter is needed. Also, if application’s sl4j code need to be logged by log4j, then slf4j-log4j adapter is needed.</p>
+<pre><code>log4j --&gt; log4j-over-sl4j --&gt; logback
+slf4j --&gt; slf4j-log4j      --&gt; log4j
+</code></pre>
+<p>Unfortunately, log4j-over-sl4j conflicts with slf4j-log4j,they are not supposed to be loaded by the same classloader.</p>
+
+<p>When only using logback,Maven have to exclude slf4j-log4j12</p>
+<pre><code>    &lt;dependency&gt;
+    		&lt;groupId&gt;com.alibaba.jstorm&lt;/groupId&gt;
+			&lt;artifactId&gt;jstorm-client-extension&lt;/artifactId&gt;
+			&lt;version&gt;${jstorm.version}&lt;/version&gt;
+			&lt;scope&gt;provided&lt;/scope&gt;
+		&lt;/dependency&gt;
+
+		&lt;dependency&gt;
+			&lt;groupId&gt;com.alibaba.jstorm&lt;/groupId&gt;
+			&lt;artifactId&gt;jstorm-client&lt;/artifactId&gt;
+			&lt;version&gt;${jstorm.version}&lt;/version&gt;
+			&lt;scope&gt;provided&lt;/scope&gt;
+			&lt;exclusions&gt;
+				&lt;exclusion&gt;
+					&lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+					&lt;artifactId&gt;slf4j-log4j12&lt;/artifactId&gt;
+				&lt;/exclusion&gt;
+			&lt;/exclusions&gt;
+		&lt;/dependency&gt;
+
+		&lt;dependency&gt;
+			&lt;groupId&gt;com.alibaba.jstorm&lt;/groupId&gt;
+			&lt;artifactId&gt;jstorm-server&lt;/artifactId&gt;
+			&lt;version&gt;${jstorm.version}&lt;/version&gt;
+			&lt;scope&gt;provided&lt;/scope&gt;
+
+		&lt;/dependency&gt;
+
+		&lt;dependency&gt;
+			&lt;groupId&gt;ch.qos.logback&lt;/groupId&gt;
+			&lt;artifactId&gt;logback-classic&lt;/artifactId&gt;
+			&lt;version&gt;1.0.13&lt;/version&gt;
+		&lt;/dependency&gt;
+
+		&lt;dependency&gt;
+			&lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+			&lt;artifactId&gt;log4j-over-slf4j&lt;/artifactId&gt;
+			&lt;version&gt;1.7.10&lt;/version&gt;
+		&lt;/dependency&gt;
+</code></pre>
+
+<p>Besides, in the configuration file</p>
+<pre><code>user.defined.logback.conf: xxxxxxxxxxxxxxxx
+</code></pre>
+<p>or</p>
+<pre><code>ConfigExtension.setUserDefinedLogbackConf(Map conf, String fileName)
+</code></pre>
+<p>xxxxxxxxxxxx could be an absolute file path or a path contained in the Java classpath.
+JStorm also supports paramater <code>jstorm_home</code>, like “%JSTORM_HOME%/conf/cluster.xml”</p>
+
+<p>When submitting the topology, adding option <code>--exclude-jars slf4j-log4j</code> can avoid the loading of slf4j-log4j.</p>
+<pre><code>jstorm jar --exclude-jars slf4j-log4j xxxxx.jar kkkkkkk.kkkk.kkkkk ttt
+</code></pre>
+
+<h3 id="using-log4j-and-logback-at-the-same-time">Using Log4j and Logback at the same time</h3>
+<p>If user want to use log4j and logback at the same time,the topology classloader should be enabled.</p>
+<ol>
+  <li>All the log4j code will be logged by log4j no matter it comes from JStorm or the application</li>
+  <li>The slf4j code used in the application will be logged by logback</li>
+</ol>
+
+<p>Please note that log4j and logback should not output their log into the same file otherwise some log will loss when rolling happens.</p>
+
+<p>In this situation, Maven pom.xml file does not need some special configuration but we still recommend excluding the slf4j-log4j12</p>
+
+<pre><code>topology.enable.classloader: true
+user.defined.logback.conf: xxxxxxxxxxxxxxxx
+</code></pre>
+  
+      <div class="footer">
+      Google Groups: <a target="_blank" href="https://groups.google.com/forum/#!forum/jstorm-user">jstorm-user</a>, QQ Groups: 228374502
+      </p>
+      Caught a mistake or want to contribute to the documentation? 
+      <a href="https://github.com/alibaba/jstorm/edit/master/docs/jstorm-doc/ProgrammingGuide/AdvancedUsage/UserDefined/Log.md" target="_blank">
+        Edit this page on Github!
+      </a>
+  </div>    
+    </div>
+  </div>
+
+  
+</div>
+
+    </div><!-- /.container -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="//cdn.bootcss.com/jquery/1.11.2/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="//cdn.bootcss.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <script src="//cdn.bootcss.com/anchor-js/3.1.0/anchor.min.js"></script>
+    <script src="/js/jstorm.js"></script>
+
+    <!-- Google Analytics -->
+    <!-- script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-52545728-1', 'auto');
+      ga('send', 'pageview');
+    </script -->
+
+    <!-- Baidu Analytics -->
+    <script>
+      var _hmt = _hmt || [];
+      (function() {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?835985ad7943d8c24bc3c1f155b7d4a2";
+        var s = document.getElementsByTagName("script")[0]; 
+        s.parentNode.insertBefore(hm, s);
+      })();
+    </script>
+
+
+    <!-- Disqus -->
+    <!--
+     -->
+  </body>
+</html>

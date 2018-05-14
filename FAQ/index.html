@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>JStorm Documentation : FAQ</title>
+    <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon">
+    <link rel="icon" href="/img/favicon.png" type="image/x-icon">
+
+    <!-- Bootstrap -->
+    <link href="//cdn.bootcss.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/jstorm.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+    <link rel="stylesheet" href="/css/codetabs.css">
+    
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    
+    <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<!--
+
+
+
+
+-->
+    <!-- Top navbar. -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <!-- The logo. -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <div class="navbar-logo">
+            <a href="/"><img alt="jstorm" src="/img/jstorm-logo.png"></a>
+          </div>
+        </div><!-- /.navbar-header -->
+
+        <!-- The navigation links. -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            
+            <!-- Downloads -->
+            <li class="hidden-sm "><a href="/Downloads.html">Downloads</a></li>
+
+            <!-- Performance -->
+            <li class="hidden-sm "><a href="/Performance">Performance</a></li>
+
+            <!-- QuickStart -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">QuickStart <span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                
+                
+                <li class=""><a href="/QuickStart/BasicConception.html">Basic Conception</a></li>
+                
+                <li class=""><a href="/QuickStart/Example.html">Example</a></li>
+                
+                <li class=""><a href="/QuickStart/Deploy/index.html">Deploy</a></li>
+                
+                <li class=""><a href="/QuickStart/Upgrade/index.html">Upgrade</a></li>
+                
+                <li class=""><a href="/QuickStart/UpgradeFromStorm.html">Migrate from Apache Storm</a></li>
+                
+                <li class=""><a href="/QuickStart/Compile.html">Compile JStorm</a></li>
+                
+              </ul>
+            </li>
+
+            <!-- ProgrammingGuide -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">ProgrammingGuide <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/ProgrammingGuide/DebugLocalApp.html">Local Debug</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/StreamSplitJoin.html">Split-Merge-Stream</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/Transaction.html">Transaction</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/Trident.html">Trident</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide/AdvancedUsage/index.html">Advanced Usage</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- Maintenance -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Maintenance <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Maintenance/Configuration.html">Configuration</a></li>
+                  
+                  <li class=""><a href="/Maintenance/ConfigurationAutomacticSync.html">Automatically Sync Configuration</a></li>
+                  
+                  <li class=""><a href="/Maintenance/Isolation.html">Resource Isolation</a></li>
+                  
+                  <li class=""><a href="/Maintenance/JStormMetrics.html">JStorm Metrics</a></li>
+                  
+                  <li class=""><a href="/Maintenance/HealthCheck.html">Supervisor Health Check</a></li>
+                  
+                  <li class=""><a href="/Maintenance/JStorm-on-Yarn.html">JStorm-on-Yarn</a></li>
+                  
+                  <li class=""><a href="/Maintenance/ClusterHA.html">Cluster HA</a></li>
+                  
+                  <li class=""><a href="/Maintenance/SupervisorWorker.html">Supervisor-Generate-Workers</a></li>
+                  
+                  <li class=""><a href="/Maintenance/DynamicAdjustLog.html">Dynamic Adjust Log</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- FAQ -->
+            <li class="hidden-sm active"><a href="/FAQ/">FAQ</a></li>
+
+            <!-- Community -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Community <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Community/Email.html">Email List</a></li>
+                  
+                  <li class=""><a href="/Community/Committers.html">Committer List</a></li>
+                  
+                  <li class=""><a href="/Community/Events-Meetups.html">Events and Meetups</a></li>
+                  
+                  <li class=""><a href="/Community/Issues.html">Track issues</a></li>
+                  
+                  <li class=""><a href="/Community/JStormUsers.html">JStorm User List</a></li>
+                  
+              </ul>
+            </li>
+
+
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Language <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class=""><a href="/index.html">English</a></li>
+                  <li class=""><a href="/index_cn.html">中文</a></li>
+
+              </ul>
+            </li>
+          </ul>          
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container -->
+    </nav>
+
+
+    
+
+    <!-- Main content. -->
+    <div class="container">
+      
+      <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<div class="row">
+
+  
+  
+  <div class="col-md-8 col-md-offset-2 text">
+    <h1>FAQ</h1>
+	<h1 id="to-be-done">TO BE DONE</h1>
+<h1 id="the-content-here-is-less-than-the-cn-version">the content here is less than the cn version.</h1>
+
+<h2 id="performance-issues">Performance issues</h2>
+<p>Reference Performance Optimization</p>
+
+<h2 id="lack-of-resources">Lack of resources</h2>
+<p>When the report “No supervisor resource is enough for component”, it means that the resource is not enough, if only the test environment can be supervisor of cpu and memory slot set bigger.</p>
+
+<p>In jstorm in a task default consume a cpu slot and a memory slot, and a machine default  cpu slot number is cpu core -1, memory slot number is the physical memory size * 75% / 1g, if a run on worker task more, you need to set smaller memory slot size (default is 1G), such as 512M, memory.slot.per.size: 536870912 bytes.</p>
+
+<pre><code> #if it is null, then it will be detect by system
+ supervisor.cpu.slot.num: null
+
+ #if it is null, then it will be detect by system
+ supervisor.mem.slot.num: null
+
+# support disk slot
+# if it is null, it will use $(storm.local.dir)/worker_shared_data
+ supervisor.disk.slot: null
+</code></pre>
+
+<h2 id="serialization-issues">Serialization issues</h2>
+<p>All spout, bolt, configuration, message (Tuple) sent must implement Serializable, otherwise there will be a  error of serialization.</p>
+
+<p>When the spout or bolt if it is a member variable does not implement serializable, but when you have to use, you can increase the “transient” modifier when declaring variables, and  instantiated when you open or prepare .</p>
+
+<h2 id="log4j-conflict">Log4j conflict</h2>
+<p>From 0.9.0, JStorm still use Log4J, but the storm using Logbak, so the application if there are dependent log4j-over-slf4j.jar, you need to exclude all log4j-over-slf4j.jar dependence, the next version will have a custom classloader, do not worry about this problem.</p>
+
+<pre><code>SLF4J: Detected both log4j-over-slf4j.jar AND slf4j-log4j12.jar on the class path, preempting StackOverflowError. 
+SLF4J: See also 
+http://www.slf4j.org/codes.html#log4jDelegationLoop for more details.
+Exception in thread "main" java.lang.ExceptionInInitializerError
+        at org.apache.log4j.Logger.getLogger(Logger.java:39)
+        at org.apache.log4j.Logger.getLogger(Logger.java:43)
+        at com.alibaba.jstorm.daemon.worker.Worker.&lt;clinit&gt;(Worker.java:32)
+Caused by: java.lang.IllegalStateException: Detected both log4j-over-slf4j.jar AND slf4j-log4j12.jar on the class path, preempting StackOverflowError. See also 
+http://www.slf4j.org/codes.html#log4jDelegationLoop for more details.
+        at org.apache.log4j.Log4jLoggerFactory.&lt;clinit&gt;(Log4jLoggerFactory.java:49)
+        ... 3 more
+Could not find the main class: com.alibaba.jstorm.daemon.worker.Worker.  Program will exit.
+</code></pre>
+
+<h2 id="class-conflict">Class conflict</h2>
+<p>If the application and JStorm use the same jar package, but not the same version, it is recommended to modify the configuration file, open classloader</p>
+
+<pre><code>topology.enable.classloader: true
+</code></pre>
+<p>Or</p>
+
+<pre><code>ConfigExtension.setEnableTopologyClassLoader(conf, true);
+</code></pre>
+
+<p>JStorm default is to turn off the classloader, therefore JStorm will be forced to use JStorm dependent jar</p>
+
+<h2 id="after-submitting-the-task-and-after-waiting-a-few-minutes-web-ui-has-not-display-the-corresponding-task">After submitting the task, and after waiting a few minutes, web ui has not display the corresponding task</h2>
+<p>three kinds of situations:</p>
+
+<h3 id="user-application-initialization-is-too-slow">User application initialization is too slow</h3>
+<p>If the user application has log output, it indicates that the initialization of the application is too slow or error, you can view the log. In addition to MetaQ 1.x applications, Spout will recover ~ /.meta_recover/ directory files, you can delete these files, acceleration starts.</p>
+
+<h3 id="usually-the-user-jar-conflict-or-a-problem-with-the-initialization">Usually the user jar conflict or a problem with the initialization</h3>
+<p>Open supervisor logs, to identify start worker command, executed individually, and then check if there are problems. Similar to the following:</p>
+
+<p><img src="/img/FAQ/fail_start_worker.jpg" alt="fail_start_worker" /></p>
+
+<h3 id="check-is-not-the-same-storm-and-jstorm-local-directory">Check is not the same storm and jstorm local directory</h3>
+<p>Check the configuration items “storm.local.dir”, storm and jstorm whether to use the same local directory,  if the same, to a different directory</p>
+
+<h2 id="port-has-been-bound">port has been bound</h2>
+<p>two kinds of situations:</p>
+
+<h3 id="more-than-one-worker-to-seize-a-port">More than one worker to seize a port</h3>
+<p>Assuming 6800 port is occupied, you can execute the command “ps -ef | grep 6800” to check whether there are multiple processes, if there are multiple processes, kill them manually</p>
+
+<h3 id="open-too-many-connections">open too many connections</h3>
+<p>Linux exists  the external connection port limit, TCP client initiates a connection outside reached about 28,000, began to throw a lot of exceptions, you need to modify the external connection port restrictions</p>
+<pre><code> # echo "10000 65535" &gt; /proc/sys/net/ipv4/ip_local_port_range
+</code></pre>
+
+<p>Other questions, You can enter the QQ group (228374502) for consultation</p>
+
+  <div class="footer">
+      Google Groups: <a target="_blank" href="https://groups.google.com/forum/#!forum/jstorm-user">jstorm-user</a>, QQ Groups: 228374502
+      </p>
+      Caught a mistake or want to contribute to the documentation? 
+      <a href="https://github.com/alibaba/jstorm/edit/master/docs/jstorm-doc/FAQ/index.md" target="_blank">
+        Edit this page on Github!
+      </a>
+  </div>
+  
+
+  
+</div>
+
+    </div><!-- /.container -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="//cdn.bootcss.com/jquery/1.11.2/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="//cdn.bootcss.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <script src="//cdn.bootcss.com/anchor-js/3.1.0/anchor.min.js"></script>
+    <script src="/js/jstorm.js"></script>
+
+    <!-- Google Analytics -->
+    <!-- script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-52545728-1', 'auto');
+      ga('send', 'pageview');
+    </script -->
+
+    <!-- Baidu Analytics -->
+    <script>
+      var _hmt = _hmt || [];
+      (function() {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?835985ad7943d8c24bc3c1f155b7d4a2";
+        var s = document.getElementsByTagName("script")[0]; 
+        s.parentNode.insertBefore(hm, s);
+      })();
+    </script>
+
+
+    <!-- Disqus -->
+    <!--
+     -->
+  </body>
+</html>

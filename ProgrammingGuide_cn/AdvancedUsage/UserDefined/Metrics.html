@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>JStorm 文档 : User Defined Metrics, Monitor application's key Metrics</title>
+    <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon">
+    <link rel="icon" href="/img/favicon.png" type="image/x-icon">
+
+    <!-- Bootstrap -->
+    <link href="//cdn.bootcss.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/jstorm.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+    <link rel="stylesheet" href="/css/codetabs.css">
+    
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    
+    <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<!--
+
+
+
+
+-->
+    <!-- Top navbar. -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <!-- The logo. -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <div class="navbar-logo">
+            <a href="/"><img alt="jstorm" src="/img/jstorm-logo.png"></a>
+          </div>
+        </div><!-- /.navbar-header -->
+
+        <!-- The navigation links. -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            <!-- Downloads -->
+            <li class="hidden-sm "><a href="/Downloads.html">Downloads</a></li>
+
+            <!-- Performance -->
+            <li class="hidden-sm "><a href="/Performance_cn">Performance</a></li>
+
+            <!-- QuickStart -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">QuickStart <span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                
+                
+                <li class=""><a href="/QuickStart_cn/BasicConception.html">5分钟基础概念(新手第一篇)</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Example.html">入门Example</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Deploy/index.html">安装部署</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Upgrade/index.html">升级</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/UpgradeFromStorm.html">从Apache Storm升级到JStorm</a></li>
+                
+                <li class=""><a href="/QuickStart_cn/Compile.html">编译JStorm</a></li>
+                
+              </ul>
+            </li>
+
+            <!-- ProgrammingGuide -->
+            <li class="dropdown active">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">ProgrammingGuide <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/DebugLocalApp.html">本地调试</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/StreamSplitJoin.html">数据流分流合并</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/Transaction/index.html">事务</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/Trident/index.html">Trident</a></li>
+                  
+                  <li class=""><a href="/ProgrammingGuide_cn/AdvancedUsage/index.html">Advanced Usage</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- Maintenance -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">运维 <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Maintenance_cn/Configuration.html">配置注解</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/ConfigurationAutomacticSync.html">自动同步配置文件</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/Isolation.html">资源隔离</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/JStormMetrics.html">JStorm Metrics</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/HealthCheck.html">Supervisor自检</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/JStorm-on-Yarn.html">JStorm-on-Yarn</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/ClusterHA.html">同城灾备&异地灾备</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/BlobStore.html">BlobStore</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/SupervisorWorker.html">生成worker列表算法</a></li>
+                  
+                  <li class=""><a href="/Maintenance_cn/DynamicAdjustLog.html">动态调整日志</a></li>
+                  
+              </ul>
+            </li>
+
+            <!-- FAQ -->
+            <li class="hidden-sm "><a href="/FAQ_cn/">FAQ</a></li>
+
+
+
+            <!-- Community -->
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">社区 <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  
+                  
+                  <li class=""><a href="/Community/Email.html">Email List</a></li>
+                  
+                  <li class=""><a href="/Community/Committers.html">Committer List</a></li>
+                  
+                  <li class=""><a href="/Community/Events-Meetups.html">Events and Meetups</a></li>
+                  
+                  <li class=""><a href="/Community/Issues.html">Track issues</a></li>
+                  
+                  <li class=""><a href="/Community/JStormUsers.html">JStorm User List</a></li>
+                  
+              </ul>
+            </li>
+
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+              <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Language <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class=""><a href="/index.html">English</a></li>
+                  <li class=""><a href="/index_cn.html">中文</a></li>
+
+              </ul>
+            </li>
+          </ul>          
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container -->
+    </nav>
+
+
+    
+
+    <!-- Main content. -->
+    <div class="container">
+      
+      <!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<div class="row">
+
+
+  <!-- Sub Navigation -->
+  <div class="col-sm-3">
+    <ul id="sub-nav">
+      
+      
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/index.html" class="">Advanced Usage</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/API.html" class="">API介绍</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/API/Grouping.html" class="">Grouping 介绍</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/API/IBasicBolt.html" class="">IBasicBolt 介绍</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Theory.html" class="">Theory</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Theory/Acker.html" class="">Acker 原理</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Plugins.html" class="">Plugins</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Plugins/Flux.html" class="">Flux 插件</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Plugins/Hdfs.html" class="">HDFS 插件</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined.html" class="">User-Defined-API</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined/Alarm.html" class="">自定义报错</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined/Log.html" class="">自定义日志</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined/Metrics.html" class="active">自定义监控</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/UserDefined/Scheduler.html" class="">自定义调度</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/DynamicAdjust.html" class="">动态变更</a>
+          
+          <ul>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/DynamicAdjust/Configuration.html" class="">动态更新配置</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/DynamicAdjust/Metrics.html" class="">动态调整Metrics</a></li>
+            
+              <li><a href="/ProgrammingGuide_cn/AdvancedUsage/DynamicAdjust/Parallel.html" class="">动态调整并发</a></li>
+            
+          </ul>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/SQL.html" class="">SQL-on-JStorm</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/SubmitTopology.html" class="">API 提交任务</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/BackPressure.html" class="">限流控制/反压</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/Window.html" class="">Window Framework</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/PerformanceTuning.html" class="">性能优化</a>
+          
+        </li>
+      
+        
+        
+        
+        <li><a href="/ProgrammingGuide_cn/AdvancedUsage/BlobStore.html" class="">BlobStore</a>
+          
+        </li>
+      
+    </ul>
+  </div>
+  <!-- Main -->
+  <div class="col-sm-9">
+    <!-- Top anchor -->
+    <a href="#top"></a>
+
+    <div class="text">
+      <!-- Main heading -->
+      <h1>User Defined Metrics, Monitor application's key Metrics</h1>
+
+      <!-- Content -->
+      <ul id="markdown-toc">
+  <li><a href="#jstorm211中使用自定义metrics" id="markdown-toc-jstorm211中使用自定义metrics">JStorm2.1.1中使用自定义metrics</a>    <ul>
+      <li><a href="#alimonitor-client" id="markdown-toc-alimonitor-client">alimonitor client</a></li>
+      <li><a href="#自定义metrics类型" id="markdown-toc-自定义metrics类型">自定义metrics类型</a></li>
+      <li><a href="#参考代码" id="markdown-toc-参考代码">参考代码</a></li>
+      <li><a href="#在koala中配置监控报警" id="markdown-toc-在koala中配置监控报警">在koala中配置监控报警</a></li>
+      <li><a href="#faq" id="markdown-toc-faq">FAQ</a></li>
+    </ul>
+  </li>
+  <li><a href="#koala监控系统设计" id="markdown-toc-koala监控系统设计">koala监控系统设计</a>    <ul>
+      <li><a href="#监控层次" id="markdown-toc-监控层次">监控层次</a>        <ul>
+          <li><a href="#集群监控" id="markdown-toc-集群监控">集群监控</a></li>
+          <li><a href="#nimbus监控" id="markdown-toc-nimbus监控">nimbus监控</a></li>
+          <li><a href="#topology监控" id="markdown-toc-topology监控">topology监控</a></li>
+        </ul>
+      </li>
+      <li><a href="#监控项设计" id="markdown-toc-监控项设计">监控项设计</a>        <ul>
+          <li><a href="#监控表达式" id="markdown-toc-监控表达式">监控表达式：</a></li>
+          <li><a href="#报警级别" id="markdown-toc-报警级别">报警级别</a></li>
+          <li><a href="#报警周期" id="markdown-toc-报警周期">报警周期</a></li>
+        </ul>
+      </li>
+      <li><a href="#监控项管理" id="markdown-toc-监控项管理">监控项管理</a>        <ul>
+          <li><a href="#1存储监控项配置使用mysql存储监控报警数据使用otshbase存储" id="markdown-toc-1存储监控项配置使用mysql存储监控报警数据使用otshbase存储">1.存储：监控项配置使用MySQL存储，监控报警数据使用OTS/HBase存储。</a></li>
+          <li><a href="#一键添加所有相似的监控项" id="markdown-toc-一键添加所有相似的监控项">一键添加所有相似的监控项</a></li>
+          <li><a href="#禁用添加删除监控项" id="markdown-toc-禁用添加删除监控项">禁用、添加、删除监控项</a></li>
+          <li><a href="#监控荐允许继承" id="markdown-toc-监控荐允许继承">监控荐允许继承</a></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li><a href="#详细技术方案" id="markdown-toc-详细技术方案">详细技术方案</a>    <ul>
+      <li><a href="#监控项管理-1" id="markdown-toc-监控项管理-1">监控项管理</a></li>
+      <li><a href="#报警实现" id="markdown-toc-报警实现">报警实现</a>        <ul>
+          <li><a href="#clusterspout" id="markdown-toc-clusterspout">ClusterSpout</a></li>
+          <li><a href="#dispatchbolt" id="markdown-toc-dispatchbolt">DispatchBolt</a></li>
+          <li><a href="#checkstatbolt" id="markdown-toc-checkstatbolt">CheckStatBolt</a></li>
+          <li><a href="#notifybolt" id="markdown-toc-notifybolt">NotifyBolt</a></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<h1 id="jstorm211中使用自定义metrics">JStorm2.1.1中使用自定义metrics</h1>
+
+<h2 id="alimonitor-client">alimonitor client</h2>
+<p>2.x中，AlimonitorClient不再支持，因为koala中已经支持metrics的曲线展示，没有必要再把数据发送到alimonitor中。</p>
+
+<h2 id="自定义metrics类型">自定义metrics类型</h2>
+
+<p>使用MetricClient来注册自定义metrics。目前支持以下几种metrics，请按需使用：</p>
+
+<pre><code>COUNTER：计数器，如jstorm中的emitted, acked, failed都使用counter。
+
+METER：一般用于qps/tps的统计。jstorm中的sendTps, recvTps使用meter。
+
+GAUGE：一般用于统计一个瞬时值，如memUsed, cpuRatio，queueSize等这种瞬间的值。**但是需要注意，gauge是不可聚合的**，即如果你注册了一个task级别的gauge，你只能到koala web ui的task页面查看它的metrics，它并不会聚合到component级别，因为这种聚合没有实际意义（想象一下多个task的queueSize加一起是什么意思...）。
+
+HISTOGRAM：一般用于统计操作的耗时，如EmitTime，nextTupleTime等。
+</code></pre>
+
+<h2 id="参考代码">参考代码</h2>
+<p>http://gitlab.alibaba-inc.com/weiyue.wy/jstorm-sequence-test/blob/seq-test-for-asm-merge/src/main/java/com/alipay/dw/jstorm/example/sequence/bolt/TotalCount.java</p>
+
+<h2 id="在koala中配置监控报警">在koala中配置监控报警</h2>
+<p>参见：http://www.atatech.org/articles/49312</p>
+
+<h2 id="faq">FAQ</h2>
+<p>Q：我想根据worker日志中的异常来添加监控报警，可以么？</p>
+
+<p>A：不可以。jstorm不会去扫描日志的内容，因此无法做到。但是应用使用自定义metrics来间接做到这一点：首先在应用代码中添加一个自定义metrics，如counter，代表异常个数。然后在代码中捕获异常，给counter+1。最后只需要在koala中对这个自定义metrics配置监控报警即可。</p>
+
+<hr />
+
+<h1 id="koala监控系统设计">koala监控系统设计</h1>
+
+<h2 id="监控层次">监控层次</h2>
+
+<p>分为三层：</p>
+
+<h3 id="集群监控">集群监控</h3>
+<p>如supervisor挂掉，supervisor变化（<strong>注：暂未实现</strong>）</p>
+
+<h3 id="nimbus监控">nimbus监控</h3>
+<p>考虑到在merge版本中，nimbus责任比较重要，单独把这个抽出来。主要有memory, FGC, OTS相关的参数（tps, insert）等。
+<strong>注：当前只实现了nimbus挂掉的监控报警</strong></p>
+
+<h3 id="topology监控">topology监控</h3>
+
+<p>主要包括：</p>
+
+<p>a. topology挂掉。</p>
+
+<p>b. topology状态变化，主要是从ACTIVE变为INACTIVE。</p>
+
+<p>c. 有task长时间处于starting状态。</p>
+
+<p>d. 有task频繁挂掉。</p>
+
+<p>e. metric基线。根据不同的metric类型，可以选择不同的基线值。如meter可选m1, m5, m15，histogram可选p50, p75, p95, p98等。</p>
+
+<h2 id="监控项设计">监控项设计</h2>
+
+<h3 id="监控表达式">监控表达式：</h3>
+<p>a.&gt;, &lt;, ≥, ≤, !=, ==</p>
+
+<p>b.波动：上升x%，下降x%，振动（包括了上升和下降）</p>
+
+<p>且重复出现X次</p>
+
+<h3 id="报警级别">报警级别</h3>
+<p>critical：如topology挂掉， nimbus挂掉</p>
+
+<p>warning：如metrics值异常</p>
+
+<p>对于critical的可以考虑用不同的通知方式，如电话等。warning只发短信、旺旺消息等。</p>
+
+<p><strong>注：暂时未实现</strong></p>
+
+<h3 id="报警周期">报警周期</h3>
+<p>7X24，上班时间，下班时间，等</p>
+
+<ol>
+  <li>
+    <p>目前上午9：00～下午18：00，报警方式为旺旺报警，其他时间为短信报警。</p>
+  </li>
+  <li>
+    <p>发生一次报警之后，下一次报警的时间至少为10分钟以后。如果半小时内发生了2次报警（相当于报警了之后，你都没有做处理），下一次报警的时间为1小时之后。</p>
+  </li>
+  <li>
+    <p>用户可以控制报警的时间，可以选择关闭报警一段时间，或者完全关闭报警功能（koala中配置）</p>
+  </li>
+</ol>
+
+<h2 id="监控项管理">监控项管理</h2>
+
+<h3 id="1存储监控项配置使用mysql存储监控报警数据使用otshbase存储">1.存储：监控项配置使用MySQL存储，监控报警数据使用OTS/HBase存储。</h3>
+
+<p>全集群1W个topology，每个配置50个监控项，也只有50W数据</p>
+
+<p>有两种监控项，一种是topology状态监控，另外一种是metrics基线监控。用monitorType来标志：分别为S(status)和M(metrics)。</p>
+
+<h4 id="atopology状态监控">a.topology状态监控</h4>
+
+<p>主要是4种：</p>
+
+<p>1)topology状态监控：状态从active转到其他状态时报警。</p>
+
+<p>2)task starting：有task三分钟以上处于starting状态</p>
+
+<p>3)task dead：task挂掉</p>
+
+<p>4)queue full：有执行队列满的情况。</p>
+
+<p>目前是存在topology_owner表中，添加了monitor_enable, topology_status, task_starting, task_dead, task_full字段。通过last_send_time, next_send_time和last_times做疲劳度控制。</p>
+
+<p><del>key: clusterName + S + topologyName</del></p>
+
+<p><del>value: 枚举值TOPOLOGY_STATUS, TASK_STARTING(3分钟以上), TASK_DEAD, TASK_QUEUE_FULL</del></p>
+
+<h4 id="bmetrics基线监控">b.metrics基线监控</h4>
+
+<p><del>key: clusterName + M + topologyName + metricId</del></p>
+
+<p><del>value: metaType + metricType + valueField + expr + notifyLevel + notifyType + notifyPeriod + notifyList</del></p>
+
+<p>根据topologyName取得所有监控项，遍历监控项，如果有效，则通过OTS/HBase scan过去10分钟的数据，对表达式进行求值对比。若满足报警条件，则加入报警队列（这里的QPS可能会比较高，预估会有1W+，不过都是小的scan）。</p>
+
+<p>报警：需要根据报警周期判断用何种方式发送报警信息。并且，报警信息根据监控层次汇总，比如某个topology下有非常多的metric异常，汇总成一条报警信息，以减少对用户的干扰。</p>
+
+<p>报警历史保存在MySQL中，方便做监控报警大盘分析和疲劳度控制。</p>
+
+<p>当最新一次检测失败，需要发送报警的时候，先会从DB中取出过去3次发送的时间，加入疲劳控制逻辑，以决定是否发送报警消息。</p>
+
+<h3 id="一键添加所有相似的监控项">一键添加所有相似的监控项</h3>
+
+<p>如Emitted, SendTps（不过这种情况下表达式会受到限制，只能使用波动表达式）</p>
+
+<p>需要注意控制绝对值，如果绝对值很低，用波动表达式会产生误报。</p>
+
+<p><strong>注：未实现</strong></p>
+
+<h3 id="禁用添加删除监控项">禁用、添加、删除监控项</h3>
+
+<p>后台需要有一个用户的监控项配置页面。按照topology级别进行汇总。</p>
+
+<h3 id="监控荐允许继承">监控荐允许继承</h3>
+
+<p>Emitted, SendTps等做成基础监控项。可以一键启用。
+<strong>注：未实现</strong></p>
+
+<h1 id="详细技术方案">详细技术方案</h1>
+
+<h2 id="监控项管理-1">监控项管理</h2>
+
+<p>koala页面中实现，存储在MySQL中。见上面的监控项管理。</p>
+
+<h2 id="报警实现">报警实现</h2>
+
+<p>通过jstorm topology实现。</p>
+
+<h3 id="clusterspout">ClusterSpout</h3>
+<p>1.读取koala的后台DB，拉到所有的集群列表。并逐一emit至DispatchBolt。</p>
+
+<h3 id="dispatchbolt">DispatchBolt</h3>
+<p>1.循环所有的集群，读取该集群的topology列表，将每一个topology emit到CheckStatBolt。</p>
+
+<h3 id="checkstatbolt">CheckStatBolt</h3>
+<p>1.从OTS中获取该topology的监控项，如果为空，直接结束，否则到2。</p>
+
+<p>2.如果监控项不为空，则循环所有监控项，emit到报警计算bolt中。</p>
+
+<p>a. topology挂掉。</p>
+
+<p>b. topology状态变化，主要是从ACTIVE变为INACTIVE。</p>
+
+<p>c. 有task长时间处于starting状态。</p>
+
+<p>d. 有task频繁挂掉。</p>
+
+<p>e. metric基线。根据不同的metric类型，可以选择不同的基线值。如meter可选m1, m5, m15，histogram可选p50, p75, p95, p98等。</p>
+
+<p>按照上面的顺序，只要有一个条件满足，就不会执行下游的判断。即如果task状态不正常，就会直接发送报警，而不会再检查metrics数据是否正常。</p>
+
+<h3 id="notifybolt">NotifyBolt</h3>
+<p>直接发送报警。</p>
+      
+      <div class="footer">
+      Google Groups: <a target="_blank" href="https://groups.google.com/forum/#!forum/jstorm-user">jstorm-user</a>, QQ Groups: 228374502
+      </p>
+ 
+      发现错误？想参与编辑？
+      <a href="https://github.com/alibaba/jstorm/edit/master/docs/jstorm-doc/ProgrammingGuide_cn/AdvancedUsage/UserDefined/Metrics.md" target="_blank">
+        在 Github 上编辑此页！
+      </a>
+  </div>
+    </div>
+  </div>
+
+  
+</div>
+
+    </div><!-- /.container -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="//cdn.bootcss.com/jquery/1.11.2/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="//cdn.bootcss.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <script src="//cdn.bootcss.com/anchor-js/3.1.0/anchor.min.js"></script>
+    <script src="/js/jstorm.js"></script>
+
+    <!-- Google Analytics -->
+    <!-- script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-52545728-1', 'auto');
+      ga('send', 'pageview');
+    </script -->
+
+    <!-- Baidu Analytics -->
+    <script>
+      var _hmt = _hmt || [];
+      (function() {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?835985ad7943d8c24bc3c1f155b7d4a2";
+        var s = document.getElementsByTagName("script")[0]; 
+        s.parentNode.insertBefore(hm, s);
+      })();
+    </script>
+
+
+    <!-- Disqus -->
+    <!--
+     -->
+  </body>
+</html>
