@@ -6,11 +6,13 @@ title: Downloads
 
 ### Current Stable Release
 
-[jstorm-2.2.1.zip](https://github.com/alibaba/jstorm/releases/download/2.2.1/jstorm-2.2.1.zip)
+[jstorm-2.4.0.tgz](https://github.com/alibaba/jstorm/releases/download/2.4.0/jstorm-2.4.0.tgz)
 
 **JStorm will be installed in '/home/admin/jstorm' through rpm package, please start JStorm under user 'admin'**. 
 
 ### Old Release
+
+[jstorm-2.2.1.zip](https://github.com/alibaba/jstorm/releases/download/2.2.1/jstorm-2.2.1.zip)
 
 [jstorm-2.1.1.zip](https://github.com/alibaba/jstorm/releases/download/2.1.1/jstorm-2.1.1.zip)
 
