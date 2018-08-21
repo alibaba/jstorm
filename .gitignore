@@ -1,8 +1,9 @@
-*.git
-*.project
-*.classpath
 *.prefs
 *.bat
+.idea
+*.iml
+.project
+.classpath
 target
 /bin
 .idea
