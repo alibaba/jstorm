@@ -18,6 +18,10 @@
 
 package backtype.storm.scheduler.multitenant;
 
+import backtype.storm.Config;
+import backtype.storm.scheduler.SchedulerAssignment;
+import backtype.storm.scheduler.TopologyDetails;
+import backtype.storm.scheduler.WorkerSlot;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -27,23 +31,17 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import backtype.storm.Config;
-import backtype.storm.scheduler.SchedulerAssignment;
-import backtype.storm.scheduler.TopologyDetails;
-import backtype.storm.scheduler.WorkerSlot;
 
 /**
  * A pool of machines that can be used to run isolated topologies
  */
 public class IsolatedPool extends NodePool {
     private static final Logger LOG = LoggerFactory.getLogger(IsolatedPool.class);
-    private Map<String, Set<Node>> _topologyIdToNodes = new HashMap<String, Set<Node>>();
-    private HashMap<String, TopologyDetails> _tds = new HashMap<String, TopologyDetails>();
-    private HashSet<String> _isolated = new HashSet<String>();
+    private Map<String, Set<Node>> _topologyIdToNodes = new HashMap<>();
+    private HashMap<String, TopologyDetails> _tds = new HashMap<>();
+    private HashSet<String> _isolated = new HashSet<>();
     private int _maxNodes;
     private int _usedNodes;
 
@@ -55,9 +53,9 @@ public class IsolatedPool extends NodePool {
     @Override
     public void addTopology(TopologyDetails td) {
         String topId = td.getId();
-        LOG.debug("Adding in Topology {}", topId);
+        LOG.debug("Adding in topology {}", topId);
         SchedulerAssignment assignment = _cluster.getAssignmentById(topId);
-        Set<Node> assignedNodes = new HashSet<Node>();
+        Set<Node> assignedNodes = new HashSet<>();
         if (assignment != null) {
             for (WorkerSlot ws : assignment.getSlots()) {
                 Node n = _nodeIdToNode.get(ws.getNodeId());
@@ -109,7 +107,7 @@ public class IsolatedPool extends NodePool {
 
                 RoundRobinSlotScheduler slotSched = new RoundRobinSlotScheduler(td, slotsToUse, _cluster);
 
-                LinkedList<Node> sortedNodes = new LinkedList<Node>(allNodes);
+                LinkedList<Node> sortedNodes = new LinkedList<>(allNodes);
                 Collections.sort(sortedNodes, Node.FREE_NODE_COMPARATOR_DEC);
 
                 LOG.debug("Nodes sorted by free space {}", sortedNodes);
@@ -139,9 +137,9 @@ public class IsolatedPool extends NodePool {
 
     /**
      * Get the nodes needed to schedule an isolated topology.
-     * 
-     * @param td the topology to be scheduled
-     * @param allNodes the nodes already scheduled for this topology. This will be updated to include new nodes if needed.
+     *
+     * @param td          the topology to be scheduled
+     * @param allNodes    the nodes already scheduled for this topology. This will be updated to include new nodes if needed.
      * @param lesserPools node pools we can steal nodes from
      * @return the number of additional slots that should be used for scheduling.
      */
@@ -153,8 +151,8 @@ public class IsolatedPool extends NodePool {
 
         int nodesUsed = _topologyIdToNodes.get(topId).size();
         int nodesNeeded = nodesRequested - nodesUsed;
-        LOG.debug("Nodes... requested {} used {} available from us {} " + "avail from other {} needed {}", new Object[] { nodesRequested, nodesUsed,
-                nodesFromUsAvailable, nodesFromOthersAvailable, nodesNeeded });
+        LOG.debug("Nodes... requested {} used {} available from us {} " + "avail from other {} needed {}",
+                new Object[]{nodesRequested, nodesUsed, nodesFromUsAvailable, nodesFromOthersAvailable, nodesNeeded});
         if ((nodesNeeded - nodesFromUsAvailable) > (_maxNodes - _usedNodes)) {
             _cluster.setStatus(topId, "Max Nodes(" + _maxNodes + ") for this user would be exceeded. "
                     + ((nodesNeeded - nodesFromUsAvailable) - (_maxNodes - _usedNodes)) + " more nodes needed to run topology.");
@@ -195,9 +193,9 @@ public class IsolatedPool extends NodePool {
 
     /**
      * Get the nodes needed to schedule a non-isolated topology.
-     * 
-     * @param td the topology to be scheduled
-     * @param allNodes the nodes already scheduled for this topology. This will be updated to include new nodes if needed.
+     *
+     * @param td          the topology to be scheduled
+     * @param allNodes    the nodes already scheduled for this topology. This will be updated to include new nodes if needed.
      * @param lesserPools node pools we can steal nodes from
      * @return the number of additional slots that should be used for scheduling.
      */
@@ -215,15 +213,15 @@ public class IsolatedPool extends NodePool {
             slotsAvailable = NodePool.slotsAvailable(lesserPools);
         }
         int slotsToUse = Math.min(slotsRequested - slotsUsed, slotsFree + slotsAvailable);
-        LOG.debug("Slots... requested {} used {} free {} available {} to be used {}", new Object[] { slotsRequested, slotsUsed, slotsFree, slotsAvailable,
-                slotsToUse });
+        LOG.debug("Slots... requested {} used {} free {} available {} to be used {}",
+                new Object[]{slotsRequested, slotsUsed, slotsFree, slotsAvailable, slotsToUse});
         if (slotsToUse <= 0) {
             _cluster.setStatus(topId, "Not Enough Slots Available to Schedule Topology");
             return 0;
         }
         int slotsNeeded = slotsToUse - slotsFree;
         int numNewNodes = NodePool.getNodeCountIfSlotsWereTaken(slotsNeeded, lesserPools);
-        LOG.debug("Nodes... new {} used {} max {}", new Object[] { numNewNodes, _usedNodes, _maxNodes });
+        LOG.debug("Nodes... new {} used {} max {}", new Object[]{numNewNodes, _usedNodes, _maxNodes});
         if ((numNewNodes + _usedNodes) > _maxNodes) {
             _cluster.setStatus(topId, "Max Nodes(" + _maxNodes + ") for this user would be exceeded. " + (numNewNodes - (_maxNodes - _usedNodes))
                     + " more nodes needed to run topology.");
@@ -239,7 +237,7 @@ public class IsolatedPool extends NodePool {
     @Override
     public Collection<Node> takeNodes(int nodesNeeded) {
         LOG.debug("Taking {} from {}", nodesNeeded, this);
-        HashSet<Node> ret = new HashSet<Node>();
+        HashSet<Node> ret = new HashSet<>();
         for (Entry<String, Set<Node>> entry : _topologyIdToNodes.entrySet()) {
             if (!_isolated.contains(entry.getKey())) {
                 Iterator<Node> it = entry.getValue().iterator();
@@ -283,7 +281,7 @@ public class IsolatedPool extends NodePool {
 
     @Override
     public Collection<Node> takeNodesBySlots(int slotsNeeded) {
-        HashSet<Node> ret = new HashSet<Node>();
+        HashSet<Node> ret = new HashSet<>();
         for (Entry<String, Set<Node>> entry : _topologyIdToNodes.entrySet()) {
             if (!_isolated.contains(entry.getKey())) {
                 Iterator<Node> it = entry.getValue().iterator();

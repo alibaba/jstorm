@@ -38,14 +38,11 @@ public class WorkerAssignment extends WorkerSlot implements Serializable, JSONAw
 
     private static final long serialVersionUID = -3483047434535537861L;
 
-    private Map<String, Integer> componentToNum = new HashMap<String, Integer>();
+    private Map<String, Integer> componentToNum = new HashMap<>();
 
     private long mem;
-
     private int cpu;
-
     private String hostName;
-
     private String jvm;
 
     private static final String COMPONENTTONUM_TAG = "componentToNum";
@@ -58,15 +55,13 @@ public class WorkerAssignment extends WorkerSlot implements Serializable, JSONAw
 
     public WorkerAssignment(String nodeId, Number port) {
         super(nodeId, port);
-        // TODO Auto-generated constructor stub
     }
 
     public WorkerAssignment() {
-
     }
 
-    public void addComponent(String compenentName, Integer num) {
-        componentToNum.put(compenentName, num);
+    public void addComponent(String componentName, Integer num) {
+        componentToNum.put(componentName, num);
     }
 
     public Map<String, Integer> getComponentToNum() {
@@ -107,31 +102,7 @@ public class WorkerAssignment extends WorkerSlot implements Serializable, JSONAw
 
     @Override
     public String toJSONString() {
-        // StringBuilder sb = new StringBuilder();
-
-        // sb.append("[");
-        // sb.append("\"" + this.getNodeId() + "\"");
-        // sb.append(",");
-        // sb.append("\"" + this.hostName + "\"");
-        // sb.append(",");
-        // sb.append("\"" + String.valueOf(this.getPort()) + "\"");
-        // sb.append(",");
-        // sb.append("\"" + this.jvm + "\"");
-        // sb.append(",");
-        // sb.append("\"" + String.valueOf(this.mem) + "\"");
-        // sb.append(",");
-        // sb.append("\"" + String.valueOf(this.cpu) + "\"");
-        // sb.append(",");
-        // sb.append("{");
-        // for (Entry<String, Integer> entry : componentToNum.entrySet()) {
-        // sb.append("\"" + entry.getKey() + "\":");
-        // sb.append("\"" + String.valueOf(entry.getValue()) + "\"");
-        // sb.append(",");
-        // }
-        // sb.append("}");
-        // sb.append("]");
-
-        Map<String, String> map = new HashMap<String, String>();
+        Map<String, String> map = new HashMap<>();
 
         map.put(COMPONENTTONUM_TAG, Utils.to_json(componentToNum));
         map.put(MEM_TAG, String.valueOf(mem));
@@ -148,8 +119,7 @@ public class WorkerAssignment extends WorkerSlot implements Serializable, JSONAw
         if (obj == null) {
             return null;
         }
-
-        if (obj instanceof Map == false) {
+        if (!(obj instanceof Map)) {
             return null;
         }
 
@@ -246,15 +216,10 @@ public class WorkerAssignment extends WorkerSlot implements Serializable, JSONAw
         WorkerAssignment input = new WorkerAssignment();
 
         input.setJvm("sb");
-
         input.setCpu(1);
-
         input.setMem(2);
-
         input.addComponent("2b", 2);
-
         String outString = Utils.to_json(input);
-
         System.out.println(input);
 
         // String outString =
@@ -262,9 +227,7 @@ public class WorkerAssignment extends WorkerSlot implements Serializable, JSONAw
 
         Object object = Utils.from_json(outString);
         System.out.println(object);
-
         System.out.println(parseFromObj(object));
-
         System.out.print(input.equals(parseFromObj(object)));
     }
 

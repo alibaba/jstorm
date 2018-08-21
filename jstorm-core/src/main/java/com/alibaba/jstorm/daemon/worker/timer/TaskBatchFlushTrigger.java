@@ -17,34 +17,39 @@
  */
 package com.alibaba.jstorm.daemon.worker.timer;
 
+import com.alibaba.jstorm.daemon.worker.Flusher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import com.alibaba.jstorm.task.execute.BatchCollector;
 
-public class TaskBatchFlushTrigger extends TimerTrigger {
+import java.util.concurrent.atomic.AtomicBoolean;
+
+public class TaskBatchFlushTrigger extends Flusher {
     private static final Logger LOG = LoggerFactory.getLogger(TickTupleTrigger.class);
 
     private BatchCollector batchCollector;
+    private String name;
+    private AtomicBoolean isFlushing = new AtomicBoolean(false);
 
-    public TaskBatchFlushTrigger(int frequence, String name, BatchCollector batchCollector) {
-        if (frequence <= 0) {
-            LOG.warn(" The frequence of " + name + " is invalid");
-            frequence = 1;
+    public TaskBatchFlushTrigger(int frequency, String name, BatchCollector batchCollector) {
+        if (frequency <= 0) {
+            LOG.warn(" The frequency of " + name + " is invalid");
+            frequency = 1;
         }
-        this.firstTime = frequence;
-        this.frequence = frequence;
+        this.name = name;
+        this.flushIntervalMs = frequency;
         this.batchCollector = batchCollector;
     }
 
     @Override
     public void run() {
         try {
-            batchCollector.flush();
+            if (isFlushing.compareAndSet(false, true)) {
+                batchCollector.flush();
+                isFlushing.set(false);
+            }
         } catch (Exception e) {
             LOG.warn("Failed to public timer event to " + name, e);
-            return;
         }
     }
-
 }

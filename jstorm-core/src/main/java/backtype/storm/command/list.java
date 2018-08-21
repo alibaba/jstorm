@@ -27,7 +27,7 @@ import backtype.storm.utils.NimbusClient;
 import backtype.storm.utils.Utils;
 
 /**
- * Activate topology
+ * print summary of a topology/cluster
  *
  * @author longda
  */
@@ -42,11 +42,9 @@ public class list {
             if (args.length > 0 && !StringUtils.isBlank(args[0])) {
                 String topologyName = args[0];
                 TopologyInfo info = client.getClient().getTopologyInfoByName(topologyName);
-
                 System.out.println("Successfully get topology info \n" + Utils.toPrettyJsonString(info));
             } else {
                 ClusterSummary clusterSummary = client.getClient().getClusterInfo();
-
                 System.out.println("Successfully get cluster info \n" + Utils.toPrettyJsonString(clusterSummary));
             }
         } catch (Exception e) {

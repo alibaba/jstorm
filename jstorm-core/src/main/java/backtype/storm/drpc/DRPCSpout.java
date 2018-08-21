@@ -31,6 +31,7 @@ import backtype.storm.tuple.Values;
 import backtype.storm.utils.ExtendedThreadPoolExecutor;
 import backtype.storm.utils.ServiceRegistry;
 import backtype.storm.utils.Utils;
+import com.alibaba.jstorm.utils.JStormServerUtils;
 import com.alibaba.jstorm.utils.NetWorkUtils;
 import org.apache.thrift.TException;
 import org.json.simple.JSONValue;
@@ -46,9 +47,9 @@ public class DRPCSpout extends BaseRichSpout {
 
     public static Logger LOG = LoggerFactory.getLogger(DRPCSpout.class);
 
-    SpoutOutputCollector _collector;
-    List<DRPCInvocationsClient> _clients = new ArrayList<DRPCInvocationsClient>();
-    transient LinkedList<Future<Void>> _futures = null;
+    transient SpoutOutputCollector _collector;
+    transient List<DRPCInvocationsClient> _clients;
+    transient LinkedList<Future<?>> _futures = null;
     transient ExecutorService _backround = null;
     String _function;
     String _local_drpc_id = null;
@@ -70,6 +71,10 @@ public class DRPCSpout extends BaseRichSpout {
     public DRPCSpout(String function, ILocalDRPC drpc) {
         _function = function;
         _local_drpc_id = drpc.getServiceId();
+    }
+
+    public String get_function() {
+        return _function;
     }
 
     private class Adder implements Callable<Void> {
@@ -103,27 +108,14 @@ public class DRPCSpout extends BaseRichSpout {
         }));
     }
 
-    private void checkFutures() {
-        Iterator<Future<Void>> i = _futures.iterator();
-        while (i.hasNext()) {
-            Future<Void> f = i.next();
-            if (f.isDone()) {
-                i.remove();
-            }
-            try {
-                f.get();
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
     @Override
     public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
         _collector = collector;
+        _clients = new ArrayList<>();
         if (_local_drpc_id == null) {
-            _backround = new ExtendedThreadPoolExecutor(0, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS, new SynchronousQueue<Runnable>());
-            _futures = new LinkedList<Future<Void>>();
+            _backround = new ExtendedThreadPoolExecutor(0, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS,
+                    new SynchronousQueue<Runnable>());
+            _futures = new LinkedList<>();
 
             int numTasks = context.getComponentTasks(context.getThisComponentId()).size();
             int index = context.getThisTaskIndex();
@@ -191,7 +183,7 @@ public class DRPCSpout extends BaseRichSpout {
                     LOG.error("Failed to fetch DRPC result from DRPC server", e);
                 }
             }
-            checkFutures();
+            JStormServerUtils.checkFutures(_futures);
         } else {
             DistributedRPCInvocations.Iface drpc = (DistributedRPCInvocations.Iface) ServiceRegistry.getService(_local_drpc_id);
             if (drpc != null) { // can happen during shutdown of drpc while topology is still up
@@ -203,10 +195,9 @@ public class DRPCSpout extends BaseRichSpout {
                         returnInfo.put("host", _local_drpc_id);
                         returnInfo.put("port", 0);
                         gotRequest = true;
-                        _collector.emit(new Values(req.get_func_args(), JSONValue.toJSONString(returnInfo)), new DRPCMessageId(req.get_request_id(), 0));
+                        _collector.emit(new Values(req.get_func_args(), JSONValue.toJSONString(returnInfo)),
+                                new DRPCMessageId(req.get_request_id(), 0));
                     }
-                } catch (AuthorizationException aze) {
-                    throw new RuntimeException(aze);
                 } catch (TException e) {
                     throw new RuntimeException(e);
                 }

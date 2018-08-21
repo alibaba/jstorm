@@ -38,18 +38,16 @@ import com.alibaba.jstorm.schedule.default_assign.Selector.TotalTaskNumSelector;
 import com.alibaba.jstorm.utils.FailedAssignTopologyException;
 
 public class TaskScheduler {
-
     public static Logger LOG = LoggerFactory.getLogger(TaskScheduler.class);
 
     private final TaskAssignContext taskContext;
-
-    private List<ResourceWorkerSlot> assignments = new ArrayList<ResourceWorkerSlot>();
-
+    private List<ResourceWorkerSlot> assignments = new ArrayList<>();
     private int workerNum;
 
     /**
-     * For balance purpose, default scheduler is trying to assign the same number of tasks to a worker. e.g. There are 4 tasks and 3 available workers. Each
-     * worker will be assigned one task first. And then one worker is chosen for the last one.
+     * For balance purpose, default scheduler is trying to assign the same number of tasks to a worker.
+     * e.g. There are 4 tasks and 3 available workers.
+     * Each worker will be assigned one task first. And then one worker is chosen for the last one.
      */
     private int avgTaskNum;
     private int leftTaskNum;
@@ -57,25 +55,22 @@ public class TaskScheduler {
     private Set<Integer> tasks;
 
     private DefaultTopologyAssignContext context;
-
     private Selector componentSelector;
-
     private Selector inputComponentSelector;
-
     private Selector totalTaskNumSelector;
 
     public TaskScheduler(DefaultTopologyAssignContext context, Set<Integer> tasks, List<ResourceWorkerSlot> workers) {
         this.tasks = tasks;
         LOG.info("Tasks " + tasks + " is going to be assigned in workers " + workers);
         this.context = context;
-        this.taskContext =
-                new TaskAssignContext(this.buildSupervisorToWorker(workers), Common.buildSpoutOutoputAndBoltInputMap(context), context.getTaskToComponent());
+        this.taskContext = new TaskAssignContext(this.buildSupervisorToWorker(workers),
+                Common.buildSpoutOutoputAndBoltInputMap(context), context.getTaskToComponent());
         this.componentSelector = new ComponentNumSelector(taskContext);
         this.inputComponentSelector = new InputComponentNumSelector(taskContext);
         this.totalTaskNumSelector = new TotalTaskNumSelector(taskContext);
         if (tasks.size() == 0)
             return;
-        if (context.getAssignType() != TopologyAssignContext.ASSIGN_TYPE_REBALANCE || context.isReassign() != false){
+        if (context.getAssignType() != TopologyAssignContext.ASSIGN_TYPE_REBALANCE || context.isReassign()) {
             // warning ! it doesn't consider HA TM now!!
             if (context.getAssignSingleWorkerForTM() && tasks.contains(context.getTopologyMasterTaskId())) {
                 assignForTopologyMaster();
@@ -84,7 +79,7 @@ public class TaskScheduler {
 
         int taskNum = tasks.size();
         Map<ResourceWorkerSlot, Integer> workerSlotIntegerMap = taskContext.getWorkerToTaskNum();
-        Set<ResourceWorkerSlot> preAssignWorkers = new HashSet<ResourceWorkerSlot>();
+        Set<ResourceWorkerSlot> preAssignWorkers = new HashSet<>();
         for (Entry<ResourceWorkerSlot, Integer> worker : workerSlotIntegerMap.entrySet()) {
             if (worker.getValue() > 0) {
                 taskNum += worker.getValue();
@@ -96,7 +91,7 @@ public class TaskScheduler {
         // Check the worker assignment status of pre-assigned workers, e.g user defined or old assignment workers.
         // Remove the workers which have been assigned with enough workers.
         for (ResourceWorkerSlot worker : preAssignWorkers) {
-            if (taskContext.getWorkerToTaskNum().keySet().contains(worker)){
+            if (taskContext.getWorkerToTaskNum().keySet().contains(worker)) {
 
                 Set<ResourceWorkerSlot> doneWorkers = removeWorkerFromSrcPool(taskContext.getWorkerToTaskNum().get(worker), worker);
                 if (doneWorkers != null) {
@@ -105,20 +100,18 @@ public class TaskScheduler {
                         workerNum--;
                     }
                 }
-
             }
-
         }
         setTaskNum(taskNum, workerNum);
 
         // For Scale-out case, the old assignment should be kept.
-        if (context.getAssignType() == TopologyAssignContext.ASSIGN_TYPE_REBALANCE && context.isReassign() == false) {
+        if (context.getAssignType() == TopologyAssignContext.ASSIGN_TYPE_REBALANCE && !context.isReassign()) {
             keepAssignment(taskNum, context.getOldAssignment().getWorkers());
         }
     }
 
     private void keepAssignment(int taskNum, Set<ResourceWorkerSlot> keepAssignments) {
-        Set<Integer> keepTasks = new HashSet<Integer>();
+        Set<Integer> keepTasks = new HashSet<>();
         ResourceWorkerSlot tmWorker = null;
         for (ResourceWorkerSlot worker : keepAssignments) {
             if (worker.getTasks().contains(context.getTopologyMasterTaskId()))
@@ -127,8 +120,8 @@ public class TaskScheduler {
                 if (tasks.contains(taskId)) {
                     ResourceWorkerSlot contextWorker = taskContext.getWorker(worker);
                     if (contextWorker != null) {
-                        if (tmWorker != null && tmWorker.getTasks().contains(taskId) && context.getAssignSingleWorkerForTM() ) {
-                            if (context.getTopologyMasterTaskId() == taskId){
+                        if (tmWorker != null && tmWorker.getTasks().contains(taskId) && context.getAssignSingleWorkerForTM()) {
+                            if (context.getTopologyMasterTaskId() == taskId) {
                                 updateAssignedTasksOfWorker(taskId, contextWorker);
                                 taskContext.getWorkerToTaskNum().remove(contextWorker);
                                 contextWorker.getTasks().clear();
@@ -137,9 +130,9 @@ public class TaskScheduler {
                                 tasks.remove(taskId);
                                 taskNum--;
                                 workerNum--;
-                                LOG.info("assignForTopologyMaster: " + contextWorker);
+                                LOG.info("assign for TopologyMaster: " + contextWorker);
                             }
-                        }else {
+                        } else {
                             String componentName = context.getTaskToComponent().get(taskId);
                             updateAssignedTasksOfWorker(taskId, contextWorker);
                             updateComponentsNumOfWorker(componentName, contextWorker);
@@ -149,11 +142,10 @@ public class TaskScheduler {
                 }
             }
         }
-        if ( tmWorker != null){
+        if (tmWorker != null) {
             setTaskNum(taskNum, workerNum);
             keepAssignments.remove(tmWorker);
         }
-
 
         // Try to find the workers which have been assigned too much tasks
         // If found, remove the workers from worker resource pool and update
@@ -161,7 +153,7 @@ public class TaskScheduler {
         int doneAssignedTaskNum = 0;
         while (true) {
             boolean found = false;
-            Set<ResourceWorkerSlot> doneAssignedWorkers = new HashSet<ResourceWorkerSlot>();
+            Set<ResourceWorkerSlot> doneAssignedWorkers = new HashSet<>();
             for (ResourceWorkerSlot worker : keepAssignments) {
                 ResourceWorkerSlot contextWorker = taskContext.getWorker(worker);
                 if (contextWorker != null && isTaskFullForWorker(contextWorker)) {
@@ -192,7 +184,8 @@ public class TaskScheduler {
         Set<Integer> tasks = worker.getTasks();
 
         if (tasks != null) {
-            if ((leftTaskNum <= 0 && tasks.size() >= avgTaskNum) || (leftTaskNum > 0 && tasks.size() >= (avgTaskNum + 1))) {
+            if ((leftTaskNum <= 0 && tasks.size() >= avgTaskNum) ||
+                    (leftTaskNum > 0 && tasks.size() >= (avgTaskNum + 1))) {
                 ret = true;
             }
         }
@@ -200,7 +193,7 @@ public class TaskScheduler {
     }
 
     private Set<ResourceWorkerSlot> getRestAssignedWorkers() {
-        Set<ResourceWorkerSlot> ret = new HashSet<ResourceWorkerSlot>();
+        Set<ResourceWorkerSlot> ret = new HashSet<>();
         for (ResourceWorkerSlot worker : taskContext.getWorkerToTaskNum().keySet()) {
             if (worker.getTasks() != null && worker.getTasks().size() > 0) {
                 ret.add(worker);
@@ -215,13 +208,12 @@ public class TaskScheduler {
             return assignments;
         }
 
-        // Firstly, assign workers to the components which are configured
-        // by "task.on.differ.node"
+        // Firstly, assign workers to the components which are configured "task.on.differ.node"
         Set<Integer> assignedTasks = assignForDifferNodeTask();
 
         // Assign for the tasks except system tasks
         tasks.removeAll(assignedTasks);
-        Map<Integer, String> systemTasks = new HashMap<Integer, String>();
+        Map<Integer, String> systemTasks = new HashMap<>();
         for (Integer task : tasks) {
             String name = context.getTaskToComponent().get(task);
             if (Common.isSystemComponent(name)) {
@@ -249,7 +241,7 @@ public class TaskScheduler {
         // to avoid the balance problem when the assignment for other workers.
         ResourceWorkerSlot workerAssigned = null;
         int workerNumOfSuperv = 0;
-        for (ResourceWorkerSlot workerSlot : taskContext.getWorkerToTaskNum().keySet()){
+        for (ResourceWorkerSlot workerSlot : taskContext.getWorkerToTaskNum().keySet()) {
             List<ResourceWorkerSlot> workers = taskContext.getSupervisorToWorker().get(workerSlot.getNodeId());
             if (workers != null && workers.size() > workerNumOfSuperv) {
                 for (ResourceWorkerSlot worker : workers) {
@@ -263,8 +255,9 @@ public class TaskScheduler {
             }
         }
 
-        if (workerAssigned == null)
+        if (workerAssigned == null) {
             throw new FailedAssignTopologyException("there's no enough workers for the assignment of topology master");
+        }
         updateAssignedTasksOfWorker(taskId, workerAssigned);
         taskContext.getWorkerToTaskNum().remove(workerAssigned);
         assignments.add(workerAssigned);
@@ -274,12 +267,12 @@ public class TaskScheduler {
     }
 
     private void assignForTask(String name, Integer task) {
-        ResourceWorkerSlot worker = chooseWorker(name, new ArrayList<ResourceWorkerSlot>(taskContext.getWorkerToTaskNum().keySet()));
+        ResourceWorkerSlot worker = chooseWorker(name, new ArrayList<>(taskContext.getWorkerToTaskNum().keySet()));
         pushTaskToWorker(task, name, worker);
     }
 
     private Set<Integer> assignForDifferNodeTask() {
-        Set<Integer> ret = new HashSet<Integer>();
+        Set<Integer> ret = new HashSet<>();
         for (Integer task : tasks) {
             Map conf = Common.getComponentMap(context, task);
             if (ConfigExtension.isTaskOnDifferentNode(conf))
@@ -295,11 +288,11 @@ public class TaskScheduler {
     }
 
     private Map<String, List<ResourceWorkerSlot>> buildSupervisorToWorker(List<ResourceWorkerSlot> workers) {
-        Map<String, List<ResourceWorkerSlot>> supervisorToWorker = new HashMap<String, List<ResourceWorkerSlot>>();
+        Map<String, List<ResourceWorkerSlot>> supervisorToWorker = new HashMap<>();
         for (ResourceWorkerSlot worker : workers) {
-                List<ResourceWorkerSlot> supervisor = supervisorToWorker.get(worker.getNodeId());
+            List<ResourceWorkerSlot> supervisor = supervisorToWorker.get(worker.getNodeId());
             if (supervisor == null) {
-                supervisor = new ArrayList<ResourceWorkerSlot>();
+                supervisor = new ArrayList<>();
                 supervisorToWorker.put(worker.getNodeId(), supervisor);
             }
             supervisor.add(worker);
@@ -320,17 +313,15 @@ public class TaskScheduler {
     private void pushTaskToWorker(Integer task, String name, ResourceWorkerSlot worker) {
         LOG.debug("Push task-" + task + " to worker-" + worker.getPort());
         int taskNum = updateAssignedTasksOfWorker(task, worker);
-
         removeWorkerFromSrcPool(taskNum, worker);
-
         updateComponentsNumOfWorker(name, worker);
     }
 
     private int updateAssignedTasksOfWorker(Integer task, ResourceWorkerSlot worker) {
-        int ret = 0;
+        int ret;
         Set<Integer> tasks = worker.getTasks();
         if (tasks == null) {
-            tasks = new HashSet<Integer>();
+            tasks = new HashSet<>();
             worker.setTasks(tasks);
         }
         tasks.add(task);
@@ -341,10 +332,10 @@ public class TaskScheduler {
     }
 
     /*
-     * Remove the worker from source worker pool, if the worker is assigned with enough tasks,
+     * Remove the worker from source worker pool, if the worker is assigned with enough tasks
      */
     private Set<ResourceWorkerSlot> removeWorkerFromSrcPool(int taskNum, ResourceWorkerSlot worker) {
-        Set<ResourceWorkerSlot> ret = new HashSet<ResourceWorkerSlot>();
+        Set<ResourceWorkerSlot> ret = new HashSet<>();
 
         if (leftTaskNum <= 0) {
             if (taskNum >= avgTaskNum) {
@@ -353,14 +344,14 @@ public class TaskScheduler {
                 ret.add(worker);
             }
         } else {
-            if (taskNum > avgTaskNum ) {
+            if (taskNum > avgTaskNum) {
                 taskContext.getWorkerToTaskNum().remove(worker);
-                leftTaskNum = leftTaskNum -(taskNum -avgTaskNum);
+                leftTaskNum = leftTaskNum - (taskNum - avgTaskNum);
                 assignments.add(worker);
                 ret.add(worker);
             }
             if (leftTaskNum <= 0) {
-                List<ResourceWorkerSlot> needDelete = new ArrayList<ResourceWorkerSlot>();
+                List<ResourceWorkerSlot> needDelete = new ArrayList<>();
                 for (Entry<ResourceWorkerSlot, Integer> entry : taskContext.getWorkerToTaskNum().entrySet()) {
                     if (avgTaskNum != 0 && entry.getValue() == avgTaskNum)
                         needDelete.add(entry.getKey());
@@ -379,7 +370,7 @@ public class TaskScheduler {
     private void updateComponentsNumOfWorker(String name, ResourceWorkerSlot worker) {
         Map<String, Integer> components = taskContext.getWorkerToComponentNum().get(worker);
         if (components == null) {
-            components = new HashMap<String, Integer>();
+            components = new HashMap<>();
             taskContext.getWorkerToComponentNum().put(worker, components);
         }
         Integer componentNum = components.get(name);
@@ -400,15 +391,17 @@ public class TaskScheduler {
     }
 
     private List<ResourceWorkerSlot> getDifferNodeTaskWokers(String name) {
-        List<ResourceWorkerSlot> workers = new ArrayList<ResourceWorkerSlot>();
+        List<ResourceWorkerSlot> workers = new ArrayList<>();
         workers.addAll(taskContext.getWorkerToTaskNum().keySet());
 
         for (Entry<String, List<ResourceWorkerSlot>> entry : taskContext.getSupervisorToWorker().entrySet()) {
             if (taskContext.getComponentNumOnSupervisor(entry.getKey(), name) != 0)
                 workers.removeAll(entry.getValue());
         }
-        if (workers.size() == 0)
-            throw new FailedAssignTopologyException("there's no enough supervisor for making component: " + name + " 's tasks on different node");
+        if (workers.size() == 0) {
+            throw new FailedAssignTopologyException("there's no enough supervisor for making component: " +
+                    name + " 's tasks on different node");
+        }
         return workers;
     }
 }

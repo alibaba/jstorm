@@ -24,16 +24,16 @@ import java.math.BigInteger;
 import java.util.Map;
 
 public interface ITransactionalSpout<T> extends IComponent {
-    public interface Coordinator<X> {
+    interface Coordinator<X> {
         /**
          * Create metadata for this particular transaction id which has never been emitted before. The metadata should contain whatever is necessary to be able
          * to replay the exact batch for the transaction at a later point.
-         * 
+         *
          * The metadata is stored in Zookeeper.
-         * 
+         *
          * Storm uses the Kryo serializations configured in the component configuration for this spout to serialize and deserialize the metadata.
-         * 
-         * @param txid The id of the transaction.
+         *
+         * @param txid         The id of the transaction.
          * @param prevMetadata The metadata of the previous transaction
          * @return the metadata for this new transaction
          */
@@ -41,7 +41,7 @@ public interface ITransactionalSpout<T> extends IComponent {
 
         /**
          * Returns true if its ok to emit start a new transaction, false otherwise (will skip this transaction).
-         * 
+         *
          * You should sleep here if you want a delay between asking for the next transaction (this will be called repeatedly in a loop).
          */
         boolean isReady();
@@ -52,13 +52,12 @@ public interface ITransactionalSpout<T> extends IComponent {
         void close();
     }
 
-    public interface Emitter<X> {
+    interface Emitter<X> {
         /**
          * Emit a batch for the specified transaction attempt and metadata for the transaction. The metadata was created by the Coordinator in the
          * initializeTranaction method. This method must always emit the same batch of tuples across all tasks for the same transaction id.
-         * 
+         *
          * The first field of all emitted tuples must contain the provided TransactionAttempt.
-         * 
          */
         void emitBatch(TransactionAttempt tx, X coordinatorMeta, BatchOutputCollector collector);
 

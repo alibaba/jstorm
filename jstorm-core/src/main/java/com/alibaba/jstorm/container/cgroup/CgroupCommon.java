@@ -78,14 +78,13 @@ public class CgroupCommon implements CgroupCommonOperation {
 
     @Override
     public void addTask(int taskId) throws IOException {
-        // TODO Auto-generated method stub
         CgroupUtils.writeFileByLine(Constants.getDir(this.dir, TASKS), String.valueOf(taskId));
     }
 
     @Override
     public Set<Integer> getTasks() throws IOException {
         List<String> stringTasks = CgroupUtils.readFileByLine(Constants.getDir(this.dir, TASKS));
-        Set<Integer> tasks = new HashSet<Integer>();
+        Set<Integer> tasks = new HashSet<>();
         for (String task : stringTasks) {
             tasks.add(Integer.valueOf(task));
         }
@@ -94,15 +93,13 @@ public class CgroupCommon implements CgroupCommonOperation {
 
     @Override
     public void addProcs(int pid) throws IOException {
-        // TODO Auto-generated method stub
         CgroupUtils.writeFileByLine(Constants.getDir(this.dir, CGROUP_PROCS), String.valueOf(pid));
     }
 
     @Override
     public Set<Integer> getPids() throws IOException {
-        // TODO Auto-generated method stub
         List<String> stringPids = CgroupUtils.readFileByLine(Constants.getDir(this.dir, CGROUP_PROCS));
-        Set<Integer> pids = new HashSet<Integer>();
+        Set<Integer> pids = new HashSet<>();
         for (String task : stringPids) {
             pids.add(Integer.valueOf(task));
         }
@@ -111,18 +108,16 @@ public class CgroupCommon implements CgroupCommonOperation {
 
     @Override
     public void setNotifyOnRelease(boolean flag) throws IOException {
-        // TODO Auto-generated method stub
         CgroupUtils.writeFileByLine(Constants.getDir(this.dir, NOTIFY_ON_RELEASE), flag ? "1" : "0");
     }
 
     @Override
     public boolean getNotifyOnRelease() throws IOException {
-        return CgroupUtils.readFileByLine(Constants.getDir(this.dir, NOTIFY_ON_RELEASE)).get(0).equals("1") ? true : false;
+        return CgroupUtils.readFileByLine(Constants.getDir(this.dir, NOTIFY_ON_RELEASE)).get(0).equals("1");
     }
 
     @Override
     public void setReleaseAgent(String command) throws IOException {
-        // TODO Auto-generated method stub
         if (!this.isRoot)
             return;
         CgroupUtils.writeFileByLine(Constants.getDir(this.dir, RELEASE_AGENT), command);
@@ -137,7 +132,6 @@ public class CgroupCommon implements CgroupCommonOperation {
 
     @Override
     public void setCgroupCloneChildren(boolean flag) throws IOException {
-        // TODO Auto-generated method stub
         if (!this.cores.keySet().contains(SubSystemType.cpuset))
             return;
         CgroupUtils.writeFileByLine(Constants.getDir(this.dir, CGROUP_CLONE_CHILDREN), flag ? "1" : "0");
@@ -145,12 +139,11 @@ public class CgroupCommon implements CgroupCommonOperation {
 
     @Override
     public boolean getCgroupCloneChildren() throws IOException {
-        return CgroupUtils.readFileByLine(Constants.getDir(this.dir, CGROUP_CLONE_CHILDREN)).get(0).equals("1") ? true : false;
+        return CgroupUtils.readFileByLine(Constants.getDir(this.dir, CGROUP_CLONE_CHILDREN)).get(0).equals("1");
     }
 
     @Override
     public void setEventControl(String eventFd, String controlFd, String... args) throws IOException {
-        // TODO Auto-generated method stub
         StringBuilder sb = new StringBuilder();
         sb.append(eventFd);
         sb.append(' ');

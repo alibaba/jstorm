@@ -1,3 +1,20 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.alibaba.jstorm.daemon.nimbus.metric.uploader;
 
 import backtype.storm.generated.TopologyMetric;
@@ -22,8 +39,7 @@ import java.util.List;
 import java.util.Map;
 
 public class AlimonitorClient extends DefaultMetricUploader {
-
-    public static Logger LOG = LoggerFactory.getLogger(AlimonitorClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(AlimonitorClient.class);
 
     // Send to localhost:15776 by default
     public static final String DEFAUT_ADDR = "127.0.0.1";
@@ -87,7 +103,6 @@ public class AlimonitorClient extends DefaultMetricUploader {
         return "http://" + requestIP + ":" + port + "/passive?name=" + monitorName + "&msg=";
     }
 
-    
     public Map buildAliMonitorMsg(int collection_flag, String error_message) {
         // Json format of the message sent to Alimonitor
         // {
@@ -118,7 +133,7 @@ public class AlimonitorClient extends DefaultMetricUploader {
         String jsonMsg = jsonObj.toString();
         LOG.info(jsonMsg);
 
-        if (post == true) {
+        if (post) {
             String url = buildURL();
             ret = httpPost(url, jsonMsg);
         } else {
@@ -149,7 +164,7 @@ public class AlimonitorClient extends DefaultMetricUploader {
             EntityUtils.consume(entity);
             ret = true;
         } catch (Exception e) {
-            LOG.error("Exception when sending http request to alimonitor", e);
+            LOG.error("Exception when sending http request to ali monitor", e);
         } finally {
             try {
                 if (response != null)
@@ -168,10 +183,9 @@ public class AlimonitorClient extends DefaultMetricUploader {
 
         CloseableHttpClient httpClient = HttpClientBuilder.create().build();
         CloseableHttpResponse response = null;
-
         try {
             HttpPost request = new HttpPost(url);
-            List<NameValuePair> nvps = new ArrayList<NameValuePair>();
+            List<NameValuePair> nvps = new ArrayList<>();
             nvps.add(new BasicNameValuePair("name", monitorName));
             nvps.add(new BasicNameValuePair("msg", msg));
             request.setEntity(new UrlEncodedFormEntity(nvps));
@@ -183,7 +197,7 @@ public class AlimonitorClient extends DefaultMetricUploader {
             EntityUtils.consume(entity);
             ret = true;
         } catch (Exception e) {
-            LOG.error("Exception when sending http request to alimonitor", e);
+            LOG.error("Exception when sending http request to ali monitor", e);
         } finally {
             try {
                 if (response != null)
@@ -197,30 +211,25 @@ public class AlimonitorClient extends DefaultMetricUploader {
         return ret;
     }
 
-
     protected Map<String, Object> convertMap(String clusterName, String topologyId, TopologyMetric tpMetric) {
-    	/**
-    	 * @@@ Todo
-    	 */
-    	return null;
+        return null;
     }
 
-	@Override
-	public boolean upload(String clusterName, String topologyId, TopologyMetric tpMetric, Map<String, Object> metricContext) {
-		// TODO Auto-generated method stub
-		Map<String, Object> metricMap = convertMap(clusterName, topologyId, tpMetric);
-		if (metricMap == null || metricMap.isEmpty() == true) {
-			return false;
-		}
-		
-		try {
-			sendRequest(collectionFlag, errorInfo, metricMap);
-			return true;
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			LOG.error("Failed upload metric to Alimonitor", e);
-			return false;
-		}
-	}
+    @Override
+    public boolean upload(String clusterName, String topologyId, TopologyMetric tpMetric,
+                          Map<String, Object> metricContext) {
+        Map<String, Object> metricMap = convertMap(clusterName, topologyId, tpMetric);
+        if (metricMap == null || metricMap.isEmpty()) {
+            return false;
+        }
+
+        try {
+            sendRequest(collectionFlag, errorInfo, metricMap);
+            return true;
+        } catch (Exception e) {
+            LOG.error("Failed to upload metric to ali monitor", e);
+            return false;
+        }
+    }
 
 }

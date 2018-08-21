@@ -6,7 +6,7 @@
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,9 +18,14 @@
 package com.alibaba.jstorm.daemon.worker;
 
 import backtype.storm.Config;
+import backtype.storm.tuple.MessageId;
 import backtype.storm.tuple.Tuple;
+
 import com.alibaba.jstorm.client.ConfigExtension;
+import com.alibaba.jstorm.config.Refreshable;
+import com.alibaba.jstorm.config.RefreshableComponents;
 import com.alibaba.jstorm.utils.JStormUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,10 +35,21 @@ import java.util.Set;
 
 /**
  * manage the global state of topology.debug & topology.debug.recv.tuple & topology.debug.sample.rate on the fly
+ *
  * @author Jark (wuchong.wc@alibaba-inc.com)
  */
-public class JStormDebugger {
+public class JStormDebugger implements Refreshable {
     private static Logger LOG = LoggerFactory.getLogger(JStormDebugger.class);
+
+    private JStormDebugger() {
+        RefreshableComponents.registerRefreshable(this);
+    }
+
+    private static final JStormDebugger INSTANCE = new JStormDebugger();
+
+    public static JStormDebugger getInstance() {
+        return INSTANCE;
+    }
 
     public static volatile boolean isDebug = false;
     public static volatile boolean isDebugRecv = false;
@@ -47,8 +63,8 @@ public class JStormDebugger {
         return isDebug && sample(root_id);
     }
 
-    public static boolean isDebug(Set<Long> root_ids) {
-        return isDebug && sample(root_ids);
+    public static boolean isDebug(Set<Long> rootIds) {
+        return isDebug && sample(rootIds);
     }
 
     public static boolean isDebug(Collection<Tuple> anchors) {
@@ -59,8 +75,12 @@ public class JStormDebugger {
         return isDebug && sample(id);
     }
 
-    public static boolean isDebugRecv(Set<Long> root_ids) {
-        return isDebugRecv && sample(root_ids);
+    public static boolean isDebugRecv(MessageId msgId) {
+        return msgId != null && isDebugRecv(msgId.getAnchors());
+    }
+
+    public static boolean isDebugRecv(Set<Long> rootIds) {
+        return isDebugRecv && sample(rootIds);
     }
 
     public static boolean isDebugRecv(Collection<Tuple> anchors) {
@@ -72,24 +92,24 @@ public class JStormDebugger {
     }
 
     /**
-     * the tuple debug logs only output `rate`% the tuples with same root_id, should be logged or not logged together.
+     * the tuple debug logs only output `rate`% the tuples with same rootId, should be logged or not logged together.
      */
-    private static boolean sample(Long root_id) {
+    private static boolean sample(Long rootId) {
         if (Double.compare(sampleRate, 1.0d) >= 0)
             return true;
-        int mod = (int) (Math.abs(root_id) % PRECISION);
+        int mod = (int) (Math.abs(rootId) % PRECISION);
         int threshold = (int) (sampleRate * PRECISION);
         return mod < threshold;
     }
 
     /**
-     * one of the root_ids has been chosen , the logs should be output
+     * one of the rootIds has been chosen , the logs should be output
      */
-    private static boolean sample(Set<Long> root_ids) {
+    private static boolean sample(Set<Long> rootIds) {
         if (Double.compare(sampleRate, 1.0d) >= 0)
             return true;
         int threshold = (int) (sampleRate * PRECISION);
-        for (Long id : root_ids) {
+        for (Long id : rootIds) {
             int mod = (int) (Math.abs(id) % PRECISION);
             if (mod < threshold) {
                 return true;
@@ -134,5 +154,10 @@ public class JStormDebugger {
             sampleRate = _sampleRate;
             LOG.info("switch topology.debug.sample.rate to {}", _sampleRate);
         }
+    }
+
+    @Override
+    public void refresh(Map conf) {
+        update(conf);
     }
 }

@@ -17,6 +17,17 @@
  */
 package com.alipay.dw.jstorm.example.batch;
 
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.alibaba.jstorm.batch.BatchId;
+import com.alibaba.jstorm.batch.ICommitter;
+import com.alibaba.jstorm.utils.JStormUtils;
+import com.alibaba.jstorm.utils.TimeCacheMap;
+
 import backtype.storm.Config;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.BasicOutputCollector;
@@ -25,15 +36,7 @@ import backtype.storm.topology.IBasicBolt;
 import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
-import backtype.storm.utils.TimeCacheMap;
 import backtype.storm.utils.Utils;
-import com.alibaba.jstorm.batch.BatchId;
-import com.alibaba.jstorm.batch.ICommitter;
-import com.alibaba.jstorm.utils.JStormUtils;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class SimpleBolt implements IBasicBolt, ICommitter {
     private static final long serialVersionUID = 5720810158625748042L;
@@ -49,9 +52,8 @@ public class SimpleBolt implements IBasicBolt, ICommitter {
     public void prepare(Map stormConf, TopologyContext context) {
         this.conf = stormConf;
 
-        int timeoutSeconds = JStormUtils.parseInt(
-                conf.get(Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS), 30);
-        counters = new TimeCacheMap<BatchId, AtomicLong>(timeoutSeconds);
+        int timeoutSeconds = JStormUtils.parseInt(conf.get(Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS), 30);
+        counters = new TimeCacheMap<>(timeoutSeconds);
 
         LOG.info("Successfully do prepare");
     }
@@ -92,8 +94,7 @@ public class SimpleBolt implements IBasicBolt, ICommitter {
         if (currentId == null) {
             currentId = id;
         } else if (currentId.getId() >= id.getId()) {
-            LOG.info("Current BatchId is " + currentId + ", receive:"
-                    + id);
+            LOG.info("Current BatchId is " + currentId + ", receive:" + id);
             throw new RuntimeException();
         }
         currentId = id;
@@ -106,7 +107,6 @@ public class SimpleBolt implements IBasicBolt, ICommitter {
         LOG.info("Flush " + id + "," + counter);
         return Utils.serialize(id);
     }
-
 
     @Override
     public void revert(BatchId id, byte[] commitResult) {

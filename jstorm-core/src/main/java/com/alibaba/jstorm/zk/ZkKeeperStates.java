@@ -26,7 +26,7 @@ public class ZkKeeperStates {
     private static HashMap<Watcher.Event.KeeperState, String> map;
 
     static {
-        map = new HashMap<Watcher.Event.KeeperState, String>();
+        map = new HashMap<>();
 
         map.put(Watcher.Event.KeeperState.AuthFailed, ":auth-failed");
         map.put(Watcher.Event.KeeperState.SyncConnected, ":connected");

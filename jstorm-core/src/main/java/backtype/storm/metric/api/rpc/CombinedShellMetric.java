@@ -20,6 +20,7 @@ package backtype.storm.metric.api.rpc;
 import backtype.storm.metric.api.CombinedMetric;
 import backtype.storm.metric.api.ICombiner;
 
+@Deprecated
 public class CombinedShellMetric extends CombinedMetric implements IShellMetric {
     public CombinedShellMetric(ICombiner combiner) {
         super(combiner);

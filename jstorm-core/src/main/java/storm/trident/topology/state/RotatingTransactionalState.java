@@ -26,14 +26,14 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 public class RotatingTransactionalState {
-    public static interface StateInitializer {
+    public interface StateInitializer {
         Object init(long txid, Object lastState);
     }    
 
     private TransactionalState _state;
     private String _subdir;
     
-    private TreeMap<Long, Object> _curr = new TreeMap<Long, Object>();
+    private TreeMap<Long, Object> _curr = new TreeMap<>();
     
     public RotatingTransactionalState(TransactionalState state, String subdir) {
         _state = state;
@@ -41,7 +41,6 @@ public class RotatingTransactionalState {
         state.mkdir(subdir);
         sync();
     }
-
 
     public Object getLastState() {
         if(_curr.isEmpty()) return null;
@@ -114,7 +113,7 @@ public class RotatingTransactionalState {
     
     public void cleanupBefore(long txid) {
         SortedMap<Long, Object> toDelete = _curr.headMap(txid);
-        for(long tx: new HashSet<Long>(toDelete.keySet())) {
+        for(long tx: new HashSet<>(toDelete.keySet())) {
             _curr.remove(tx);
             try {
                 _state.delete(txPath(tx));

@@ -1,0 +1,52 @@
+# Welcome to Jekyll!
+#
+# This config file is meant for settings that affect your whole blog, values
+# which you are expected to set up once and rarely need to edit after that.
+# For technical reasons, this file is *NOT* reloaded automatically when you use
+# 'jekyll serve'. If you change this file, please restart the server process.
+
+# Site settings
+title: JStorm Documentation
+email: zhongyan.feng@alibaba-inc.com
+encoding: utf-8
+description: > # this means to ignore newlines until "baseurl:"
+  JStorm -- Enterprise Java Storm, faster, more stable and more powerful.
+  provide whole stream process ecosystem. ) and in your feed.xml site description.
+baseurl: "" # the subpath of your site, e.g. /blog
+url: "http://jstorm.io" # the base hostname & protocol for your site
+twitter_username: longda
+github_username:  longda
+
+# Build settings
+markdown: kramdown
+highlighter: pygments
+
+#------------------------------------------------------------------------------
+# BUILD CONFIG
+#------------------------------------------------------------------------------
+# These variables configure the jekyll build (./build_docs.sh). You don't need
+# to change anything here.
+#------------------------------------------------------------------------------
+
+defaults:
+  -
+    scope:
+      path: ""
+    values:
+      layout: plain
+      top-nav-pos: 99999 # Move to end
+      sub-nav-pos: 99999 # Move to end
+
+host: 127.0.0.1
+
+kramdown:
+  input: GFM # GitHub syntax
+  hard_wrap: false # Don't translate new lines to <br>s
+  toc_levels: 1..3 # Include h1-h3 for ToC
+
+# News Posts
+paginate: 10
+paginate_path: "blog/page:num"
+
+# Gems
+gems: [jekyll-paginate]

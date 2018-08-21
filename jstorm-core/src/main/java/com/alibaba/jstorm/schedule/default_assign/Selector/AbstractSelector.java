@@ -37,7 +37,7 @@ public abstract class AbstractSelector implements Selector {
     }
 
     protected List<ResourceWorkerSlot> selectWorker(List<ResourceWorkerSlot> list, Comparator<ResourceWorkerSlot> c) {
-        List<ResourceWorkerSlot> result = new ArrayList<ResourceWorkerSlot>();
+        List<ResourceWorkerSlot> result = new ArrayList<>();
         ResourceWorkerSlot best = null;
         for (ResourceWorkerSlot worker : list) {
             if (best == null) {

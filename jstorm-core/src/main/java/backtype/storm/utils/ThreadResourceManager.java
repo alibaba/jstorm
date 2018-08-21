@@ -20,12 +20,12 @@ package backtype.storm.utils;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class ThreadResourceManager<T> {
-    public static interface ResourceFactory<X> {
+    public interface ResourceFactory<X> {
         X makeResource();
     }
 
     ResourceFactory<T> _factory;
-    ConcurrentLinkedQueue<T> _resources = new ConcurrentLinkedQueue<T>();
+    ConcurrentLinkedQueue<T> _resources = new ConcurrentLinkedQueue<>();
 
     public ThreadResourceManager(ResourceFactory<T> factory) {
         _factory = factory;

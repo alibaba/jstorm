@@ -17,8 +17,8 @@
  */
 package backtype.storm.metric.api;
 
-import backtype.storm.metric.api.IMetric;
 
+@Deprecated
 public class CountMetric implements IMetric {
     long _value = 0;
 

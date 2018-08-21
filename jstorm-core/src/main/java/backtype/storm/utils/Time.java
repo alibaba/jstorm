@@ -38,7 +38,7 @@ public class Time {
         synchronized (sleepTimesLock) {
             simulating.set(true);
             simulatedCurrTimeMs = new AtomicLong(0);
-            threadSleepTimes = new ConcurrentHashMap<Thread, AtomicLong>();
+            threadSleepTimes = new ConcurrentHashMap<>();
         }
     }
 

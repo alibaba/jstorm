@@ -23,11 +23,10 @@ import org.slf4j.LoggerFactory;
 import com.lmax.disruptor.RingBuffer;
 
 public class JstormProducer implements Runnable {
+    private final Logger logger = LoggerFactory.getLogger(JstormProducer.class);
 
-    Logger logger = LoggerFactory.getLogger(JstormProducer.class);
-
-    private RingBuffer<JstormEvent> ringBuffer;
-    private int size;
+    private final RingBuffer<JstormEvent> ringBuffer;
+    private final int size;
 
     public JstormProducer(RingBuffer<JstormEvent> ringBuffer, int size) {
         this.ringBuffer = ringBuffer;

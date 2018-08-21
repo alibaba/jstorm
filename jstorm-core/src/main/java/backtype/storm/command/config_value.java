@@ -20,20 +20,17 @@ package backtype.storm.command;
 import java.security.InvalidParameterException;
 import java.util.Map;
 
-import backtype.storm.utils.NimbusClient;
 import backtype.storm.utils.Utils;
 
 /**
  * Get configuration
- * 
+ *
  * @author longda
- * 
  */
 public class config_value {
-
     public static void main(String[] args) {
         if (args == null || args.length == 0) {
-            throw new InvalidParameterException("Should input key name");
+            throw new InvalidParameterException("Please input key name");
         }
 
         String key = args[0];

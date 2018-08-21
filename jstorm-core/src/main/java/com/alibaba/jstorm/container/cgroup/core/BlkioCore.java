@@ -58,7 +58,6 @@ public class BlkioCore implements CgroupCore {
 
     @Override
     public SubSystemType getType() {
-        // TODO Auto-generated method stub
         return SubSystemType.blkio;
     }
 
@@ -68,7 +67,7 @@ public class BlkioCore implements CgroupCore {
     }
 
     public int getBlkioWeight() throws IOException {
-        return Integer.valueOf(CgroupUtils.readFileByLine(Constants.getDir(this.dir, BLKIO_WEIGHT)).get(0)).intValue();
+        return Integer.valueOf(CgroupUtils.readFileByLine(Constants.getDir(this.dir, BLKIO_WEIGHT)).get(0));
     }
 
     public void setBlkioWeightDevice(Device device, int weight) throws IOException {
@@ -77,7 +76,7 @@ public class BlkioCore implements CgroupCore {
 
     public Map<Device, Integer> getBlkioWeightDevice() throws IOException {
         List<String> strings = CgroupUtils.readFileByLine(Constants.getDir(this.dir, BLKIO_WEIGHT_DEVICE));
-        Map<Device, Integer> result = new HashMap<Device, Integer>();
+        Map<Device, Integer> result = new HashMap<>();
         for (String string : strings) {
             String[] strArgs = string.split(" ");
             Device device = new Device(strArgs[0]);
@@ -93,7 +92,7 @@ public class BlkioCore implements CgroupCore {
 
     public Map<Device, Long> getReadBps() throws IOException {
         List<String> strings = CgroupUtils.readFileByLine(Constants.getDir(this.dir, BLKIO_THROTTLE_READ_BPS_DEVICE));
-        Map<Device, Long> result = new HashMap<Device, Long>();
+        Map<Device, Long> result = new HashMap<>();
         for (String string : strings) {
             String[] strArgs = string.split(" ");
             Device device = new Device(strArgs[0]);
@@ -109,7 +108,7 @@ public class BlkioCore implements CgroupCore {
 
     public Map<Device, Long> getWriteBps() throws IOException {
         List<String> strings = CgroupUtils.readFileByLine(Constants.getDir(this.dir, BLKIO_THROTTLE_WRITE_BPS_DEVICE));
-        Map<Device, Long> result = new HashMap<Device, Long>();
+        Map<Device, Long> result = new HashMap<>();
         for (String string : strings) {
             String[] strArgs = string.split(" ");
             Device device = new Device(strArgs[0]);
@@ -125,7 +124,7 @@ public class BlkioCore implements CgroupCore {
 
     public Map<Device, Long> getReadIOps() throws IOException {
         List<String> strings = CgroupUtils.readFileByLine(Constants.getDir(this.dir, BLKIO_THROTTLE_READ_IOPS_DEVICE));
-        Map<Device, Long> result = new HashMap<Device, Long>();
+        Map<Device, Long> result = new HashMap<>();
         for (String string : strings) {
             String[] strArgs = string.split(" ");
             Device device = new Device(strArgs[0]);
@@ -141,7 +140,7 @@ public class BlkioCore implements CgroupCore {
 
     public Map<Device, Long> getWriteIOps() throws IOException {
         List<String> strings = CgroupUtils.readFileByLine(Constants.getDir(this.dir, BLKIO_THROTTLE_WRITE_IOPS_DEVICE));
-        Map<Device, Long> result = new HashMap<Device, Long>();
+        Map<Device, Long> result = new HashMap<>();
         for (String string : strings) {
             String[] strArgs = string.split(" ");
             Device device = new Device(strArgs[0]);
@@ -160,7 +159,7 @@ public class BlkioCore implements CgroupCore {
     }
 
     public Map<Device, Long> getBlkioTime() throws IOException {
-        Map<Device, Long> result = new HashMap<Device, Long>();
+        Map<Device, Long> result = new HashMap<>();
         List<String> strs = CgroupUtils.readFileByLine(Constants.getDir(this.dir, BLKIO_TIME));
         for (String str : strs) {
             String[] strArgs = str.split(" ");
@@ -170,7 +169,7 @@ public class BlkioCore implements CgroupCore {
     }
 
     public Map<Device, Long> getBlkioSectors() throws IOException {
-        Map<Device, Long> result = new HashMap<Device, Long>();
+        Map<Device, Long> result = new HashMap<>();
         List<String> strs = CgroupUtils.readFileByLine(Constants.getDir(this.dir, BLKIO_SECTORS));
         for (String str : strs) {
             String[] strArgs = str.split(" ");
@@ -214,7 +213,7 @@ public class BlkioCore implements CgroupCore {
     }
 
     private Map<Device, Map<RecordType, Long>> analyseRecord(List<String> strs) {
-        Map<Device, Map<RecordType, Long>> result = new HashMap<Device, Map<RecordType, Long>>();
+        Map<Device, Map<RecordType, Long>> result = new HashMap<>();
         for (String str : strs) {
             String[] strArgs = str.split(" ");
             if (strArgs.length != 3)
@@ -224,7 +223,7 @@ public class BlkioCore implements CgroupCore {
             Long value = Long.parseLong(strArgs[2]);
             Map<RecordType, Long> record = result.get(device);
             if (record == null) {
-                record = new HashMap<RecordType, Long>();
+                record = new HashMap<>();
                 result.put(device, record);
             }
             record.put(key, value);

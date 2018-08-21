@@ -17,13 +17,15 @@
  */
 package backtype.storm.utils;
 
+import backtype.storm.Config;
 import backtype.storm.Constants;
 import backtype.storm.tuple.Tuple;
+
+import java.util.Map;
 
 public final class TupleUtils {
 
     private TupleUtils() {
-        // No instantiation
     }
 
     public static boolean isTick(Tuple tuple) {
@@ -31,4 +33,15 @@ public final class TupleUtils {
                 && Constants.SYSTEM_TICK_STREAM_ID.equals(tuple.getSourceStreamId());
     }
 
+    public static Map<String, Object> putTickFrequencyIntoComponentConfig(Map<String, Object> conf, int tickFreqSecs) {
+        if (conf == null) {
+            conf = new Config();
+        }
+
+        if (tickFreqSecs > 0) {
+            conf.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, tickFreqSecs);
+        }
+
+        return conf;
+    }
 }

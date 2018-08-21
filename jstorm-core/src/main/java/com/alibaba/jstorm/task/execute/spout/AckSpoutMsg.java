@@ -31,10 +31,9 @@ import backtype.storm.tuple.TupleExt;
 import com.alibaba.jstorm.client.spout.IAckValueSpout;
 import com.alibaba.jstorm.task.TaskBaseMetric;
 import com.alibaba.jstorm.task.comm.TupleInfo;
-import com.alibaba.jstorm.utils.TimeUtils;
 
 /**
- * The action after spout receive one ack tuple
+ * Called after spout receives an ack tuple
  *
  * @author yannian/Longda
  */
@@ -48,21 +47,15 @@ public class AckSpoutMsg implements IAckMsg {
     private Object msgId;
     private String stream;
     private List<Object> values;
-    private TaskBaseMetric task_stats;
+    private TaskBaseMetric taskStats;
 
     public AckSpoutMsg(Object id, ISpout _spout, Tuple tuple, TupleInfo tupleInfo, TaskBaseMetric _task_stats) {
-
         this.id = id;
-
-        this.task_stats = _task_stats;
-
+        this.taskStats = _task_stats;
         this.spout = _spout;
-
         this.msgId = tupleInfo.getMessageId();
         this.stream = tupleInfo.getStream();
-
         this.values = tupleInfo.getValues();
-
         this.tuple = tuple;
         this.tupleInfo = tupleInfo;
     }
@@ -85,8 +78,7 @@ public class AckSpoutMsg implements IAckMsg {
             if (tuple != null && tuple instanceof TupleExt) {
                 lifeCycleStart = ((TupleExt) tuple).getCreationTimeStamp();
             }
-            task_stats.spout_acked_tuple(stream, latencyStart, lifeCycleStart, endTime);
+            taskStats.spout_acked_tuple(stream, latencyStart, lifeCycleStart, endTime);
         }
     }
-
 }

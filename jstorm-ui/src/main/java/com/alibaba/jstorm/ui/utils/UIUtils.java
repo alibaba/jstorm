@@ -38,6 +38,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ui.ModelMap;
@@ -124,6 +125,8 @@ public class UIUtils {
             flushClusterConfig();
             //flush cluster cache
             flushClusterCache();
+        }else {
+            LOG.error("can not find UI configuration file: {}", confPath);
         }
         return uiConfig;
     }
@@ -972,5 +975,22 @@ public class UIUtils {
         ret.put("error", "Internal Server Error");
         ret.put("errorMessage", JStormUtils.getErrorInfo(ex));
         return ret;
+    }
+
+    public static boolean isValidSupervisorHost(String clusterName, String host) {
+        NimbusClient client = null;
+        try {
+            client = NimbusClientManager.getNimbusClient(clusterName);
+            ClusterSummary clusterSummary = client.getClient().getClusterInfo();
+            List<SupervisorEntity> supervisors = UIUtils.getSupervisorEntities(clusterSummary);
+            for (SupervisorEntity s : supervisors) {
+                if (s.getIp().equals(host) || s.getHost().equals(host)) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 }

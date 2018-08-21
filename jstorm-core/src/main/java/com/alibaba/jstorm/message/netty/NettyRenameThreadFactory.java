@@ -19,12 +19,10 @@ package com.alibaba.jstorm.message.netty;
 
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.jboss.netty.util.ThreadNameDeterminer;
 import org.jboss.netty.util.ThreadRenamingRunnable;
 
 public class NettyRenameThreadFactory implements ThreadFactory {
-
     static {
         // Rename Netty threads
         ThreadRenamingRunnable.setThreadNameDeterminer(ThreadNameDeterminer.CURRENT);
@@ -40,8 +38,8 @@ public class NettyRenameThreadFactory implements ThreadFactory {
         this.name = name;
     }
 
-    public Thread newThread(Runnable r) {
-        Thread t = new Thread(group, r, name + "-" + index.getAndIncrement(), 0);
+    public Thread newThread(Runnable runnable) {
+        Thread t = new Thread(group, runnable, name + "-" + index.getAndIncrement(), 0);
         if (t.isDaemon())
             t.setDaemon(false);
         if (t.getPriority() != Thread.NORM_PRIORITY)

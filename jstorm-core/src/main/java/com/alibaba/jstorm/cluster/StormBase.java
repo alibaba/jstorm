@@ -25,12 +25,12 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import com.alibaba.jstorm.daemon.nimbus.StatusType;
 
 /**
- * Topology stored in ZK
+ * Topology base info stored in ZK
  */
 
 public class StormBase implements Serializable {
-
     private static final long serialVersionUID = -3013095336395395213L;
+
     private String stormName;
     private int lanchTimeSecs;
     private StormStatus status;

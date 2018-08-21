@@ -35,7 +35,7 @@ public class AsmMetricRegistry implements AsmMetricSet {
     private static final long serialVersionUID = 8184106900230111064L;
     private static final Logger LOG = LoggerFactory.getLogger(AsmMetricRegistry.class);
 
-    protected final ConcurrentMap<String, AsmMetric> metrics = new ConcurrentHashMap<String, AsmMetric>();
+    protected final ConcurrentMap<String, AsmMetric> metrics = new ConcurrentHashMap<>();
 
     public int size() {
         return metrics.size();

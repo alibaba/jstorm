@@ -40,7 +40,6 @@ public class CpuacctCore implements CgroupCore {
 
     @Override
     public SubSystemType getType() {
-        // TODO Auto-generated method stub
         return SubSystemType.cpuacct;
     }
 
@@ -50,7 +49,7 @@ public class CpuacctCore implements CgroupCore {
 
     public Map<StatType, Long> getCpuStat() throws IOException {
         List<String> strs = CgroupUtils.readFileByLine(Constants.getDir(this.dir, CPUACCT_STAT));
-        Map<StatType, Long> result = new HashMap<StatType, Long>();
+        Map<StatType, Long> result = new HashMap<>();
         result.put(StatType.user, Long.parseLong(strs.get(0).split(" ")[1]));
         result.put(StatType.system, Long.parseLong(strs.get(1).split(" ")[1]));
         return result;

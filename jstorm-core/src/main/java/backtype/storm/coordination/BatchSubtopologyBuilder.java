@@ -39,7 +39,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class BatchSubtopologyBuilder {
-    Map<String, Component> _bolts = new HashMap<String, Component>();
+    Map<String, Component> _bolts = new HashMap<>();
     Component _masterBolt;
     String _masterId;
 
@@ -92,7 +92,7 @@ public class BatchSubtopologyBuilder {
         }
         for (String id : _bolts.keySet()) {
             Component component = _bolts.get(id);
-            Map<String, SourceArgs> coordinatedArgs = new HashMap<String, SourceArgs>();
+            Map<String, SourceArgs> coordinatedArgs = new HashMap<>();
             for (String c : componentBoltSubscriptions(component)) {
                 SourceArgs source;
                 if (c.equals(_masterId)) {
@@ -103,7 +103,8 @@ public class BatchSubtopologyBuilder {
                 coordinatedArgs.put(c, source);
             }
 
-            BoltDeclarer input = builder.setBolt(id, new CoordinatedBolt(component.bolt, coordinatedArgs, null), component.parallelism);
+            BoltDeclarer input = builder.setBolt(id,
+                    new CoordinatedBolt(component.bolt, coordinatedArgs, null), component.parallelism);
             for (Map conf : component.componentConfs) {
                 input.addConfigurations(conf);
             }
@@ -117,7 +118,7 @@ public class BatchSubtopologyBuilder {
     }
 
     private Set<String> componentBoltSubscriptions(Component component) {
-        Set<String> ret = new HashSet<String>();
+        Set<String> ret = new HashSet<>();
         for (InputDeclaration d : component.declarations) {
             ret.add(d.getComponent());
         }
@@ -127,8 +128,8 @@ public class BatchSubtopologyBuilder {
     private static class Component {
         public IRichBolt bolt;
         public Integer parallelism;
-        public List<InputDeclaration> declarations = new ArrayList<InputDeclaration>();
-        public List<Map> componentConfs = new ArrayList<Map>();
+        public List<InputDeclaration> declarations = new ArrayList<>();
+        public List<Map> componentConfs = new ArrayList<>();
 
         public Component(IRichBolt bolt, Integer parallelism) {
             this.bolt = bolt;

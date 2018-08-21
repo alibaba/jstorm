@@ -19,6 +19,7 @@ package backtype.storm.metric.api.rpc;
 
 import backtype.storm.metric.api.AssignableMetric;
 
+@Deprecated
 public class AssignableShellMetric extends AssignableMetric implements IShellMetric {
     public AssignableShellMetric(Object value) {
         super(value);

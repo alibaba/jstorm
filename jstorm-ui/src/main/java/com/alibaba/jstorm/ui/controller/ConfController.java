@@ -40,6 +40,11 @@ public class ConfController {
                        @RequestParam(value = "type", required = false) String type,
                        @RequestParam(value = "topology", required = false) String topologyId,
                        @RequestParam(value = "host", required = false) String host, ModelMap model) {
+        if (StringUtils.isNotEmpty(host) && UIUtils.isValidSupervisorHost(name, host)) {
+            UIUtils.addErrorAttribute(model, new RuntimeException("Not a valid host: " + host));
+            return "conf";
+        }
+
         name = StringEscapeUtils.escapeHtml(name);
         topologyId = StringEscapeUtils.escapeHtml(topologyId);
         String title = null;

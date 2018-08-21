@@ -22,13 +22,12 @@ import java.util.Map;
 import backtype.storm.utils.DRPCClient;
 import backtype.storm.utils.Utils;
 
-
 public class TestReachTopology {
     
     /**
      * @param args
-     * @throws DRPCExecutionException 
-     * @throws TException 
+     * @throws DRPCExecutionException
+     * @throws TException
      */
     public static void main(String[] args) throws Exception {
         
@@ -36,7 +35,7 @@ public class TestReachTopology {
             throw new IllegalArgumentException("Invalid parameter");
         }
         Map conf = Utils.readStormConfig();
-        //"foo.com/blog/1" "engineering.twitter.com/blog/5"
+        // "foo.com/blog/1" "engineering.twitter.com/blog/5"
         DRPCClient client = new DRPCClient(conf, args[0], 4772);
         String result = client.execute(ReachTopology.TOPOLOGY_NAME, "tech.backtype.com/blog/123");
         

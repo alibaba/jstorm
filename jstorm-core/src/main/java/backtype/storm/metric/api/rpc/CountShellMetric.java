@@ -19,10 +19,12 @@ package backtype.storm.metric.api.rpc;
 
 import backtype.storm.metric.api.CountMetric;
 
+@Deprecated
 public class CountShellMetric extends CountMetric implements IShellMetric {
     /***
-     * @param params should be null or long if value is null, it will call incr() if value is long, it will call incrBy((long)params)
-     * */
+     * @param value should be null or long if value is null, it will call incr()
+     *              if value is long, it will call incrBy((long)params)
+     */
     public void updateMetricFromRPC(Object value) {
         if (value == null) {
             incr();

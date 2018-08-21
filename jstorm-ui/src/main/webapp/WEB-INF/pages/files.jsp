@@ -95,7 +95,7 @@
                         <td><ct:pretty input="${file.modifyTime}" type="datetime"/></td>
                         <td data-order="${file.size}"><ct:pretty input="${file.size}" type="filesize"/></td>
                         <td>
-                            <a href="download?host=${host}&port=${port}&file=${file.fileName}&dir=${parent}"
+                            <a href="download?cluster=${clusterName}&host=${host}&port=${port}&file=${file.fileName}&dir=${parent}"
                                target="_blank" title="Max download size: 10MB" data-toggle="tooltip" data-placement="top">
                                 <button class="btn btn-primary">Download</button>
                             </a>

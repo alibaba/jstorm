@@ -19,15 +19,13 @@ package backtype.storm.task;
 
 import backtype.storm.tuple.Tuple;
 import backtype.storm.utils.Utils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
 /**
- * This output collector exposes the API for emitting tuples from an IRichBolt. This is the core API for emitting tuples. For a simpler API, and a more
+ * This output collector exposes the API for emitting tuples from an IRichBolt.
+ * This is the core API for emitting tuples. For a simpler API, and a more
  * restricted form of stream processing, see IBasicBolt and BasicOutputCollector.
  */
 public class OutputCollector extends OutputCollectorCb {
@@ -62,12 +60,24 @@ public class OutputCollector extends OutputCollectorCb {
             }
 
             @Override
-            public List<Integer> emit(String streamId, Collection<Tuple> anchors, List<Object> tuple, ICollectorCallback callback) {
+            public List<Integer> emit(String streamId, Collection<Tuple> anchors,
+                                      List<Object> tuple, ICollectorCallback callback) {
                 throw new RuntimeException("This method should not be called!");
             }
 
             @Override
-            public void emitDirect(int taskId, String streamId, Collection<Tuple> anchors, List<Object> tuple, ICollectorCallback callback) {
+            public void emitDirect(int taskId, String streamId, Collection<Tuple> anchors,
+                                   List<Object> tuple, ICollectorCallback callback) {
+                throw new RuntimeException("This method should not be called!");
+            }
+
+            @Override
+            public List<Integer> emitCtrl(String streamId, Collection<Tuple> anchors, List<Object> tuple) {
+                throw new RuntimeException("This method should not be called!");
+            }
+
+            @Override
+            public void emitDirectCtrl(int taskId, String streamId, Collection<Tuple> anchors, List<Object> tuple) {
                 throw new RuntimeException("This method should not be called!");
             }
         };
@@ -82,8 +92,8 @@ public class OutputCollector extends OutputCollectorCb {
      * values must be immutable.
      *
      * @param streamId the stream to emit to
-     * @param anchor the tuple to anchor to
-     * @param tuple the new output tuple from this bolt
+     * @param anchor   the tuple to anchor to
+     * @param tuple    the new output tuple from this bolt
      * @return the list of task ids that this new tuple was sent to
      */
     public List<Integer> emit(String streamId, Tuple anchor, List<Object> tuple) {
@@ -101,7 +111,7 @@ public class OutputCollector extends OutputCollectorCb {
      * must be immutable.
      *
      * @param streamId the stream to emit to
-     * @param tuple the new output tuple from this bolt
+     * @param tuple    the new output tuple from this bolt
      * @return the list of task ids that this new tuple was sent to
      */
     public List<Integer> emit(String streamId, List<Object> tuple) {
@@ -117,7 +127,7 @@ public class OutputCollector extends OutputCollectorCb {
      * tuples. The emitted values must be immutable.
      *
      * @param anchors the tuples to anchor to
-     * @param tuple the new output tuple from this bolt
+     * @param tuple   the new output tuple from this bolt
      * @return the list of task ids that this new tuple was sent to
      */
     public List<Integer> emit(Collection<Tuple> anchors, List<Object> tuple) {
@@ -133,7 +143,7 @@ public class OutputCollector extends OutputCollectorCb {
      * emitted values must be immutable.
      *
      * @param anchor the tuple to anchor to
-     * @param tuple the new output tuple from this bolt
+     * @param tuple  the new output tuple from this bolt
      * @return the list of task ids that this new tuple was sent to
      */
     public List<Integer> emit(Tuple anchor, List<Object> tuple) {
@@ -169,11 +179,11 @@ public class OutputCollector extends OutputCollectorCb {
      * grouping, an error will occur at runtime. The emitted values must be
      * immutable.
      *
-     * @param taskId the taskId to send the new tuple to
+     * @param taskId   the taskId to send the new tuple to
      * @param streamId the stream to send the tuple on. It must be declared as a
-     *            direct stream in the topology definition.
-     * @param anchor the tuple to anchor to
-     * @param tuple the new output tuple from this bolt
+     *                 direct stream in the topology definition.
+     * @param anchor   the tuple to anchor to
+     * @param tuple    the new output tuple from this bolt
      */
     public void emitDirect(int taskId, String streamId, Tuple anchor,
                            List<Object> tuple) {
@@ -194,10 +204,10 @@ public class OutputCollector extends OutputCollectorCb {
      * use anchors, so downstream failures won't affect the failure status of
      * any spout tuples. The emitted values must be immutable.
      *
-     * @param taskId the taskId to send the new tuple to
+     * @param taskId   the taskId to send the new tuple to
      * @param streamId the stream to send the tuple on. It must be declared as a
-     *            direct stream in the topology definition.
-     * @param tuple the new output tuple from this bolt
+     *                 direct stream in the topology definition.
+     * @param tuple    the new output tuple from this bolt
      */
     public void emitDirect(int taskId, String streamId, List<Object> tuple) {
         emitDirect(taskId, streamId, (List) null, tuple);
@@ -221,9 +231,9 @@ public class OutputCollector extends OutputCollectorCb {
      * in Java.
      * </p>
      *
-     * @param taskId the taskId to send the new tuple to
+     * @param taskId  the taskId to send the new tuple to
      * @param anchors the tuples to anchor to
-     * @param tuple the new output tuple from this bolt
+     * @param tuple   the new output tuple from this bolt
      */
     public void emitDirect(int taskId, Collection<Tuple> anchors,
                            List<Object> tuple) {
@@ -251,7 +261,7 @@ public class OutputCollector extends OutputCollectorCb {
      *
      * @param taskId the taskId to send the new tuple to
      * @param anchor the tuple to anchor to
-     * @param tuple the new output tuple from this bolt
+     * @param tuple  the new output tuple from this bolt
      */
     public void emitDirect(int taskId, Tuple anchor, List<Object> tuple) {
         emitDirect(taskId, Utils.DEFAULT_STREAM_ID, anchor, tuple);
@@ -281,7 +291,7 @@ public class OutputCollector extends OutputCollectorCb {
      * </p>
      *
      * @param taskId the taskId to send the new tuple to
-     * @param tuple the new output tuple from this bolt
+     * @param tuple  the new output tuple from this bolt
      */
     public void emitDirect(int taskId, List<Object> tuple) {
         emitDirect(taskId, Utils.DEFAULT_STREAM_ID, tuple);
@@ -331,9 +341,50 @@ public class OutputCollector extends OutputCollectorCb {
     }
 
     @Override
-    public void flush(){ _delegate.flush();}
+    public void flush() {
+        _delegate.flush();
+    }
+
+    @Override
+    public void setBatchId(long batchId) {
+        _delegate.setBatchId(batchId);
+    }
 
     public OutputCollectorCb getDelegate() {
         return _delegate;
+    }
+
+    public List<Integer> emitCtrl(List<Object> tuple) {
+        return emitCtrl(Utils.DEFAULT_STREAM_ID, null, tuple);
+    }
+
+    public List<Integer> emitCtrl(String streamId, List<Object> tuple) {
+        return emitCtrl(streamId, null, tuple);
+    }
+
+    public List<Integer> emitCtrl(Collection<Tuple> anchors, List<Object> tuple) {
+        return emitCtrl(Utils.DEFAULT_STREAM_ID, anchors, tuple);
+    }
+
+    @Override
+    public List<Integer> emitCtrl(String streamId, Collection<Tuple> anchors, List<Object> tuple) {
+        return _delegate.emitCtrl(streamId, anchors, tuple);
+    }
+
+    public void emitDirectCtrl(int taskId, List<Object> tuple) {
+        emitDirectCtrl(taskId, Utils.DEFAULT_STREAM_ID, null, tuple);
+    }
+
+    public void emitDirectCtrl(int taskId, String streamId, List<Object> tuple) {
+        emitDirectCtrl(taskId, streamId, null, tuple);
+    }
+
+    public void emitDirectCtrl(int taskId, Collection<Tuple> anchors, List<Object> tuple) {
+        emitDirectCtrl(taskId, Utils.DEFAULT_STREAM_ID, anchors, tuple);
+    }
+
+    @Override
+    public void emitDirectCtrl(int taskId, String streamId, Collection<Tuple> anchors, List<Object> tuple) {
+        _delegate.emitDirectCtrl(taskId, streamId, anchors, tuple);
     }
 }

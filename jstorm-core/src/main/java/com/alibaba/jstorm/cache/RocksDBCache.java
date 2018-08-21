@@ -18,11 +18,14 @@
 package com.alibaba.jstorm.cache;
 
 import backtype.storm.utils.Utils;
+
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.PathUtils;
+
 import org.apache.commons.lang.StringUtils;
 import org.rocksdb.*;
+import org.rocksdb.util.SizeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,18 +44,19 @@ public class RocksDBCache implements JStormCache {
 
     public static final String ROCKSDB_ROOT_DIR = "rocksdb.root.dir";
     public static final String ROCKSDB_RESET = "rocksdb.reset";
+
     protected RocksDB db;
     protected String rootDir;
 
     public void initDir(Map<Object, Object> conf) {
         String confDir = (String) conf.get(ROCKSDB_ROOT_DIR);
-        if (StringUtils.isBlank(confDir) == true) {
+        if (StringUtils.isBlank(confDir)) {
             throw new RuntimeException("Doesn't set rootDir of rocksDB");
         }
 
         boolean clean = (Boolean) conf.get(ROCKSDB_RESET);
         LOG.info("RocksDB reset is " + clean);
-        if (clean == true) {
+        if (clean) {
             try {
                 PathUtils.rmr(confDir);
             } catch (IOException e) {
@@ -61,7 +65,7 @@ public class RocksDBCache implements JStormCache {
         }
 
         File file = new File(confDir);
-        if (file.exists() == false) {
+        if (!file.exists()) {
             try {
                 PathUtils.local_mkdirs(confDir);
                 file = new File(confDir);
@@ -74,16 +78,17 @@ public class RocksDBCache implements JStormCache {
     }
 
     public void initDb(List<Integer> list) throws Exception {
+        Options dbOptions = new Options().setCreateMissingColumnFamilies(true).setCreateIfMissing(true);
+        initDb(list, dbOptions);
+    }
+
+    @SuppressWarnings("unused")
+    public void initDb(List<Integer> list, Options dbOptions) throws Exception {
         LOG.info("Begin to init rocksDB of {}", rootDir);
 
-        Options dbOptions = null;
         try {
-            dbOptions = new Options().setCreateMissingColumnFamilies(true).setCreateIfMissing(true);
-
-            List<ColumnFamilyHandle> columnFamilyHandleList = new ArrayList<ColumnFamilyHandle>();
-
+            //List<ColumnFamilyHandle> columnFamilyHandleList = new ArrayList<ColumnFamilyHandle>();
             db = RocksDB.open(dbOptions, rootDir);
-
             LOG.info("Successfully init rocksDB of {}", rootDir);
         } finally {
             if (dbOptions != null) {
@@ -96,7 +101,7 @@ public class RocksDBCache implements JStormCache {
     public void init(Map<Object, Object> conf) throws Exception {
         initDir(conf);
 
-        List<Integer> list = new ArrayList<Integer>();
+        List<Integer> list = new ArrayList<>();
         if (conf.get(TAG_TIMEOUT_LIST) != null) {
             for (Object obj : (List) ConfigExtension.getCacheTimeoutList(conf)) {
                 Integer timeoutSecond = JStormUtils.parseInt(obj);
@@ -124,7 +129,7 @@ public class RocksDBCache implements JStormCache {
             }
         }
 
-        if (isSuccess == false) {
+        if (!isSuccess) {
             throw new RuntimeException("Failed to init rocksDB " + rootDir);
         }
     }
@@ -146,15 +151,15 @@ public class RocksDBCache implements JStormCache {
             byte[] data = db.get(key.getBytes());
             if (data != null) {
                 try {
-                    return Utils.javaDeserialize(data);
+                    return deserialize(data);
                 } catch (Exception e) {
-                    LOG.error("Failed to deserialize obj of " + key);
+                    LOG.error("Failed to deserialize obj of " + key, e);
                     db.remove(key.getBytes());
                     return null;
                 }
             }
 
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
 
         return null;
@@ -162,7 +167,7 @@ public class RocksDBCache implements JStormCache {
 
     @Override
     public void getBatch(Map<String, Object> map) {
-        List<byte[]> lookupKeys = new ArrayList<byte[]>();
+        List<byte[]> lookupKeys = new ArrayList<>();
         for (String key : map.keySet()) {
             lookupKeys.add(key.getBytes());
         }
@@ -183,7 +188,7 @@ public class RocksDBCache implements JStormCache {
 
                 Object value;
                 try {
-                    value = Utils.javaDeserialize(valueByte);
+                    value = deserialize(valueByte);
                 } catch (Exception e) {
                     LOG.error("Failed to deserialize obj of " + new String(keyByte));
                     db.remove(keyByte);
@@ -222,11 +227,11 @@ public class RocksDBCache implements JStormCache {
 
     @Override
     public void put(String key, Object value) {
-        byte[] data = Utils.javaSerialize(value);
+        byte[] data = serialize(value);
         try {
             db.put(key.getBytes(), data);
         } catch (Exception e) {
-            LOG.error("Failed put into cache, " + key, e);
+            LOG.error("Failed to put key into cache, " + key, e);
         }
     }
 
@@ -234,8 +239,6 @@ public class RocksDBCache implements JStormCache {
     public void putBatch(Map<String, Object> map) {
         WriteOptions writeOpts = null;
         WriteBatch writeBatch = null;
-
-        Set<byte[]> putKeys = new HashSet<byte[]>();
 
         try {
             writeOpts = new WriteOptions();
@@ -245,7 +248,7 @@ public class RocksDBCache implements JStormCache {
                 String key = entry.getKey();
                 Object value = entry.getValue();
 
-                byte[] data = Utils.javaSerialize(value);
+                byte[] data = serialize(value);
 
                 if (StringUtils.isBlank(key) || data == null || data.length == 0) {
                     continue;
@@ -253,8 +256,6 @@ public class RocksDBCache implements JStormCache {
 
                 byte[] keyByte = key.getBytes();
                 writeBatch.put(keyByte, data);
-
-                putKeys.add(keyByte);
             }
 
             db.write(writeOpts, writeBatch);
@@ -275,5 +276,13 @@ public class RocksDBCache implements JStormCache {
     @Override
     public void putBatch(Map<String, Object> map, int timeoutSeconds) {
         putBatch(map);
+    }
+
+    protected byte[] serialize(Object data) {
+        return Utils.javaSerialize(data);
+    }
+
+    protected Object deserialize(byte[] data) {
+        return Utils.javaDeserialize(data);
     }
 }

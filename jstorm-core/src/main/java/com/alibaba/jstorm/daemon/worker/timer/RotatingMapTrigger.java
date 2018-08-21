@@ -37,14 +37,13 @@ public class RotatingMapTrigger extends TimerTrigger {
         this.opCode = TimerConstants.ROTATING_MAP;
 
         int msgTimeOut = JStormUtils.parseInt(conf.get(Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS), 30);
-        frequence = (msgTimeOut) / (Acker.TIMEOUT_BUCKET_NUM - 1);
-        if (frequence <= 0) {
-            frequence = 1;
+        frequency = (msgTimeOut) / (Acker.TIMEOUT_BUCKET_NUM - 1);
+        if (frequency <= 0) {
+            frequency = 1;
         }
 
         firstTime = JStormUtils.parseInt(conf.get(Config.SUPERVISOR_WORKER_START_TIMEOUT_SECS), 120);
-
-        firstTime += frequence;
+        firstTime += frequency;
     }
 
     @Override
@@ -52,12 +51,9 @@ public class RotatingMapTrigger extends TimerTrigger {
         this.object = new Tick(name);
     }
 
-    public static final String ROTATINGMAP_STREAMID = "__rotating_tick";
-
-    // In fact, RotatingMapTrigger can use TickTuple,
-    // which set the stream ID is ROTATINGMAP_STREAMID
+    // Actually RotatingMapTrigger can use TickTuple,
+    // which sets the stream id is ROTATINGMAP_STREAMID
     // But in order to improve performance, JStorm use RotatingMapTrigger.Tick
-
     public static class Tick {
         private final long time;
         private final String name;
@@ -74,7 +70,5 @@ public class RotatingMapTrigger extends TimerTrigger {
         public String getName() {
             return name;
         }
-
     }
-
 }

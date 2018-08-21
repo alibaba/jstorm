@@ -41,7 +41,7 @@ public class BatchCommon {
                 return zkClient;
             }
 
-            List<String> zkServers = null;
+            List<String> zkServers;
             if (conf.get(Config.TRANSACTIONAL_ZOOKEEPER_SERVERS) != null) {
                 zkServers = (List<String>) conf.get(Config.TRANSACTIONAL_ZOOKEEPER_SERVERS);
             } else if (conf.get(Config.STORM_ZOOKEEPER_SERVERS) != null) {
@@ -64,7 +64,7 @@ public class BatchCommon {
 
             root = root + BatchDef.ZK_SEPERATOR + conf.get(Config.TOPOLOGY_NAME);
 
-            Map<Object, Object> tmpConf = new HashMap<Object, Object>();
+            Map<Object, Object> tmpConf = new HashMap<>();
             tmpConf.putAll(conf);
             tmpConf.put(Config.STORM_ZOOKEEPER_SERVERS, zkServers);
             tmpConf.put(Config.STORM_ZOOKEEPER_ROOT, root);

@@ -18,7 +18,6 @@
 package backtype.storm.metric;
 
 import backtype.storm.Config;
-import backtype.storm.metric.api.AssignableMetric;
 import backtype.storm.metric.api.IMetric;
 import backtype.storm.task.IBolt;
 import backtype.storm.task.OutputCollector;
@@ -27,19 +26,23 @@ import backtype.storm.tuple.Tuple;
 import clojure.lang.AFn;
 import clojure.lang.IFn;
 import clojure.lang.RT;
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.MemoryUsage;
+import java.lang.management.RuntimeMXBean;
+import java.util.HashMap;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.management.*;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-// There is one task inside one executor for each worker of the topology.
+// a task that resides in one executor for each worker of the topology.
 // TaskID is always -1, therefore you can only send-unanchored tuples to co-located SystemBolt.
 // This bolt was conceived to export worker stats via metrics api.
+@SuppressWarnings("unchecked")
 public class SystemBolt implements IBolt {
-    private static Logger LOG = LoggerFactory.getLogger(SystemBolt.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SystemBolt.class);
+
     private static boolean _prepareWasCalled = false;
 
     private static class MemoryUsageMetric implements IMetric {

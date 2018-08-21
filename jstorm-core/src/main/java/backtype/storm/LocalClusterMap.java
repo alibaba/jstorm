@@ -31,8 +31,7 @@ import com.alibaba.jstorm.utils.PathUtils;
 import com.alibaba.jstorm.zk.Factory;
 
 public class LocalClusterMap {
-
-    public static Logger LOG = LoggerFactory.getLogger(LocalClusterMap.class);
+    private static Logger LOG = LoggerFactory.getLogger(LocalClusterMap.class);
 
     private NimbusServer nimbusServer;
 
@@ -95,9 +94,8 @@ public class LocalClusterMap {
     }
 
     public void clean() {
-
         if (supervisor != null) {
-            supervisor.ShutdownAllWorkers();
+            supervisor.shutdownAllWorkers();
             supervisor.shutdown();
         }
 
@@ -108,15 +106,11 @@ public class LocalClusterMap {
         if (zookeeper != null)
             zookeeper.shutdown();
 
-        // it will hava a problem:
-        // java.io.IOException: Unable to delete file:
-        // {TmpPath}\{UUID}\version-2\log.1
         if (tmpDir != null) {
             for (String dir : tmpDir) {
                 try {
                     PathUtils.rmr(dir);
                 } catch (IOException e) {
-                    // TODO Auto-generated catch block
                     LOG.error("Fail to delete " + dir);
                 }
             }

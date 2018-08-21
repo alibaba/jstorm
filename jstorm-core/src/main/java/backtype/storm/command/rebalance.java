@@ -23,8 +23,10 @@ import backtype.storm.utils.Utils;
 
 import java.util.Map;
 
+import com.alibaba.jstorm.utils.JStormUtils;
+
 /**
- * Active topology
+ * rebalance a topology
  *
  * @author longda
  */
@@ -72,7 +74,8 @@ public class rebalance {
                             int delaySeconds = Integer.parseInt(args[1]);
                             options.set_wait_secs(delaySeconds);
                         } catch (NumberFormatException e) {
-                            System.out.println("Unsupported argument found, arg=" + arg + ". Full args are " + args);
+                            System.out.println("Unsupported argument, arg=" + arg + ". Full args are " +
+                                    JStormUtils.mk_list(args));
                             printErrorInfo();
                             return;
                         }

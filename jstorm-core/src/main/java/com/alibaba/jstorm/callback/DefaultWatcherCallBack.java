@@ -27,9 +27,8 @@ import com.alibaba.jstorm.zk.ZkKeeperStates;
 
 /**
  * Default ZK watch callback
- * 
+ *
  * @author yannian
- * 
  */
 public class DefaultWatcherCallBack implements WatcherCallBack {
 

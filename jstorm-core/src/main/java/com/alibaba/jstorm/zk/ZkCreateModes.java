@@ -26,7 +26,7 @@ public class ZkCreateModes {
     private static HashMap<CreateMode, String> map;
 
     static {
-        map = new HashMap<CreateMode, String>();
+        map = new HashMap<>();
         map.put(CreateMode.EPHEMERAL, ":ephemeral");
         map.put(CreateMode.PERSISTENT, ":persistent");
     }

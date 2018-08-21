@@ -6,7 +6,7 @@
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,8 +25,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * UpdateListener is used to dynamic update configurations in worker
+ * UpdateListener is used to dynamically update configurations in worker
  * triggered by update topology action
+ *
  * @author Jark (wuchong.wc@alibaba-inc.com)
  */
 public class UpdateListener {
@@ -40,6 +41,7 @@ public class UpdateListener {
 
     /**
      * register an updater which implement IUpdate
+     *
      * @param updater used to update configurations in worker
      */
     public void registerUpdater(IUpdater updater) {
@@ -48,6 +50,7 @@ public class UpdateListener {
 
     /**
      * trigger all updaters' update action
+     *
      * @param conf the new worker conf
      */
     public void update(Map conf) {

@@ -28,10 +28,9 @@ import java.util.Map;
  */
 public class AsmGauge extends AsmMetric<Gauge> {
 
-    private Gauge gauge;
+    protected Gauge gauge;
 
     public AsmGauge(Gauge<Double> gauge) {
-        this.aggregate = false;
         this.gauge = gauge;
     }
 
@@ -70,8 +69,16 @@ public class AsmGauge extends AsmMetric<Gauge> {
     @Override
     protected void updateSnapshot(int window) {
         double v = (Double) gauge.getValue();
-        AsmSnapshot snapshot =  new AsmGaugeSnapshot().setValue(v)
+        AsmSnapshot snapshot = new AsmGaugeSnapshot().setValue(v)
                 .setTs(System.currentTimeMillis()).setMetricId(metricId);
         snapshots.put(window, snapshot);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Object getValue(Integer window) {
+        return this.gauge.getValue();
     }
 }

@@ -26,29 +26,26 @@ import com.alibaba.jstorm.utils.OlderFileFilter;
 
 /**
  * clean /nimbus/inbox jar every 600 seconds
- * 
+ *
  * Default expire time is 3600 seconds
- * 
+ *
  * @author lixin
- * 
  */
 public class CleanRunnable implements Runnable {
-
     private static Logger log = LoggerFactory.getLogger(CleanRunnable.class);
 
-    private String dir_location;
-
+    private String dirLocation;
     private int seconds;
 
-    public CleanRunnable(String dir_location, int inbox_jar_expiration_secs) {
-        this.dir_location = dir_location;
+    public CleanRunnable(String dirLocation, int inbox_jar_expiration_secs) {
+        this.dirLocation = dirLocation;
         this.seconds = inbox_jar_expiration_secs;
     }
 
     @Override
     public void run() {
-        File inboxdir = new File(dir_location);
-        clean(inboxdir);
+        File inboxDir = new File(dirLocation);
+        clean(inboxDir);
     }
 
     private void clean(File file) {
@@ -56,6 +53,9 @@ public class CleanRunnable implements Runnable {
         OlderFileFilter filter = new OlderFileFilter(seconds);
 
         File[] files = file.listFiles(filter);
+        if (files == null) {
+            return;
+        }
         for (File f : files) {
             if (f.isFile()) {
                 log.info("Cleaning inbox ... deleted: " + f.getName());
@@ -66,7 +66,8 @@ public class CleanRunnable implements Runnable {
                 }
             } else {
                 clean(f);
-                if (f.listFiles().length == 0) {
+                File[] subFiles = f.listFiles();
+                if (subFiles == null || subFiles.length == 0) {
                     log.info("Cleaning inbox ... deleted: " + f.getName());
                     try {
                         f.delete();

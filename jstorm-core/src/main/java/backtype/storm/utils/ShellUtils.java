@@ -32,11 +32,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 abstract public class ShellUtils {
-    public static Logger LOG = LoggerFactory.getLogger(ShellUtils.class);
+    public static final Logger LOG = LoggerFactory.getLogger(ShellUtils.class);
 
     // OSType detection
     public enum OSType {
-        OS_TYPE_LINUX, OS_TYPE_WIN, OS_TYPE_SOLARIS, OS_TYPE_MAC, OS_TYPE_FREEBSD, OS_TYPE_OTHER
+        OS_TYPE_LINUX,
+        OS_TYPE_WIN,
+        OS_TYPE_SOLARIS,
+        OS_TYPE_MAC,
+        OS_TYPE_FREEBSD,
+        OS_TYPE_OTHER
     }
 
     public static final OSType osType = getOSType();
@@ -68,7 +73,8 @@ abstract public class ShellUtils {
     public static final boolean OTHER = (osType == OSType.OS_TYPE_OTHER);
 
     /** Token separator regex used to parse Shell tool outputs */
-    public static final String TOKEN_SEPARATOR_REGEX = WINDOWS ? "[|\n\r]" : "[ \t\n\r\f]";
+    public static final String TOKEN_SEPARATOR_REGEX
+        = WINDOWS ? "[|\n\r]" : "[ \t\n\r\f]";
 
     private long interval; // refresh interval in msec
     private long lastTime; // last time the command was performed
@@ -93,6 +99,9 @@ abstract public class ShellUtils {
         this(interval, false);
     }
 
+    public int getExitCode() {
+      return exitCode;
+    }
     /**
      * @param interval the minimum duration to wait before re-executing the command.
      */
@@ -122,16 +131,19 @@ abstract public class ShellUtils {
 
     /** a Unix command to get the current user's groups list */
     public static String[] getGroupsCommand() {
-        return (WINDOWS) ? new String[] { "cmd", "/c", "groups" } : new String[] { "bash", "-c", "groups" };
+        return (WINDOWS)? new String[]{"cmd", "/c", "groups"}
+        : new String[]{"bash", "-c", "groups"};
     }
 
     /**
-     * a Unix command to get a given user's groups list. If the OS is not WINDOWS, the command will get the user's primary group first and finally get the
+     * a Unix command to get a given user's groups list. If the OS is not WINDOWS,
+     * the command will get the user's primary group first and finally get the
      * groups list which includes the primary group. i.e. the user's primary group will be included twice.
      */
     public static String[] getGroupsForUserCommand(final String user) {
         // 'groups username' command return is non-consistent across different unixes
-        return new String[] { "bash", "-c", "id -gn " + user + "&& id -Gn " + user };
+        return new String [] {"bash", "-c", "id -gn " + user
+                         + "&& id -Gn " + user};
     }
 
     /** check to see if a command needs to be executed and execute if needed */
@@ -146,7 +158,7 @@ abstract public class ShellUtils {
     private void runCommand() throws IOException {
         ProcessBuilder builder = new ProcessBuilder(getExecString());
         Timer timeOutTimer = null;
-        ShellTimeoutTimerTask timeoutTimerTask = null;
+        ShellTimeoutTimerTask timeoutTimerTask;
         timedOut = new AtomicBoolean(false);
         completed = new AtomicBoolean(false);
 
@@ -166,8 +178,12 @@ abstract public class ShellUtils {
             // One time scheduling.
             timeOutTimer.schedule(timeoutTimerTask, timeOutInterval);
         }
-        final BufferedReader errReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-        BufferedReader inReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+        final BufferedReader errReader =
+            new BufferedReader(new InputStreamReader(process
+                                                     .getErrorStream()));
+        BufferedReader inReader =
+            new BufferedReader(new InputStreamReader(process
+                                                     .getInputStream()));
         final StringBuffer errMsg = new StringBuffer();
 
         // read error and input streams as this would free up the buffers
@@ -189,7 +205,7 @@ abstract public class ShellUtils {
         };
         try {
             errThread.start();
-        } catch (IllegalStateException ise) {
+        } catch (IllegalStateException ignored) {
         }
         try {
             parseExecResult(inReader); // parse the output
@@ -264,8 +280,8 @@ abstract public class ShellUtils {
     protected abstract String[] getExecString();
 
     /** Parse the execution result */
-    protected abstract void parseExecResult(BufferedReader lines) throws IOException;
-
+    protected abstract void parseExecResult(BufferedReader lines)
+        throws IOException;
     /**
      * get the current sub-process executing the given command
      * 
@@ -310,7 +326,8 @@ abstract public class ShellUtils {
             this(execString, dir, null);
         }
 
-        public ShellCommandExecutor(String[] execString, File dir, Map<String, String> env) {
+        public ShellCommandExecutor(String[] execString, File dir,
+                                    Map<String, String> env) {
             this(execString, dir, env, 0L);
         }
 
@@ -325,7 +342,8 @@ abstract public class ShellUtils {
          * @param timeout Specifies the time in milliseconds, after which the command will be killed and the status marked as timedout. If 0, the command will
          *            not be timed out.
          */
-        public ShellCommandExecutor(String[] execString, File dir, Map<String, String> env, long timeout) {
+        public ShellCommandExecutor(String[] execString, File dir,
+                                    Map<String, String> env, long timeout) {
             command = execString.clone();
             if (dir != null) {
                 setWorkingDirectory(dir);
@@ -418,8 +436,10 @@ abstract public class ShellUtils {
      * @return the output of the executed command.o
      */
 
-    public static String execCommand(Map<String, String> env, String[] cmd, long timeout) throws IOException {
-        ShellCommandExecutor exec = new ShellCommandExecutor(cmd, null, env, timeout);
+    public static String execCommand(Map<String, String> env, String[] cmd,
+                                     long timeout) throws IOException {
+        ShellCommandExecutor exec = new ShellCommandExecutor(cmd, null, env,
+                                                             timeout);
         exec.execute();
         return exec.getOutput();
     }
@@ -431,7 +451,8 @@ abstract public class ShellUtils {
      * @param cmd shell command to execute.
      * @return the output of the executed command.
      */
-    public static String execCommand(Map<String, String> env, String... cmd) throws IOException {
+    public static String execCommand(Map<String,String> env, String ... cmd)
+        throws IOException {
         return execCommand(env, cmd, 0L);
     }
 

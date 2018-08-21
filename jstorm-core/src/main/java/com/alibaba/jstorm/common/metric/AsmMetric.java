@@ -23,8 +23,10 @@ import com.alibaba.jstorm.common.metric.snapshot.AsmSnapshot;
 import com.alibaba.jstorm.metric.AsmWindow;
 import com.alibaba.jstorm.metric.MetaType;
 import com.alibaba.jstorm.metric.MetricType;
+import com.alibaba.jstorm.metric.MetricUtils;
 import com.alibaba.jstorm.utils.TimeUtils;
 import com.codahale.metrics.Metric;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -44,7 +46,9 @@ public abstract class AsmMetric<T extends Metric> {
     protected static final List<Integer> nettyWindows = Lists.newArrayList(AsmWindow.M1_WINDOW);
 
     protected static int minWindow = getMinWindow(windowSeconds);
+    private static final int FLUSH_INTERVAL_BIAS = 5;
     protected static final List<Integer> EMPTY_WIN = Lists.newArrayListWithCapacity(0);
+
     /**
      * sample rate for meter, histogram and timer, note that counter & gauge are not sampled.
      */
@@ -53,15 +57,16 @@ public abstract class AsmMetric<T extends Metric> {
     protected int op = MetricOp.REPORT;
     protected volatile long metricId = 0L;
     protected String metricName;
+    protected String shortName;
     protected boolean aggregate = true;
+    protected boolean attached = false;
     protected AtomicBoolean enabled = new AtomicBoolean(true);
     protected volatile long lastFlushTime = TimeUtils.current_time_secs() - AsmWindow.M1_WINDOW;
     protected Map<Integer, Long> rollingTimeMap = new ConcurrentHashMap<>();
     protected Map<Integer, Boolean> rollingDirtyMap = new ConcurrentHashMap<>();
 
-    protected final Map<Integer, AsmSnapshot> snapshots = new ConcurrentHashMap<Integer, AsmSnapshot>();
-
-    protected Set<AsmMetric> assocMetrics = new HashSet<AsmMetric>();
+    protected final Map<Integer, AsmSnapshot> snapshots = new ConcurrentHashMap<>();
+    protected Set<AsmMetric> assocMetrics = new HashSet<>();
 
     public AsmMetric() {
         for (Integer win : windowSeconds) {
@@ -74,10 +79,14 @@ public abstract class AsmMetric<T extends Metric> {
      * keep a random for each instance to avoid competition (although it's thread-safe).
      */
     private final Random rand = new Random();
+
     private final int freq = (int) (1 / sampleRate);
     private MutableInt curr = new MutableInt(-1);
     private MutableInt target = new MutableInt(rand.nextInt(freq));
 
+    /**
+     * a faster sampling way
+     */
     protected boolean sample() {
         if (curr.increment() >= freq) {
             curr.set(0);
@@ -136,6 +145,9 @@ public abstract class AsmMetric<T extends Metric> {
     }
 
     public void addAssocMetrics(AsmMetric... metrics) {
+        for (AsmMetric asmMetric : metrics) {
+            asmMetric.setAttached(true);
+        }
         Collections.addAll(assocMetrics, metrics);
     }
 
@@ -153,6 +165,11 @@ public abstract class AsmMetric<T extends Metric> {
 
     public void setMetricName(String metricName) {
         this.metricName = metricName;
+        this.shortName = MetricUtils.metricName(metricName);
+    }
+
+    public String getShortName() {
+        return shortName;
     }
 
     public void flush() {
@@ -176,6 +193,22 @@ public abstract class AsmMetric<T extends Metric> {
             } else if (!rollingDirtyMap.get(win)) {
                 //if this window has never been passed, we still update this window snapshot
                 updateSnapshot(win);
+            }
+        }
+        this.lastFlushTime = TimeUtils.current_time_secs();
+    }
+
+    @VisibleForTesting
+    public void forceFlush() {
+        doFlush();
+
+        List<Integer> windows = getWindows();
+        for (int win : windows) {
+            updateSnapshot(win);
+
+            Map<Integer, T> metricMap = getWindowMetricMap();
+            if (metricMap != null) {
+                metricMap.put(win, mkInstance());
             }
         }
         this.lastFlushTime = TimeUtils.current_time_secs();
@@ -206,6 +239,14 @@ public abstract class AsmMetric<T extends Metric> {
 
     protected abstract void updateSnapshot(int window);
 
+    /**
+     * get window metric value directly instead of via metric snapshots, for testing only
+     * it's NOT recommended to call this method in production because it will synchronize on
+     * the metric object.
+     */
+    @VisibleForTesting
+    public abstract Object getValue(Integer window);
+
     public Map<Integer, AsmSnapshot> getSnapshots() {
         return snapshots;
     }
@@ -219,7 +260,7 @@ public abstract class AsmMetric<T extends Metric> {
             return EMPTY_WIN;
         }
 
-        long diff = TimeUtils.current_time_secs() - this.lastFlushTime + 5;
+        long diff = TimeUtils.current_time_secs() - this.lastFlushTime + FLUSH_INTERVAL_BIAS;
         if (diff < minWindow) {
             // logger.warn("no valid windows for metric:{}, diff:{}", this.metricName, diff);
             return EMPTY_WIN;
@@ -232,6 +273,21 @@ public abstract class AsmMetric<T extends Metric> {
         return windowSeconds;
     }
 
+    @VisibleForTesting
+    public List<Integer> getWindows() {
+        if (!this.enabled.get()) {
+            return EMPTY_WIN;
+        }
+
+        // for gauge & netty metrics, use only 1min window
+        if (this instanceof AsmGauge || this.metricName.startsWith(MetaType.NETTY.getV())) {
+            return nettyWindows;
+        }
+
+        return windowSeconds;
+    }
+
+
     public boolean isAggregate() {
         return aggregate;
     }
@@ -240,9 +296,21 @@ public abstract class AsmMetric<T extends Metric> {
         this.aggregate = aggregate;
     }
 
+    public Set<AsmMetric> getAssocMetrics() {
+        return assocMetrics;
+    }
+
     public AsmMetric setEnabled(boolean enabled) {
         this.enabled.set(enabled);
         return this;
+    }
+
+    public boolean isAttached() {
+        return attached;
+    }
+
+    public void setAttached(boolean attached) {
+        this.attached = attached;
     }
 
     public static String mkName(Object... parts) {

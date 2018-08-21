@@ -17,6 +17,7 @@
  */
 package backtype.storm.metric.api;
 
+@Deprecated
 public interface IMetric {
-    public Object getValueAndReset();
+    Object getValueAndReset();
 }

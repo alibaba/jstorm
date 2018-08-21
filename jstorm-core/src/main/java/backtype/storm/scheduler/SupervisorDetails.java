@@ -41,7 +41,7 @@ public class SupervisorDetails {
     public SupervisorDetails(String id, Object meta) {
         this.id = id;
         this.meta = meta;
-        allPorts = new HashSet();
+        allPorts = new HashSet<>();
     }
 
     public SupervisorDetails(String id, Object meta, Collection<Number> allPorts) {
@@ -59,7 +59,7 @@ public class SupervisorDetails {
     }
 
     private void setAllPorts(Collection<Number> allPorts) {
-        this.allPorts = new HashSet<Integer>();
+        this.allPorts = new HashSet<>();
         if (allPorts != null) {
             for (Number n : allPorts) {
                 this.allPorts.add(n.intValue());

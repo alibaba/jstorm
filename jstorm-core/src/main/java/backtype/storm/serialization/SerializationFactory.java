@@ -23,17 +23,19 @@ import backtype.storm.generated.StormTopology;
 import backtype.storm.serialization.types.ArrayListSerializer;
 import backtype.storm.serialization.types.HashMapSerializer;
 import backtype.storm.serialization.types.HashSetSerializer;
-import backtype.storm.transactional.TransactionAttempt;
 import backtype.storm.tuple.Values;
 import backtype.storm.utils.ListDelegate;
 import backtype.storm.utils.Utils;
 import backtype.storm.utils.WorkerClassLoader;
-import carbonite.JavaBridge;
+
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Serializer;
 import com.esotericsoftware.kryo.serializers.DefaultSerializers.BigIntegerSerializer;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import storm.trident.topology.TransactionAttempt;
 import storm.trident.tuple.ConsList;
 
 import java.math.BigInteger;
@@ -68,12 +70,6 @@ public class SerializationFactory {
         k.register(backtype.storm.metric.api.IMetricsConsumer.DataPoint.class);
         k.register(backtype.storm.metric.api.IMetricsConsumer.TaskInfo.class);
         k.register(ConsList.class);
-        try {
-            JavaBridge.registerPrimitives(k);
-            JavaBridge.registerCollections(k);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
 
         Map<String, String> registrations = normalizeKryoRegister(conf);
 
@@ -95,7 +91,7 @@ public class SerializationFactory {
                 }
             } catch (ClassNotFoundException e) {
                 if (skipMissing) {
-                    LOG.info("Could not find serialization or class for " + serializerClassName + ". Skipping registration...");
+                    LOG.info("Could not find serialization or class for " + serializerClassName + ". Skip registration...");
                 } else {
                     throw new RuntimeException(e);
                 }
@@ -112,13 +108,11 @@ public class SerializationFactory {
                     decorator.decorate(k);
                 } catch (ClassNotFoundException e) {
                     if (skipMissing) {
-                        LOG.info("Could not find kryo decorator named " + klassName + ". Skipping registration...");
+                        LOG.info("Could not find kryo decorator named " + klassName + ". Skip registration...");
                     } else {
                         throw new RuntimeException(e);
                     }
-                } catch (InstantiationException e) {
-                    throw new RuntimeException(e);
-                } catch (IllegalAccessException e) {
+                } catch (InstantiationException | IllegalAccessException e) {
                     throw new RuntimeException(e);
                 }
             }
@@ -130,17 +124,17 @@ public class SerializationFactory {
     }
 
     public static class IdDictionary {
-        Map<String, Map<String, Integer>> streamNametoId = new HashMap<String, Map<String, Integer>>();
-        Map<String, Map<Integer, String>> streamIdToName = new HashMap<String, Map<Integer, String>>();
+        Map<String, Map<String, Integer>> streamNametoId = new HashMap<>();
+        Map<String, Map<Integer, String>> streamIdToName = new HashMap<>();
 
         public IdDictionary(StormTopology topology) {
-            List<String> componentNames = new ArrayList<String>(topology.get_spouts().keySet());
+            List<String> componentNames = new ArrayList<>(topology.get_spouts().keySet());
             componentNames.addAll(topology.get_bolts().keySet());
             componentNames.addAll(topology.get_state_spouts().keySet());
 
             for (String name : componentNames) {
                 ComponentCommon common = Utils.getComponentCommon(topology, name);
-                List<String> streams = new ArrayList<String>(common.get_streams().keySet());
+                List<String> streams = new ArrayList<>(common.get_streams().keySet());
                 streamNametoId.put(name, idify(streams));
                 streamIdToName.put(name, Utils.reverseMap(streamNametoId.get(name)));
             }
@@ -156,13 +150,18 @@ public class SerializationFactory {
 
         private static Map<String, Integer> idify(List<String> names) {
             Collections.sort(names);
-            Map<String, Integer> ret = new HashMap<String, Integer>();
+            Map<String, Integer> ret = new HashMap<>();
             int i = 1;
             for (String name : names) {
                 ret.put(name, i);
                 i++;
             }
             return ret;
+        }
+
+        @Override
+        public String toString() {
+            return "streamNametoId=" + streamNametoId + ", streamIdToName=" + streamIdToName;
         }
     }
 
@@ -194,7 +193,8 @@ public class SerializationFactory {
                 }
             }
         } catch (Exception ex) {
-            throw new IllegalArgumentException("Unable to create serializer \"" + serializerClass.getName() + "\" for class: " + superClass.getName(), ex);
+            throw new IllegalArgumentException("Unable to create serializer \"" +
+                    serializerClass.getName() + "\" for class: " + superClass.getName(), ex);
         }
     }
 
@@ -202,8 +202,8 @@ public class SerializationFactory {
         // TODO: de-duplicate this logic with the code in nimbus
         Object res = conf.get(Config.TOPOLOGY_KRYO_REGISTER);
         if (res == null)
-            return new TreeMap<String, String>();
-        Map<String, String> ret = new HashMap<String, String>();
+            return new TreeMap<>();
+        Map<String, String> ret = new HashMap<>();
         if (res instanceof Map) {
             ret = (Map<String, String>) res;
         } else {
@@ -216,7 +216,7 @@ public class SerializationFactory {
             }
         }
 
-        // ensure always same order for registrations with TreeMap
-        return new TreeMap<String, String>(ret);
+        // make sure it's always of the same order for registrations with TreeMap
+        return new TreeMap<>(ret);
     }
 }

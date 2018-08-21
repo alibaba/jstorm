@@ -30,6 +30,9 @@ import java.util.Set;
 public class MessageId {
     private Map<Long, Long> _anchorsToIds;
 
+    public MessageId() {
+    }
+
     @Deprecated
     public static long generateId() {
         return Utils.secureRandomLong();
@@ -48,13 +51,17 @@ public class MessageId {
     }
 
     public static MessageId makeRootId(long id, long val) {
-        Map<Long, Long> anchorsToIds = new HashMap<Long, Long>();
+        Map<Long, Long> anchorsToIds = new HashMap<>();
         anchorsToIds.put(id, val);
         return new MessageId(anchorsToIds);
     }
 
     protected MessageId(Map<Long, Long> anchorsToIds) {
         _anchorsToIds = anchorsToIds;
+    }
+
+    public boolean isAnchored() {
+        return _anchorsToIds != null && _anchorsToIds.size() > 0;
     }
 
     public Map<Long, Long> getAnchorsToIds() {
@@ -94,7 +101,10 @@ public class MessageId {
 
     public static MessageId deserialize(Input in) throws IOException {
         int numAnchors = in.readInt(true);
-        Map<Long, Long> anchorsToIds = new HashMap<Long, Long>();
+        if (numAnchors == 0) {
+            return null;
+        }
+        Map<Long, Long> anchorsToIds = new HashMap<>();
         for (int i = 0; i < numAnchors; i++) {
             anchorsToIds.put(in.readLong(), in.readLong());
         }

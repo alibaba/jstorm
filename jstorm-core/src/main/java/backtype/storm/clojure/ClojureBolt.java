@@ -51,14 +51,15 @@ public class ClojureBolt implements IRichBolt, FinishedCallback {
         _fields = fields;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public void prepare(final Map stormConf, final TopologyContext context, final OutputCollector collector) {
         IFn hof = Utils.loadClojureFn(_fnSpec.get(0), _fnSpec.get(1));
         try {
             IFn preparer = (IFn) hof.applyTo(RT.seq(_params));
             final Map<Keyword, Object> collectorMap =
-                    new PersistentArrayMap(new Object[] { Keyword.intern(Symbol.create("output-collector")), collector,
-                            Keyword.intern(Symbol.create("context")), context });
+                    new PersistentArrayMap(new Object[]{Keyword.intern(Symbol.create("output-collector")), collector,
+                            Keyword.intern(Symbol.create("context")), context});
             List<Object> args = new ArrayList<Object>() {
                 {
                     add(stormConf);
@@ -71,8 +72,7 @@ public class ClojureBolt implements IRichBolt, FinishedCallback {
             // this is kind of unnecessary for clojure
             try {
                 _bolt.prepare(stormConf, context, collector);
-            } catch (AbstractMethodError ame) {
-
+            } catch (AbstractMethodError ignored) {
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -88,8 +88,7 @@ public class ClojureBolt implements IRichBolt, FinishedCallback {
     public void cleanup() {
         try {
             _bolt.cleanup();
-        } catch (AbstractMethodError ame) {
-
+        } catch (AbstractMethodError ignored) {
         }
     }
 

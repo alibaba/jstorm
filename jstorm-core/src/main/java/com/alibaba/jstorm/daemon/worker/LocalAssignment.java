@@ -20,16 +20,15 @@ package com.alibaba.jstorm.daemon.worker;
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
 /**
- * Supervisor LocalAssignment
- * 
+ * supervisor local assignment
  */
 public class LocalAssignment implements Serializable {
-    public static final long serialVersionUID = 4054639727225043554L;
+    private static final long serialVersionUID = 4054639727225043554L;
+
     private final String topologyId;
     private final String topologyName;
     private Set<Integer> taskIds;
@@ -38,9 +37,10 @@ public class LocalAssignment implements Serializable {
     private String jvm;
     private long timeStamp;
 
-    public LocalAssignment(String topologyId, Set<Integer> taskIds, String topologyName, long mem, int cpu, String jvm, long timeStamp) {
+    public LocalAssignment(String topologyId, Set<Integer> taskIds, String topologyName,
+                           long mem, int cpu, String jvm, long timeStamp) {
         this.topologyId = topologyId;
-        this.taskIds = new HashSet<Integer>(taskIds);
+        this.taskIds = new HashSet<>(taskIds);
         this.topologyName = topologyName;
         this.mem = mem;
         this.cpu = cpu;
@@ -57,7 +57,7 @@ public class LocalAssignment implements Serializable {
     }
 
     public void setTaskIds(Set<Integer> taskIds) {
-        this.taskIds = new HashSet<Integer>(taskIds);
+        this.taskIds = new HashSet<>(taskIds);
     }
 
     public String getTopologyName() {

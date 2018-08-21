@@ -36,6 +36,6 @@ public class SingleUserSimpleTransport extends SimpleTransportPlugin {
                 return "user";
             }
         });
-        return new Subject(true, principals, new HashSet<Object>(), new HashSet<Object>());
+        return new Subject(true, principals, new HashSet<>(), new HashSet<>());
     }
 }

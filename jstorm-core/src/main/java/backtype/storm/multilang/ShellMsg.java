@@ -23,11 +23,9 @@ import java.util.List;
 /**
  * ShellMsg is an object that represents the data sent to a shell component from a process that implements a multi-language protocol. It is the union of all
  * data types that a component can send to Storm.
- * 
- * <p>
+ *
  * ShellMsgs are objects received from the ISerializer interface, after the serializer has deserialized the data from the underlying wire protocol. The ShellMsg
  * class allows for a decoupling between the serialized representation of the data and the data itself.
- * </p>
  */
 public class ShellMsg {
     private String command;
@@ -49,18 +47,18 @@ public class ShellMsg {
 
         public static ShellLogLevel fromInt(int i) {
             switch (i) {
-            case 0:
-                return TRACE;
-            case 1:
-                return DEBUG;
-            case 2:
-                return INFO;
-            case 3:
-                return WARN;
-            case 4:
-                return ERROR;
-            default:
-                return INFO;
+                case 0:
+                    return TRACE;
+                case 1:
+                    return DEBUG;
+                case 2:
+                    return INFO;
+                case 3:
+                    return WARN;
+                case 4:
+                    return ERROR;
+                default:
+                    return INFO;
             }
         }
     }
@@ -93,7 +91,7 @@ public class ShellMsg {
 
     public void addAnchor(String anchor) {
         if (anchors == null) {
-            anchors = new ArrayList<String>();
+            anchors = new ArrayList<>();
         }
         this.anchors.add(anchor);
     }
@@ -132,7 +130,7 @@ public class ShellMsg {
 
     public void addTuple(Object tuple) {
         if (this.tuple == null) {
-            this.tuple = new ArrayList<Object>();
+            this.tuple = new ArrayList<>();
         }
         this.tuple.add(tuple);
     }

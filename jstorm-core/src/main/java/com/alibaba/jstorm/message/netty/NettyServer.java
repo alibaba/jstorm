@@ -20,6 +20,7 @@ package com.alibaba.jstorm.message.netty;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -28,8 +29,6 @@ import java.util.concurrent.TimeUnit;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFactory;
-import org.jboss.netty.channel.group.ChannelGroup;
-import org.jboss.netty.channel.group.DefaultChannelGroup;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,37 +39,41 @@ import backtype.storm.messaging.TaskMessage;
 import backtype.storm.utils.DisruptorQueue;
 import backtype.storm.utils.Utils;
 
+import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.utils.JStormUtils;
 
 class NettyServer implements IConnection {
     private static final Logger LOG = LoggerFactory.getLogger(NettyServer.class);
     @SuppressWarnings("rawtypes")
-    Map storm_conf;
+    Map stormConf;
     int port;
 
     // private LinkedBlockingQueue message_queue;
-    volatile ChannelGroup allChannels = new DefaultChannelGroup("jstorm-server");
+    volatile StormChannelGroup allChannels = new StormChannelGroup("jstorm-server");
     final ChannelFactory factory;
     final ServerBootstrap bootstrap;
-
-    // ayncBatch is only one solution, so directly set it as true
-    private final boolean isSyncMode;
 
     private ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues;
     private DisruptorQueue recvControlQueue;
 
+    private boolean isBackpressureEnable;
+    private NettyServerFlowCtrlHandler flowCtrlHandler;
+    private volatile boolean bstartRec;
+    private final Set<Integer> workerTasks;
+
     @SuppressWarnings("rawtypes")
-    NettyServer( Map storm_conf, int port, boolean isSyncMode, ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues,
-                DisruptorQueue recvControlQueue) {
-        this.storm_conf = storm_conf;
+    NettyServer(Map stormConf, int port, ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues, DisruptorQueue recvControlQueue, boolean bstartRec,
+            Set<Integer> workerTasks) {
+        this.stormConf = stormConf;
         this.port = port;
-        this.isSyncMode = isSyncMode;
         this.deserializeQueues = deserializeQueues;
         this.recvControlQueue = recvControlQueue;
+        this.bstartRec = bstartRec;
+        this.workerTasks = workerTasks;
 
         // Configure the server.
-        int buffer_size = Utils.getInt(storm_conf.get(Config.STORM_MESSAGING_NETTY_BUFFER_SIZE));
-        int maxWorkers = Utils.getInt(storm_conf.get(Config.STORM_MESSAGING_NETTY_SERVER_WORKER_THREADS));
+        int buffer_size = Utils.getInt(stormConf.get(Config.STORM_MESSAGING_NETTY_RECEIVE_BUFFER_SIZE));
+        int maxWorkers = Utils.getInt(stormConf.get(Config.STORM_MESSAGING_NETTY_SERVER_WORKER_THREADS));
 
         // asyncBatch = ConfigExtension.isNettyTransferAsyncBatch(storm_conf);
 
@@ -83,19 +86,25 @@ class NettyServer implements IConnection {
         }
 
         bootstrap = new ServerBootstrap(factory);
-        bootstrap.setOption("reuserAddress", true);
+        bootstrap.setOption("reuseAddress", true);
         bootstrap.setOption("child.tcpNoDelay", true);
         bootstrap.setOption("child.receiveBufferSize", buffer_size);
         bootstrap.setOption("child.keepAlive", true);
 
         // Set up the pipeline factory.
-        bootstrap.setPipelineFactory(new StormServerPipelineFactory(this, storm_conf));
+        bootstrap.setPipelineFactory(new StormServerPipelineFactory(this, stormConf));
 
         // Bind and start to accept incoming connections.
         Channel channel = bootstrap.bind(new InetSocketAddress(port));
         allChannels.add(channel);
 
-        LOG.info("Successfull bind {}, buffer_size:{}, maxWorkers:{}", port, buffer_size, maxWorkers);
+        LOG.info("Successfully bind {}, buffer_size:{}, maxWorkers:{}", port, buffer_size, maxWorkers);
+
+        this.isBackpressureEnable = ConfigExtension.isBackpressureEnable(stormConf);
+        if (isBackpressureEnable) {
+            flowCtrlHandler = new NettyServerFlowCtrlHandler(stormConf, allChannels, workerTasks);
+            flowCtrlHandler.start();
+        }
     }
 
     @Override
@@ -105,32 +114,48 @@ class NettyServer implements IConnection {
 
     /**
      * enqueue a received message
-     * 
-     * @param message
-     * @throws InterruptedException
      */
-    public void enqueue(TaskMessage message) {
+    public void enqueue(TaskMessage message, Channel channel) {
+        // lots of messages may be lost when deserialize queue hasn't finished init operation
+        while (!bstartRec) {
+            LOG.info("check whether deserialize queues have already been created");
+            boolean isFinishInit = true;
+            for (Integer task : workerTasks) {
+                if (deserializeQueues.get(task) == null) {
+                    isFinishInit = false;
+                    JStormUtils.sleepMs(10);
+                    break;
+                }
+            }
+            if (isFinishInit) {
+                bstartRec = isFinishInit;
+            }
+        }
         short type = message.get_type();
-
-        if (type == 0){
-            //enqueue a received message
+        if (type == TaskMessage.NORMAL_MESSAGE) {
+            // enqueue a received message
             int task = message.task();
             DisruptorQueue queue = deserializeQueues.get(task);
             if (queue == null) {
-                LOG.warn("Received invalid message directed at port " + task + ". Dropping...");
+                LOG.warn("Received invalid message directed at task {}. Dropping...", task);
+                LOG.debug("Message data: {}", JStormUtils.toPrintableString(message.message()));
                 return;
             }
-
-            queue.publish(message.message());
-        }else if (type == 1){
-            //enqueue a control message
+            if (!isBackpressureEnable) {
+                queue.publish(message.message());
+            } else {
+                flowCtrlHandler.flowCtrl(channel, queue, task, message.message());
+            }
+        } else if (type == TaskMessage.CONTROL_MESSAGE) {
+            // enqueue a control message
             if (recvControlQueue == null) {
-                LOG.info("this worker's recvControlQueue is null, so  Dropping this control message");
+                LOG.info("Can not find the recvControlQueue. Dropping this control message");
                 return;
             }
             recvControlQueue.publish(message);
+        } else {
+            LOG.warn("Unexpected message (type={}) was received from task {}", type, message.task());
         }
-
     }
 
     /**
@@ -142,23 +167,17 @@ class NettyServer implements IConnection {
             if ((flags & 0x01) == 0x01) {
                 return recvQueue.poll();
                 // non-blocking
-
             } else {
                 return recvQueue.take();
-
             }
-
         } catch (Exception e) {
-            LOG.warn("Occur unexception ", e);
+            LOG.warn("Unknown exception ", e);
             return null;
         }
-
     }
 
     /**
      * register a newly created channel
-     * 
-     * @param channel
      */
     protected void addChannel(Channel channel) {
         allChannels.add(channel);
@@ -166,8 +185,6 @@ class NettyServer implements IConnection {
 
     /**
      * close a channel
-     * 
-     * @param channel
      */
     protected void closeChannel(Channel channel) {
         MessageDecoder.removeTransmitHistogram(channel);
@@ -178,7 +195,7 @@ class NettyServer implements IConnection {
     /**
      * close all channels, and release resources
      */
-    public synchronized void close() {
+    public void close() {
         LOG.info("Begin to shutdown NettyServer");
         if (allChannels != null) {
             new Thread(new Runnable() {
@@ -187,45 +204,47 @@ class NettyServer implements IConnection {
                 public void run() {
                     try {
                         // await(5, TimeUnit.SECONDS)
-                        // sometimes allChannels.close() will block the exit
-                        // thread
+                        // sometimes allChannels.close() will block the exit thread
                         allChannels.close().await(1, TimeUnit.SECONDS);
                         LOG.info("Successfully close all channel");
                         factory.releaseExternalResources();
-                    } catch (Exception e) {
-
+                    } catch (Exception ignored) {
                     }
                     allChannels = null;
                 }
             }).start();
 
-            JStormUtils.sleepMs(1 * 1000);
+            JStormUtils.sleepMs(1000);
         }
         LOG.info("Successfully shutdown NettyServer");
     }
 
     @Override
     public void send(List<TaskMessage> messages) {
-        throw new UnsupportedOperationException("Server connection should not send any messages");
+        throw new UnsupportedOperationException("Server connection should not send any message");
     }
 
     @Override
     public void send(TaskMessage message) {
-        throw new UnsupportedOperationException("Server connection should not send any messages");
+        throw new UnsupportedOperationException("Server connection should not send any message");
+    }
+
+    @Override
+    public void sendDirect(TaskMessage message) {
+        throw new UnsupportedOperationException("Server connection should not send any message");
     }
 
     @Override
     public boolean isClosed() {
-        // TODO Auto-generated method stub
         return false;
     }
 
-    public boolean isSyncMode() {
-        return isSyncMode;
+    @Override
+    public boolean available(int taskId) {
+        return true;
     }
 
-    @Override
-    public boolean available() {
-        return true;
+    public StormChannelGroup getChannelGroup() {
+        return allChannels;
     }
 }

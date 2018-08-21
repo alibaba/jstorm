@@ -17,11 +17,13 @@
  */
 package com.alibaba.jstorm.daemon.supervisor;
 
+import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.common.metric.AsmGauge;
 import com.alibaba.jstorm.metric.JStormMetrics;
 import com.alibaba.jstorm.metric.JStormMetricsReporter;
 import com.alibaba.jstorm.metric.MetricDef;
 import com.alibaba.jstorm.metric.MetricType;
+import com.alibaba.jstorm.utils.LinuxResource;
 import com.codahale.metrics.Gauge;
 import java.io.IOException;
 import java.util.HashMap;
@@ -49,11 +51,9 @@ import com.alibaba.jstorm.utils.PathUtils;
  * @author Johnfang (xiaojian.fxj@alibaba-inc.com)
  */
 public class SupervisorManger extends ShutdownWork implements SupervisorDaemon, DaemonCommon, Runnable {
-
     private static final Logger LOG = LoggerFactory.getLogger(SupervisorManger.class);
 
     // private Supervisor supervisor;
-
     private final Map conf;
 
     private final String supervisorId;
@@ -61,7 +61,6 @@ public class SupervisorManger extends ShutdownWork implements SupervisorDaemon, 
     private final AtomicBoolean shutdown;
 
     private final Vector<AsyncLoopThread> threads;
-
 
     private final EventManager eventManager;
 
@@ -89,6 +88,12 @@ public class SupervisorManger extends ShutdownWork implements SupervisorDaemon, 
         this.metricsReporter = new JStormMetricsReporter(this);
         this.metricsReporter.init();
 
+        registerSupervisorMetrics();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(this));
+    }
+
+    private void registerSupervisorMetrics() {
         JStormMetrics.registerWorkerMetric(
                 JStormMetrics.workerMetricName(MetricDef.CPU_USED_RATIO, MetricType.GAUGE),
                 new AsmGauge(new Gauge<Double>() {
@@ -98,6 +103,10 @@ public class SupervisorManger extends ShutdownWork implements SupervisorDaemon, 
                     }
                 }));
 
+        String duHome = ConfigExtension.getDuHome(conf);
+        if (duHome != null) {
+            LinuxResource.setDuHome(duHome);
+        }
         JStormMetrics.registerWorkerMetric(
                 JStormMetrics.workerMetricName(MetricDef.DISK_USAGE, MetricType.GAUGE),
                 new AsmGauge(new Gauge<Double>() {
@@ -116,7 +125,49 @@ public class SupervisorManger extends ShutdownWork implements SupervisorDaemon, 
                     }
                 }));
 
-        Runtime.getRuntime().addShutdownHook(new Thread(this));
+        JStormMetrics.registerWorkerMetric(
+                JStormMetrics.workerMetricName(MetricDef.NETRECVSPEED, MetricType.GAUGE),
+                new AsmGauge(new Gauge<Double>() {
+                    Long lastRecvCount = LinuxResource.getNetRevSendCount().getFirst();
+                    Long lastCalTime = System.currentTimeMillis();
+
+                    @Override
+                    public Double getValue() {
+                        Long nowRecvCount = LinuxResource.getNetRevSendCount().getFirst();
+                        Long nowCalTime = System.currentTimeMillis();
+                        long deltaValue = nowRecvCount - lastRecvCount;
+                        long deltaTime = nowCalTime - lastCalTime;
+                        lastRecvCount = nowRecvCount;
+                        lastCalTime = nowCalTime;
+                        double ret = 0.0;
+                        if (deltaTime > 0) {
+                            ret = deltaValue / (double) deltaTime * 1000d;
+                        }
+                        return ret;
+                    }
+                }));
+
+        JStormMetrics.registerWorkerMetric(
+                JStormMetrics.workerMetricName(MetricDef.NETSENDSPEED, MetricType.GAUGE),
+                new AsmGauge(new Gauge<Double>() {
+                    Long lastSendCount = LinuxResource.getNetRevSendCount().getSecond();
+                    Long lastCalTime = System.currentTimeMillis();
+
+                    @Override
+                    public Double getValue() {
+                        Long nowSendCount = LinuxResource.getNetRevSendCount().getSecond();
+                        Long nowCalTime = System.currentTimeMillis();
+                        long deltaValue = nowSendCount - lastSendCount;
+                        long deltaTime = nowCalTime - lastCalTime;
+                        lastSendCount = nowSendCount;
+                        lastCalTime = nowCalTime;
+                        double ret = 0.0;
+                        if (deltaTime > 0) {
+                            ret = deltaValue / (double) deltaTime * 1000d;
+                        }
+                        return ret;
+                    }
+                }));
     }
 
     @Override
@@ -158,11 +209,11 @@ public class SupervisorManger extends ShutdownWork implements SupervisorDaemon, 
 
         isFinishShutdown = true;
 
-        JStormUtils.halt_process(0, "!!!Shutdown!!!");
+        JStormUtils.halt_process(0, "!!!Shutdown supervisor!!!");
     }
 
     @Override
-    public void ShutdownAllWorkers() {
+    public void shutdownAllWorkers() {
         LOG.info("Begin to shutdown all workers");
         String path;
         try {
@@ -203,10 +254,7 @@ public class SupervisorManger extends ShutdownWork implements SupervisorDaemon, 
                 return false;
             }
         }
-        if (eventManager.waiting()) {
-            return false;
-        }
-        return true;
+        return !eventManager.waiting();
     }
 
     public void run() {

@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
+ * <p>
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,21 +21,23 @@ import backtype.storm.Config;
 import backtype.storm.Constants;
 import backtype.storm.task.IBolt;
 import backtype.storm.task.OutputCollector;
-import backtype.storm.tuple.BatchTuple;
+import backtype.storm.topology.IRichBatchBolt;
+import backtype.storm.tuple.MessageId;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.TupleExt;
+import backtype.storm.tuple.TupleImplExt;
 
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.cluster.Common;
-import com.alibaba.jstorm.daemon.worker.timer.BackpressureCheckTrigger;
 import com.alibaba.jstorm.daemon.worker.timer.TickTupleTrigger;
 import com.alibaba.jstorm.daemon.worker.timer.TimerConstants;
 import com.alibaba.jstorm.daemon.worker.timer.TimerTrigger;
 import com.alibaba.jstorm.metric.JStormMetrics;
 import com.alibaba.jstorm.task.*;
 import com.alibaba.jstorm.task.acker.Acker;
-import com.alibaba.jstorm.task.backpressure.BackpressureTrigger;
+import com.alibaba.jstorm.task.master.ctrlevent.TopoMasterCtrlEvent;
 import com.alibaba.jstorm.utils.JStormUtils;
+import com.alibaba.jstorm.utils.Pair;
 import com.alibaba.jstorm.utils.RotatingMap;
 import com.alibaba.jstorm.utils.TimeUtils;
 import com.lmax.disruptor.EventHandler;
@@ -43,33 +45,22 @@ import com.lmax.disruptor.EventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
 
 /**
- * BoltExecutor
- *
  * @author yannian/Longda
  */
 public class BoltExecutors extends BaseExecutors implements EventHandler {
     private static Logger LOG = LoggerFactory.getLogger(BoltExecutors.class);
 
     protected IBolt bolt;
-
-    protected RotatingMap<Tuple, Long> tuple_start_times;
-
+    protected RotatingMap<Tuple, Long> tupleStartTimes;
     private int ackerNum = 0;
-
     // internal outputCollector is BoltCollector
     private OutputCollector outputCollector;
 
-    /**
-     * execute time, used for backpressure, in ms.
-     */
-    private volatile double exeTime;
-
-    private BackpressureTrigger backpressureTrigger;
     private boolean isSystemBolt;
 
     //, IBolt _bolt, TaskTransfer _transfer_fn, Map<Integer, DisruptorQueue> innerTaskTransfer, Map storm_conf,
@@ -81,33 +72,43 @@ public class BoltExecutors extends BaseExecutors implements EventHandler {
         this.bolt = (IBolt) task.getTaskObj();
 
         // create TimeCacheMap
-        this.tuple_start_times = new RotatingMap<Tuple, Long>(Acker.TIMEOUT_BUCKET_NUM);
+        this.tupleStartTimes = new RotatingMap<>(Acker.TIMEOUT_BUCKET_NUM);
         this.ackerNum = JStormUtils.parseInt(storm_conf.get(Config.TOPOLOGY_ACKER_EXECUTORS));
 
         // create BoltCollector
-        BoltCollector output_collector = null;
+        BoltCollector outputCollector;
         if (ConfigExtension.isTaskBatchTuple(storm_conf)) {
-            output_collector = new BoltBatchCollector(task, tuple_start_times, message_timeout_secs);
+            outputCollector = new BoltBatchCollector(task, tupleStartTimes, messageTimeoutSecs);
         } else {
-            output_collector = new BoltCollector(task, tuple_start_times, message_timeout_secs);
+            outputCollector = new BoltCollector(task, tupleStartTimes, messageTimeoutSecs);
         }
-        outputCollector = new OutputCollector(output_collector);
-        taskHbTrigger.setBoltOutputCollector(output_collector);
+        this.outputCollector = new OutputCollector(outputCollector);
 
-        Object tickFrequence = storm_conf.get(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS);
+        //this task don't continue until it bulid connection with topologyMaster
+        Integer topologyId = sysTopologyCtx.getTopologyMasterId();
+        List<Integer> localWorkerTasks = sysTopologyCtx.getThisWorkerTasks();
+        if (topologyId != 0 && !localWorkerTasks.contains(topologyId)) {
+            while (getConnection(topologyId) == null) {
+                JStormUtils.sleepMs(10);
+                LOG.info("this task still is building connection with topology Master");
+            }
+        }
+
+        taskHbTrigger.setBoltOutputCollector(outputCollector);
+        taskHbTrigger.register();
+        Object tickFrequency = storm_conf.get(Config.TOPOLOGY_TICK_TUPLE_FREQ_MS);
+        if (tickFrequency == null) {
+            tickFrequency = storm_conf.get(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS);
+            if (tickFrequency != null)
+                tickFrequency = JStormUtils.parseInt(tickFrequency) * 1000;
+        }
+
         isSystemBolt = Common.isSystemComponent(componentId);
-        if (tickFrequence != null && !isSystemBolt) {
-            Integer frequence = JStormUtils.parseInt(tickFrequence);
-            TickTupleTrigger tickTupleTrigger = new TickTupleTrigger(sysTopologyCtx, frequence, idStr + Constants.SYSTEM_TICK_STREAM_ID, controlQueue);
+        if (tickFrequency != null && !isSystemBolt) {
+            Integer frequency = JStormUtils.parseInt(tickFrequency);
+            tickTupleTrigger = new TickTupleTrigger(
+                    sysTopologyCtx, frequency, idStr + Constants.SYSTEM_TICK_STREAM_ID, controlQueue);
             tickTupleTrigger.register();
-        }
-
-        if (!isSystemBolt) {
-            backpressureTrigger = new BackpressureTrigger(task, this, storm_conf, output_collector);
-            int backpressureCheckFrequence = ConfigExtension.getBackpressureCheckIntervl(storm_conf);
-            BackpressureCheckTrigger backpressureCheckTrigger =
-                    new BackpressureCheckTrigger(30, backpressureCheckFrequence, idStr + " backpressure check trigger", backpressureTrigger);
-            backpressureCheckTrigger.register(TimeUnit.MILLISECONDS);
         }
 
         LOG.info("Successfully create BoltExecutors " + idStr);
@@ -116,6 +117,9 @@ public class BoltExecutors extends BaseExecutors implements EventHandler {
     @Override
     public void init() {
         bolt.prepare(storm_conf, userTopologyCtx, outputCollector);
+        //send the HbMsg to TM after finish prepare
+        taskHbTrigger.updateExecutorStatus(TaskStatus.RUN);
+        LOG.info("Successfully inited bolt.");
     }
 
     @Override
@@ -130,16 +134,19 @@ public class BoltExecutors extends BaseExecutors implements EventHandler {
         }
         while (!taskStatus.isShutdown()) {
             try {
-                //if (backpressureTrigger != null)
-                //    backpressureTrigger.checkAndTrigger();
-                exeQueue.consumeBatchWhenAvailable(this);
-                processControlEvent();
+                consumeExecuteQueue();
             } catch (Throwable e) {
                 if (!taskStatus.isShutdown()) {
-                    LOG.error(idStr + " bolt exeutor  error", e);
+                    LOG.error(idStr + " bolt execute error", e);
                 }
             }
         }
+    }
+
+    public void consumeExecuteQueue() {
+        //Asynchronous release the queue, but still is single thread
+        controlQueue.consumeBatch(this);
+        exeQueue.consumeBatchWhenAvailable(this);
     }
 
     @Override
@@ -148,67 +155,108 @@ public class BoltExecutors extends BaseExecutors implements EventHandler {
             return;
         }
 
-        long start = System.currentTimeMillis();
-        try {
-            if (event instanceof Tuple) {
-                processControlEvent();
-                processTupleEvent((Tuple) event);
-            } else if (event instanceof BatchTuple) {
-                for (Tuple tuple : ((BatchTuple) event).getTuples()) {
-                    processControlEvent();
-                    processTupleEvent((Tuple) tuple);
+        if (event instanceof Tuple) {
+            Tuple tuple = (Tuple) event;
+            int tupleNum = 1;
+            Long startTime = System.currentTimeMillis();
+            long lifeCycleStart = ((TupleExt) tuple).getCreationTimeStamp();
+
+            if (((TupleExt) tuple).isBatchTuple()) {
+                List<Object> values = ((Tuple) event).getValues();
+                tupleNum = values.size();
+                if (bolt instanceof IRichBatchBolt) {
+                    processTupleBatchEvent(tuple);
+                } else {
+                    for (Object value : values) {
+                        Pair<MessageId, List<Object>> val = (Pair<MessageId, List<Object>>) value;
+                        TupleImplExt t = new TupleImplExt(
+                                sysTopologyCtx, val.getSecond(), val.getFirst(), ((TupleImplExt) event));
+                        processTupleEvent(t);
+                    }
                 }
-            } else if (event instanceof TimerTrigger.TimerEvent) {
-                processTimerEvent((TimerTrigger.TimerEvent) event);
             } else {
-                LOG.warn("Bolt executor received unknown message");
+                processTupleEvent(tuple);
             }
-        } finally {
-            if (JStormMetrics.enabled) {
-                exeTime = System.currentTimeMillis() - start;
+            taskStats.tupleLifeCycle(tuple.getSourceComponent(), tuple.getSourceStreamId(), lifeCycleStart, startTime, tupleNum);
+            taskStats.recv_tuple(tuple.getSourceComponent(), tuple.getSourceStreamId(), tupleNum);
+            if (ackerNum == 0) {
+                // only when acker is disabled
+                // get tuple process latency
+                if (JStormMetrics.enabled) {
+                    long endTime = System.currentTimeMillis();
+                    taskStats.update_bolt_acked_latency(
+                            tuple.getSourceComponent(), tuple.getSourceStreamId(), startTime, endTime, tupleNum);
+                }
             }
+        } else if (event instanceof TimerTrigger.TimerEvent) {
+            processTimerEvent((TimerTrigger.TimerEvent) event);
+        } else {
+            LOG.warn("Bolt executor received an unknown message");
         }
     }
 
-    private void processTupleEvent(Tuple tuple) {
-        task_stats.recv_tuple(tuple.getSourceComponent(), tuple.getSourceStreamId());
-        tuple_start_times.put(tuple, System.currentTimeMillis());
-
+    private void processTupleBatchEvent(Tuple tuple) {
         try {
-            if (!isSystemBolt && tuple.getSourceStreamId().equals(Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID)) {
-                backpressureTrigger.handle(tuple);
+            if ((!isSystemBolt && tuple.getSourceStreamId().equals(Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID)) ||
+                    tuple.getSourceStreamId().equals(Common.TOPOLOGY_MASTER_REGISTER_METRICS_RESP_STREAM_ID)) {
+                if (tuple.getValues().get(0) instanceof Pair) {
+                    for (Object value : tuple.getValues()) {
+                        Pair<MessageId, List<Object>> val = (Pair<MessageId, List<Object>>) value;
+                        TupleImplExt t = new TupleImplExt(
+                                sysTopologyCtx, val.getSecond(), val.getFirst(), ((TupleImplExt) tuple));
+                        processTupleEvent(t);
+                    }
+                }
             } else {
                 bolt.execute(tuple);
             }
         } catch (Throwable e) {
             error = e;
             LOG.error("bolt execute error ", e);
-            report_error.report(e);
+            reportError.report(e);
+        }
+    }
+
+    private void processTupleEvent(Tuple tuple) {
+        if (tuple.getMessageId() != null && tuple.getMessageId().isAnchored()) {
+            tupleStartTimes.put(tuple, System.currentTimeMillis());
         }
 
-        if (ackerNum == 0) {
-            // only when acker is disabled
-            // get tuple process latency
-            Long latencyStart = (Long) tuple_start_times.remove(tuple);
-            if (latencyStart != null && JStormMetrics.enabled) {
-                long endTime = System.currentTimeMillis();
-                long lifeCycleStart = ((TupleExt) tuple).getCreationTimeStamp();
-                task_stats.bolt_acked_tuple(
-                        tuple.getSourceComponent(), tuple.getSourceStreamId(), latencyStart, lifeCycleStart, endTime);
+        try {
+            // for watermarks, just forward to downstream operators
+            if (!isSystemBolt && Common.WATERMARK_STREAM_ID.equals(tuple.getSourceStreamId())) {
+                outputCollector.emit(Common.WATERMARK_STREAM_ID, tuple.getValues());
             }
+
+            if (!isSystemBolt && tuple.getSourceStreamId().equals(Common.TOPOLOGY_MASTER_CONTROL_STREAM_ID)) {
+                TopoMasterCtrlEvent event = (TopoMasterCtrlEvent) tuple.getValue(0);
+                if (event.isTransactionEvent()) {
+                    bolt.execute(tuple);
+                } else {
+                    LOG.warn("Received an unexpected control event, {}", event);
+                }
+            } else if (tuple.getSourceStreamId().equals(Common.TOPOLOGY_MASTER_REGISTER_METRICS_RESP_STREAM_ID)) {
+                this.metricsReporter.updateMetricMeta((Map<String, Long>) tuple.getValue(0));
+            } else {
+                bolt.execute(tuple);
+            }
+        } catch (Throwable e) {
+            error = e;
+            LOG.error("bolt execute error ", e);
+            reportError.report(e);
         }
     }
 
     private void processTimerEvent(TimerTrigger.TimerEvent event) {
         switch (event.getOpCode()) {
             case TimerConstants.ROTATING_MAP: {
-                Map<Tuple, Long> timeoutMap = tuple_start_times.rotate();
+                Map<Tuple, Long> timeoutMap = tupleStartTimes.rotate();
 
                 if (ackerNum > 0) {
                     // only when acker is enable
                     for (Entry<Tuple, Long> entry : timeoutMap.entrySet()) {
                         Tuple input = entry.getKey();
-                        task_stats.bolt_failed_tuple(input.getSourceComponent(), input.getSourceStreamId());
+                        taskStats.bolt_failed_tuple(input.getSourceComponent(), input.getSourceStreamId());
                     }
                 }
                 break;
@@ -220,7 +268,7 @@ public class BoltExecutors extends BaseExecutors implements EventHandler {
                 } catch (Throwable e) {
                     error = e;
                     LOG.error("bolt execute error ", e);
-                    report_error.report(e);
+                    reportError.report(e);
                 }
                 break;
             }
@@ -229,7 +277,7 @@ public class BoltExecutors extends BaseExecutors implements EventHandler {
                 break;
             }
             default: {
-                LOG.warn("Receive unsupported timer event, opcode=" + event.getOpCode());
+                LOG.warn("Receive an unsupported timer event, opcode=" + event.getOpCode());
                 break;
             }
         }
@@ -241,21 +289,13 @@ public class BoltExecutors extends BaseExecutors implements EventHandler {
         if (event != null) {
             if (event instanceof TimerTrigger.TimerEvent) {
                 processTimerEvent((TimerTrigger.TimerEvent) event);
-                LOG.debug("Received one event from control queue");
+                LOG.debug("Received an event from control queue");
             } else if (event instanceof Tuple) {
                 processTupleEvent((Tuple) event);
-            } else if (event instanceof BatchTuple) {
-                for (Tuple tuple : ((BatchTuple) event).getTuples()) {
-                    processTupleEvent(tuple);
-                }
             } else {
-                LOG.warn("Received unknown control event, " + event.getClass().getName());
+                LOG.warn("Received an unknown control event, " + event.getClass().getName());
             }
         }
-    }
-
-    public double getExecuteTime() {
-        return exeTime;
     }
 
     @Override

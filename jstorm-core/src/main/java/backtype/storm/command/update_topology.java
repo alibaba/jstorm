@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * update a topology dynamically
+ *
  * @author xiaojian.fxj
  * @since 2.1.0
  */
@@ -52,19 +54,18 @@ public class update_topology {
             r.addOption((Option) o);
 
         Option jar = OptionBuilder.withArgName("path").hasArg()
-                .withDescription("topology jar of the submitted topology")
-                .create("jar");
+                .withDescription("topology jar of the submitted topology").create("jar");
         r.addOption(jar);
 
         Option conf = OptionBuilder.withArgName("configuration file").hasArg()
-                .withDescription("an application configuration file")
-                .create("conf");
+                .withDescription("an application configuration file").create("conf");
+
         r.addOption(conf);
+
         return r;
     }
 
-    private static void updateTopology(String topologyName, String pathJar,
-                                       String pathConf) {
+    private static void updateTopology(String topologyName, String pathJar, String pathConf) {
         NimbusClient client;
         Map loadMap;
         if (pathConf != null) {
@@ -79,10 +80,10 @@ public class update_topology {
         client = NimbusClient.getConfiguredClient(conf);
         try {
             // update jar
-            String uploadLocation = null;
+            String uploadLocation;
+            String path = client.getClient().beginFileUpload();
             if (pathJar != null) {
-                System.out.println("Jar update to master yet. Submitting jar of " + pathJar);
-                String path = client.getClient().beginFileUpload();
+                System.out.println("Jar has not been submitted to master yet. Submitting jar of " + pathJar);
                 String[] pathCache = path.split("/");
                 uploadLocation = path + "/stormjar-" + pathCache[pathCache.length - 1] + ".jar";
                 List<String> lib = (List<String>) conf.get(GenericOptionsParser.TOPOLOGY_LIB_NAME);
@@ -102,7 +103,7 @@ public class update_topology {
             String jsonConf = Utils.to_json(loadMap);
             System.out.println("New configuration:\n" + jsonConf);
 
-            client.getClient().updateTopology(topologyName, uploadLocation, jsonConf);
+            client.getClient().updateTopology(topologyName, path, jsonConf);
 
             System.out.println("Successfully submit command update " + topologyName);
 
@@ -114,7 +115,6 @@ public class update_topology {
                 client.close();
             }
         }
-
     }
 
     public static void main(String[] args) {

@@ -18,6 +18,7 @@
 package com.alibaba.jstorm.daemon.worker.timer;
 
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -41,27 +42,32 @@ public class TimerTrigger implements Runnable {
     protected String name;
     protected int opCode;
     protected int firstTime;
-    protected int frequence;
+    protected int frequency;
     protected DisruptorQueue queue = null;
     protected Object object;
     protected boolean block = true;
+    private ScheduledFuture<?> future;
 
     public void register() {
         register(TimeUnit.SECONDS);
     }
 
     public void register(TimeUnit timeUnit) {
-        threadPool.scheduleAtFixedRate(this, firstTime, frequence, timeUnit);
+        future = threadPool.scheduleAtFixedRate(this, firstTime, frequency, timeUnit);
         LOG.info("Successfully register timer " + this);
     }
 
-    public void updateObject() {
+    public void unregister() {
+        if (future != null) {
+            future.cancel(true);
+        }
+    }
 
+    public void updateObject() {
     }
 
     @Override
     public void run() {
-
         try {
             updateObject();
 
@@ -73,15 +79,14 @@ public class TimerTrigger implements Runnable {
             TimerEvent event = new TimerEvent(opCode, object);
             queue.publish(event, block);
         } catch (InsufficientCapacityException e) {
-            LOG.warn("Failed to public timer event to " + name);
+            LOG.warn("Failed to publish timer event to " + name);
             return;
         } catch (Exception e) {
-            LOG.warn("Failed to public timer event to " + name, e);
+            LOG.warn("Failed to publish timer event to " + name, e);
             return;
         }
 
-        LOG.debug(" Trigger timer event to " + name);
-
+        LOG.debug("Trigger timer event to " + name);
     }
 
     public String getName() {
@@ -108,12 +113,12 @@ public class TimerTrigger implements Runnable {
         this.firstTime = firstTime;
     }
 
-    public int getFrequence() {
-        return frequence;
+    public int getFrequency() {
+        return frequency;
     }
 
-    public void setFrequence(int frequence) {
-        this.frequence = frequence;
+    public void setFrequency(int frequency) {
+        this.frequency = frequency;
     }
 
     public DisruptorQueue getQueue() {

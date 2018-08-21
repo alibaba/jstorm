@@ -27,10 +27,10 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 /**
- * A map from txid to a value. Automatically deletes txids that have been committed.
+ * A map of [txid, value]. Automatically deletes txids that have been committed.
  */
 public class RotatingTransactionalState {
-    public static interface StateInitializer {
+    public interface StateInitializer {
         Object init(BigInteger txid, Object lastState);
     }
 
@@ -38,7 +38,7 @@ public class RotatingTransactionalState {
     private String _subdir;
     private boolean _strictOrder;
 
-    private TreeMap<BigInteger, Object> _curr = new TreeMap<BigInteger, Object>();
+    private TreeMap<BigInteger, Object> _curr = new TreeMap<>();
 
     public RotatingTransactionalState(TransactionalState state, String subdir, boolean strictOrder) {
         _state = state;
@@ -82,13 +82,15 @@ public class RotatingTransactionalState {
 
             if (_strictOrder) {
                 if (prev == null && !txid.equals(TransactionalSpoutCoordinator.INIT_TXID)) {
-                    throw new IllegalStateException("Trying to initialize transaction for which there should be a previous state");
+                    throw new IllegalStateException(
+                            "Trying to initialize transaction for which there should be a previous state");
                 }
                 if (prev != null && !prev.equals(txid.subtract(BigInteger.ONE))) {
                     throw new IllegalStateException("Expecting previous txid state to be the previous transaction");
                 }
                 if (!afterMap.isEmpty()) {
-                    throw new IllegalStateException("Expecting tx state to be initialized in strict order but there are txids after that have state");
+                    throw new IllegalStateException(
+                            "Expecting tx state to be initialized in strict order but there are txids after that have state");
                 }
             }
 
@@ -127,7 +129,7 @@ public class RotatingTransactionalState {
     }
 
     public void cleanupBefore(BigInteger txid) {
-        Set<BigInteger> toDelete = new HashSet<BigInteger>();
+        Set<BigInteger> toDelete = new HashSet<>();
         toDelete.addAll(_curr.headMap(txid).keySet());
         for (BigInteger tx : toDelete) {
             _curr.remove(tx);

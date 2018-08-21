@@ -1,0 +1,312 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    
+    <parent>
+        <groupId>com.alibaba.jstorm</groupId>
+        <artifactId>performance-test</artifactId>
+        <version>1.0</version>
+        <relativePath>../</relativePath>
+    </parent>
+
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>performance-test-flink</artifactId>
+    
+    <packaging>jar</packaging>
+
+    <name>${project.artifactId}-${project.version}</name>
+
+
+
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-java</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-streaming-java_2.10</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-clients_2.10</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.3.5</version>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>fastjson</artifactId>
+            <version>1.2.6</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>18.0</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- We use the maven-shade plugin to create a fat jar that contains all dependencies
+            except flink and it's transitive dependencies. The resulting fat-jar can be executed
+            on a cluster. Change the value of Program-Class if your program entry point changes. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>2.4.1</version>
+                <executions>
+                    <!-- Run shade goal on package phase -->
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <artifactSet>
+                                <excludes>
+                                    <!-- This list contains all dependencies of flink-dist
+                                    Everything else will be packaged into the fat-jar
+                                    -->
+                                    <exclude>org.apache.flink:flink-shaded-*</exclude>
+                                    <!--<exclude>org.apache.flink:flink-core</exclude>-->
+                                    <exclude>org.apache.flink:flink-java</exclude>
+                                    <exclude>org.apache.flink:flink-scala</exclude>
+                                    <exclude>org.apache.flink:flink-runtime</exclude>
+                                    <exclude>org.apache.flink:flink-optimizer</exclude>
+                                    <exclude>org.apache.flink:flink-clients</exclude>
+                                    <exclude>org.apache.flink:flink-avro</exclude>
+                                    <exclude>org.apache.flink:flink-java-examples</exclude>
+                                    <exclude>org.apache.flink:flink-scala-examples</exclude>
+                                    <exclude>org.apache.flink:flink-streaming-examples</exclude>
+                                    <exclude>org.apache.flink:flink-streaming-java</exclude>
+
+                                    <!-- Also exclude very big transitive dependencies of Flink
+
+                                    WARNING: You have to remove these excludes if your code relies on other
+                                    versions of these dependencies.
+
+                                    -->
+                                    <exclude>org.scala-lang:scala-library</exclude>
+                                    <exclude>org.scala-lang:scala-compiler</exclude>
+                                    <exclude>org.scala-lang:scala-reflect</exclude>
+                                    <exclude>com.amazonaws:aws-java-sdk</exclude>
+                                    <exclude>com.typesafe.akka:akka-actor_*</exclude>
+                                    <exclude>com.typesafe.akka:akka-remote_*</exclude>
+                                    <exclude>com.typesafe.akka:akka-slf4j_*</exclude>
+                                    <exclude>io.netty:netty-all</exclude>
+                                    <exclude>io.netty:netty</exclude>
+                                    <exclude>org.eclipse.jetty:jetty-server</exclude>
+                                    <exclude>org.eclipse.jetty:jetty-continuation</exclude>
+                                    <exclude>org.eclipse.jetty:jetty-http</exclude>
+                                    <exclude>org.eclipse.jetty:jetty-io</exclude>
+                                    <exclude>org.eclipse.jetty:jetty-util</exclude>
+                                    <exclude>org.eclipse.jetty:jetty-security</exclude>
+                                    <exclude>org.eclipse.jetty:jetty-servlet</exclude>
+                                    <exclude>commons-fileupload:commons-fileupload</exclude>
+                                    <exclude>org.apache.avro:avro</exclude>
+                                    <exclude>commons-collections:commons-collections</exclude>
+                                    <exclude>org.codehaus.jackson:jackson-core-asl</exclude>
+                                    <exclude>org.codehaus.jackson:jackson-mapper-asl</exclude>
+                                    <exclude>com.thoughtworks.paranamer:paranamer</exclude>
+                                    <exclude>org.xerial.snappy:snappy-java</exclude>
+                                    <exclude>org.apache.commons:commons-compress</exclude>
+                                    <exclude>org.tukaani:xz</exclude>
+                                    <exclude>com.esotericsoftware.kryo:kryo</exclude>
+                                    <exclude>com.esotericsoftware.minlog:minlog</exclude>
+                                    <exclude>org.objenesis:objenesis</exclude>
+                                    <exclude>com.twitter:chill_*</exclude>
+                                    <exclude>com.twitter:chill-java</exclude>
+                                    <exclude>com.twitter:chill-avro_*</exclude>
+                                    <exclude>com.twitter:chill-bijection_*</exclude>
+                                    <exclude>com.twitter:bijection-core_*</exclude>
+                                    <exclude>com.twitter:bijection-avro_*</exclude>
+                                    <exclude>commons-lang:commons-lang</exclude>
+                                    <exclude>junit:junit</exclude>
+                                    <exclude>de.javakaffee:kryo-serializers</exclude>
+                                    <exclude>joda-time:joda-time</exclude>
+                                    <exclude>org.apache.commons:commons-lang3</exclude>
+                                    <exclude>org.slf4j:slf4j-api</exclude>
+                                    <exclude>org.slf4j:slf4j-log4j12</exclude>
+                                    <exclude>log4j:log4j</exclude>
+                                    <!--<exclude>org.apache.commons:commons-math</exclude>-->
+                                    <exclude>org.apache.sling:org.apache.sling.commons.json</exclude>
+                                    <!--<exclude>commons-logging:commons-logging</exclude>-->
+                                    <!--<exclude>org.apache.httpcomponents:httpclient</exclude>-->
+                                    <!--<exclude>org.apache.httpcomponents:httpcore</exclude>-->
+                                    <exclude>commons-codec:commons-codec</exclude>
+                                    <exclude>com.fasterxml.jackson.core:jackson-core</exclude>
+                                    <exclude>com.fasterxml.jackson.core:jackson-databind</exclude>
+                                    <exclude>com.fasterxml.jackson.core:jackson-annotations</exclude>
+                                    <exclude>org.codehaus.jettison:jettison</exclude>
+                                    <exclude>stax:stax-api</exclude>
+                                    <exclude>com.typesafe:config</exclude>
+                                    <exclude>org.uncommons.maths:uncommons-maths</exclude>
+                                    <exclude>com.github.scopt:scopt_*</exclude>
+                                    <exclude>org.mortbay.jetty:servlet-api</exclude>
+                                    <exclude>commons-io:commons-io</exclude>
+                                    <exclude>commons-cli:commons-cli</exclude>
+                                </excludes>
+                            </artifactSet>
+                            <filters>
+                                <filter>
+                                    <artifact>org.apache.flink:*</artifact>
+                                    <excludes>
+                                        <exclude>org/apache/flink/shaded/**</exclude>
+                                        <exclude>web-docs/**</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <!-- Do not copy the signatures in the META-INF folder.
+                                    Otherwise, this might cause SecurityExceptions when using the JAR. -->
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <transformers>
+                                <!-- add Main-Class to manifest file -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <!--<mainClass>com.alibaba.flink.performance.test.StreamWordCount</mainClass>-->
+                                    <!--<mainClass>com.alibaba.flink.performance.test.StreamSequence</mainClass>-->
+                                </transformer>
+                            </transformers>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Configure the jar plugin to add the main class as a manifest entry -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>2.5</version>
+                <configuration>
+                    <archive>
+                        <manifestEntries>
+                            <Main-Class>org.apache.flink.quickstart.Job</Main-Class>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.1</version>
+                <configuration>
+                    <source>1.7</source> <!-- If you want to use Java 8, change this to "1.8" -->
+                    <target>1.7</target> <!-- If you want to use Java 8, change this to "1.8" -->
+                </configuration>
+            </plugin>
+        </plugins>
+
+
+        <!-- If you want to use Java 8 Lambda Expressions uncomment the following lines -->
+        <!--
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <source>1.8</source>
+                        <target>1.8</target>
+                        <compilerId>jdt</compilerId>
+                    </configuration>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.eclipse.tycho</groupId>
+                            <artifactId>tycho-compiler-jdt</artifactId>
+                            <version>0.21.0</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.eclipse.m2e</groupId>
+                    <artifactId>lifecycle-mapping</artifactId>
+                    <version>1.0.0</version>
+                    <configuration>
+                        <lifecycleMappingMetadata>
+                            <pluginExecutions>
+                                <pluginExecution>
+                                    <pluginExecutionFilter>
+                                        <groupId>org.apache.maven.plugins</groupId>
+                                        <artifactId>maven-assembly-plugin</artifactId>
+                                        <versionRange>[2.4,)</versionRange>
+                                        <goals>
+                                            <goal>single</goal>
+                                        </goals>
+                                    </pluginExecutionFilter>
+                                    <action>
+                                        <ignore/>
+                                    </action>
+                                </pluginExecution>
+                                <pluginExecution>
+                                    <pluginExecutionFilter>
+                                        <groupId>org.apache.maven.plugins</groupId>
+                                        <artifactId>maven-compiler-plugin</artifactId>
+                                        <versionRange>[3.1,)</versionRange>
+                                        <goals>
+                                            <goal>testCompile</goal>
+                                            <goal>compile</goal>
+                                        </goals>
+                                    </pluginExecutionFilter>
+                                    <action>
+                                        <ignore/>
+                                    </action>
+                                </pluginExecution>
+                            </pluginExecutions>
+                        </lifecycleMappingMetadata>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        -->
+
+    </build>
+    <profiles>
+        <profile>
+            <!-- A profile that does everyting correctly:
+            We set the Flink dependencies to provided -->
+            <id>build-jar</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>org.apache.flink</groupId>
+                    <artifactId>flink-java</artifactId>
+                    <version>${flink.version}</version>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.flink</groupId>
+                    <artifactId>flink-streaming-java_2.10</artifactId>
+                    <version>${flink.version}</version>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.flink</groupId>
+                    <artifactId>flink-clients_2.10</artifactId>
+                    <version>${flink.version}</version>
+                    <scope>provided</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
+</project>

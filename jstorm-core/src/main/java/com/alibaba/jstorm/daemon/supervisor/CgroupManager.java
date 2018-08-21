@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +31,6 @@ import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.container.CgroupCenter;
 import com.alibaba.jstorm.container.Hierarchy;
 import com.alibaba.jstorm.container.SubSystemType;
-import com.alibaba.jstorm.utils.SystemOperation;
 import com.alibaba.jstorm.container.cgroup.CgroupCommon;
 import com.alibaba.jstorm.container.cgroup.core.CgroupCore;
 import com.alibaba.jstorm.container.cgroup.core.CpuCore;
@@ -40,35 +40,39 @@ import com.alibaba.jstorm.utils.JStormUtils;
  * @author Johnfang (xiaojian.fxj@alibaba-inc.com)
  */
 public class CgroupManager {
-
-    public static final Logger LOG = LoggerFactory.getLogger(CgroupManager.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CgroupManager.class);
 
     public static final String JSTORM_HIERARCHY_NAME = "jstorm_cpu";
-
     public static final int ONE_CPU_SLOT = 1024;
 
     private CgroupCenter center;
-
     private Hierarchy h;
-
     private CgroupCommon rootCgroup;
 
-    private static final String JSTORM_CPU_HIERARCHY_DIR = "/cgroup/cpu";
     private static String rootDir;
+    private static String cgroupBaseDir;
 
     public CgroupManager(Map conf) {
         LOG.info("running on cgroup mode");
 
-        // Cgconfig service is used to create the corresponding cpu hierarchy
-        // "/cgroup/cpu"
+        // Cgconfig service is used to create the corresponding cpu hierarchy "/cgroup/cpu"
+        cgroupBaseDir = ConfigExtension.getCgroupBaseDir(conf);
         rootDir = ConfigExtension.getCgroupRootDir(conf);
-        if (rootDir == null)
-            throw new RuntimeException("Check configuration file. The supervisor.cgroup.rootdir is missing.");
+        if (StringUtils.isBlank(rootDir) || StringUtils.isBlank(cgroupBaseDir)) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("Check configuration file. The setting of ");
+            sb.append(ConfigExtension.CGROUP_BASE_DIR).append(" and ");
+            sb.append(ConfigExtension.CGROUP_ROOT_DIR);
+            sb.append(" are invalid.");
+            throw new RuntimeException(sb.toString());
+        }
 
-        File file = new File(JSTORM_CPU_HIERARCHY_DIR + "/" + rootDir);
+        String realRootDir = cgroupBaseDir + "/" + rootDir;
+        File file = new File(realRootDir);
         if (!file.exists()) {
-            LOG.error(JSTORM_CPU_HIERARCHY_DIR + "/" + rootDir + " is not existing.");
-            throw new RuntimeException("Check if cgconfig service starts or /etc/cgconfig.conf is consistent with configuration file.");
+            LOG.error(realRootDir + " does not exist.");
+            throw new RuntimeException("Check if cgconfig service starts or /etc/cgconfig.conf is " +
+                    "consistent with configuration file.");
         }
         center = CgroupCenter.getInstance();
         if (center == null)
@@ -121,7 +125,7 @@ public class CgroupManager {
     public void shutDownWorker(String workerId, boolean isKilled) {
         CgroupCommon workerGroup = new CgroupCommon(workerId, h, this.rootCgroup);
         try {
-            if (isKilled == false) {
+            if (!isKilled) {
                 for (Integer pid : workerGroup.getTasks()) {
                     JStormUtils.kill(pid);
                 }
@@ -131,7 +135,6 @@ public class CgroupManager {
         } catch (Exception e) {
             LOG.info("No task of " + workerId);
         }
-
     }
 
     public void close() throws IOException {
@@ -141,9 +144,9 @@ public class CgroupManager {
     private void prepareSubSystem() {
         h = center.busy(SubSystemType.cpu);
         if (h == null) {
-            Set<SubSystemType> types = new HashSet<SubSystemType>();
+            Set<SubSystemType> types = new HashSet<>();
             types.add(SubSystemType.cpu);
-            h = new Hierarchy(JSTORM_HIERARCHY_NAME, types, JSTORM_CPU_HIERARCHY_DIR);
+            h = new Hierarchy(JSTORM_HIERARCHY_NAME, types, cgroupBaseDir);
         }
         rootCgroup = new CgroupCommon(rootDir, h, h.getRootCgroups());
     }

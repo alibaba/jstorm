@@ -25,30 +25,30 @@ import org.slf4j.LoggerFactory;
 import com.alibaba.jstorm.utils.JStormUtils;
 
 /**
- * AsyncLoopThread 's runnable
- * 
- * The class wrapper RunnableCallback fn, if occur exception, run killfn
- * 
+ * AsyncLoopThread runnable
+ *
+ * The class wraps RunnableCallback fn, if an exception is thrown, will run killFn
+ *
  * @author yannian
- * 
  */
 public class AsyncLoopRunnable implements Runnable {
     private static Logger LOG = LoggerFactory.getLogger(AsyncLoopRunnable.class);
 
     // set shutdown as false is to
     private static AtomicBoolean shutdown = new AtomicBoolean(false);
+    private AtomicBoolean shutdowned = new AtomicBoolean(false);
 
     public static AtomicBoolean getShutdown() {
         return shutdown;
     }
 
     private RunnableCallback fn;
-    private RunnableCallback killfn;
+    private RunnableCallback killFn;
     private long lastTime = System.currentTimeMillis();
 
-    public AsyncLoopRunnable(RunnableCallback fn, RunnableCallback killfn) {
+    public AsyncLoopRunnable(RunnableCallback fn, RunnableCallback killFn) {
         this.fn = fn;
-        this.killfn = killfn;
+        this.killFn = killFn;
     }
 
     private boolean needQuit(Object rtn) {
@@ -73,14 +73,15 @@ public class AsyncLoopRunnable implements Runnable {
     }
 
     private void shutdown() {
-        fn.postRun();
-        fn.shutdown();
-        LOG.info("Succefully shutdown");
+        if (!shutdowned.getAndSet(true)) {
+            fn.postRun();
+            fn.shutdown();
+            LOG.info("Successfully shutdown");
+        }
     }
 
     @Override
     public void run() {
-
         if (fn == null) {
             LOG.error("fn==null");
             throw new RuntimeException("AsyncLoopRunnable no core function ");
@@ -89,17 +90,15 @@ public class AsyncLoopRunnable implements Runnable {
         fn.preRun();
 
         try {
-            while (shutdown.get() == false) {
-                Exception e = null;
-
+            while (!shutdown.get()) {
                 fn.run();
 
-                if (shutdown.get() == true) {
+                if (shutdown.get()) {
                     shutdown();
                     return;
                 }
 
-                e = fn.error();
+                Exception e = fn.error();
                 if (e != null) {
                     throw e;
                 }
@@ -108,19 +107,14 @@ public class AsyncLoopRunnable implements Runnable {
                     shutdown();
                     return;
                 }
-
             }
         } catch (Throwable e) {
-            if (shutdown.get() == true) {
+            if (shutdown.get()) {
                 shutdown();
-                return;
             } else {
                 LOG.error("Async loop died!!!" + e.getMessage(), e);
-                killfn.execute(e);
+                killFn.execute(e);
             }
-
         }
-
     }
-
 }

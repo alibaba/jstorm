@@ -19,30 +19,25 @@ package com.alibaba.jstorm.message.netty;
 
 import backtype.storm.messaging.ControlMessage;
 import backtype.storm.messaging.TaskMessage;
-
 import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.common.metric.AsmHistogram;
-import com.alibaba.jstorm.common.metric.AsmMeter;
 import com.alibaba.jstorm.common.metric.AsmMetric;
 import com.alibaba.jstorm.metric.JStormMetrics;
+import com.alibaba.jstorm.metric.MetricDef;
 import com.alibaba.jstorm.metric.MetricType;
 import com.alibaba.jstorm.metric.MetricUtils;
-import com.alibaba.jstorm.metric.MetricDef;
 import com.alibaba.jstorm.utils.NetWorkUtils;
 import com.alibaba.jstorm.utils.TimeUtils;
-
+import java.net.InetSocketAddress;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.handler.codec.frame.FrameDecoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.net.InetSocketAddress;
-import java.util.HashMap;
-import java.util.Map;
 
 public class MessageDecoder extends FrameDecoder {
     private static final Logger LOG = LoggerFactory.getLogger(MessageDecoder.class);
@@ -53,23 +48,11 @@ public class MessageDecoder extends FrameDecoder {
     private static AsmHistogram msgDecodeTimer;
 
     /**
-     * netty recv speed, bytes/sec
-     */
-    private static AsmMeter nettyServerRecvSpeed = (AsmMeter) JStormMetrics.registerWorkerMetric(
-                        MetricUtils.workerMetricName(MetricDef.NETTY_SRV_RECV_SPEED, MetricType.METER), new AsmMeter());
-
-    /**
      * netty transmit time map
      */
-    private static Map<Channel, AsmHistogram> networkTransmitTimeMap = new HashMap<Channel, AsmHistogram>();
+    private static Map<Channel, AsmHistogram> networkTransmitTimeMap = new HashMap<>();
 
-    /**
-     * worker level transmit time which summarizes all channel transmit time
-     */
-    private static AsmHistogram networkWorkerTransmitTime = (AsmHistogram) JStormMetrics.registerWorkerMetric(
-            JStormMetrics.workerMetricName(MetricDef.NETTY_SRV_MSG_TRANS_TIME, MetricType.HISTOGRAM), new AsmHistogram());
-
-    private static Map<Channel, String> transmitNameMap = new HashMap<Channel, String>();
+    private static Map<Channel, String> transmitNameMap = new HashMap<>();
     private boolean isServer;
     private String localIp;
     private int localPort;
@@ -88,6 +71,7 @@ public class MessageDecoder extends FrameDecoder {
                     MetricUtils.workerMetricName(MetricDef.NETWORK_MSG_DECODE_TIME, MetricType.HISTOGRAM), new AsmHistogram());
             msgDecodeTimer.setTimeUnit(TimeUnit.NANOSECONDS);
         }
+        NettyMetricInstance.register();
     }
 
     /*
@@ -141,9 +125,10 @@ public class MessageDecoder extends FrameDecoder {
                             netTransTime.update(interval * TimeUtils.NS_PER_US);
                         }
                     }
-                    networkWorkerTransmitTime.update(interval * TimeUtils.NS_PER_US);
+                    if (MetricUtils.metricAccurateCal)
+                        NettyMetricInstance.networkWorkerTransmitTime.update(interval * TimeUtils.NS_PER_US);
                 }
-                nettyServerRecvSpeed.update(ControlMessage.encodeLength());
+                NettyMetricInstance.nettyServerRecvSpeed.update(ctrl_msg.getEncodedLength());
                 return ctrl_msg;
             }
 
@@ -188,7 +173,7 @@ public class MessageDecoder extends FrameDecoder {
             // task, length, JStormUtils.toPrintableString(rawBytes));
 
             TaskMessage ret = new TaskMessage(type, task, rawBytes);
-            nettyServerRecvSpeed.update(rawBytes.length + 8);
+            NettyMetricInstance.nettyServerRecvSpeed.update(rawBytes.length + 8);
             return ret;
         } finally {
             if (isServer && enableNettyMetrics && msgDecodeTimer != null) {
@@ -210,7 +195,7 @@ public class MessageDecoder extends FrameDecoder {
 
             networkTransmitTimeMap.put(channel, netTransTime);
             transmitNameMap.put(channel, nettyConnection);
-            LOG.info("Register Transmit Histogram of {}, channel {}", nettyConnection, channel);
+            LOG.info("Register transmit histogram of {}, channel {}", nettyConnection, channel);
         }
 
         return netTransTime;
@@ -222,7 +207,7 @@ public class MessageDecoder extends FrameDecoder {
             String nettyConnection = transmitNameMap.remove(channel);
             JStormMetrics.unregisterNettyMetric(MetricUtils.nettyMetricName(AsmMetric.mkName(MetricDef.NETTY_SRV_MSG_TRANS_TIME, nettyConnection),
                     MetricType.HISTOGRAM));
-            LOG.info("Remove Transmit Histogram of {}, channel {}", nettyConnection, channel);
+            LOG.info("Remove transmit histogram of {}, channel {}", nettyConnection, channel);
         }
     }
 }

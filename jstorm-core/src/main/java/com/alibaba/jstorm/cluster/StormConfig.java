@@ -18,10 +18,17 @@
 package com.alibaba.jstorm.cluster;
 
 import backtype.storm.Config;
+import backtype.storm.generated.KeyNotFoundException;
 import backtype.storm.generated.StormTopology;
+import backtype.storm.nimbus.NimbusInfo;
 import backtype.storm.utils.LocalState;
 import backtype.storm.utils.Utils;
+import com.alibaba.jstorm.blobstore.AtomicOutputStream;
+import com.alibaba.jstorm.blobstore.BlobStore;
+import com.alibaba.jstorm.blobstore.BlobStoreUtils;
+import com.alibaba.jstorm.blobstore.LocalFsBlobStore;
 import com.alibaba.jstorm.client.ConfigExtension;
+import com.alibaba.jstorm.daemon.nimbus.NimbusData;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.LoadConf;
 import com.alibaba.jstorm.utils.PathUtils;
@@ -61,7 +68,7 @@ public class StormConfig {
     }
 
     public static List<Object> All_CONFIGS() {
-        List<Object> rtn = new ArrayList<Object>();
+        List<Object> rtn = new ArrayList<>();
         Config config = new Config();
         Class<?> ConfigClass = config.getClass();
         Field[] fields = ConfigClass.getFields();
@@ -69,18 +76,17 @@ public class StormConfig {
             try {
                 Object obj = fields[i].get(null);
                 rtn.add(obj);
-            } catch (IllegalArgumentException e) {
-                LOG.error(e.getMessage(), e);
-            } catch (IllegalAccessException e) {
+            } catch (IllegalArgumentException | IllegalAccessException e) {
                 LOG.error(e.getMessage(), e);
             }
         }
         return rtn;
     }
 
-    public static HashMap<String, Object> getClassFields(Class<?> cls) throws IllegalArgumentException, IllegalAccessException {
+    public static HashMap<String, Object> getClassFields(Class<?> cls)
+            throws IllegalArgumentException, IllegalAccessException {
         java.lang.reflect.Field[] list = cls.getDeclaredFields();
-        HashMap<String, Object> rtn = new HashMap<String, Object>();
+        HashMap<String, Object> rtn = new HashMap<>();
         for (java.lang.reflect.Field f : list) {
             String name = f.getName();
             rtn.put(name, f.get(null).toString());
@@ -90,8 +96,7 @@ public class StormConfig {
     }
 
     public static String cluster_mode(Map conf) {
-        String mode = (String) conf.get(Config.STORM_CLUSTER_MODE);
-        return mode;
+        return (String) conf.get(Config.STORM_CLUSTER_MODE);
 
     }
 
@@ -115,13 +120,18 @@ public class StormConfig {
             }
         }
         throw new IllegalArgumentException("Illegal cluster mode in conf:" + mode);
+    }
 
+    public static boolean try_local_mode(Map conf) {
+        try {
+            return local_mode(conf);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**
      * validate whether the mode is distributed
-     * 
-     * @param conf
      */
     public static void validate_distributed_mode(Map<?, ?> conf) {
         if (StormConfig.local_mode(conf)) {
@@ -156,8 +166,7 @@ public class StormConfig {
     }
 
     public static String worker_pid_path(Map conf, String id, String pid) throws IOException {
-        String ret = worker_pids_root(conf, id) + FILE_SEPERATEOR + pid;
-        return ret;
+        return worker_pids_root(conf, id) + FILE_SEPERATEOR + pid;
     }
 
     public static String worker_heartbeats_root(Map conf, String id) throws IOException {
@@ -197,10 +206,6 @@ public class StormConfig {
 
     /**
      * Return supervisor's pid dir
-     * 
-     * @param conf
-     * @return
-     * @throws IOException
      */
     public static String supervisorPids(Map conf) throws IOException {
         String ret = supervisor_local_dir(conf) + FILE_SEPERATEOR + "pids";
@@ -215,10 +220,6 @@ public class StormConfig {
 
     /**
      * Return drpc's pid dir
-     *
-     * @param conf
-     * @return
-     * @throws IOException
      */
     public static String drpcPids(Map conf) throws IOException {
         String ret = drpc_local_dir(conf) + FILE_SEPERATEOR + "pids";
@@ -232,10 +233,8 @@ public class StormConfig {
     }
 
     /**
-     * Return nimbus's heartbeat dir for apsara
-     * 
-     * @param conf
-     * @return
+     * Return supervisor's heartbeat dir for apsara (heartbeat read dir)
+     *
      * @throws IOException
      */
     public static String supervisorHearbeatForContainer(Map conf) throws IOException {
@@ -247,6 +246,30 @@ public class StormConfig {
             throw e;
         }
         return ret;
+    }
+
+    public static String master_stormjar_key(String topologyId) {
+        return topologyId + "-stormjar.jar";
+    }
+
+    public static String master_stormjar_bak_key(String topologyId) {
+        return topologyId + "-stormjar.jar.bak";
+    }
+
+    public static String master_stormcode_key(String topologyId) {
+        return topologyId + "-stormcode.ser";
+    }
+
+    public static String master_stormcode_bak_key(String topologyId) {
+        return topologyId + "-stormcode.ser.bak";
+    }
+
+    public static String master_stormconf_key(String topologyId) {
+        return topologyId + "-stormconf.ser";
+    }
+
+    public static String master_stormlib_key(String topologyId, String libName) {
+        return topologyId + "-lib-" + libName;
     }
 
     public static String stormjar_path(String stormroot) {
@@ -359,10 +382,6 @@ public class StormConfig {
 
     /**
      * Return nimbus's pid dir
-     * 
-     * @param conf
-     * @return
-     * @throws IOException
      */
     public static String masterPids(Map conf) throws IOException {
         String ret = masterLocalDir(conf) + FILE_SEPERATEOR + "pids";
@@ -377,10 +396,6 @@ public class StormConfig {
 
     /**
      * Return nimbus's heartbeat dir for apsara
-     * 
-     * @param conf
-     * @return
-     * @throws IOException
      */
     public static String masterHearbeatForContainer(Map conf) throws IOException {
         String ret = masterLocalDir(conf) + FILE_SEPERATEOR + "nimbus.heartbeat";
@@ -416,7 +431,7 @@ public class StormConfig {
     }
 
     public static LocalState supervisorState(Map conf) throws IOException {
-        LocalState localState = null;
+        LocalState localState;
         try {
             String localstateDir = supervisor_local_dir(conf) + FILE_SEPERATEOR + "localstate";
             FileUtils.forceMkdir(new File(localstateDir));
@@ -429,12 +444,7 @@ public class StormConfig {
     }
 
     /**
-     * stormconf is mergered into clusterconf
-     * 
-     * @param conf
-     * @param topologyId
-     * @return
-     * @throws IOException
+     * merge storm conf into cluster conf
      */
     public static Map read_supervisor_topology_conf(Map conf, String topologyId) throws IOException {
         String topologyRoot = StormConfig.supervisor_stormdist_root(conf, topologyId);
@@ -450,24 +460,27 @@ public class StormConfig {
 
     @SuppressWarnings("rawtypes")
     public static List<String> get_supervisor_toplogy_list(Map conf) throws IOException {
-
         // get the path: STORM-LOCAL-DIR/supervisor/stormdist/
         String path = StormConfig.supervisor_stormdist_root(conf);
-
-        List<String> topologyids = PathUtils.read_dir_contents(path);
-
-        return topologyids;
+        return PathUtils.read_dir_contents(path);
     }
 
-    public static Map read_nimbus_topology_conf(Map conf, String topologyId) throws IOException {
-        String topologyRoot = StormConfig.masterStormdistRoot(conf, topologyId);
-        return read_topology_conf(topologyRoot, topologyId);
+    public static Map read_nimbus_topology_conf(String topologyId, BlobStore blobStore)
+            throws IOException, KeyNotFoundException {
+        return Utils.javaDeserialize(blobStore.readBlob(master_stormconf_key(topologyId)), Map.class);
     }
 
-    public static void write_nimbus_topology_conf(Map conf, String topologyId, Map topoConf) throws IOException {
-        String topologyRoot = StormConfig.masterStormdistRoot(conf, topologyId);
-        String confPath = StormConfig.stormconf_path(topologyRoot);
-        FileUtils.writeByteArrayToFile(new File(confPath), Utils.serialize(topoConf));
+    public static void write_nimbus_topology_conf(String topologyId, Map topoConf, NimbusData data)
+            throws Exception {
+        String confKey = master_stormconf_key(topologyId);
+        AtomicOutputStream out = data.getBlobStore().updateBlob(confKey);
+        out.write(Utils.serialize(topoConf));
+        out.close();
+        if (data.getBlobStore() instanceof LocalFsBlobStore) {
+            NimbusInfo nimbusInfo = data.getNimbusHostPortInfo();
+            int versionForKey = BlobStoreUtils.getVersionForKey(confKey, nimbusInfo, data.getConf());
+            data.getStormClusterState().setup_blobstore(confKey, nimbusInfo, versionForKey);
+        }
     }
 
     public static Map read_nimbusTmp_topology_conf(Map conf, String topologyId) throws IOException {
@@ -480,16 +493,21 @@ public class StormConfig {
         return (Map) readLocalObject(topologyId, readFile);
     }
 
-    public static StormTopology read_nimbus_topology_code(Map conf, String topologyId) throws IOException {
-        String topologyRoot = StormConfig.masterStormdistRoot(conf, topologyId);
-        String codePath = StormConfig.stormcode_path(topologyRoot);
-        return (StormTopology) readLocalObject(topologyId, codePath);
+    public static StormTopology read_nimbus_topology_code(String topologyId, BlobStore blobStore)
+            throws IOException, KeyNotFoundException {
+        return Utils.javaDeserialize(blobStore.readBlob(master_stormcode_key(topologyId)), StormTopology.class);
     }
 
-    public static void write_nimbus_topology_code(Map conf, String topologyId, byte[] data) throws IOException {
-        String topologyRoot = StormConfig.masterStormdistRoot(conf, topologyId);
-        String codePath = StormConfig.stormcode_path(topologyRoot);
-        FileUtils.writeByteArrayToFile(new File(codePath), data);
+    public static void write_nimbus_topology_code(String topologyId, byte[] data, NimbusData nimbusData) throws Exception {
+        String codeKey = master_stormcode_key(topologyId);
+        AtomicOutputStream out = nimbusData.getBlobStore().updateBlob(codeKey);
+        out.write(data);
+        out.close();
+        if (nimbusData.getBlobStore() instanceof LocalFsBlobStore) {
+            NimbusInfo nimbusInfo = nimbusData.getNimbusHostPortInfo();
+            int versionForKey = BlobStoreUtils.getVersionForKey(codeKey, nimbusInfo, nimbusData.getConf());
+            nimbusData.getStormClusterState().setup_blobstore(codeKey, nimbusInfo, versionForKey);
+        }
     }
 
     public static long read_supervisor_topology_timestamp(Map conf, String topologyId) throws IOException {
@@ -524,31 +542,22 @@ public class StormConfig {
         FileUtils.writeByteArrayToFile(new File(timeStampPath), data);
     }
 
-    /**
-     * stormconf has mergered into clusterconf
-     * 
-     * @param topologyId
-     * @param readFile
-     * @return
-     * @throws IOException
-     */
     @SuppressWarnings("unchecked")
     public static Object readLocalObject(String topologyId, String readFile) throws IOException {
-
         String errMsg = "Failed to get topology configuration of " + topologyId + " file:" + readFile;
 
         byte[] bconf = FileUtils.readFileToByteArray(new File(readFile));
         if (bconf == null) {
-            errMsg += ", due to failed to read";
+            errMsg += ", failed to read";
             LOG.error(errMsg);
             throw new IOException(errMsg);
         }
 
-        Object ret = null;
+        Object ret;
         try {
             ret = Utils.javaDeserialize(bconf);
         } catch (Exception e) {
-            errMsg += ", due to failed to serialized the data";
+            errMsg += ", failed to serialize the data";
             LOG.error(errMsg);
             throw new IOException(errMsg);
         }
@@ -559,8 +568,7 @@ public class StormConfig {
     public static long get_supervisor_topology_Bianrymodify_time(Map conf, String topologyId) throws IOException {
         String topologyRoot = StormConfig.supervisor_stormdist_root(conf, topologyId);
         File f = new File(topologyRoot);
-        long modifyTime = f.lastModified();
-        return modifyTime;
+        return f.lastModified();
     }
 
 }

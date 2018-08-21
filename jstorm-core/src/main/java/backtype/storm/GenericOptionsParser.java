@@ -42,19 +42,19 @@ import org.apache.commons.cli.ParseException;
 import org.yaml.snakeyaml.Yaml;
 
 /**
- * <code>GenericOptionsParser</code> is a utility to parse command line arguments generic to Storm.
- * 
- * <code>GenericOptionsParser</code> recognizes several standard command line arguments, enabling applications to easily specify additional jar files,
- * configuration resources, data files etc.
- * 
+ * GenericOptionsParser is a utility class to parse command line arguments generic to Storm.
+ *
+ * <code>GenericOptionsParser</code> recognizes several standard command line arguments,
+ * enabling applications to easily specify additional jar files, configuration resources, data files etc.
+ *
  * <h4 id="GenericOptions">Generic Options</h4>
- * 
+ *
  * <p>
  * The supported generic options are:
  * </p>
  * <p>
  * <blockquote>
- * 
+ *
  * <pre>
  * -conf &lt;conf.xml&gt;                           load configurations from
  *                                            &lt;conf.xml&gt;
@@ -65,14 +65,14 @@ import org.yaml.snakeyaml.Yaml;
  * -libjars &lt;comma separated list of jars&gt;    specify comma separated jars to be
  *                                            used by the submitted topology
  * </pre>
- * 
+ *
  * </blockquote>
  * </p>
- * 
+ *
  * <b>Note:</b> The XML configuration file specified by <code>-conf</code> shall be readable by Hadoop's <a href=
- * "http://hadoop.apache.org/docs/current/api/org/apache/hadoop/conf/Configuration.html" ><code>Configuration</code></a> class. Also note that all configuration
- * values of an XML file will be treated as strings, and <b>not as specific types</b>.
- * 
+ * "http://hadoop.apache.org/docs/current/api/org/apache/hadoop/conf/Configuration.html" ><code>Configuration</code></a> class.
+ * Also note that all configuration values of an XML file will be treated as strings, and <b>not as specific types</b>.
+ *
  * <p>
  * The general command line syntax is:
  * </p>
@@ -81,47 +81,45 @@ import org.yaml.snakeyaml.Yaml;
  *     storm jar app.jar [genericOptions] [commandOptions]
  * </pre></tt>
  * </p>
- * 
+ *
  * <p>
  * Generic command line arguments <strong>might</strong> modify <code>Config</code> objects, given to constructors.
  * </p>
- * 
+ *
  * <h4>Configuration priority</h4>
- * 
- * The following list defines the priorities of different configuration sources, in ascending order. Thus, if a configuration appears in more than one of them,
- * only the last one will take effect.
- * 
+ *
+ * The following list defines the priorities of different configuration sources, in ascending order.
+ * Thus, if a configuration appears in more than one of them, only the last one will take effect.
+ *
  * <ul>
  * <li> <code>defaults.yaml</code> in classpath.
  * <li> <code>storm.yaml</code> in classpath.
  * <li>Configurations from files specified with the <code>-conf</code> option, in the order of appearance.
  * <li>Configurations defined with the <code>-D</code> option, in order of appearance.
  * </ul>
- * 
+ *
  * <p>
  * The functionality is implemented using Commons CLI.
  * </p>
- * 
+ *
  * @see Tool
  * @see ToolRunner
  */
 
 public class GenericOptionsParser {
-    static final Logger LOG = LoggerFactory.getLogger(GenericOptionsParser.class);
+    private static final Logger LOG = LoggerFactory.getLogger(GenericOptionsParser.class);
 
     static final Charset UTF8 = Charset.forName("UTF-8");
 
     public static final String TOPOLOGY_LIB_PATH = "topology.lib.path";
-
     public static final String TOPOLOGY_LIB_NAME = "topology.lib.name";
 
     Config conf;
-
     CommandLine commandLine;
 
     // Order in this map is important for these purposes:
     // - configuration priority
-    static final LinkedHashMap<String, OptionProcessor> optionProcessors = new LinkedHashMap<String, OptionProcessor>();
+    static final LinkedHashMap<String, OptionProcessor> optionProcessors = new LinkedHashMap<>();
 
     public GenericOptionsParser(Config conf, String[] args) throws ParseException {
         this(conf, new Options(), args);
@@ -177,7 +175,7 @@ public class GenericOptionsParser {
     }
 
     static List<File> validateFiles(String pathList) throws IOException {
-        List<File> l = new ArrayList<File>();
+        List<File> l = new ArrayList<>();
 
         for (String s : pathList.split(",")) {
             File file = new File(s);
@@ -191,21 +189,21 @@ public class GenericOptionsParser {
     }
 
     public static void printGenericCommandUsage(PrintStream out) {
-        String[] strs =
-                new String[] { "Generic options supported are", "  -conf <conf.xml>                            load configurations from",
-                        "                                              <conf.xml>", "  -conf <conf.yaml>                           load configurations from",
-                        "                                              <conf.yaml>",
-                        "  -D <key>=<value>                            set <key> in configuration",
-                        "                                              to <value> (preserve value's type)",
-                        "  -libjars <comma separated list of jars>     specify comma separated",
-                        "                                              jars to be used by",
-                        "                                              the submitted topology", };
+        String[] strs = new String[]{
+                "Generic options supported are", "  -conf <conf.xml>                            load configurations from",
+                "                                              <conf.xml>", "  -conf <conf.yaml>                           load configurations from",
+                "                                              <conf.yaml>",
+                "  -D <key>=<value>                            set <key> in configuration",
+                "                                              to <value> (preserve value's type)",
+                "  -libjars <comma separated list of jars>     specify comma separated",
+                "                                              jars to be used by",
+                "                                              the submitted topology",};
         for (String s : strs)
             out.println(s);
     }
 
-    static interface OptionProcessor {
-        public void process(Config conf, CommandLine commandLine) throws ParseException;
+    interface OptionProcessor {
+        void process(Config conf, CommandLine commandLine) throws ParseException;
     }
 
     static class LibjarsProcessor implements OptionProcessor {
@@ -213,8 +211,8 @@ public class GenericOptionsParser {
         public void process(Config conf, CommandLine commandLine) throws ParseException {
             try {
                 List<File> jarFiles = validateFiles(commandLine.getOptionValue("libjars"));
-                Map<String, String> jars = new HashMap<String, String>(jarFiles.size());
-                List<String> names = new ArrayList<String>(jarFiles.size());
+                Map<String, String> jars = new HashMap<>(jarFiles.size());
+                List<String> names = new ArrayList<>(jarFiles.size());
                 for (File f : jarFiles) {
                     jars.put(f.getName(), f.getAbsolutePath());
                     names.add(f.getName());

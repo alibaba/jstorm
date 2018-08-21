@@ -27,22 +27,21 @@ public class TopologyAssignEvent {
     // unit is minutes
     private static final int DEFAULT_WAIT_TIME = 5;
     private String topologyId;
-    private String topologyName; // if this field has been set, it is create
+    private String topologyName; // if this field has been set, it is create topology
     private String group;
-    // topology
     private boolean isScratch;
     private boolean isReassign;
-    private StormStatus oldStatus; // if this field has been set, it is
-                                   // rebalance
+    private StormStatus oldStatus; // if this field has been set, it is rebalance
     private CountDownLatch latch = new CountDownLatch(1);
     private boolean isSuccess = false;
     private String errorMsg;
     private boolean isScaleTopology = false;
 
-    public void setScaleTopology(boolean isScaleTopology){
+    public void setScaleTopology(boolean isScaleTopology) {
         this.isScaleTopology = isScaleTopology;
     }
-    public boolean isScaleTopology(){
+
+    public boolean isScaleTopology() {
         return isScaleTopology;
     }
 
@@ -89,8 +88,7 @@ public class TopologyAssignEvent {
     public boolean waitFinish() {
         try {
             latch.await(DEFAULT_WAIT_TIME, TimeUnit.MINUTES);
-        } catch (InterruptedException e) {
-
+        } catch (InterruptedException ignored) {
         }
         return isSuccess;
     }

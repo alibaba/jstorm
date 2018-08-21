@@ -55,6 +55,11 @@ public class SupervisorController {
                        @RequestParam(value = "host", required = true) String host,
                        @RequestParam(value = "win", required = false) String win,
                        ModelMap model) {
+        if (UIUtils.isValidSupervisorHost(clusterName, host)) {
+            UIUtils.addErrorAttribute(model, new RuntimeException("Not a valid host: " + host));
+            return "supervisor";
+        }
+
         clusterName = StringEscapeUtils.escapeHtml(clusterName);
         long start = System.currentTimeMillis();
         host = NetWorkUtils.host2Ip(host);

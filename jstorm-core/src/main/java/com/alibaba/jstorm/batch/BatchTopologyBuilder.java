@@ -28,6 +28,7 @@ import backtype.storm.topology.TopologyBuilder;
 import com.alibaba.jstorm.batch.impl.BatchSpoutTrigger;
 import com.alibaba.jstorm.batch.impl.CoordinatedBolt;
 import com.alibaba.jstorm.batch.util.BatchDef;
+import com.alibaba.jstorm.client.ConfigExtension;
 
 public class BatchTopologyBuilder {
     private static final Logger LOG = LoggerFactory.getLogger(BatchTopologyBuilder.class);
@@ -39,21 +40,21 @@ public class BatchTopologyBuilder {
     public BatchTopologyBuilder(String topologyName) {
         topologyBuilder = new TopologyBuilder();
 
+        System.setProperty(ConfigExtension.TASK_BATCH_TUPLE, "false");
         spoutDeclarer = topologyBuilder.setSpout(BatchDef.SPOUT_TRIGGER, new BatchSpoutTrigger(), 1);
     }
 
-    public BoltDeclarer setSpout(String id, IBatchSpout spout, int paralel) {
-
-        BoltDeclarer boltDeclarer = this.setBolt(id, (IBatchSpout) spout, paralel);
+    public BoltDeclarer setSpout(String id, IBatchSpout spout, int parallel) {
+        BoltDeclarer boltDeclarer = this.setBolt(id, spout, parallel);
         boltDeclarer.allGrouping(BatchDef.SPOUT_TRIGGER, BatchDef.COMPUTING_STREAM_ID);
 
         return boltDeclarer;
     }
 
-    public BoltDeclarer setBolt(String id, IBasicBolt bolt, int paralel) {
+    public BoltDeclarer setBolt(String id, IBasicBolt bolt, int parallel) {
         CoordinatedBolt coordinatedBolt = new CoordinatedBolt(bolt);
 
-        BoltDeclarer boltDeclarer = topologyBuilder.setBolt(id, coordinatedBolt, paralel);
+        BoltDeclarer boltDeclarer = topologyBuilder.setBolt(id, coordinatedBolt, parallel);
 
         if (bolt instanceof IPrepareCommit) {
             boltDeclarer.allGrouping(BatchDef.SPOUT_TRIGGER, BatchDef.PREPARE_STREAM_ID);

@@ -39,14 +39,15 @@ public class DefaultTopologyAssignContext extends TopologyAssignContext {
     private final Map<String, List<String>> hostToSid;
     private final Set<ResourceWorkerSlot> oldWorkers;
     private final Map<String, List<Integer>> componentTasks;
-    private final Set<ResourceWorkerSlot> unstoppedWorkers = new HashSet<ResourceWorkerSlot>();
+    private final Set<ResourceWorkerSlot> unstoppedWorkers = new HashSet<>();
     private final int totalWorkerNum;
     private final int unstoppedWorkerNum;
+    private final int reserveWorkerNum;
 
     private int computeWorkerNum() {
         Integer settingNum = JStormUtils.parseInt(stormConf.get(Config.TOPOLOGY_WORKERS));
 
-        int ret = 0, hintSum = 0, tmCount = 0;
+        int ret, hintSum = 0, tmCount = 0;
 
         Map<String, Object> components = ThriftTopologyUtils.getComponents(sysTopology);
         for (Entry<String, Object> entry : components.entrySet()) {
@@ -75,21 +76,23 @@ public class DefaultTopologyAssignContext extends TopologyAssignContext {
         if (settingNum == null) {
             ret = hintSum;
         } else {
-            ret =  Math.min(settingNum, hintSum);
+            ret = Math.min(settingNum, hintSum);
         }
 
         Boolean isTmSingleWorker = ConfigExtension.getTopologyMasterSingleWorker(stormConf);
         if (isTmSingleWorker != null) {
-            if (isTmSingleWorker == true) {
+            if (isTmSingleWorker) {
                 // Assign a single worker for topology master
                 ret += tmCount;
                 setAssignSingleWorkerForTM(true);
+                ConfigExtension.setTopologyMasterSingleWorker(stormConf, true);
             }
         } else {
             // If not configured, judge this config by worker number
             if (ret >= 10) {
                 ret += tmCount;
                 setAssignSingleWorkerForTM(true);
+                ConfigExtension.setTopologyMasterSingleWorker(stormConf, true);
             }
         }
 
@@ -102,13 +105,12 @@ public class DefaultTopologyAssignContext extends TopologyAssignContext {
             ResourceWorkerSlot worker = oldAssignment.getWorkerByTaskId(task);
             unstoppedWorkers.add(worker);
         }
-
         return unstoppedWorkers.size();
     }
 
     private void refineDeadTasks() {
         Set<Integer> rawDeadTasks = getDeadTaskIds();
-        Set<Integer> refineDeadTasks = new HashSet<Integer>();
+        Set<Integer> refineDeadTasks = new HashSet<>();
         refineDeadTasks.addAll(rawDeadTasks);
 
         Set<Integer> unstoppedTasks = getUnstoppedTaskIds();
@@ -130,12 +132,10 @@ public class DefaultTopologyAssignContext extends TopologyAssignContext {
     }
 
     /**
-     * @@@ Do we need just handle the case whose type is ASSIGN_TYPE_NEW?
-     * 
-     * @return
+     * Do we need just handle the case when type is ASSIGN_TYPE_NEW?
      */
     private Map<String, String> generateSidToHost() {
-        Map<String, String> sidToHostname = new HashMap<String, String>();
+        Map<String, String> sidToHostname = new HashMap<>();
         if (oldAssignment != null) {
             sidToHostname.putAll(oldAssignment.getNodeHost());
         }
@@ -166,7 +166,7 @@ public class DefaultTopologyAssignContext extends TopologyAssignContext {
         if (oldAssignment != null && oldAssignment.getWorkers() != null) {
             oldWorkers = oldAssignment.getWorkers();
         } else {
-            oldWorkers = new HashSet<ResourceWorkerSlot>();
+            oldWorkers = new HashSet<>();
         }
 
         refineDeadTasks();
@@ -182,6 +182,8 @@ public class DefaultTopologyAssignContext extends TopologyAssignContext {
         totalWorkerNum = computeWorkerNum();
 
         unstoppedWorkerNum = computeUnstoppedAssignments();
+
+        reserveWorkerNum = ConfigExtension.getReserveWorkers(stormConf);
     }
 
     public StormTopology getSysTopology() {
@@ -223,5 +225,9 @@ public class DefaultTopologyAssignContext extends TopologyAssignContext {
 
     public String toDetailString() {
         return ToStringBuilder.reflectionToString(this, ToStringStyle.SHORT_PREFIX_STYLE);
+    }
+
+    public int getReserveWorkerNum() {
+        return reserveWorkerNum;
     }
 }

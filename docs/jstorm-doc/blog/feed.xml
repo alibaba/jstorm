@@ -1,0 +1,21 @@
+---
+layout: feed
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+<title>JStorm Blog Feed</title>
+<description>JStorm Blog</description>
+<link>{{ site.url }}/blog</link>
+<atom:link href="{{ site.url }}/blog/feed.xml" rel="self" type="application/rss+xml" />
+{% for post in site.posts limit:100 %}
+<item>
+<title>{{ post.title | xml_escape }}</title>
+<description>{{ post.content | xml_escape }}</description>
+<pubDate>{{ post.date | date: "%a, %d %b %Y %H:%M:%S %z" }}</pubDate>
+<link>{{ site.url }}{{ post.url }}</link>
+<guid isPermaLink="true">{{ site.baseurl }}{{ post.url }}</guid>
+</item>
+{% endfor %}
+</channel>
+</rss>

@@ -19,32 +19,20 @@ package backtype.storm.utils;
 
 import backtype.storm.metric.api.IStatefulObject;
 
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.InsufficientCapacityException;
-import com.lmax.disruptor.WaitStrategy;
+import com.alibaba.jstorm.callback.Callback;
+import com.lmax.disruptor.*;
 import com.lmax.disruptor.dsl.ProducerType;
 
+import java.util.List;
+
 /**
- * 
- * A single consumer queue that uses the LMAX Disruptor. They key to the performance is the ability to catch up to the producer by processing tuples in batches.
+ * A single consumer queue that uses the LMAX Disruptor.
+ * The key to the performance is the ability to catch up to the producer by processing tuples in batches.
  */
 public abstract class DisruptorQueue implements IStatefulObject {
-    public static void setUseSleep(boolean useSleep) {
-        DisruptorQueueImpl.setUseSleep(useSleep);
-    }
-
-    private static boolean CAPACITY_LIMITED = false;
-
-    public static void setLimited(boolean limited) {
-        CAPACITY_LIMITED = limited;
-    }
-
-    public static DisruptorQueue mkInstance(String queueName, ProducerType producerType, int bufferSize, WaitStrategy wait) {
-        if (CAPACITY_LIMITED == true) {
-            return new DisruptorQueueImpl(queueName, producerType, bufferSize, wait);
-        } else {
-            return new DisruptorWrapBlockingQueue(queueName, producerType, bufferSize, wait);
-        }
+    public static DisruptorQueue mkInstance(String queueName, ProducerType producerType, int bufferSize,
+                                            WaitStrategy wait, boolean isBatch, int batchSize, long flushMs) {
+        return new DisruptorQueueImpl(queueName, producerType, bufferSize, wait, isBatch, batchSize, flushMs);
     }
 
     public abstract String getName();
@@ -59,11 +47,19 @@ public abstract class DisruptorQueue implements IStatefulObject {
 
     public abstract void consumeBatchWhenAvailable(EventHandler<Object> handler);
 
+    public abstract void consumeBatchWhenAvailableWithCallback(EventHandler<Object> handler);
+
+    public abstract void multiConsumeBatchWhenAvailable(EventHandler<Object> handler);
+
+    public abstract void multiConsumeBatchWhenAvailableWithCallback(EventHandler<Object> handler);
+
+    public abstract void consumeBatchWhenAvailable(EventHandler<Object> handler, boolean isSync);
+
     public abstract void publish(Object obj);
 
-    public abstract void publish(Object obj, boolean block) throws InsufficientCapacityException;
+    public abstract void publishBatch(Object obj);
 
-    //public abstract void consumerStarted();
+    public abstract void publish(Object obj, boolean block) throws InsufficientCapacityException;
 
     public abstract void clear();
 
@@ -77,4 +73,11 @@ public abstract class DisruptorQueue implements IStatefulObject {
 
     public abstract float pctFull();
 
+    public abstract int cacheSize();
+
+    public abstract List<Object> retreiveAvailableBatch() throws AlertException, InterruptedException, TimeoutException;
+
+    public abstract void publishCallback(Callback cb);
+
+    public abstract void publishCache(Object obj);
 }

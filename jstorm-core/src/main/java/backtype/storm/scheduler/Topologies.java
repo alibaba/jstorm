@@ -27,10 +27,10 @@ public class Topologies {
 
     public Topologies(Map<String, TopologyDetails> topologies) {
         if (topologies == null)
-            topologies = new HashMap();
-        this.topologies = new HashMap<String, TopologyDetails>(topologies.size());
+            topologies = new HashMap<>();
+        this.topologies = new HashMap<>(topologies.size());
         this.topologies.putAll(topologies);
-        this.nameToId = new HashMap<String, String>(topologies.size());
+        this.nameToId = new HashMap<>(topologies.size());
 
         for (String topologyId : topologies.keySet()) {
             TopologyDetails topology = topologies.get(topologyId);

@@ -24,7 +24,7 @@ import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.RandomRange;
 
 public abstract class Shuffer {
-    private WorkerData workerData;
+    protected WorkerData workerData;
 
     public Shuffer(WorkerData workerData) {
         this.workerData = workerData;
@@ -35,8 +35,7 @@ public abstract class Shuffer {
     protected int getActiveTask(RandomRange randomrange, List<Integer> outTasks) {
         int index = randomrange.nextInt();
         int size = outTasks.size();
-        int i = 0;
-
+        int i;
         for (i = 0; i < size; i++) {
             if (workerData.isOutboundTaskActive(Integer.valueOf(outTasks.get(index))))
                 break;

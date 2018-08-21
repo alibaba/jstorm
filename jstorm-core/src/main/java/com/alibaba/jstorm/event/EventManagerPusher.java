@@ -28,17 +28,17 @@ public class EventManagerPusher extends RunnableCallback {
 
     private RunnableCallback event;
 
-    private int frequence;
+    private int frequency;
 
-    public EventManagerPusher(EventManager eventManager, RunnableCallback event, int frequence) {
+    public EventManagerPusher(EventManager eventManager, RunnableCallback event, int frequency) {
         this.eventManager = eventManager;
         this.event = event;
-        this.frequence = frequence;
+        this.frequency = frequency;
     }
 
     @Override
     public Object getResult() {
-        return frequence;
+        return frequency;
     }
 
     @Override

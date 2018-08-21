@@ -17,6 +17,7 @@
  */
 package backtype.storm.metric.api;
 
+@Deprecated
 public class ReducedMetric implements IMetric {
     private final IReducer _reducer;
     private Object _accumulator;

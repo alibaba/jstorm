@@ -24,34 +24,38 @@ import com.alibaba.jstorm.callback.ClusterStateCallback;
 
 /**
  * All ZK interface
- * 
+ *
  * @author yannian
- * 
+ *
  */
 public interface ClusterState {
-    public void set_ephemeral_node(String path, byte[] data) throws Exception;
 
-    public void delete_node(String path) throws Exception;
+    void set_ephemeral_node(String path, byte[] data) throws Exception;
 
-    public void set_data(String path, byte[] data) throws Exception;
+    void delete_node(String path) throws Exception;
 
-    public byte[] get_data(String path, boolean watch) throws Exception;
+    void set_data(String path, byte[] data) throws Exception;
 
-    public byte[] get_data_sync(String path, boolean watch) throws Exception;
+    byte[] get_data(String path, boolean watch) throws Exception;
 
-    public List<String> get_children(String path, boolean watch) throws Exception;
+    byte[] get_data_sync(String path, boolean watch) throws Exception;
 
-    public void mkdirs(String path) throws Exception;
+    void sync_path(String path) throws Exception;
 
-    public void tryToBeLeader(String path, byte[] host) throws Exception;
+    List<String> get_children(String path, boolean watch) throws Exception;
 
-    public void close();
+    void mkdirs(String path) throws Exception;
 
-    public UUID register(ClusterStateCallback callback);
+    void tryToBeLeader(String path, byte[] host) throws Exception;
 
-    public ClusterStateCallback unregister(UUID id);
+    void close();
 
-    public boolean node_existed(String path, boolean watch) throws Exception;
+    UUID register(ClusterStateCallback callback);
 
-    public Integer get_version(String path, boolean watch) throws Exception;
+    ClusterStateCallback unregister(UUID id);
+
+    boolean node_existed(String path, boolean watch) throws Exception;
+
+    Integer get_version(String path, boolean watch) throws Exception;
+
 }

@@ -43,35 +43,26 @@ import com.alibaba.jstorm.cluster.StormConfig;
 
 /**
  * Right now generate java sandbox policy through template file
- * 
- * In the future, generating java sandbox policy will through hardcode
- * 
+ * In the future, generating java sandbox policy will through hard-code
+ *
  * @author longda
- * @version
  */
 public class SandBoxMaker {
     private static final Logger LOG = LoggerFactory.getLogger(SandBoxMaker.class);
 
     public static final String SANBOX_TEMPLATE_NAME = "sandbox.policy";
-
     public static final String JSTORM_HOME_KEY = "%JSTORM_HOME%";
-
     public static final String CLASS_PATH_KEY = "%CLASS_PATH%";
-
     public static final String LOCAL_DIR_KEY = "%JSTORM_LOCAL_DIR%";
 
-    // this conf should only be Supervisor Conf
+    // this conf should only be supervisor conf
     private final Map conf;
-
     private final boolean isEnable;
-
-    private final Map<String, String> replaceBaseMap = new HashMap<String, String>();
+    private final Map<String, String> replaceBaseMap = new HashMap<>();
 
     public SandBoxMaker(Map conf) {
         this.conf = conf;
-
         isEnable = ConfigExtension.isJavaSandBoxEnable(conf);
-
         LOG.info("Java Sandbox Policy :" + String.valueOf(isEnable));
 
         String jstormHome = System.getProperty("jstorm.home");
@@ -80,17 +71,15 @@ public class SandBoxMaker {
         }
 
         replaceBaseMap.put(JSTORM_HOME_KEY, jstormHome);
-
         replaceBaseMap.put(LOCAL_DIR_KEY, (String) conf.get(Config.STORM_LOCAL_DIR));
-
         LOG.info("JSTORM_HOME is " + jstormHome);
     }
 
     private String genClassPath(String classPathLine) {
         StringBuilder sb = new StringBuilder();
 
-        String[] classPathes = classPathLine.split(":");
-        for (String classpath : classPathes) {
+        String[] classpathList = classPathLine.split(":");
+        for (String classpath : classpathList) {
             if (StringUtils.isBlank(classpath)) {
                 continue;
             }
@@ -105,14 +94,12 @@ public class SandBoxMaker {
                 sb.append(classpath);
                 sb.append("\", \"read\";\n");
             }
-
         }
 
         return sb.toString();
     }
 
     private String replaceLine(String line, Map<String, String> replaceMap) {
-
         for (Entry<String, String> entry : replaceMap.entrySet()) {
             if (line.contains(CLASS_PATH_KEY)) {
                 return genClassPath(entry.getValue());
@@ -127,27 +114,19 @@ public class SandBoxMaker {
     public String generatePolicyFile(Map<String, String> replaceMap) throws IOException {
         // dynamic generate policy file, no static file
         String tmpPolicy = StormConfig.supervisorTmpDir(conf) + File.separator + UUID.randomUUID().toString();
-
         InputStream inputStream = SandBoxMaker.class.getClassLoader().getResourceAsStream(SANBOX_TEMPLATE_NAME);
 
         PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(tmpPolicy)));
         BufferedReader reader = null;
         InputStreamReader inputReader = null;
-
-
         try {
-
             inputReader = new InputStreamReader(inputStream);
-
             reader = new BufferedReader(new LineNumberReader(inputReader));
-
-            String line = null;
+            String line;
             while ((line = reader.readLine()) != null) {
                 String replaced = replaceLine(line, replaceMap);
-
                 writer.println(replaced);
             }
-
             return tmpPolicy;
         } catch (Exception e) {
             LOG.error("Failed to generate policy file\n", e);
@@ -156,33 +135,25 @@ public class SandBoxMaker {
             if (inputStream != null) {
                 inputStream.close();
             }
-            if (writer != null) {
-                writer.close();
-            }
-            if (reader != null){
+            writer.close();
+            if (reader != null) {
                 reader.close();
             }
-            if (inputReader != null){
+            if (inputReader != null) {
                 inputReader.close();
             }
-
         }
     }
 
     /**
      * Generate command string
-     * 
-     * @param workerId
-     * @return
-     * @throws IOException
      */
     public String sandboxPolicy(String workerId, Map<String, String> replaceMap) throws IOException {
-        if (isEnable == false) {
+        if (!isEnable) {
             return "";
         }
 
         replaceMap.putAll(replaceBaseMap);
-
         String tmpPolicy = generatePolicyFile(replaceMap);
 
         File file = new File(tmpPolicy);
@@ -195,21 +166,16 @@ public class SandBoxMaker {
         sb.append(policyPath);
 
         return sb.toString();
-
     }
 
     public static void main(String[] args) {
         Map<Object, Object> conf = Utils.readStormConfig();
-
-        conf.put("java.sandbox.enable", Boolean.valueOf(true));
-
+        conf.put("java.sandbox.enable", true);
         SandBoxMaker maker = new SandBoxMaker(conf);
-
         try {
             System.out.println("sandboxPolicy:" + maker.sandboxPolicy("simple", new HashMap<String, String>()));
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-
 }

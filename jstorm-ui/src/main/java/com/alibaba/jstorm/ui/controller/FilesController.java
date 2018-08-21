@@ -59,6 +59,12 @@ public class FilesController {
                        @RequestParam(value = "port", required = false) String port,
                        @RequestParam(value = "dir", required = false) String dir,
                        ModelMap model) {
+
+        if (UIUtils.isValidSupervisorHost(cluster_name, host)) {
+            UIUtils.addErrorAttribute(model, new RuntimeException("Not a valid host: " + host));
+            return "files";
+        }
+
         cluster_name = StringEscapeUtils.escapeHtml(cluster_name);
         dirs.clear();
         files.clear();

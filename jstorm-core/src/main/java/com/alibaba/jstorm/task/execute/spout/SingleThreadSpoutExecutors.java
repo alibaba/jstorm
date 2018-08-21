@@ -17,29 +17,19 @@
  */
 package com.alibaba.jstorm.task.execute.spout;
 
-import backtype.storm.task.TopologyContext;
-import backtype.storm.utils.DisruptorQueue;
 import com.alibaba.jstorm.client.ConfigExtension;
-import com.alibaba.jstorm.metric.JStormMetricsReporter;
 import com.alibaba.jstorm.task.Task;
-import com.alibaba.jstorm.task.TaskBaseMetric;
 import com.alibaba.jstorm.task.TaskStatus;
-import com.alibaba.jstorm.task.TaskTransfer;
 import com.alibaba.jstorm.task.acker.Acker;
-import com.alibaba.jstorm.task.comm.TaskSendTargets;
 import com.alibaba.jstorm.task.comm.TupleInfo;
-import com.alibaba.jstorm.task.error.ITaskReportErr;
+import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.RotatingMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-
 /**
- * spout executor
- * <p/>
- * All spout actions will be done here
- * 
+ * single thread spout executor, all spout msgs will be handled here
+ *
  * @author yannian/Longda
  */
 public class SingleThreadSpoutExecutors extends SpoutExecutors {
@@ -47,16 +37,15 @@ public class SingleThreadSpoutExecutors extends SpoutExecutors {
 
     public SingleThreadSpoutExecutors(Task task) {
         super(task);
-
     }
-    
+
     @Override
     public void mkPending() {
-    	// sending Tuple's TimeCacheMap
+        // sending Tuple's TimeCacheMap
         if (ConfigExtension.isTaskBatchTuple(storm_conf)) {
-            pending = new RotatingMap<Long, TupleInfo>(Acker.TIMEOUT_BUCKET_NUM, null, false);
-        }else {
-            pending = new RotatingMap<Long, TupleInfo>(Acker.TIMEOUT_BUCKET_NUM, null, true);
+            pending = new RotatingMap<>(Acker.TIMEOUT_BUCKET_NUM, null, false);
+        } else {
+            pending = new RotatingMap<>(Acker.TIMEOUT_BUCKET_NUM, null, true);
         }
     }
 
@@ -67,15 +56,38 @@ public class SingleThreadSpoutExecutors extends SpoutExecutors {
 
     @Override
     public void run() {
-    	if (isFinishInit == false ) {
-    		initWrapper();
-    	}
-    	
+        if (!checkTopologyFinishInit) {
+            initWrapper();
+            int delayRun = ConfigExtension.getSpoutDelayRunSeconds(storm_conf);
+            long now = System.currentTimeMillis();
+            while (!checkTopologyFinishInit) {
+                // wait other bolt is ready, but the spout can handle the received message
+                executeEvent();
+                controlQueue.consumeBatch(this);
+                if (System.currentTimeMillis() - now > delayRun * 1000) {
+                    executorStatus.setStatus(TaskStatus.RUN);
+                    this.checkTopologyFinishInit = true;
+                    LOG.info("wait {} timeout, begin operate nextTuple", delayRun);
+                    break;
+                }
+            }
+            while (true) {
+                JStormUtils.sleepMs(10);
+                if (taskStatus.isRun()) {
+                    this.spout.activate();
+                    break;
+                } else if (taskStatus.isPause()) {
+                    this.spout.deactivate();
+                    break;
+                }
+            }
+            LOG.info(idStr + " is ready, due to the topology finish init. ");
+        }
+
         executeEvent();
+        controlQueue.consumeBatch(this);
 
         super.nextTuple();
-
-        processControlEvent();
 
     }
 
@@ -84,8 +96,8 @@ public class SingleThreadSpoutExecutors extends SpoutExecutors {
             exeQueue.consumeBatch(this);
 
         } catch (Exception e) {
-            if (taskStatus.isShutdown() == false) {
-                LOG.error("Actor occur unknow exception ", e);
+            if (!taskStatus.isShutdown()) {
+                LOG.error("unknown exception:", e);
             }
         }
 

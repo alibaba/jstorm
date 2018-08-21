@@ -35,7 +35,6 @@ public class StormBoundedExponentialBackoffRetry extends BoundedExponentialBacko
      * retries. Beyond this threshold, the sleeptime increase is linear. Also adds jitter for exponential/linear retry. It guarantees currSleepTimeMs >=
      * prevSleepTimeMs and baseSleepTimeMs <= currSleepTimeMs <= maxSleepTimeMs
      */
-
     public StormBoundedExponentialBackoffRetry(int baseSleepTimeMs, int maxSleepTimeMs, int maxRetries) {
         super(baseSleepTimeMs, maxSleepTimeMs, maxRetries);
         expRetriesThreshold = 1;
@@ -58,11 +57,11 @@ public class StormBoundedExponentialBackoffRetry extends BoundedExponentialBacko
         if (retryCount < expRetriesThreshold) {
             int exp = 1 << retryCount;
             int jitter = random.nextInt(exp);
-            int sleepTimeMs = super.getBaseSleepTimeMs() + exp + jitter;
-            return sleepTimeMs;
+            return super.getBaseSleepTimeMs() + exp + jitter;
         } else {
             int stepJitter = random.nextInt(stepSize);
-            return Math.min(super.getMaxSleepTimeMs(), (linearBaseSleepMs + (stepSize * (retryCount - expRetriesThreshold)) + stepJitter));
+            return Math.min(super.getMaxSleepTimeMs(),
+                    (linearBaseSleepMs + (stepSize * (retryCount - expRetriesThreshold)) + stepJitter));
         }
     }
 }

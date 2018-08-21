@@ -17,6 +17,7 @@
  */
 package backtype.storm.serialization;
 
+import backtype.storm.tuple.Values;
 import backtype.storm.utils.ListDelegate;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Output;
@@ -36,6 +37,27 @@ public class KryoValuesSerializer {
     }
 
     public void serializeInto(List<Object> values, Output out) throws IOException {
+    	if (values instanceof Values) {
+    		Values val = (Values) values;
+            out.writeInt(val.type, true);
+    	    switch (val.type) {
+    	        case Values.OBJECT:
+    	        	serialize(values, out);
+    	        	break;
+    	        case Values.STRING:
+    	        	serializeStrings(values, out);
+    	        	break;
+    	        case Values.INTEGER:
+    	        	serializeIntegers(values, out);
+    	        	break;
+    	    }
+    	} else {
+    		out.writeInt(Values.OBJECT, true);
+    		serialize(values, out);
+    	}
+    }
+
+    public void serialize(List<Object> values, Output out) throws IOException {
         // this ensures that list of values is always written the same way, regardless
         // of whether it's a java collection or one of clojure's persistent collections
         // (which have different serializers)
@@ -54,5 +76,21 @@ public class KryoValuesSerializer {
         _kryoOut.clear();
         _kryo.writeClassAndObject(_kryoOut, obj);
         return _kryoOut.toBytes();
+    }
+
+    private void serializeStrings(List<Object> values, Output out) {
+    	out.writeInt(values.size(), true);
+    	for (Object o : values) {
+    		String str = (String) o;
+    		out.writeString(str);
+    	}
+    }
+
+    private void serializeIntegers(List<Object> values, Output out) {
+    	out.writeInt(values.size(), true);
+    	for (Object o : values) {
+    		Integer i = (Integer) o;
+    		out.writeInt(i, true);
+    	}
     }
 }

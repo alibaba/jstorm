@@ -28,30 +28,36 @@ import backtype.storm.utils.DisruptorQueue;
 
 import com.alibaba.jstorm.utils.TimeUtils;
 
+import java.util.concurrent.TimeUnit;
+
 public class TickTupleTrigger extends TimerTrigger {
     private static final Logger LOG = LoggerFactory.getLogger(TickTupleTrigger.class);
 
     TopologyContext topologyContext;
 
-    public TickTupleTrigger(TopologyContext topologyContext, int frequence, String name, DisruptorQueue queue) {
+    public TickTupleTrigger(TopologyContext topologyContext, int frequency, String name, DisruptorQueue queue) {
         this.name = name;
         this.queue = queue;
         this.opCode = TimerConstants.TICK_TUPLE;
 
-        if (frequence <= 0) {
-            LOG.warn(" The frequence of " + name + " is invalid");
-            frequence = 1;
+        if (frequency <= 0) {
+            LOG.warn(" The frequency of " + name + " is invalid");
+            frequency = 1000;
         }
-        this.firstTime = frequence;
-        this.frequence = frequence;
+        this.firstTime = frequency;
+        this.frequency = frequency;
         this.topologyContext = topologyContext;
+    }
 
+    @Override
+    public void register() {
+        register(TimeUnit.MILLISECONDS);
     }
 
     @Override
     public void updateObject() {
-        this.object =
-                new TupleImplExt(topologyContext, new Values(TimeUtils.current_time_secs()), (int) Constants.SYSTEM_TASK_ID, Constants.SYSTEM_TICK_STREAM_ID);
+        this.object = new TupleImplExt(topologyContext,
+                new Values(TimeUtils.current_time_secs()), (int) Constants.SYSTEM_TASK_ID, Constants.SYSTEM_TICK_STREAM_ID);
     }
 
 }

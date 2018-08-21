@@ -21,10 +21,10 @@ import java.util.Map;
 
 public interface SupervisorDaemon {
 
-    public String getId();
+    String getId();
 
-    public Map getConf();
+    Map getConf();
 
-    public void ShutdownAllWorkers();
+    void shutdownAllWorkers();
 
 }

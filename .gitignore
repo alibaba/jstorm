@@ -4,9 +4,9 @@
 *.iml
 .project
 .classpath
-/**/.project
-/**/.classpath
-/**/.settings
-/**/target
-/**/bin
-/**/.git
+target
+/bin
+.idea
+*.iml
+jstorm-local/
+dependency-reduced-pom.xml

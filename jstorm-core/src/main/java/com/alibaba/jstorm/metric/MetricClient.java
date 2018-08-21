@@ -1,3 +1,20 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.alibaba.jstorm.metric;
 
 import backtype.storm.task.TopologyContext;
@@ -31,8 +48,7 @@ public class MetricClient {
     public AsmGauge registerGauge(String name, String group, Gauge<Double> gauge) {
         String userMetricName = getMetricName(name, group, MetricType.GAUGE);
         AsmGauge asmGauge = new AsmGauge(gauge);
-        JStormMetrics.registerTaskMetric(userMetricName, asmGauge);
-        return asmGauge;
+        return (AsmGauge) JStormMetrics.registerTaskMetric(userMetricName, asmGauge);
     }
 
     public AsmCounter registerCounter(String name) {
@@ -42,8 +58,7 @@ public class MetricClient {
     public AsmCounter registerCounter(String name, String group) {
         String userMetricName = getMetricName(name, group, MetricType.COUNTER);
         AsmCounter counter = new AsmCounter();
-        JStormMetrics.registerTaskMetric(userMetricName, counter);
-        return counter;
+        return (AsmCounter) JStormMetrics.registerTaskMetric(userMetricName, counter);
     }
 
     public AsmMeter registerMeter(String name) {
@@ -62,6 +77,24 @@ public class MetricClient {
     public AsmHistogram registerHistogram(String name, String group) {
         String userMetricName = getMetricName(name, group, MetricType.HISTOGRAM);
         return (AsmHistogram) JStormMetrics.registerTaskMetric(userMetricName, new AsmHistogram());
+    }
+
+    public AsmCounter registerTopologyCounter(String name) {
+        String userMetricName = getMetricName(name, GROUP_UDF, MetricType.COUNTER);
+        AsmCounter counter = new AsmCounter();
+        return (AsmCounter) JStormMetrics.registerTaskTopologyMetric(userMetricName, counter);
+    }
+
+    public AsmMeter registerTopologyMeter(String name) {
+        String userMetricName = getMetricName(name, GROUP_UDF, MetricType.METER);
+        AsmMeter meter = new AsmMeter();
+        return (AsmMeter) JStormMetrics.registerTaskTopologyMetric(userMetricName, meter);
+    }
+
+    public AsmHistogram registerTopologyHistogram(String name) {
+        String userMetricName = getMetricName(name, GROUP_UDF, MetricType.HISTOGRAM);
+        AsmHistogram histogram = new AsmHistogram();
+        return (AsmHistogram) JStormMetrics.registerTaskTopologyMetric(userMetricName, histogram);
     }
 
     public void unregister(String name, MetricType type) {

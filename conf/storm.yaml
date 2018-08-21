@@ -56,13 +56,6 @@
 ### Netty will send multiple messages in one batch  
 ### Setting true will improve throughput, but more latency
 # storm.messaging.netty.transfer.async.batch: true
-
-### if this setting  is true, it will use disruptor as internal queue, which size is limited
-### otherwise, it will use LinkedBlockingDeque as internal queue , which size is unlimited
-### generally when this setting is true, the topology will be more stable,
-### but when there is a data loop flow, for example A -> B -> C -> A
-### and the data flow occur blocking, please set this as false
-# topology.buffer.size.limited: true
  
 ### default worker memory size, unit is byte
 # worker.memory.size: 2147483648

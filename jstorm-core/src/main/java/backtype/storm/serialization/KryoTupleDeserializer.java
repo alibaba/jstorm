@@ -17,42 +17,46 @@
  */
 package backtype.storm.serialization;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import backtype.storm.Config;
+import backtype.storm.utils.Utils;
+
+import com.alibaba.jstorm.client.ConfigExtension;
+import com.alibaba.jstorm.utils.JStormUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import backtype.storm.generated.StormTopology;
 import backtype.storm.task.GeneralTopologyContext;
-import backtype.storm.tuple.BatchTuple;
 import backtype.storm.tuple.MessageId;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.TupleImplExt;
-import backtype.storm.utils.Utils;
 
+import com.alibaba.jstorm.utils.Pair;
 import com.esotericsoftware.kryo.io.Input;
-
-import java.io.IOException;
-import java.net.URLClassLoader;
-import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.Map;
 
 public class KryoTupleDeserializer implements ITupleDeserializer {
     private static final Logger LOG = LoggerFactory.getLogger(KryoTupleDeserializer.class);
-
-    public static final boolean USE_RAW_PACKET = true;
 
     GeneralTopologyContext _context;
     KryoValuesDeserializer _kryo;
     SerializationFactory.IdDictionary _ids;
     Input _kryoInput;
+    int _ackerNum;
+    boolean _isTransactionTuple;
 
-    public KryoTupleDeserializer(final Map conf, final GeneralTopologyContext context) {
+    public KryoTupleDeserializer(final Map conf, final GeneralTopologyContext context, final StormTopology topology) {
         _kryo = new KryoValuesDeserializer(conf);
         _context = context;
-        _ids = new SerializationFactory.IdDictionary(context.getRawTopology());
+        _ids = new SerializationFactory.IdDictionary(topology);
         _kryoInput = new Input(1);
+        _ackerNum = JStormUtils.parseInt(conf.get(Config.TOPOLOGY_ACKER_EXECUTORS), 0);
+        _isTransactionTuple = JStormUtils.parseBoolean(conf.get(ConfigExtension.TRANSACTION_TOPOLOGY), false);
     }
 
     public Tuple deserialize(byte[] ser) {
@@ -73,66 +77,73 @@ public class KryoTupleDeserializer implements ITupleDeserializer {
         String componentName = null;
         String streamName = null;
         MessageId id = null;
+        boolean isBatchTuple = false;
 
         try {
             targetTaskId = input.readInt();
             timeStamp = input.readLong();
+            isBatchTuple = input.readBoolean();
             taskId = input.readInt(true);
             streamId = input.readInt(true);
             componentName = _context.getComponentId(taskId);
             streamName = _ids.getStreamName(componentName, streamId);
-            id = MessageId.deserialize(input);
-            List<Object> values = _kryo.deserializeFrom(input);
+
+            List<Object> values;
+            int groupId = -1;
+            long batchId =  -1;
+            if (isBatchTuple) {
+                if(_isTransactionTuple) {
+                    batchId = input.readLong(true);
+                }
+                values = new ArrayList<>();
+                int len = input.readInt(true);
+                if (_ackerNum > 0) {
+                    for (int i = 0; i < len; i++) {
+                        values.add(new Pair<>(MessageId.deserialize(input), _kryo.deserializeFrom(input)));
+                    }
+                } else {
+                    for (int i = 0; i < len; i++) {
+                        values.add(new Pair<MessageId, List<Object>>(null, _kryo.deserializeFrom(input)));
+                    }
+                }
+            } else {
+                id = MessageId.deserialize(input);
+                values = _kryo.deserializeFrom(input);
+            }
+
             TupleImplExt tuple = new TupleImplExt(_context, values, taskId, streamName, id);
+            tuple.setBatchTuple(isBatchTuple);
             tuple.setTargetTaskId(targetTaskId);
             tuple.setCreationTimeStamp(timeStamp);
+            if (_isTransactionTuple) {
+                tuple.setBatchId(batchId);
+            }
             return tuple;
-        } catch (Throwable e) {
+        } catch (Exception e) {
             StringBuilder sb = new StringBuilder();
 
             sb.append("Deserialize error:");
             sb.append("targetTaskId:").append(targetTaskId);
             sb.append(",creationTimeStamp:").append(timeStamp);
+            sb.append(",isBatchTuple:").append(isBatchTuple);
             sb.append(",taskId:").append(taskId);
             sb.append(",streamId:").append(streamId);
             sb.append(",componentName:").append(componentName);
             sb.append(",streamName:").append(streamName);
-            sb.append(",MessageId").append(id);
-
-            LOG.info(sb.toString(), e);
+            sb.append(",MessageId:").append(id);
+            LOG.error("Kryo error!!! {}", sb.toString());
+            LOG.error("Exception: ", e);
             throw new RuntimeException(e);
         }
     }
 
-    public BatchTuple deserializeBatch(byte[] ser) {
-        BatchTuple ret = new BatchTuple();
-        
-        int offset = 0;
-        while(offset < ser.length) {
-            _kryoInput.setBuffer(ser, offset, offset + 4);
-            int tupleSize = _kryoInput.readInt();
-            offset += 4;
-
-            ret.addToBatch(deserialize(ser, offset, offset + tupleSize));
-            offset += tupleSize;
-        }
-
-        return ret;
-    }
-
     /**
      * just get target taskId
-     * 
-     * @param ser
-     * @return
      */
     public static int deserializeTaskId(byte[] ser) {
         Input _kryoInput = new Input(1);
-
         _kryoInput.setBuffer(ser);
 
-        int targetTaskId = _kryoInput.readInt();
-
-        return targetTaskId;
+        return _kryoInput.readInt();
     }
 }

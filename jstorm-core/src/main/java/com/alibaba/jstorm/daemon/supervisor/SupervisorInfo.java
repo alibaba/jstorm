@@ -17,6 +17,7 @@
  */
 package com.alibaba.jstorm.daemon.supervisor;
 
+import com.alibaba.jstorm.client.ConfigExtension;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -29,7 +30,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
 
 /**
  * Object stored in ZK /ZK-DIR/supervisors
- * 
+ *
  * @author Xin.Zhou/Longda
  */
 public class SupervisorInfo implements Serializable {
@@ -41,15 +42,31 @@ public class SupervisorInfo implements Serializable {
 
     private Integer timeSecs;
     private Integer uptimeSecs;
+    private String version;
+    private String buildTs;
+    private Integer port;
 
     private Set<Integer> workerPorts;
+    private Map<Object, Object> supervisorConf;
+
+    private String errorMessage;
 
     private transient Set<Integer> availableWorkerPorts;
 
-    public SupervisorInfo(String hostName, String supervisorId, Set<Integer> workerPorts) {
+    public SupervisorInfo(String hostName, String supervisorId, Set<Integer> workerPorts, Map<Object, Object> conf) {
         this.hostName = hostName;
         this.supervisorId = supervisorId;
         this.workerPorts = workerPorts;
+        this.supervisorConf = conf;
+        this.port = ConfigExtension.getSupervisorDeamonHttpserverPort(conf);
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
     }
 
     public String getHostName() {
@@ -82,18 +99,53 @@ public class SupervisorInfo implements Serializable {
 
     public void setAvailableWorkerPorts(Set<Integer> workerPorts) {
         if (availableWorkerPorts == null)
-            availableWorkerPorts = new HashSet<Integer>();
+            availableWorkerPorts = new HashSet<>();
         availableWorkerPorts.addAll(workerPorts);
     }
 
     public Set<Integer> getAvailableWorkerPorts() {
         if (availableWorkerPorts == null)
-            availableWorkerPorts = new HashSet<Integer>();
+            availableWorkerPorts = new HashSet<>();
         return availableWorkerPorts;
     }
 
     public void setWorkerPorts(Set<Integer> workerPorts) {
         this.workerPorts = workerPorts;
+    }
+
+    public Map<Object, Object> getSupervisorConf() {
+        return supervisorConf;
+    }
+
+    public SupervisorInfo setSupervisorConf(Map<Object, Object> conf) {
+        this.supervisorConf = conf;
+        return this;
+    }
+
+    public String getVersion() {
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
+    }
+
+    public String getBuildTs() {
+        return buildTs;
+    }
+
+    public SupervisorInfo setBuildTs(String buildTs) {
+        this.buildTs = buildTs;
+        return this;
+    }
+
+    public Integer getPort() {
+        return port;
+    }
+
+    public SupervisorInfo setPort(Integer port) {
+        this.port = port;
+        return this;
     }
 
     @Override
@@ -152,25 +204,14 @@ public class SupervisorInfo implements Serializable {
 
     /**
      * get Map<supervisorId, hostname>
-     * 
-     * @param stormClusterState
-     * @param callback
-     * @return
      */
     public static Map<String, String> getNodeHost(Map<String, SupervisorInfo> supInfos) {
-
-        Map<String, String> rtn = new HashMap<String, String>();
-
+        Map<String, String> rtn = new HashMap<>();
         for (Entry<String, SupervisorInfo> entry : supInfos.entrySet()) {
-
-            SupervisorInfo superinfo = entry.getValue();
-
-            String supervisorid = entry.getKey();
-
-            rtn.put(supervisorid, superinfo.getHostName());
-
+            SupervisorInfo superInfo = entry.getValue();
+            String supervisorId = entry.getKey();
+            rtn.put(supervisorId, superInfo.getHostName());
         }
-
         return rtn;
     }
 
