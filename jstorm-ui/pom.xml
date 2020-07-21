@@ -90,7 +90,7 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.5.1</version>
+            <version>2.9.10.5</version>
         </dependency>
 
         <!-- exclude log4j-slf4j12 since we bridge slf4j to logback -->
