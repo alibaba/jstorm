@@ -28,7 +28,6 @@ import com.alibaba.jstorm.cluster.Cluster;
 import com.alibaba.jstorm.cluster.StormClusterState;
 import com.alibaba.jstorm.cluster.StormConfig;
 import com.alibaba.jstorm.utils.PathUtils;
-import com.google.common.collect.Sets;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -65,7 +64,7 @@ public class blobstore {
         init();
         String stormRoot = StormConfig.masterStormdistRoot(conf);
         List<String> topologies = PathUtils.read_dir_contents(stormRoot);
-        Set<String> activeKeys = Sets.newHashSet(blobStore.listKeys());
+        Set<String> activeKeys = new HashSet<>(Arrays.asList(blobStore.listKeys()));
 
         for (String topologyId : topologies) {
             try {

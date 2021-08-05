@@ -24,8 +24,6 @@ import com.alibaba.jstorm.common.metric.*;
 import com.alibaba.jstorm.common.metric.snapshot.AsmSnapshot;
 import com.alibaba.jstorm.utils.NetWorkUtils;
 import com.google.common.base.Joiner;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +48,7 @@ public class JStormMetrics implements Serializable {
             NIMBUS_METRIC_KEY, CLUSTER_METRIC_KEY, SUPERVISOR_METRIC_KEY
     };
 
-    public static final Set<String> SYS_TOPOLOGY_SET = Sets.newHashSet(SYS_TOPOLOGIES);
+    public static final Set<String> SYS_TOPOLOGY_SET = new HashSet<>(Arrays.asList(SYS_TOPOLOGIES));
 
     public static final String DEFAULT_GROUP = "sys";
     public static final String NETTY_GROUP = "netty";
@@ -188,11 +186,11 @@ public class JStormMetrics implements Serializable {
         } else if (metaType == MetaType.WORKER) {
             return search(workerMetrics, metricName, metricType);
         }
-        return Lists.newArrayList();
+        return new ArrayList<>();
     }
 
     private static List<AsmMetric> search(AsmMetricRegistry registry, String metricName, MetricType metricType) {
-        List<AsmMetric> ret = Lists.newArrayList();
+        List<AsmMetric> ret = new ArrayList<>();
 
         Map<String, ?> metricMap;
         if (metricType == MetricType.COUNTER) {
@@ -402,7 +400,7 @@ public class JStormMetrics implements Serializable {
         long start = System.currentTimeMillis();
         MetricInfo metricInfo = MetricUtils.mkMetricInfo();
 
-        List<Map.Entry<String, AsmMetric>> entries = Lists.newLinkedList();
+        List<Map.Entry<String, AsmMetric>> entries = new LinkedList<>();
         if (enableStreamMetrics) {
             entries.addAll(streamMetrics.metrics.entrySet());
         }
@@ -530,7 +528,7 @@ public class JStormMetrics implements Serializable {
             Set<AsmMetric> assocMetrics = metric.getAssocMetrics();
             MetricType metricType = MetricUtils.metricType(metric.getMetricName());
 
-            List<AsmMetric> asmMetricList = Lists.newLinkedList(assocMetrics);
+            List<AsmMetric> asmMetricList = new LinkedList<>(assocMetrics);
             asmMetricList.add(metric);
 
             // snapshot of the root metric: stream/task

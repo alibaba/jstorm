@@ -134,8 +134,8 @@ public class FollowerRunnable implements Runnable {
     private void setupBlobstore() throws Exception {
         BlobStore blobStore = data.getBlobStore();
         StormClusterState clusterState = data.getStormClusterState();
-        Set<String> localSetOfKeys = Sets.newHashSet(blobStore.listKeys());
-        Set<String> allKeys = Sets.newHashSet(clusterState.active_keys());
+        Set<String> localSetOfKeys = new HashSet<>(Arrays.asList(blobStore.listKeys()));
+        Set<String> allKeys = new HashSet<>(Arrays.asList(clusterState.active_keys()));
         Set<String> localAvailableActiveKeys = Sets.intersection(localSetOfKeys, allKeys);
         // keys on local but not on zk, we will delete it
         Set<String> keysToDelete = Sets.difference(localSetOfKeys, allKeys);
@@ -221,8 +221,8 @@ public class FollowerRunnable implements Runnable {
             try {
                 BlobStore blobStore = data.getBlobStore();
                 StormClusterState clusterState = data.getStormClusterState();
-                Set<String> localKeys = Sets.newHashSet(blobStore.listKeys());
-                Set<String> zkKeys = Sets.newHashSet(clusterState.blobstore(blobSyncCallback));
+                Set<String> localKeys = new HashSet<>(Arrays.asList(blobStore.listKeys()));
+                Set<String> zkKeys = new HashSet<>(Arrays.asList(clusterState.blobstore(blobSyncCallback)));
                 BlobSynchronizer blobSynchronizer = new BlobSynchronizer(blobStore, data.getConf());
                 blobSynchronizer.setNimbusInfo(data.getNimbusHostPortInfo());
                 blobSynchronizer.setBlobStoreKeySet(localKeys);
@@ -305,8 +305,8 @@ public class FollowerRunnable implements Runnable {
         // but if we use local blobstore, we should count topologies files
         int diffCount = 0;
         if (data.getBlobStore() instanceof LocalFsBlobStore) {
-            Set<String> keysOnZk = Sets.newHashSet(zkClusterState.active_keys());
-            Set<String> keysOnLocal = Sets.newHashSet(data.getBlobStore().listKeys());
+            Set<String> keysOnZk = new HashSet<>(Arrays.asList(zkClusterState.active_keys()));
+            Set<String> keysOnLocal = new HashSet<>(Arrays.asList(data.getBlobStore().listKeys()));
             // we count number of keys which is on zk but not on local
             diffCount = Sets.difference(keysOnZk, keysOnLocal).size();
         }

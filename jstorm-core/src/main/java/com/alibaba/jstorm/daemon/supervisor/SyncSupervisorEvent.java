@@ -33,7 +33,6 @@ import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.Pair;
 import com.alibaba.jstorm.utils.PathUtils;
 import com.alibaba.jstorm.utils.TimeUtils;
-import com.google.common.collect.Sets;
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -399,7 +398,7 @@ class SyncSupervisorEvent extends RunnableCallback {
         Map<String, Set<Pair<String, Integer>>> ret = new HashMap<>();
 
         try {
-            Set<String> upgradingTopologies = Sets.newHashSet(stormClusterState.get_upgrading_topologies());
+            Set<String> upgradingTopologies = new HashSet<>(Arrays.asList(stormClusterState.get_upgrading_topologies()));
             for (String topologyId : upgradingTopologies) {
                 List<String> upgradingWorkers = stormClusterState.get_upgrading_workers(topologyId);
                 for (String worker : upgradingWorkers) {

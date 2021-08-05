@@ -25,7 +25,6 @@ import com.alibaba.jstorm.task.upgrade.GrayUpgradeConfig;
 import com.alibaba.jstorm.utils.LoadConf;
 
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -35,11 +34,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
@@ -2011,7 +2006,7 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
             throw new NotAliveException(topologyName);
         }
 
-        Set<String> workerSet = (workers == null) ? Sets.<String>newHashSet() : Sets.<String>newHashSet(workers);
+        Set<String> workerSet = (workers == null) ? new HashSet<>() : new HashSet<>(workers);
         try {
             grayUpgrade(topologyId, null, null, Maps.newHashMap(), component, workerSet, workerNum);
         } catch (Exception ex) {
@@ -2079,8 +2074,8 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
         Assignment assignment = stormClusterState.assignment_info(topologyId, null);
         if (upgradeConfig != null) {
             LOG.info("Got existing gray upgrade config:{}", upgradeConfig);
-            Set<String> upgradingWorkers = Sets.newHashSet(stormClusterState.get_upgrading_workers(topologyId));
-            Set<String> upgradedWorkers = Sets.newHashSet(stormClusterState.get_upgraded_workers(topologyId));
+            Set<String> upgradingWorkers = new HashSet<>(Arrays.asList(stormClusterState.get_upgrading_workers(topologyId)));
+            Set<String> upgradedWorkers = new HashSet<>(Arrays.asList(stormClusterState.get_upgraded_workers(topologyId)));
             int upgradingWorkerNum = upgradingWorkers.size();
             int upgradedWorkerNum = upgradedWorkers.size();
             int totalWorkerNum = assignment.getWorkers().size() - 1;

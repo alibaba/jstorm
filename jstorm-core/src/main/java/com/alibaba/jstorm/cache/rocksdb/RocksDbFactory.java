@@ -19,7 +19,6 @@ package com.alibaba.jstorm.cache.rocksdb;
 
 import backtype.storm.utils.Utils;
 import com.alibaba.jstorm.client.ConfigExtension;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.commons.io.FileUtils;
 import org.rocksdb.*;
@@ -104,7 +103,7 @@ public class RocksDbFactory {
     }
 
     private static List<Integer> getTtlValues(int ttlSec, List<ColumnFamilyDescriptor> descriptors) {
-        List<Integer> ttlValues = Lists.newArrayList();
+        List<Integer> ttlValues = new ArrayList<>();
         for (ColumnFamilyDescriptor descriptor : descriptors) {
             ttlValues.add(ttlSec);
         }
@@ -113,7 +112,7 @@ public class RocksDbFactory {
 
     private static List<ColumnFamilyDescriptor> getExistingColumnFamilyDesc(Map conf, String dbPath) throws IOException {
         try {
-            List<byte[]> families = Lists.newArrayList();
+            List<byte[]> families = new ArrayList<>();
             List<byte[]> existingFamilies = RocksDB.listColumnFamilies(getOptions(conf), dbPath);
             if (existingFamilies != null) {
                 families.addAll(existingFamilies);

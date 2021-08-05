@@ -52,14 +52,7 @@ import com.alibaba.jstorm.utils.TimeUtils;
 import com.google.common.collect.Sets;
 
 import java.security.InvalidParameterException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -314,11 +307,11 @@ public class NimbusUtils {
         BlobStore blobStore = data.getBlobStore();
 
         // we have only topology relative files , so we don't need filter
-        Set<String> code_ids = Sets.newHashSet(BlobStoreUtils.code_ids(blobStore.listKeys()));
+        Set<String> code_ids = new HashSet<>(Arrays.asList(BlobStoreUtils.code_ids(blobStore.listKeys())));
         // get topology in ZK /storms
-        Set<String> active_ids = Sets.newHashSet(data.getStormClusterState().active_storms());
+        Set<String> active_ids = new HashSet<>(Arrays.asList(data.getStormClusterState().active_storms()));
         //get topology in zk by blobs
-        Set<String> blobsIdsOnZk = Sets.newHashSet(data.getStormClusterState().blobstore(null));
+        Set<String> blobsIdsOnZk = new HashSet<>(Arrays.asList(data.getStormClusterState().blobstore(null)));
         Set<String> topologyIdsOnZkbyBlobs = BlobStoreUtils.code_ids(blobsIdsOnZk.iterator());
 
         Set<String> corrupt_ids = Sets.difference(active_ids, code_ids);

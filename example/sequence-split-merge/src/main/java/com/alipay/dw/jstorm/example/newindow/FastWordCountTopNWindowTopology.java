@@ -34,7 +34,6 @@ import com.alibaba.jstorm.window.BaseWindowedBolt;
 import com.alibaba.jstorm.window.Time;
 import com.alibaba.jstorm.window.TimeWindow;
 import com.alibaba.starter.utils.JStormHelper;
-import com.google.common.collect.Lists;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -43,6 +42,8 @@ import java.util.Map;
 import java.util.Random;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
 
 /**
  * WordCount but the spout does not stop, and the bolts are implemented in java.
@@ -203,7 +204,7 @@ public class FastWordCountTopNWindowTopology {
         public void purgeWindow(Object state, TimeWindow window) {
             LOG.info("purging window: {}", window);
             final HashMap<String, Integer> counts = (HashMap<String, Integer>) state;
-            List<String> keys = Lists.newArrayList(counts.keySet());
+            List<String> keys = new ArrayList<>(counts.keySet());
             Collections.sort(keys, new Comparator<String>() {
                 @Override
                 public int compare(String o1, String o2) {
@@ -211,7 +212,7 @@ public class FastWordCountTopNWindowTopology {
                 }
             });
 
-            List<Object> pairs = Lists.newArrayListWithCapacity(n);
+            List<Object> pairs = new ArrayList<>(n);
             for (int i = 0; i < n; i++) {
                 pairs.add(new Pair<>(keys.get(i), counts.get(keys.get(i))));
             }
@@ -264,7 +265,7 @@ public class FastWordCountTopNWindowTopology {
         @Override
         public void purgeWindow(Object state, TimeWindow window) {
             final HashMap<String, Integer> counts = (HashMap<String, Integer>) state;
-            List<String> keys = Lists.newArrayList(counts.keySet());
+            List<String> keys = new ArrayList<>(counts.keySet());
             Collections.sort(keys, new Comparator<String>() {
                 @Override
                 public int compare(String o1, String o2) {

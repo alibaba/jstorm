@@ -32,7 +32,6 @@ import com.alibaba.jstorm.task.error.TaskError;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.PathUtils;
 import com.alibaba.jstorm.utils.TimeUtils;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -844,7 +843,7 @@ public class StormZkClusterState implements StormClusterState {
     public List<String> get_upgrading_topologies() throws Exception {
         List<String> ret = cluster_state.get_children(Cluster.GRAY_UPGRADE_SUBTREE, false);
         if (ret == null) {
-            ret = Lists.newArrayList();
+            ret = new ArrayList<>();
         }
         return ret;
     }

@@ -23,7 +23,6 @@ import backtype.storm.utils.CommandLineUtil;
 import backtype.storm.utils.NimbusClient;
 import backtype.storm.utils.Utils;
 import com.alibaba.jstorm.client.ConfigExtension;
-import com.google.common.collect.Lists;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +33,8 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.lang.StringUtils;
+
+import java.util.ArrayList;
 
 /**
  * gray upgrade a topology
@@ -128,7 +129,7 @@ public class gray_upgrade {
         if (commandLine.hasOption("w")) {
             String w = commandLine.getOptionValue("w");
             if (!StringUtils.isBlank(w)) {
-                workers = Lists.newArrayList();
+                workers = new ArrayList<>();
                 String[] parts = w.split(",");
                 for (String part : parts) {
                     if (part.split(":").length == 2) {
