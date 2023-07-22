@@ -27,10 +27,12 @@ import com.alibaba.jstorm.cluster.StormStatus;
 import com.alibaba.jstorm.daemon.nimbus.NimbusData;
 import com.alibaba.jstorm.daemon.nimbus.StatusType;
 import com.alibaba.jstorm.task.upgrade.GrayUpgradeConfig;
-import com.google.common.collect.Sets;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
+import java.util.HashSet;
 
 /**
  * @author wange
@@ -74,7 +76,7 @@ public class RollbackTransitionCallback extends BaseCallback {
                 upgradeConfig.setRollback(true);
                 stormClusterState.set_gray_upgrade_conf(topologyId, upgradeConfig);
 
-                Set<String> upgradedWorkers = Sets.newHashSet(stormClusterState.get_upgraded_workers(topologyId));
+                Set<String> upgradedWorkers = new HashSet<>(Arrays.asList(stormClusterState.get_upgraded_workers(topologyId)));
                 if (upgradedWorkers.size() > 0) {
                     LOG.info("Setting rollback workers:{}", upgradedWorkers);
                     for (String upgradedWorker : upgradedWorkers) {

@@ -18,11 +18,11 @@
 package org.apache.storm.starter.tools;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 import backtype.storm.tuple.Tuple;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 
 /**
  * This class wraps an objects and its associated count, including any
@@ -67,7 +67,7 @@ public class RankableObjectWithFields implements Rankable, Serializable {
      * @return new instance based on the provided tuple
      */
     public static RankableObjectWithFields from(Tuple tuple) {
-        List<Object> otherFields = Lists.newArrayList(tuple.getValues());
+        List<Object> otherFields = new ArrayList<>(tuple.getValues());
         Object obj = otherFields.remove(0);
         Long count = (Long) otherFields.remove(0);
         return new RankableObjectWithFields(obj, count, otherFields.toArray());

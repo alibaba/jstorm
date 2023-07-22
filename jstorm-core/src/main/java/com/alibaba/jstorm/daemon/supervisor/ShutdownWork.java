@@ -17,8 +17,8 @@
  */
 package com.alibaba.jstorm.daemon.supervisor;
 
-import com.google.common.collect.Lists;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -77,7 +77,7 @@ public class ShutdownWork extends RunnableCallback {
             try {
                 pids = getPid(conf, workerId);
             } catch (IOException e1) {
-                pids = Lists.newArrayList();
+                pids = new ArrayList<>();
                 LOG.error("Failed to get pid for " + workerId + " of " + topologyId);
             }
             workerId2Pids.put(workerId, pids);

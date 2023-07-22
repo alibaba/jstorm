@@ -27,7 +27,6 @@ import com.alibaba.jstorm.client.ConfigExtension;
 import com.alibaba.jstorm.cluster.StormClusterState;
 import com.alibaba.jstorm.cluster.StormConfig;
 import com.alibaba.jstorm.utils.OSInfo;
-import com.google.common.collect.Lists;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -250,7 +249,7 @@ public class JStormMetricCache {
                 retMap.put((Long) objects[0], (MetricInfo) objects[1]);
             }
         }
-        List<MetricInfo> ret = Lists.newArrayList(retMap.values());
+        List<MetricInfo> ret = new ArrayList<>(retMap.values());
         int cnt = 0;
         for (MetricInfo metricInfo : ret) {
             cnt += metricInfo.get_metrics_size();

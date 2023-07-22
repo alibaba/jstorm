@@ -21,11 +21,7 @@ import com.alibaba.jstorm.daemon.nimbus.metric.CheckMetricEvent;
 import com.alibaba.jstorm.utils.Pair;
 import com.alibaba.jstorm.utils.TimeUtils;
 import com.google.common.collect.Lists;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,7 +43,6 @@ import com.alibaba.jstorm.metric.TimeTicker;
 import com.alibaba.jstorm.metric.TopologyMetricContext;
 import com.alibaba.jstorm.schedule.Assignment;
 import com.alibaba.jstorm.schedule.default_assign.ResourceWorkerSlot;
-import com.google.common.collect.Sets;
 
 /**
  * Sync meta <String, Long> from cache and remote
@@ -108,7 +103,7 @@ public class RefreshEvent extends MetricEvent {
                     //there's no need to consider sample rate when cluster metrics merge
                     conf.put(ConfigExtension.TOPOLOGY_METRIC_SAMPLE_RATE, 1.0);
                 }
-                Set<ResourceWorkerSlot> workerSlot = Sets.newHashSet(new ResourceWorkerSlot());
+                Set<ResourceWorkerSlot> workerSlot = new HashSet<>(Arrays.asList(new ResourceWorkerSlot()));
                 TopologyMetricContext metricContext = new TopologyMetricContext(topology, workerSlot, conf);
                 context.getTopologyMetricContexts().putIfAbsent(topology, metricContext);
                 syncMetaFromCache(topology, context.getTopologyMetricContexts().get(topology));

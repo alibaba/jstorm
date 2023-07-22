@@ -23,7 +23,6 @@ import com.alibaba.jstorm.cluster.StormStatus;
 import com.alibaba.jstorm.daemon.nimbus.StatusType;
 import com.alibaba.jstorm.schedule.default_assign.ResourceWorkerSlot;
 import com.alibaba.jstorm.task.upgrade.GrayUpgradeConfig;
-import com.google.common.collect.Sets;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,6 +32,8 @@ import java.util.Set;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
 
 /**
  * @author wange
@@ -62,7 +63,7 @@ public class GrayUpgradeHandler implements TMHandler, Runnable {
         for (ResourceWorkerSlot workerSlot : tmContext.getWorkerSet().get()) {
             Set<Integer> tasks = workerSlot.getTasks();
             String hostPort = workerSlot.getHostPort();
-            hostPortToTasks.put(hostPort, Sets.newHashSet(tasks));
+            hostPortToTasks.put(hostPort, new HashSet<>(tasks));
 
             for (Integer task : tasks) {
                 this.taskToHostPort.put(task, hostPort);
@@ -115,7 +116,7 @@ public class GrayUpgradeHandler implements TMHandler, Runnable {
             }
 
             // notify current upgrading workers to upgrade (again)
-            Set<String> upgradingWorkers = Sets.newHashSet(stormClusterState.get_upgrading_workers(topologyId));
+            Set<String> upgradingWorkers = new HashSet<>(Arrays.asList(stormClusterState.get_upgrading_workers(topologyId)));
             if (upgradingWorkers.size() > 0) {
                 LOG.info("Following workers are under upgrade:{}", upgradingWorkers);
                 for (String worker : upgradingWorkers) {
@@ -124,7 +125,7 @@ public class GrayUpgradeHandler implements TMHandler, Runnable {
                 return;
             }
 
-            Set<String> upgradedWorkers = Sets.newHashSet(stormClusterState.get_upgraded_workers(topologyId));
+            Set<String> upgradedWorkers = new HashSet<>(Arrays.asList(stormClusterState.get_upgraded_workers(topologyId)));
             if (grayUpgradeConf.isRollback()) {
                 LOG.info("Rollback has completed, removing upgrade info in zk and updating storm status...");
                 // there's no way back after a rollback

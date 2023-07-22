@@ -47,7 +47,7 @@ public abstract class AsmMetric<T extends Metric> {
 
     protected static int minWindow = getMinWindow(windowSeconds);
     private static final int FLUSH_INTERVAL_BIAS = 5;
-    protected static final List<Integer> EMPTY_WIN = Lists.newArrayListWithCapacity(0);
+    protected static final List<Integer> EMPTY_WIN = new ArrayList<>(0);
 
     /**
      * sample rate for meter, histogram and timer, note that counter & gauge are not sampled.

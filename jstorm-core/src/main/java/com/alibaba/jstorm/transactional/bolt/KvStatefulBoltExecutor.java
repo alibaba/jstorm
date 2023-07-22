@@ -24,7 +24,8 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 
-import com.google.common.collect.Lists;
+import java.util.ArrayList;
+
 import com.google.common.collect.Maps;
 
 import backtype.storm.generated.GlobalStreamId;
@@ -81,7 +82,7 @@ public abstract class KvStatefulBoltExecutor<K, V> extends KvTransactionStateOpe
         if (fields.size() == 1) {
             key = input.getValueByField(fields.get(0));
         } else {
-            List<Object> fieldedValuesTobeHash = Lists.newArrayList();
+            List<Object> fieldedValuesTobeHash = new ArrayList<>();
             for (String field : fields) {
                 fieldedValuesTobeHash.add(input.getValueByField(field));
             }

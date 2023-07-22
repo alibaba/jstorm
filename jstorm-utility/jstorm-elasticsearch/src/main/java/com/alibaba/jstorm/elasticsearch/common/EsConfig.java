@@ -20,17 +20,13 @@ package com.alibaba.jstorm.elasticsearch.common;
 import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.transport.TransportAddress;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 
 public class EsConfig implements Serializable {
   
@@ -69,7 +65,7 @@ public class EsConfig implements Serializable {
   }
 
   List<TransportAddress> getTransportAddresses() throws UnknownHostException {
-    List<TransportAddress> transportAddresses = Lists.newArrayList();
+    List<TransportAddress> transportAddresses = new ArrayList<>();
     for (String node : nodes) {
       String[] hostAndPort = node.split(DELIMITER);
       Preconditions.checkArgument(hostAndPort.length == 2,

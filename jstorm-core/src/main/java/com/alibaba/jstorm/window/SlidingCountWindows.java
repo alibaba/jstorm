@@ -20,7 +20,8 @@ package com.alibaba.jstorm.window;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.TupleImpl;
-import com.google.common.collect.Lists;
+
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -49,7 +50,7 @@ public class SlidingCountWindows<T> extends WindowAssigner<T> {
             start = 0;
         }
 
-        List<TimeWindow> windows = Lists.newArrayList();
+        List<TimeWindow> windows = new ArrayList<>();
         for (long nextStart = start; offset >= nextStart; nextStart += slide) {
             if (offset < nextStart + size) {
                 windows.add(new TimeWindow(nextStart, nextStart + size));

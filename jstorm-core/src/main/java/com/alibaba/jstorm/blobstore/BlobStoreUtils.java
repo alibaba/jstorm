@@ -30,8 +30,6 @@ import com.alibaba.jstorm.daemon.nimbus.NimbusData;
 import com.alibaba.jstorm.metric.JStormMetrics;
 import com.alibaba.jstorm.utils.JStormServerUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import java.net.URL;
 import org.apache.commons.io.FileExistsException;
 import org.apache.commons.io.FileUtils;
@@ -341,7 +339,7 @@ public class BlobStoreUtils {
             CuratorFramework zkClient = null;
             try {
                 zkClient = BlobStoreUtils.createZKClient(conf);
-                nimbusInfos = Lists.newArrayList(BlobStoreUtils.getNimbodesWithLatestSequenceNumberOfBlob(zkClient, key));
+                nimbusInfos = new ArrayList<>(BlobStoreUtils.getNimbodesWithLatestSequenceNumberOfBlob(zkClient, key));
                 Collections.shuffle(nimbusInfos);
             } catch (Exception e) {
                 LOG.error("get available nimbus for blob key:{} error", e);
@@ -481,7 +479,7 @@ public class BlobStoreUtils {
                 return null;
             }
         };
-        return Sets.newHashSet(filterAndListKeys(iterator, keyFilter));
+        return new HashSet<>(Arrays.asList(filterAndListKeys(iterator, keyFilter)));
     }
 
     // remove blob information in zk for the blobkey

@@ -31,13 +31,7 @@ import com.alibaba.jstorm.metric.MetricClient;
 import com.alibaba.jstorm.transactional.state.ITransactionStateOperator;
 import com.alibaba.jstorm.utils.JStormUtils;
 import com.alibaba.jstorm.utils.TimeUtils;
-import com.google.common.collect.Sets;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledFuture;
@@ -316,7 +310,7 @@ public class WindowedBoltExecutor implements IRichBolt, Triggerable {
         if (WindowAssigner.isSessionTime(windowAssigner)) {
             // session windows don't slide
             TimeWindow sessionWindow = windows.iterator().next();
-            Set<TimeWindow> oldWindows = Sets.newHashSet(windowToTriggers.keySet());
+            Set<TimeWindow> oldWindows = new HashSet<>(Arrays.asList(windowToTriggers.keySet()));
             for (TimeWindow oldWindow : oldWindows) {
                 if (!oldWindow.equals(sessionWindow)) {
                     TimeWindow mergedWindow = mergeSessionWindows(oldWindow, sessionWindow);

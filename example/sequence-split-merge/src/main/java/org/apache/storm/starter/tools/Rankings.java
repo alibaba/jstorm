@@ -18,10 +18,11 @@
 package org.apache.storm.starter.tools;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 
 public class Rankings implements Serializable {
@@ -30,7 +31,7 @@ public class Rankings implements Serializable {
     private static final int  DEFAULT_COUNT    = 10;
     
     private final int            maxSize;
-    private final List<Rankable> rankedItems = Lists.newArrayList();
+    private final List<Rankable> rankedItems = new ArrayList<>();
     
     public Rankings() {
         this(DEFAULT_COUNT);
@@ -80,7 +81,7 @@ public class Rankings implements Serializable {
      * @return a somewhat defensive copy of ranked items
      */
     public List<Rankable> getRankings() {
-        List<Rankable> copy = Lists.newLinkedList();
+        List<Rankable> copy = new LinkedList<>();
         for (Rankable r : rankedItems) {
             copy.add(r.copy());
         }

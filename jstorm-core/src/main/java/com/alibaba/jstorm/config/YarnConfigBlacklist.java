@@ -28,10 +28,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-import com.google.common.collect.Lists;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
 
 /**
  * yarn config black list, note that ONLY plain K-V is supported, list/map values are not supported!!!
@@ -100,7 +101,7 @@ public class YarnConfigBlacklist implements Refreshable {
 
         StringBuilder sb = new StringBuilder(4096);
         Iterable<String> lines = splitLines(confData);
-        List<String> lineArray = Lists.newArrayList(lines);
+        List<String> lineArray = new ArrayList<>(lines);
         for (int i = 0; i < lineArray.size(); i++) {
             String trimmedLine = lineArray.get(i).trim();
             if (!trimmedLine.startsWith("#") && trimmedLine.contains(":")) {
@@ -138,7 +139,7 @@ public class YarnConfigBlacklist implements Refreshable {
 
         StringBuilder sb = new StringBuilder();
         Iterable<String> lines = splitLines(confData);
-        List<String> lineArray = Lists.newArrayList(lines);
+        List<String> lineArray = new ArrayList<>(lines);
         for (int i = 0; i < lineArray.size(); i++) {
             String trimmedLine = lineArray.get(i).trim();
             if (!trimmedLine.startsWith("#") && trimmedLine.contains(":")) {
