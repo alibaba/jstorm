@@ -25,6 +25,7 @@ top-nav-title: JStorm-on-Yarn
 
 ## 销毁集群
 * 执行jstormyarn killJstormOnYarn，结束一个集群的进程
+
 ## 升级集群binary
 * 更新deploy目录下的jstorm部署文件
 * 执行upgradeCluster命令
@@ -43,6 +44,7 @@ top-nav-title: JStorm-on-Yarn
 * 执行info命令
 
 ## 对集群进行伸缩容
+
 ### 随机分配容器
 * 执行addSupervisors和removeSupervisors命令
 
@@ -102,6 +104,7 @@ blobstore.hdfs.port: yourhdfsport
 ### 准备工作
 系统要求centos6u或7u，安装hadoop2.6.3后
 启动HDFS、yarn、zookeeper，具体过程可参照官方文档(若已存在zk服务，也可以向外部连接)
+
 ### 配置修改
 首先需要配置cgroup,隔离CPU资源。在yarn-site.xml中加入下列配置项，注意把用户组替换成实际的执行用户
 ```
