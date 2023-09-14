@@ -90,7 +90,7 @@ public class TransactionTopologyBuilder extends TopologyBuilder {
     }
 
     public SpoutDeclarer setSpout(String id, ITransactionSpoutExecutor spout, Number parallelismHint, boolean isSchedule) {
-        return setSpout(id, spout, parallelismHint, isSchedule);
+        return setSpout(id, (IRichSpout) spout, parallelismHint, isSchedule);
     }
 
     private SpoutDeclarer setSpout(String id, IRichSpout spout, Number parallelismHint, boolean isSchedule) {
@@ -124,7 +124,7 @@ public class TransactionTopologyBuilder extends TopologyBuilder {
     }
 
     public BoltDeclarer setBolt(String id, ITransactionBoltExecutor bolt, Number parallelismHint) {
-        return setBolt(id, bolt, parallelismHint);
+        return setBolt(id, (IRichBolt) bolt, parallelismHint);
     }
 
     @Override
